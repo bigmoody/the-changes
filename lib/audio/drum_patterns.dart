@@ -516,47 +516,54 @@ List<DrumHit> _shuffleBar(int bar, int beatsPerBar, math.Random random) {
 }
 
 /// The tamborim's figure, in beats, over two bars: the syncopation that
-/// says samba rather than bossa. Sixteenths, and none of them on beat one.
-const _tamborimBarOne = [0.75, 1.5, 2.25, 2.75, 3.5];
-const _tamborimBarTwo = [0.5, 1.25, 1.75, 2.5, 3.25, 3.75];
+/// says samba rather than bossa. Eighths, and none of them on beat one.
+const _tamborimBarOne = [1.0, 1.5, 2.5, 3.5];
+const _tamborimBarTwo = [0.5, 1.5, 2.0, 3.0];
 
 /// A samba: quicker than a bossa, and leaning the other way.
 ///
-/// A bossa sits on beat one. A samba answers on two — the surdo, the big
-/// low drum, is quiet on the odd beats and lands on the even ones, and
-/// everything else is hung off that.
+/// A bossa sits on beat one. A samba answers on the second half of the
+/// bar — the surdo, the big low drum, is quiet on one and lands on three —
+/// and everything else is hung off that.
+///
+/// Written in four, at the tempo a samba is actually counted off. A samba
+/// is a 2/4 dance, and writing its sixteenths straight into a 4/4 bar is
+/// how you end up playing it at twice the speed: at 200 to the bar that
+/// was thirteen shaker notes a second and a surdo on every beat, where the
+/// real thing is nearer seven and one every other beat.
 List<DrumHit> _sambaBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
-  // Sixteenths running underneath, the ones off the eighth lighter: the
-  // shaker of a bateria, played with a stick.
-  for (var sixteenth = 0; sixteenth < beatsPerBar * 4; sixteenth++) {
+  // The shaker of a bateria, played with a stick: eighths, the off-beats
+  // lighter.
+  for (var eighth = 0; eighth < beatsPerBar * 2; eighth++) {
     hits.add(
       DrumHit(
         drum: Drum.hiHatClosed,
-        beat: sixteenth / 4,
-        velocity: (sixteenth.isEven ? 0.26 : 0.15) * _human(random),
+        beat: eighth / 2,
+        velocity: (eighth.isEven ? 0.28 : 0.17) * _human(random),
       ),
     );
   }
-  // The surdo. Light on the odd beats, heavy on the even ones, which is
-  // where a samba's weight goes.
-  for (var beat = 0; beat < beatsPerBar; beat++) {
-    final answering = _backbeats(beatsPerBar).contains(beat);
-    hits.add(
-      DrumHit(
-        drum: Drum.tomLow,
-        beat: beat.toDouble(),
-        velocity: (answering ? 0.72 : 0.3) * _human(random),
-        hard: answering,
-      ),
-    );
-    hits.add(
-      DrumHit(
-        drum: Drum.kick,
-        beat: beat.toDouble(),
-        velocity: (answering ? 0.5 : 0.34) * _human(random),
-      ),
-    );
+  // The surdo, every other beat: quiet on one, and the weight of the whole
+  // thing on three.
+  for (var beat = 0; beat < beatsPerBar; beat += 2) {
+    final answering = beat != 0;
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.tomLow,
+          beat: beat.toDouble(),
+          velocity: (answering ? 0.72 : 0.3) * _human(random),
+          hard: answering,
+        ),
+      )
+      ..add(
+        DrumHit(
+          drum: Drum.kick,
+          beat: beat.toDouble(),
+          velocity: (answering ? 0.5 : 0.34) * _human(random),
+        ),
+      );
   }
   // The tamborim across the top, two bars long so it doesn't sit still.
   for (final beat in (bar.isEven ? _tamborimBarOne : _tamborimBarTwo).where(

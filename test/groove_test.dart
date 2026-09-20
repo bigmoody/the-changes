@@ -295,33 +295,48 @@ void main() {
   });
 
   group('samba groove', () {
-    test('the surdo answers on 2 and 4, and is quiet on 1 and 3', () {
+    test('the surdo lands every other beat, quiet on one', () {
       for (var index = 0; index < 8; index++) {
         final surdo = bar(
           Feel.samba,
           index,
           index,
         ).where((h) => h.drum == Drum.tomLow).toList();
-        expect(beatsOf(bar(Feel.samba, index, index), Drum.tomLow), [
-          0.0,
-          1.0,
-          2.0,
-          3.0,
-        ]);
+        // Every other beat, not every beat: on every one it ran at twice
+        // the speed a samba is actually played at.
+        expect(beatsOf(bar(Feel.samba, index, index), Drum.tomLow), [0.0, 2.0]);
         double at(double beat) =>
             surdo.firstWhere((h) => h.beat == beat).velocity;
-        expect(at(1), greaterThan(at(0)), reason: 'bar $index leans on 2');
-        expect(at(3), greaterThan(at(2)), reason: 'bar $index leans on 4');
+        expect(at(2), greaterThan(at(0)), reason: 'bar $index leans on three');
       }
     });
 
-    test('sixteenths underneath, the ones off the eighth lighter', () {
+    test('the shaker runs in eighths, not sixteenths', () {
       final hats = bar(Feel.samba, 0).where((h) => h.drum == Drum.hiHatClosed);
-      expect(hats, hasLength(16));
+      expect(hats, hasLength(8));
       for (final hit in hats) {
-        final onEighth = (hit.beat * 2) % 1 == 0;
-        expect(hit.velocity, onEighth ? greaterThan(0.2) : lessThan(0.2));
+        final onBeat = hit.beat % 1 == 0;
+        expect(hit.velocity, onBeat ? greaterThan(0.2) : lessThan(0.2));
       }
+    });
+
+    test('at the tempo a samba is counted off, nothing runs away with it', () {
+      // The complaint this guards against: written as a 2/4 dance straight
+      // into a 4/4 bar, a samba comes out at double speed. These are hits a
+      // second at 200 to the bar, against what the real thing does.
+      const beatsASecond = 200 / 60;
+      double rate(Drum drum) =>
+          beatsOf(bar(Feel.samba, 0), drum).length / 4 * beatsASecond;
+      expect(
+        rate(Drum.hiHatClosed),
+        lessThan(8),
+        reason: 'a shaker, not a buzz',
+      );
+      expect(
+        rate(Drum.tomLow),
+        lessThan(2.5),
+        reason: 'a surdo is not a pulse',
+      );
     });
 
     test('the tamborim is syncopated and never lands on beat one', () {
@@ -330,9 +345,9 @@ void main() {
         expect(figure, isNotEmpty);
         expect(figure, isNot(contains(0.0)));
         expect(
-          figure.every((beat) => (beat * 4) % 1 == 0),
+          figure.every((beat) => (beat * 2) % 1 == 0),
           isTrue,
-          reason: 'sixteenths, bar $index',
+          reason: 'eighths, bar $index',
         );
       }
       // Two bars long, so it doesn't sit still.
