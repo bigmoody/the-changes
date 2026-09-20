@@ -241,8 +241,12 @@ void showMixer(BuildContext context, PracticeController controller) {
           children: [
             Row(
               children: [
-                Text('Mixer', style: theme.textTheme.titleLarge),
-                const Spacer(),
+                // Expanded rather than a Spacer: at a large text size the
+                // heading and the button together are wider than the sheet,
+                // and this lets the heading wrap instead of overflowing.
+                Expanded(
+                  child: Text('Mixer', style: theme.textTheme.titleLarge),
+                ),
                 TextButton(
                   onPressed: controller.resetMix,
                   child: const Text('Reset'),
@@ -442,8 +446,12 @@ void showArrangement(BuildContext context, PracticeController controller) {
           children: [
             Row(
               children: [
-                Text('Arrangement', style: theme.textTheme.titleLarge),
-                const Spacer(),
+                // Expanded rather than a Spacer: at a large text size the
+                // heading and the button together are wider than the sheet,
+                // and this lets the heading wrap instead of overflowing.
+                Expanded(
+                  child: Text('Arrangement', style: theme.textTheme.titleLarge),
+                ),
                 TextButton(
                   key: const ValueKey('arrangement-reset'),
                   onPressed: () =>

@@ -33,20 +33,24 @@ Future<void> _open(
   await tester.pumpWidget(
     MaterialApp(
       theme: appTheme(Brightness.light, fontFamily: 'Roboto'),
+      // The text size has to go on in builder, not around home. A sheet is
+      // pushed onto the Navigator, which sits above home — so a MediaQuery
+      // in there never reaches it, and these were all quietly running at
+      // the ordinary size however large a scale they asked for.
+      //
       // copyWith, not a fresh MediaQueryData: replacing it outright leaves
       // the screen size at zero and nothing lays out as it would.
-      home: Builder(
-        builder: (context) => MediaQuery(
-          data: MediaQuery.of(context)
-              .copyWith(textScaler: TextScaler.linear(textScale)),
-          child: PracticeScreen(
-            // A tune with every option going: the arpeggios add a mixer
-            // channel, and it swings, so the two-feel switch is there too.
-            tune: standards.firstWhere((t) => t.title == 'All of Me'),
-            player: PracticePlayer(),
-            settings: AppSettings.inMemory(),
-          ),
-        ),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+      home: PracticeScreen(
+        // A tune with every option going: the arpeggios add a mixer
+        // channel, and it swings, so the two-feel switch is there too.
+        tune: standards.firstWhere((t) => t.title == 'All of Me'),
+        player: PracticePlayer(),
+        settings: AppSettings.inMemory(),
       ),
     ),
   );
@@ -84,6 +88,29 @@ void main() {
         expect(find.byType(BottomSheet), findsNothing);
       });
 
+      testWidgets('you can scroll it to the end', (tester) async {
+        // The worst case again: everything is at its tallest, so this is
+        // the most scrolling there is to do.
+        await _open(tester, sheet.opener, textScale: 2);
+        final scroller = find
+            .descendant(
+              of: find.byType(BottomSheet),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        final position = tester.state<ScrollableState>(scroller).position;
+        for (var i = 0; i < 60; i++) {
+          if (position.pixels >= position.maxScrollExtent - 0.5) break;
+          await tester.drag(scroller, const Offset(0, -300));
+          await tester.pumpAndSettle();
+        }
+        expect(
+          position.pixels,
+          closeTo(position.maxScrollExtent, 0.5),
+          reason: 'the bottom of the sheet has to be reachable',
+        );
+      });
+
       testWidgets('the Done button is still reachable at large text', (
         tester,
       ) async {
@@ -100,4 +127,28 @@ void main() {
       });
     });
   }
+
+  testWidgets('the last control in Arrangement clears the Done button', (
+    tester,
+  ) async {
+    await _open(tester, 'Arrangement', textScale: 2);
+    final scroller = find
+        .descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    final position = tester.state<ScrollableState>(scroller).position;
+    for (var i = 0; i < 60; i++) {
+      if (position.pixels >= position.maxScrollExtent - 0.5) break;
+      await tester.drag(scroller, const Offset(0, -300));
+      await tester.pumpAndSettle();
+    }
+    // Scrolled as far as it goes, Export is whole and inside the window
+    // rather than half under the button that closes the sheet.
+    final export = tester.getRect(find.byKey(const ValueKey('export')));
+    final window = tester.getRect(scroller);
+    expect(export.bottom, lessThanOrEqualTo(window.bottom + 0.5));
+    expect(export.top, greaterThanOrEqualTo(window.top - 0.5));
+  });
 }
