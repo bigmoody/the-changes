@@ -1,0 +1,450 @@
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/drum_patterns.dart';
+import 'package:play_along/audio/fft.dart';
+import 'package:play_along/audio/sample_bank.dart';
+import 'package:play_along/music/chord.dart';
+import 'package:play_along/music/fretboard_arpeggio.dart';
+import 'package:play_along/music/scales.dart';
+import 'package:play_along/audio/drill_sounds.dart';
+import 'package:play_along/music/loop_range.dart';
+import 'package:play_along/music/tune.dart';
+import 'package:play_along/music/tune_library.dart';
+
+Future<SampleBank> loadBank() =>
+    SampleBank.load((path) async => File('assets/sounds/$path').readAsBytes());
+
+double rms(Uint8List wav) {
+  final samples = decodeWav(wav);
+  var sum = 0.0;
+  for (final s in samples) {
+    sum += s * s.toDouble();
+  }
+  return math.sqrt(sum / samples.length);
+}
+
+void main() {
+  test('every sample the band needs is bundled and decodes', () async {
+    final bank = await loadBank();
+    expect(bank.bass.keys, SampleBank.bassPitches);
+    for (final takes in bank.bass.values) {
+      expect(takes, hasLength(2));
+      expect(takes.every((t) => t.length > SampleBank.sampleRate), isTrue);
+    }
+    expect(bank.piano.keys, SampleBank.pianoPitches);
+    expect(bank.guitar.keys, SampleBank.guitarPitches);
+    for (final takes in bank.guitar.values) {
+      expect(takes, hasLength(2));
+    }
+    expect(bank.ride.length, 2);
+    // The rim click must not jump out of the groove: the takes we keep are
+    // within a few dB of each other, not the library's full 14 dB spread.
+    expect(bank.crossStick.length, 1);
+    final peaks = [
+      for (final take in bank.crossStick.layers.single)
+        take.map((s) => s.abs()).reduce(math.max),
+    ];
+    expect(peaks.reduce(math.max) / peaks.reduce(math.min), lessThan(1.6));
+    // Every drum's layers are levelled, so how hard a hit lands is the
+    // part's decision and not the recording's.
+    for (final drum in [
+      bank.ride,
+      bank.kick,
+      bank.snare,
+      bank.hiHatClosed,
+      bank.hiHatOpen,
+      bank.hiHatPedal,
+    ]) {
+      expect(drum.levelling.last, 1.0);
+      expect(drum.levelling.first, greaterThanOrEqualTo(1.0));
+      final levelled = [
+        for (var i = 0; i < drum.length; i++)
+          drum.layers[i]
+                  .map((t) => t.map((s) => s.abs()).reduce(math.max))
+                  .reduce(math.max) *
+              drum.levelling[i],
+      ];
+      expect(
+        levelled.reduce(math.max) / levelled.reduce(math.min),
+        closeTo(1, 0.001),
+      );
+    }
+  });
+
+  test('the ride cymbal keeps an even level, bar after bar', () async {
+    // The complaint this guards against: the odd beat landing far harder
+    // than the rest, because the recording was chosen by a velocity that
+    // happened to cross a threshold.
+    final bank = await loadBank();
+    final random = math.Random(4);
+    final levels = <double>[];
+    for (var bar = 0; bar < 64; bar++) {
+      for (final hit in drumBar(
+        feel: Feel.swing,
+        bar: bar,
+        beatsPerBar: 4,
+        random: random,
+      )) {
+        if (hit.drum != Drum.ride) continue;
+        final layer = hit.hard ? bank.ride.length - 1 : 0;
+        levels.add(hit.velocity * bank.ride.levelling[layer]);
+      }
+    }
+    final loudest = levels.reduce(math.max);
+    final quietest = levels.reduce(math.min);
+    // The ride's own shape is about 5 dB from the skip note to the accent
+    // on 2 and 4. Picking the recording by velocity used to make it 22.
+    expect(20 * (math.log(loudest / quietest) / math.ln10), lessThan(6));
+  });
+
+  test('a drill snippet renders to audible sound', () async {
+    final bank = await loadBank();
+    final wav = renderSnippet(bank, [
+      (pitch: 36, start: 0, length: 1, velocity: 0.8, bass: true),
+      (pitch: 60, start: 0, length: 1, velocity: 0.8, bass: false),
+      (pitch: 64, start: 0.5, length: 1, velocity: 0.8, bass: false),
+    ]);
+    expect(rms(wav), greaterThan(500));
+  });
+
+  test(
+    'piano voicings never need more than a semitone of pitch shift',
+    () async {
+      final bank = await loadBank();
+      for (var pitch = 49; pitch <= 71; pitch++) {
+        final (shift, _) = bank.nearestPiano(pitch);
+        expect(shift.abs(), lessThanOrEqualTo(1), reason: 'pitch $pitch');
+      }
+    },
+  );
+
+  test(
+    'renders every standard with recorded instruments, all audible',
+    () async {
+      final bank = await loadBank();
+      for (final tune in standards) {
+        final backing = renderBacking(
+          BackingRequest(
+            tune: tune,
+            loop: LoopRange.bars(tune, 0, 3),
+            tempo: 140,
+            countInBars: 0,
+            samples: bank,
+          ),
+        );
+        for (final instrument in backing.stems.keys) {
+          expect(
+            rms(backing.stems[instrument]!),
+            greaterThan(200),
+            reason: '${tune.title}: ${instrument.label} is silent',
+          );
+        }
+      }
+    },
+  );
+
+  test('guitar grips never need more than a semitone of pitch shift', () async {
+    final bank = await loadBank();
+    // From the low E to the top of the neck.
+    for (var pitch = 40; pitch <= 79; pitch++) {
+      final (shift, _) = bank.nearestGuitar(pitch);
+      expect(shift.abs(), lessThanOrEqualTo(1), reason: 'pitch $pitch');
+    }
+  });
+
+  test('every standard renders with the guitar on the chords', () async {
+    final bank = await loadBank();
+    for (final tune in standards) {
+      final backing = renderBacking(
+        BackingRequest(
+          tune: tune,
+          loop: LoopRange.bars(tune, 0, 3),
+          tempo: 140,
+          countInBars: 0,
+          samples: bank,
+          comping: Comping.guitar,
+        ),
+      );
+      expect(
+        rms(backing.stems[Instrument.chords]!),
+        greaterThan(200),
+        reason: '${tune.title}: the guitar is silent',
+      );
+    }
+  });
+
+  test(
+    'the guitar has one even tone: no take far brighter than the rest',
+    () async {
+      final bank = await loadBank();
+      // How much of a take's attack is high-frequency: the energy of its
+      // changes from sample to sample, against its energy.
+      double brightness(Int16List take) {
+        final attack = take.sublist(0, SampleBank.sampleRate ~/ 7);
+        var energy = 0.0, change = 0.0;
+        for (var i = 1; i < attack.length; i++) {
+          energy += attack[i] * attack[i].toDouble();
+          final d = attack[i] - attack[i - 1];
+          change += d * d.toDouble();
+        }
+        return math.sqrt(change / energy);
+      }
+
+      // The two takes of each note sound alike.
+      for (final MapEntry(key: pitch, value: takes) in bank.guitar.entries) {
+        final a = brightness(takes[0]), b = brightness(takes[1]);
+        expect(
+          math.max(a, b) / math.min(a, b),
+          lessThan(1.5),
+          reason: '$pitch',
+        );
+      }
+    },
+  );
+
+  test('the bass is heard above the chords, even on a phone speaker', () async {
+    // A phone speaker or earbuds barely play below ~300 Hz, where most of
+    // an upright's sound is. What's heard is the bass's harmonics, so that's
+    // the range compared: 300 Hz–3 kHz. This once slipped below the chords
+    // unnoticed when the guitar arrived.
+    double audible(Uint8List wav) {
+      final samples = decodeWav(wav);
+      final high = math.exp(-2 * math.pi * 300 / SampleBank.sampleRate);
+      final low = math.exp(-2 * math.pi * 3000 / SampleBank.sampleRate);
+      var hp = 0.0, previous = 0.0, lp = 0.0, energy = 0.0;
+      for (final s in samples) {
+        hp = high * (hp + s - previous);
+        previous = s.toDouble();
+        lp = low * lp + (1 - low) * hp;
+        energy += lp * lp;
+      }
+      return math.sqrt(energy / samples.length);
+    }
+
+    final bank = await loadBank();
+    for (final title in ['Autumn Leaves', 'Blue Bossa', 'Chameleon']) {
+      for (final (comping, seed) in [
+        for (final comping in Comping.values)
+          for (final seed in [0, 7, 42]) (comping, seed),
+      ]) {
+        final tune = standards.firstWhere((t) => t.title == title);
+        final backing = renderBacking(
+          BackingRequest(
+            tune: tune,
+            loop: LoopRange.wholeTune(tune),
+            tempo: 140,
+            countInBars: 0,
+            samples: bank,
+            comping: comping,
+            seed: seed,
+          ),
+        );
+        final bass = audible(backing.stems[Instrument.bass]!);
+        final chords = audible(backing.stems[Instrument.chords]!);
+        expect(
+          bass / chords,
+          greaterThan(1.1),
+          reason: '$title with ${comping.label} (performance $seed)',
+        );
+      }
+    }
+  });
+
+  test('the Chord tones page\'s arpeggio renders to audible sound', () async {
+    final bank = await loadBank();
+    for (final symbol in ['Cmaj7', 'F#m7b5', 'Bb13', 'Eo7']) {
+      final wav = renderSnippet(
+        bank,
+        chordArpeggioSnippet(Chord.parse(symbol)),
+      );
+      expect(rms(wav), greaterThan(500), reason: symbol);
+    }
+  });
+
+  test('the Scales & modes page renders each mode audibly', () async {
+    final bank = await loadBank();
+    for (final mode in [modes.first, modes.last, modes[13]]) {
+      final chord = mode.chordOn('E♭');
+      final wav = renderSnippet(bank, modeSnippet(mode.semitones, chord.root));
+      expect(rms(wav), greaterThan(500), reason: mode.name);
+    }
+  });
+
+  test(
+    'in bass clef the scales stay clear, an octave down on the piano',
+    () async {
+      final bank = await loadBank();
+      final mode = modes.first;
+      final chord = mode.chordOn('C');
+      final notes = modeSnippet(mode.semitones, chord.root);
+
+      /// How much of the sound sits below 200 Hz, where a phone speaker has
+      /// nothing to say and everything piles up into a rumble.
+      double boom(Uint8List wav) {
+        final pcm = decodeWav(wav);
+        const size = 16384;
+        var low = 0.0;
+        var all = 0.0;
+        for (var start = 0; start + size < pcm.length; start += size) {
+          final window = Float32List(size);
+          for (var i = 0; i < size; i++) {
+            window[i] = pcm[start + i] / 32768;
+          }
+          final spectrum = magnitudeSpectrum(window, size: size);
+          for (var bin = 1; bin < spectrum.length; bin++) {
+            final hertz = bin * 44100 / size;
+            if (hertz > 5000) break;
+            all += spectrum[bin];
+            if (hertz < 200) low += spectrum[bin];
+          }
+        }
+        return all == 0 ? 0 : low / all;
+      }
+
+      Uint8List played(int down, {required bool onBass}) =>
+          renderSnippet(bank, [
+            for (final note in notes)
+              (
+                pitch: note.pitch - down,
+                start: note.start,
+                length: note.length,
+                velocity: note.velocity,
+                bass: onBass,
+              ),
+          ]);
+
+      // What the page plays in bass clef: an octave down, on the piano.
+      final bassClef = played(12, onBass: false);
+      expect(rms(bassClef), greaterThan(500));
+      expect(boom(bassClef), lessThan(0.35), reason: 'clear, not a rumble');
+
+      // Two octaves down — where it used to go — is far muddier on either
+      // instrument, which is what this is here to stop coming back.
+      expect(boom(played(24, onBass: false)), greaterThan(0.5));
+      expect(boom(played(24, onBass: true)), greaterThan(0.5));
+    },
+  );
+
+  test('a guitar arpeggio renders audibly on the guitar', () async {
+    final bank = await loadBank();
+    for (final symbol in ['Cmaj7', 'F#m7b5', 'Bb13']) {
+      for (final string in [6, 5]) {
+        final shape = guitarArpeggio(Chord.parse(symbol), rootString: string)!;
+        final wav = renderSnippet(
+          bank,
+          fretArpeggioSnippet(shape),
+          guitar: true,
+        );
+        expect(rms(wav), greaterThan(500), reason: '$symbol from $string');
+      }
+    }
+  });
+
+  test(
+    'a bass arpeggio renders audibly, its top notes at their pitch',
+    () async {
+      final bank = await loadBank();
+      for (final symbol in ['Cmaj7', 'F#m7b5', 'Bb13']) {
+        for (final string in [4, 3]) {
+          final shape = bassArpeggio(Chord.parse(symbol), rootString: string)!;
+          final wav = renderSnippet(bank, fretArpeggioSnippet(shape));
+          expect(rms(wav), greaterThan(500), reason: '$symbol from $string');
+        }
+      }
+      // Above the recorded range, notes are pitched up, not all the same.
+      note(int pitch) => renderSnippet(bank, [
+        (pitch: pitch, start: 0, length: 0.5, velocity: 0.8, bass: true),
+      ]);
+      expect(note(55), isNot(equals(note(58))));
+    },
+  );
+
+  test('the bass arpeggio has top end, and time between its notes', () async {
+    final bank = await loadBank();
+    final shape = bassArpeggio(Chord.parse('G7'), rootString: 4)!;
+    final notes = fretArpeggioSnippet(shape);
+    expect(notes[1].start - notes[0].start, greaterThanOrEqualTo(0.3));
+
+    /// The share of the sound above [hertz], by a two-pole split.
+    double above(Uint8List wav, double hertz) {
+      final a = 1 - math.exp(-2 * math.pi * hertz / 44100);
+      var l1 = 0.0, l2 = 0.0, high = 0.0, all = 0.0;
+      for (final sample in decodeWav(wav)) {
+        l1 += a * (sample - l1);
+        l2 += a * (l1 - l2);
+        high += (sample - l2) * (sample - l2);
+        all += sample.toDouble() * sample;
+      }
+      return high / all;
+    }
+
+    /// How loud it is above 200 Hz — what a phone speaker plays.
+    double onAPhone(Uint8List wav) {
+      final a = 1 - math.exp(-2 * math.pi * 200 / 44100);
+      var low = 0.0, sum = 0.0;
+      final samples = decodeWav(wav);
+      for (final sample in samples) {
+        low += a * (sample - low);
+        sum += (sample - low) * (sample - low);
+      }
+      return math.sqrt(sum / samples.length);
+    }
+
+    final plain = renderSnippet(bank, notes);
+    final bright = renderSnippet(bank, notes, brightBass: true);
+    debugPrint(
+      'bass above 1 kHz: ${(above(plain, 1000) * 100).toStringAsFixed(1)}% → '
+      '${(above(bright, 1000) * 100).toStringAsFixed(1)}%; on a phone '
+      '${onAPhone(plain).round()} → ${onAPhone(bright).round()}',
+    );
+    expect(above(bright, 1000), greaterThan(above(plain, 1000) * 1.8));
+    expect(onAPhone(bright), greaterThan(onAPhone(plain) * 1.3));
+  });
+
+  test(
+    'the bass arpeggio\'s low notes aren\'t boomier than its high ones',
+    () async {
+      final bank = await loadBank();
+
+      /// The share of a note's sound below 250 Hz: its boom.
+      double boom(int pitch) {
+        final wav = renderSnippet(bank, [
+          (pitch: pitch, start: 0, length: 0.4, velocity: 0.8, bass: true),
+        ], brightBass: true);
+        final a = 1 - math.exp(-2 * math.pi * 250 / 44100);
+        var l1 = 0.0, l2 = 0.0, low = 0.0, all = 0.0;
+        for (final sample in decodeWav(wav)) {
+          l1 += a * (sample - l1);
+          l2 += a * (l1 - l2);
+          low += l2 * l2;
+          all += sample.toDouble() * sample;
+        }
+        return low / all;
+      }
+
+      final low = [
+        for (final p in [28, 31, 35, 38]) boom(p),
+      ];
+      final high = [
+        for (final p in [43, 48, 52]) boom(p),
+      ];
+      debugPrint(
+        'boom, low notes: ${low.map((b) => (b * 100).round())}; '
+        'high: ${high.map((b) => (b * 100).round())}',
+      );
+      for (final b in low) {
+        expect(b, lessThan(0.55));
+      }
+      final average = high.reduce((a, b) => a + b) / high.length;
+      expect(
+        low.reduce((a, b) => a + b) / low.length,
+        lessThan(average + 0.15),
+      );
+    },
+  );
+}

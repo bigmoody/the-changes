@@ -1,0 +1,935 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
+import 'dart:math' as math;
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../audio/sample_bank.dart';
+
+import '../audio/arpeggios.dart';
+import '../audio/backing_synth.dart';
+import '../audio/practice_player.dart';
+import '../audio/export_track.dart';
+import '../audio/take_recorder.dart';
+import '../audio/tuner_listener.dart';
+import '../music/arrangement.dart';
+import '../music/chord_drill.dart';
+import '../music/loop_range.dart';
+import '../music/tune.dart';
+import '../music/tuning.dart';
+import '../settings/app_settings.dart';
+import 'play_check.dart';
+import 'take_store.dart';
+
+/// Holds everything the practice screen shows and reacts to taps.
+///
+/// It's a [ChangeNotifier]: whenever something changes it calls
+/// `notifyListeners()`, and the screen redraws.
+class PracticeController extends ChangeNotifier {
+  PracticeController({
+    required Tune tune,
+    required this.player,
+    required this.settings,
+    this.takes,
+    TakeRecorder? recorder,
+    TunerListener? listener,
+  }) : // A private field can't be a named parameter, so these are assigned
+       // rather than taken as initialising formals.
+       // ignore: prefer_initializing_formals
+       _recorder = recorder,
+       _madeListener = listener,
+       originalTune = tune,
+       _tune = tune,
+       _chart = tune.transposed(settings.instrument.semitones),
+       _loop = LoopRange.wholeTune(tune),
+       _tempo = tune.defaultTempo {
+    settings.addListener(_updateChart);
+    _applyMix();
+  }
+
+  static const minTempo = 40;
+  static const maxTempo = 320;
+
+  /// The tune in its written key.
+  final Tune originalTune;
+
+  /// The tune in the key currently chosen, at concert pitch. The band plays
+  /// this.
+  Tune get tune => _tune;
+  Tune _tune;
+
+  /// The same tune written for the player's instrument (see [ChartInstrument]).
+  /// The screen shows this. Bars and beats line up exactly with [tune].
+  Tune get chart => _chart;
+  Tune _chart;
+  int _semitones = 0;
+  final PracticePlayer player;
+  final AppSettings settings;
+
+  /// Where recordings of you are kept. Null when there's nowhere to put
+  /// them, and then there's no recording.
+  final TakeStore? takes;
+  TakeRecorder? _recorder;
+  TakeRecorder get _tape => _recorder ??= TakeRecorder();
+
+  LoopRange _loop;
+  int _tempo;
+  bool _countIn = true;
+  bool _isPlaying = false;
+  bool _isPaused = false;
+  bool _isPreparing = false;
+  int? _currentBeat;
+  int? _countInBeat;
+  int? _chorus;
+  bool _finishing = false;
+
+  /// Made the first time the checking is switched on, never before: asking
+  /// for a microphone opens a plugin, and most of the time nobody wants one.
+  TunerListener? _madeListener;
+  TunerListener get _listener => _madeListener ??= TunerListener.forChecking();
+
+  PlayCheck? _check;
+  var _listenState = Listening.off;
+  HeardNote? _heard;
+  Timer? _finishTimer;
+  Arrangement _arrangement = Arrangement.keepGoing;
+  String? _error;
+  Timer? _ticker;
+  Timer? _restartTimer;
+  final _tapTimes = <DateTime>[];
+  final _random = math.Random();
+  var _lastSeed = 0;
+  final _volumes = {
+    for (final instrument in Instrument.values) instrument: 1.0,
+  };
+  final _muted = <Instrument>{};
+  final _soloed = <Instrument>{};
+
+  /// The loop shown on screen: the one being dragged out, if any.
+  LoopRange get loop => _dragLoop ?? _loop;
+  int get tempo => _tempo;
+  bool get countIn => _countIn;
+
+  /// True from Play until Stop — including while paused.
+  bool get isPlaying => _isPlaying;
+
+  /// Holding its place: Play carries on from here rather than the top.
+  bool get isPaused => _isPaused;
+  bool get isPreparing => _isPreparing;
+  int? get currentBeat => _currentBeat;
+
+  int? get countInBeat => _countInBeat;
+
+  /// Which time round the form is playing (1-based), or null when stopped
+  /// or still counting in.
+  int? get chorus => _chorus == null ? null : _chorus! + 1;
+
+  /// What the band is doing on this chorus — the melody, trading, who's
+  /// laid out — or null when nothing is playing.
+  ChorusPlan? get chorusPlan =>
+      _chorus == null ? null : _arrangement.planFor(_chorus!);
+
+  /// How the band plays the form: choruses, heads, trading, who lays out.
+  Arrangement get arrangement => _arrangement;
+
+  /// What the band is playing at right now: the tempo you set, plus whatever
+  /// a ramp has added by this time round the form.
+  int get currentTempo => _arrangement.ramp.tempoAt(_chorus ?? 0, _tempo);
+
+  /// True once the last chorus has been played and the band is ringing off.
+  bool get isFinishing => _finishing;
+
+  void setArrangement(Arrangement value) {
+    if (value == _arrangement) return;
+    _arrangement = value;
+    notifyListeners();
+    // A different arrangement is a different performance: it starts again
+    // from the top, chorus one.
+    _restartIfPlaying(delay: const Duration(milliseconds: 250));
+  }
+
+  String? get error => _error;
+  bool get mixWithOthers => player.mixWithOthers;
+
+  ChordSlot? get currentSlot =>
+      _currentBeat == null ? null : chart.slotAtBeat(_currentBeat!);
+
+  /// The chord being played, or the loop's first chord when stopped.
+  ChordSlot get shownSlot => currentSlot ?? loop.slotsIn(chart).first;
+
+  /// The next *change* after [shownSlot] — skipping bars that just repeat
+  /// the same chord, and coming round to the start of the loop at its end.
+  /// It's what an improviser needs to be looking at next.
+  ChordSlot get nextSlot {
+    final slots = loop.slotsIn(chart);
+    final shown = shownSlot;
+    final index = slots.indexWhere((s) => s.startBeat == shown.startBeat);
+    for (var step = 1; step < slots.length; step++) {
+      final slot = slots[(index + step) % slots.length];
+      if (slot.chord.display != shown.chord.display) return slot;
+    }
+    return slots[(index + 1) % slots.length]; // one chord all the way round
+  }
+
+  // ── Choosing what to loop ──────────────────────────────────────────────
+
+  void loopBar(int barIndex) =>
+      _setLoop(LoopRange.bars(tune, barIndex, barIndex));
+
+  void extendLoopToBar(int barIndex) =>
+      _setLoop(_loop.extendedToBar(tune, barIndex));
+
+  void loopChord(ChordSlot slot) => _setLoop(LoopRange.slot(slot));
+
+  // Dragging across bars selects them. The highlight follows the finger, but
+  // the band only restarts once the finger lifts, so it doesn't stutter.
+  int? _dragAnchor;
+  LoopRange? _dragLoop;
+
+  void startLoopDrag(int barIndex) {
+    _dragAnchor = barIndex;
+    _dragLoop = LoopRange.bars(tune, barIndex, barIndex);
+    notifyListeners();
+  }
+
+  void updateLoopDrag(int barIndex) {
+    final anchor = _dragAnchor;
+    if (anchor == null) return;
+    final selection = LoopRange.bars(tune, anchor, barIndex);
+    if (selection == _dragLoop) return;
+    _dragLoop = selection;
+    notifyListeners();
+  }
+
+  void endLoopDrag() {
+    final selection = _dragLoop;
+    _dragAnchor = null;
+    _dragLoop = null;
+    if (selection == null || selection == _loop) {
+      notifyListeners();
+    } else {
+      _setLoop(selection);
+    }
+  }
+
+  void loopWholeTune() => _setLoop(LoopRange.wholeTune(tune));
+
+  void _setLoop(LoopRange loop) {
+    if (loop == _loop) return;
+    _loop = loop;
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  // ── Key ────────────────────────────────────────────────────────────────
+
+  /// How many semitones above the written key we are (0–11).
+  int get semitones => _semitones;
+
+  /// Moves the chart and the backing band into a new key. Loops are counted
+  /// in beats, so the looped section stays the same.
+  void transpose(int semitones) {
+    final normalised = semitones % 12;
+    if (normalised == _semitones) return;
+    _semitones = normalised;
+    _tune = originalTune.transposed(normalised);
+    _updateChart();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  /// Rewrites the displayed chart after a key or instrument change.
+  void _updateChart() {
+    _chart = originalTune.transposed(
+      _semitones + settings.instrument.semitones,
+    );
+    notifyListeners();
+  }
+
+  // ── Tempo ──────────────────────────────────────────────────────────────
+
+  void setTempo(int bpm) {
+    final clamped = bpm.clamp(minTempo, maxTempo);
+    if (clamped == _tempo) return;
+    _tempo = clamped;
+    notifyListeners();
+    // Wait until the slider stops moving before re-rendering.
+    _restartIfPlaying(delay: const Duration(milliseconds: 300));
+  }
+
+  /// Tap along to set the tempo: averages the gaps between recent taps.
+  void tapTempo() {
+    final now = DateTime.now();
+    if (_tapTimes.isNotEmpty &&
+        now.difference(_tapTimes.last) > const Duration(seconds: 2)) {
+      _tapTimes.clear();
+    }
+    _tapTimes.add(now);
+    if (_tapTimes.length > 5) _tapTimes.removeAt(0);
+    if (_tapTimes.length < 2) return;
+    final totalMs = _tapTimes.last.difference(_tapTimes.first).inMilliseconds;
+    setTempo((60000 / (totalMs / (_tapTimes.length - 1))).round());
+  }
+
+  // ── Options ────────────────────────────────────────────────────────────
+
+  void setCountIn(bool value) {
+    _countIn = value;
+    notifyListeners();
+  }
+
+  /// What a part is called on screen: the chords are "Piano" or "Guitar".
+  String partName(Instrument part) =>
+      part == Instrument.chords ? settings.comping.label : part.label;
+
+  /// The parts with a mixer channel: the band, plus the arpeggios when
+  /// they're on.
+  List<Instrument> get parts => [
+    for (final part in Instrument.values)
+      if (part != Instrument.arpeggio || arpeggios) part,
+  ];
+
+  /// Whether the band adds each chord as a broken chord. Off whenever a tune
+  /// is opened: a practice aid to switch on when you want it.
+  bool get arpeggios => _arpeggios;
+  bool _arpeggios = false;
+
+  /// Adds or removes the arpeggios; the band picks it up straight away.
+  void setArpeggios(bool value) {
+    if (value == _arpeggios) return;
+    _arpeggios = value;
+    // Switching them on means wanting to hear them.
+    if (value) _muted.remove(Instrument.arpeggio);
+    _applyMix();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  /// Which chord tone the arpeggios start from.
+  Future<void> setArpeggioStart(ArpeggioStart value) async {
+    if (value == settings.arpeggioStart) return;
+    await settings.setArpeggioStart(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  /// Piano or guitar for the arpeggios.
+  Future<void> setArpeggioSound(Comping value) async {
+    if (value == settings.arpeggioSound) return;
+    await settings.setArpeggioSound(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  /// Piano or guitar on the chords, for every tune; the band picks it up
+  /// straight away.
+  Future<void> setComping(Comping value) async {
+    if (value == settings.comping) return;
+    await settings.setComping(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  Future<void> setMixWithOthers(bool value) async {
+    await settings.setMixWithOthers(value);
+    await player.setMixWithOthers(value);
+    notifyListeners();
+  }
+
+  // ── Mixer ──────────────────────────────────────────────────────────────
+
+  double volumeOf(Instrument instrument) => _volumes[instrument]!;
+  bool isMuted(Instrument instrument) => _muted.contains(instrument);
+  bool isSoloed(Instrument instrument) => _soloed.contains(instrument);
+
+  /// True when the instrument can actually be heard with the current
+  /// mute/solo settings (used to grey out silent channels).
+  bool isAudible(Instrument instrument) =>
+      !_bandSilent &&
+      !isMuted(instrument) &&
+      (_soloed.isEmpty || isSoloed(instrument));
+
+  /// True while a take is being played on its own: the band is still
+  /// written, because it's what the chart follows, but nothing of it is
+  /// heard.
+  var _bandSilent = false;
+
+  void setVolume(Instrument instrument, double volume) {
+    _volumes[instrument] = volume.clamp(0.0, 1.0);
+    _applyMix();
+  }
+
+  void toggleMute(Instrument instrument) {
+    if (!_muted.remove(instrument)) _muted.add(instrument);
+    _applyMix();
+  }
+
+  /// Solo plays only the soloed instrument(s), e.g. just the bass.
+  void toggleSolo(Instrument instrument) {
+    if (!_soloed.remove(instrument)) _soloed.add(instrument);
+    _applyMix();
+  }
+
+  void resetMix() {
+    _volumes.updateAll((_, _) => 1.0);
+    _muted.clear();
+    _soloed.clear();
+    _applyMix();
+  }
+
+  /// Sends the effective volume of every instrument to the audio engine.
+  /// This happens instantly, without restarting playback.
+  void _applyMix() {
+    for (final instrument in Instrument.values) {
+      player.setVolume(
+        instrument,
+        isAudible(instrument) ? _volumes[instrument]! : 0,
+      );
+    }
+    notifyListeners();
+  }
+
+  // ── Checking what you play ─────────────────────────────────────────────
+
+  /// Whether the microphone is marking what you play against the chart.
+  bool get checking => _checking;
+  var _checking = false;
+
+  Listening get listenState => _listenState;
+
+  /// The note the microphone heard a moment ago, as written for your
+  /// instrument, or null when it hears nothing it can name.
+  HeardNote? get heard => _heard;
+
+  /// How you did: the change being played, and the running score.
+  PlayCheck? get check => _check;
+
+  /// The last run's marking, kept after Stop so the score can be shown.
+  PlayCheck? get lastCheck => _lastCheck;
+  PlayCheck? _lastCheck;
+
+  void clearLastCheck() {
+    if (_lastCheck == null) return;
+    _lastCheck = null;
+    notifyListeners();
+  }
+
+  /// Turns the checking on or off. It needs a note to aim for, so switching
+  /// it on without one picks the 3rd — the one that names the chord.
+  Future<void> setChecking(bool value) async {
+    if (value == _checking) return;
+    _checking = value;
+    if (!value) {
+      await _stopListening();
+      notifyListeners();
+      return;
+    }
+    if (settings.aimFor == null) await settings.setAimFor(DrillTarget.third);
+    notifyListeners();
+    // Start listening straight away, not when the band does, so you can
+    // play a note and see that it's heard before committing to a chorus.
+    await _startListening();
+  }
+
+  /// How loud the microphone is hearing you (RMS, 0–1).
+  double get listenLevel => _madeListener?.level ?? 0;
+
+  /// True when there's barely any sound arriving — a different problem from
+  /// hearing plenty but not being able to name a note in it.
+  bool get tooQuiet =>
+      _listenState == Listening.listening &&
+      listenLevel < (_madeListener?.silence ?? 0.004);
+
+  /// When something was last heard clearly, so silence can be reported as
+  /// silence rather than as a miss.
+  DateTime? _lastNote;
+
+  /// True when the microphone is going but has heard nothing for a while.
+  bool get hearingNothing =>
+      _listenState == Listening.listening &&
+      (_lastNote == null ||
+          DateTime.now().difference(_lastNote!) > const Duration(seconds: 3));
+
+  Future<void> _startListening() async {
+    if (!_checking || _listenState == Listening.listening) return;
+    _listenState = Listening.starting;
+    notifyListeners();
+    try {
+      if (!await _listener.hasPermission()) {
+        _listenState = Listening.denied;
+        notifyListeners();
+        return;
+      }
+      await _listener.start(_onHeard, alongsideMusic: true);
+      _listenState = Listening.listening;
+    } catch (e) {
+      debugPrint('Could not listen while the band plays: $e');
+      _listenState = Listening.failed;
+    }
+    notifyListeners();
+  }
+
+  Future<void> _stopListening() async {
+    _heard = null;
+    if (_listenState == Listening.off || _madeListener == null) return;
+    _listenState = Listening.off;
+    await _listener.stop();
+    // The microphone changes how the phone's audio is set up; put it back.
+    await player.restoreAudioSession();
+  }
+
+  void _onHeard(Heard heard) {
+    if (heard == null) {
+      _heard = null;
+      // Always, even when there's nothing: a meter that stops moving is
+      // indistinguishable from a microphone that isn't working.
+      notifyListeners();
+      return;
+    }
+    final concert = hzToMidi(heard.hz);
+    _lastNote = DateTime.now();
+    _check?.note(concert);
+    // Shown as your instrument reads it, so it matches the chart.
+    _heard = noteNear(concert + settings.instrument.semitones);
+    notifyListeners();
+  }
+
+  // ── Recording yourself ─────────────────────────────────────────────────
+
+  /// Whether the next Play records you as well.
+  bool get recording => _recording;
+  var _recording = false;
+
+  /// True while a take is actually being captured.
+  bool get isRecordingNow => _takePath != null;
+
+  /// The take being played back, if any.
+  Take? get playingTake => _playingTake;
+  Take? _playingTake;
+
+  String? _takePath;
+  String? _takeName;
+  String? _takeId;
+  Duration _leadIn = Duration.zero;
+
+  bool get canRecord => takes != null;
+
+  /// Arms or disarms recording. It starts with the band, not now.
+  Future<void> setRecording(bool value) async {
+    if (value == _recording || takes == null) return;
+    if (value && !await _tape.hasPermission()) {
+      _error = 'The microphone is blocked — allow it to record yourself.';
+      notifyListeners();
+      return;
+    }
+    _recording = value;
+    notifyListeners();
+  }
+
+  /// Plays [take] with the band put back around it, exactly as it was.
+  Future<void> playTake(Take take) async {
+    await stop();
+    final path = await takes?.files.pathOf(take.file);
+    if (path == null) {
+      _error = 'That take has gone missing.';
+      notifyListeners();
+      return;
+    }
+    _playingTake = take;
+    _recording = false;
+    _bandSilent = !settings.takesWithBand;
+    transpose(take.semitones);
+    _tempo = take.tempo;
+    _loop = LoopRange(startBeat: take.loopStart, lengthBeats: take.loopBeats);
+    _arrangement = take.arrangement;
+    await play(withCountIn: false, take: take, takePath: path);
+    if (!_isPlaying) return;
+    _takeTimer?.cancel();
+    _takeTimer = Timer(take.length + const Duration(milliseconds: 600), stop);
+  }
+
+  Timer? _takeTimer;
+
+  /// Whether playing a take back puts the band around it.
+  bool get takesWithBand => settings.takesWithBand;
+
+  Future<void> setTakesWithBand(bool value) async {
+    await settings.setTakesWithBand(value);
+    notifyListeners();
+    if (_playingTake != null) {
+      _bandSilent = !value;
+      _applyMix();
+    }
+  }
+
+  /// How loud you are against the band, when playing a take back.
+  double get takeVolume => _takeVolume;
+  var _takeVolume = 1.0;
+
+  void setTakeVolume(double value) {
+    _takeVolume = value.clamp(0.0, 1.0);
+    player.setTakeVolume(_takeVolume);
+    notifyListeners();
+  }
+
+  /// Saves whatever has just been recorded.
+  Future<void> _saveTake() async {
+    final store = takes;
+    final id = _takeId;
+    final name = _takeName;
+    _takePath = null;
+    _takeName = null;
+    _takeId = null;
+    if (store == null || id == null || name == null) return;
+    final length = await _tape.stop();
+    final played = length - _leadIn;
+    // Anything shorter than a bar or two isn't a take, it's a false start.
+    if (played < const Duration(seconds: 4)) {
+      await store.files.remove(name);
+      return;
+    }
+    await store.add(
+      Take(
+        id: id,
+        at: DateTime.now(),
+        file: name,
+        tune: originalTune.title,
+        seconds: length.inMilliseconds / 1000,
+        leadIn: _leadIn.inMilliseconds / 1000,
+        tempo: _tempo,
+        semitones: _semitones,
+        loopStart: _loop.startBeat,
+        loopBeats: _loop.lengthBeats,
+        seed: _lastSeed,
+        arrangement: _arrangement,
+      ),
+    );
+  }
+
+  /// The lead-in of the take being recorded: the band has to be written
+  /// before it can play, and the microphone is running all the while.
+  Duration get takeLeadIn => _leadIn;
+
+  // ── Writing it out as a file ───────────────────────────────────────────
+
+  /// True while an export is being written.
+  bool get isExporting => _exporting;
+  var _exporting = false;
+
+  /// How long an export of the arrangement as it stands would be, or null
+  /// when it never ends and so can't be a file.
+  Duration? get exportLengthNow {
+    if (_arrangement.choruses == null) return null;
+    return exportLength(_exportRequest());
+  }
+
+  /// The band exactly as it was when [take] was recorded.
+  BackingRequest _requestFor(Take take, {Arrangement? arrangement}) =>
+      BackingRequest(
+        tune: originalTune.transposed(take.semitones),
+        loop: LoopRange(startBeat: take.loopStart, lengthBeats: take.loopBeats),
+        tempo: take.tempo,
+        countInBars: _countIn ? 1 : 0,
+        seed: take.seed,
+        samples: player.samples,
+        comping: settings.comping,
+        arpeggios: _arpeggios,
+        arpeggioSound: settings.arpeggioSound,
+        arpeggioStart: settings.arpeggioStart,
+        arrangement: arrangement ?? take.arrangement,
+      );
+
+  BackingRequest _exportRequest({Arrangement? arrangement}) => BackingRequest(
+    tune: tune,
+    loop: _loop,
+    tempo: _tempo,
+    countInBars: _countIn ? 1 : 0,
+    seed: _lastSeed == 0 ? 1 : _lastSeed,
+    samples: player.samples,
+    comping: settings.comping,
+    arpeggios: _arpeggios,
+    arpeggioSound: settings.arpeggioSound,
+    arpeggioStart: settings.arpeggioStart,
+    arrangement: arrangement ?? _arrangement,
+  );
+
+  /// Writes the band out as a WAV and hands it to the share sheet. With
+  /// [take], your recording is mixed in on top.
+  ///
+  /// Nothing is kept: the file goes in the temporary folder, which the
+  /// system empties on its own once it has been shared.
+  Future<void> exportBacking({Take? take}) async {
+    if (_exporting) return;
+    // A take brings its own length: the band runs as long as you played and
+    // no further. Without one, the arrangement has to say where to stop.
+    if (take == null && _arrangement.choruses == null) {
+      _error = 'Set a number of choruses first — an export has to end.';
+      notifyListeners();
+      return;
+    }
+    await stop();
+    _exporting = true;
+    _error = null;
+    notifyListeners();
+    try {
+      Int16List? recorded;
+      if (take != null) {
+        final path = await takes?.files.pathOf(take.file);
+        if (path != null) recorded = decodeWav(await File(path).readAsBytes());
+      }
+      final request = take == null ? _exportRequest() : _requestFor(take);
+      // The band stops where you did — rounded up to the end of the
+      // section you finished in, so it lands on a rehearsal letter rather
+      // than in the middle of a phrase.
+      int? endBeat;
+      var toRender = request;
+      if (take != null) {
+        final played = beatsIn(request, take.length);
+        endBeat = finishSectionAfter(request.tune, request.loop, played);
+        final choruses = (endBeat / request.loop.lengthBeats).ceil();
+        toRender = _requestFor(
+          take,
+          arrangement: take.arrangement.copyWith(choruses: choruses),
+        );
+      }
+      final leadIn = take?.leadIn ?? 0;
+      final level = _takeVolume;
+      final end = endBeat;
+      final wav = await Isolate.run(
+        () => exportTrack(
+          toRender,
+          take: recorded,
+          takeLeadIn: leadIn,
+          takeLevel: level,
+          endBeat: end,
+        ),
+      );
+      final folder = await getTemporaryDirectory();
+      final name = _fileName(take == null ? null : 'my take');
+      final file = File('${folder.path}/$name');
+      await file.writeAsBytes(wav);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'audio/wav')],
+          fileNameOverrides: [name],
+          subject: originalTune.title,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Could not export: $e');
+      _error = "Couldn't write the audio file.";
+    }
+    _exporting = false;
+    notifyListeners();
+  }
+
+  /// "Autumn Leaves 140bpm.wav", fit to be a filename.
+  String _fileName(String? what) {
+    final title = originalTune.title.replaceAll(RegExp(r'[^A-Za-z0-9 ]'), '');
+    final key = _semitones == 0 ? '' : ' up $_semitones';
+    return '$title$key ${_tempo}bpm${what == null ? '' : ' $what'}.wav';
+  }
+
+  // ── Transport ──────────────────────────────────────────────────────────
+
+  /// The main button: play from the top, pause, or carry on from a pause.
+  Future<void> togglePlay() async {
+    if (!_isPlaying) return play();
+    if (_isPaused) {
+      resume();
+    } else {
+      pause();
+    }
+  }
+
+  void pause() {
+    if (!_isPlaying || _isPreparing || _isPaused) return;
+    player.pause();
+    _isPaused = true;
+    _ticker?.cancel(); // the highlight stays on the bar where it stopped
+    notifyListeners();
+  }
+
+  void resume() {
+    if (!_isPaused) return;
+    player.resume();
+    _isPaused = false;
+    _startTicker();
+    notifyListeners();
+  }
+
+  Future<void> play({
+    bool withCountIn = true,
+    Take? take,
+    String? takePath,
+  }) async {
+    _finishTimer?.cancel();
+    _finishing = false;
+    _chorus = null;
+    if (_checking) {
+      if (settings.aimFor case final target?) {
+        _check = PlayCheck(tune: tune, target: target);
+        _lastCheck = null;
+      }
+    }
+    _isPlaying = true;
+    _isPaused = false;
+    _isPreparing = true;
+    _error = null;
+    if (take == null) {
+      _playingTake = null;
+      _bandSilent = false;
+    }
+    _applyMix();
+    notifyListeners();
+
+    // The microphone goes on before the band, because the band has to be
+    // written first and that takes a moment. How much of the recording is
+    // that wait is measured, and wound past when the take is played back.
+    final store = takes;
+    if (_recording && store != null && takePath == null) {
+      try {
+        final id = store.newId();
+        final where = await store.files.place(id);
+        await _tape.start(where.path);
+        _takeId = id;
+        _takePath = where.path;
+        _takeName = where.name;
+        _leadIn = Duration.zero;
+      } catch (e) {
+        debugPrint('Could not start recording: $e');
+        _recording = false;
+      }
+    }
+    final waiting = Stopwatch()..start();
+
+    // The same seed plays the same performance again, which is what lets a
+    // take be recorded without the band in it.
+    _lastSeed = take?.seed ?? _random.nextInt(1 << 31);
+    try {
+      await player.start(
+        BackingRequest(
+          tune: tune,
+          loop: _loop,
+          tempo: _tempo,
+          countInBars: withCountIn && _countIn ? 1 : 0,
+          seed: _lastSeed,
+          comping: settings.comping,
+          arpeggios: _arpeggios,
+          arpeggioSound: settings.arpeggioSound,
+          arpeggioStart: settings.arpeggioStart,
+          arrangement: _arrangement,
+        ),
+        alongside: takePath,
+        leadIn: take == null
+            ? Duration.zero
+            : Duration(milliseconds: (take.leadIn * 1000).round()),
+      );
+      if (_takePath != null) _leadIn = waiting.elapsed;
+      if (takePath != null) player.setTakeVolume(_takeVolume);
+    } catch (e) {
+      _error = takePath == null
+          ? "Couldn't start audio: $e"
+          : "Couldn't play that take — the recording wouldn't open.";
+      _isPlaying = false;
+      _playingTake = null;
+      _bandSilent = false;
+      _applyMix();
+      debugPrint('Playback failed: $e');
+    }
+    _isPreparing = false;
+    if (_isPlaying) {
+      _startTicker();
+      unawaited(_startListening());
+    }
+    notifyListeners();
+  }
+
+  Future<void> stop() async {
+    _takeTimer?.cancel();
+    _restartTimer?.cancel();
+    _finishTimer?.cancel();
+    _ticker?.cancel();
+    // Mark whatever was still sounding, and keep the score to show.
+    final marking = _check;
+    if (marking != null) {
+      marking.finish();
+      _lastCheck = marking.asked > 0 ? marking : null;
+      _check = null;
+    }
+    unawaited(_stopListening());
+    if (_takePath != null) unawaited(_saveTake());
+    _isPlaying = false;
+    _isPaused = false;
+    _finishing = false;
+    _currentBeat = null;
+    _countInBeat = null;
+    _chorus = null;
+    notifyListeners();
+    await player.stop();
+  }
+
+  void _restartIfPlaying({required Duration delay}) {
+    if (!_isPlaying) return;
+    // A new tempo, key or loop means a new performance, which starts from
+    // the top of the loop — so a pause can't be carried on from. End it, and
+    // Play starts afresh with the change.
+    if (_isPaused) {
+      stop();
+      return;
+    }
+    _restartTimer?.cancel();
+    _restartTimer = Timer(delay, () => play(withCountIn: false));
+  }
+
+  /// Checks the playback position ~30 times a second to move the highlight.
+  void _startTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(milliseconds: 30), (_) {
+      final position = player.position();
+      if (position == null) return;
+      // The last chorus has gone by: let the final chord ring, then stop.
+      final total = _arrangement.choruses;
+      if (total != null &&
+          position.chorus != null &&
+          position.chorus! >= total) {
+        _finishing = true;
+        _ticker?.cancel();
+        notifyListeners();
+        _finishTimer = Timer(const Duration(milliseconds: 1400), () {
+          if (_finishing) stop();
+        });
+        return;
+      }
+      if (position.tuneBeat != _currentBeat ||
+          position.countInBeat != _countInBeat ||
+          position.chorus != _chorus) {
+        _currentBeat = position.tuneBeat;
+        _countInBeat = position.countInBeat;
+        _chorus = position.chorus;
+        if (position.tuneBeat != null && position.chorus != null) {
+          _check?.moveTo(position.tuneBeat!, position.chorus!);
+        }
+        notifyListeners();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _restartTimer?.cancel();
+    _finishTimer?.cancel();
+    _ticker?.cancel();
+    _takeTimer?.cancel();
+    _madeListener?.dispose();
+    _recorder?.dispose();
+    settings.removeListener(_updateChart);
+    player.stop();
+    super.dispose();
+  }
+}
+
+/// Whether the microphone is going, and why not if it isn't.
+enum Listening { off, starting, listening, denied, failed }

@@ -1,0 +1,416 @@
+// One tune, ready to play: the chart, what's sounding now, the loop and
+// the transport, laid out to suit the screen it's on.
+
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../audio/practice_player.dart';
+import '../audio/tuner_listener.dart';
+import '../library/library_store.dart';
+import '../music/guitar_voicing.dart';
+import '../music/tune.dart';
+import '../music/user_progression.dart';
+import '../practice/play_check.dart';
+import '../practice/practice_controller.dart';
+import '../practice/take_store.dart';
+import '../settings/app_settings.dart';
+import '../settings/progression_store.dart';
+import 'chord_chart.dart';
+import 'loop_bar.dart';
+import 'now_playing.dart';
+import 'practice_sheets.dart';
+import 'progression_editor_screen.dart';
+import 'setlists_screen.dart' show showAddToSetlist;
+import 'share_chart.dart';
+import 'stage_screen.dart';
+import 'transport.dart';
+
+/// The main practice view: the whole chord chart on one screen, with compact
+/// controls underneath.
+class PracticeScreen extends StatefulWidget {
+  const PracticeScreen({
+    super.key,
+    required this.tune,
+    required this.player,
+    required this.settings,
+    this.progression,
+    this.progressions,
+    this.takes,
+    this.library,
+    this.listener,
+  });
+
+  final Tune tune;
+  final PracticePlayer player;
+  final AppSettings settings;
+
+  /// Starring, setlists and what's been played lately. Without it the
+  /// screen simply doesn't offer them.
+  final LibraryStore? library;
+
+  /// The microphone that checks what you play. Only passed by tests; the
+  /// screen makes its own.
+  @visibleForTesting
+  final TunerListener? listener;
+
+  /// Set when [tune] is one of the player's own progressions: only those can
+  /// be edited from here.
+  final UserProgression? progression;
+  final ProgressionStore? progressions;
+
+  /// Where recordings of you are kept; without it there's no recording.
+  final TakeStore? takes;
+
+  @override
+  State<PracticeScreen> createState() => _PracticeScreenState();
+}
+
+class _PracticeScreenState extends State<PracticeScreen> {
+  late final _controller = PracticeController(
+    tune: widget.tune,
+    player: widget.player,
+    settings: widget.settings,
+    takes: widget.takes,
+    listener: widget.listener,
+  );
+
+  /// What the library knows this tune as: one of the player's own by id,
+  /// or one of the book's by title.
+  TuneRef get _ref => widget.progression == null
+      ? TuneRef.of(widget.tune)
+      : TuneRef.mine(widget.progression!.id);
+
+  /// The last score shown, so it isn't shown twice.
+  PlayCheck? _scored;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_showScore);
+    // Work out this tune's guitar shapes now rather than on the frame where
+    // a chord first comes round: searching the fretboard takes a few
+    // milliseconds, and they're cached once found.
+    Future(() {
+      for (final slot in _controller.chart.slots) {
+        guitarVoicingFor(slot.chord);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_showScore);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// How you did, once the band has stopped. It arrives mid-build, so it is
+  /// shown on the next frame rather than this one.
+  void _showScore() {
+    final result = _controller.lastCheck;
+    if (result == null) {
+      _scored = null;
+      return;
+    }
+    if (identical(result, _scored)) return;
+    _scored = result;
+    final target = _controller.settings.aimFor;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          key: const ValueKey('score'),
+          duration: const Duration(seconds: 8),
+          content: Text(
+            'You found the ${target?.label ?? 'note'} on '
+            '${result.hits} of ${result.asked} '
+            '${result.asked == 1 ? 'change' : 'changes'}.',
+          ),
+        ),
+      );
+    });
+  }
+
+  /// Opens the editor; after a save, this screen is replaced by one playing
+  /// the new version. After a delete there's nothing left to play.
+  Future<void> _edit() async {
+    final store = widget.progressions!;
+    final id = widget.progression!.id;
+    await _controller.stop();
+    if (!mounted) return;
+    final outcome = await Navigator.of(context).push<EditorOutcome>(
+      MaterialPageRoute(
+        builder: (_) => ProgressionEditorScreen(
+          store: store,
+          player: widget.player,
+          settings: widget.settings,
+          existing: store.byId(id) ?? widget.progression,
+          fromPractice: true,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    switch (outcome) {
+      case EditorOutcome.deleted:
+        Navigator.of(context).pop();
+      case EditorOutcome.saved:
+        final updated = store.byId(id);
+        if (updated == null) return;
+        await Navigator.of(context).pushReplacement(
+          PageRouteBuilder<void>(
+            // In place: it's the same screen, with the changes.
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+            pageBuilder: (_, _, _) => PracticeScreen(
+              tune: updated.toTune(),
+              player: widget.player,
+              settings: widget.settings,
+              progression: updated,
+              progressions: store,
+            ),
+          ),
+        );
+      case null:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ListenableBuilder rebuilds this part whenever the controller changes.
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) => Scaffold(
+        appBar: AppBar(
+          // Long titles shrink to fit rather than trail off.
+          title: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(widget.tune.title),
+          ),
+          actions: [
+            if (widget.progression != null && widget.progressions != null)
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit progression',
+                onPressed: _edit,
+              ),
+            if (_controller.canRecord)
+              IconButton(
+                key: const ValueKey('takes'),
+                icon: const Icon(Icons.graphic_eq),
+                tooltip: 'Takes',
+                onPressed: () => showTakes(context, _controller),
+              ),
+            IconButton(
+              key: const ValueKey('arrangement'),
+              icon: const Icon(Icons.queue_music_outlined),
+              // Filled in once it's more than a loop, so a performance set
+              // up earlier isn't forgotten about.
+              isSelected: !_controller.arrangement.isPlain,
+              selectedIcon: const Icon(Icons.queue_music),
+              tooltip: 'Arrangement',
+              onPressed: () => showArrangement(context, _controller),
+            ),
+            TextButton(
+              onPressed: () => showViewOptions(context, _controller),
+              child: const Text('View'),
+            ),
+            _MoreMenu(
+              library: widget.library,
+              tune: _ref,
+              title: widget.tune.title,
+              onShare: () => shareChart(
+                context,
+                _controller.originalTune,
+                semitones: _controller.semitones,
+              ),
+              // The same controller goes with it, so the band carries on
+              // playing as you walk on and off.
+              onStage: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => StageScreen(controller: _controller),
+                ),
+              ),
+            ),
+          ],
+        ),
+        body: SafeArea(child: _Reading(controller: _controller)),
+      ),
+    );
+  }
+}
+
+/// Everything under the app bar: the chart, and the controls that go with
+/// it.
+///
+/// Stacked on a phone held upright. Turned sideways there is width to spare
+/// and hardly any height — stacking there would leave the chart a couple of
+/// centimetres tall — so the controls move to a column beside it and the
+/// chart keeps the whole height of the screen. A tablet has room either
+/// way and reads better stacked, as a page does.
+class _Reading extends StatelessWidget {
+  const _Reading({required this.controller});
+
+  final PracticeController controller;
+
+  /// Under this much height there isn't room to stack the chart and the
+  /// controls: a phone on its side, but not a tablet.
+  static const _tooShortToStack = 500.0;
+
+  /// How much of the width the controls take when they sit beside the
+  /// chart. Enough for the transport to lay out as it does upright.
+  static const _sideWidth = 340.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final chart = Stack(
+      key: const ValueKey('chart'),
+      children: [
+        ChordChart(controller: controller),
+        if (controller.countInBeat != null)
+          CountInBubble(beat: controller.countInBeat!),
+      ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxHeight >= _tooShortToStack) {
+          return Column(
+            children: [
+              LoopBar(controller: controller),
+              Expanded(child: chart),
+              NowPlaying(controller: controller),
+              const Divider(height: 1),
+              Transport(controller: controller),
+            ],
+          );
+        }
+        // Wider when Larger Text is turned up, because the transport is
+        // laid out in words and buttons that grow with it — but never more
+        // than half the screen, so the chart is always the bigger half.
+        final textScale = MediaQuery.textScalerOf(context)
+            .scale(1)
+            .clamp(1.0, 2.0);
+        final side = math.min(_sideWidth * textScale, constraints.maxWidth / 2);
+        return Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  LoopBar(controller: controller),
+                  Expanded(child: chart),
+                ],
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            SizedBox(
+              width: side,
+              // The controls are laid out for an upright phone's width, so
+              // on a short screen they can be taller than there is room
+              // for; scrolling is better than clipping the Play button.
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    NowPlaying(controller: controller),
+                    const Divider(height: 1),
+                    Transport(controller: controller),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The app bar's last button: the things you do with a tune rather than to
+/// the way it's played — star it, put it on a setlist, send the chart to
+/// someone.
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({
+    required this.library,
+    required this.tune,
+    required this.title,
+    required this.onShare,
+    required this.onStage,
+  });
+
+  final LibraryStore? library;
+  final TuneRef tune;
+  final String title;
+  final VoidCallback onShare;
+
+  /// Opens the stage: the chart and nothing else.
+  final VoidCallback onStage;
+
+  @override
+  Widget build(BuildContext context) {
+    final library = this.library;
+    // Without a library there's nothing to listen to: the menu is just the
+    // one item, and it never changes.
+    if (library == null) return _menu(context, starred: false);
+    return ListenableBuilder(
+      listenable: library,
+      builder: (context, _) =>
+          _menu(context, starred: library.isFavourite(tune)),
+    );
+  }
+
+  Widget _menu(BuildContext context, {required bool starred}) =>
+      PopupMenuButton<String>(
+        key: const ValueKey('tune-menu'),
+        tooltip: 'More',
+        onSelected: (choice) {
+          switch (choice) {
+            case 'star':
+              library?.toggleFavourite(tune);
+            case 'setlist':
+              showAddToSetlist(context, library!, tune, title);
+            case 'share':
+              onShare();
+            case 'stage':
+              onStage();
+          }
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem(
+            value: 'stage',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.fullscreen),
+              title: Text('Stage View'),
+            ),
+          ),
+          if (library != null) ...[
+            PopupMenuItem(
+              value: 'star',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(starred ? Icons.star : Icons.star_border),
+                title: Text(starred ? 'Starred' : 'Star'),
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'setlist',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.list_alt_outlined),
+                title: Text('Add To Setlist'),
+              ),
+            ),
+          ],
+          const PopupMenuItem(
+            value: 'share',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.ios_share),
+              title: Text('Share Chart'),
+            ),
+          ),
+        ],
+      );
+}
