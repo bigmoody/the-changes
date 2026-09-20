@@ -956,7 +956,7 @@ final _firstStandards = <Tune>[
     composer: 'Joe Henderson',
     year: 1963,
     key: 'A minor',
-    feel: Feel.bossa,
+    feel: Feel.samba,
     defaultTempo: 180,
     chart:
         '| [A] Am6 | Am6 | Am6 | Am6 | Cm6 | Cm6 | Cm6 | Cm7 F7 '

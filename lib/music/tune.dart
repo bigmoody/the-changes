@@ -37,13 +37,26 @@ enum Feel {
 
   /// Even eighths over the calypso 3-3-2 (1, the "and" of 2, 4) in the kick
   /// and bass, with a soft cross-stick on 2 and 4.
-  calypso('Calypso');
+  calypso('Calypso'),
+
+  /// Swing's long-short eighths with the back door open: every beat and
+  /// its "a", a snare that cracks on 2 and 4 rather than whispering, and
+  /// the bass still walking. What a blues does when it stops being polite.
+  shuffle('Shuffle'),
+
+  /// Brazilian, and quicker than a bossa: the surdo answering on 2 and 4,
+  /// a tamborim figure across the bar, sixteenths running underneath.
+  samba('Samba');
 
   const Feel(this.label);
   final String label;
 
-  /// Where the "and" of a beat falls: late in swing, halfway otherwise.
-  double get andOfBeat => this == swing ? 2 / 3 : 0.5;
+  /// Where the "and" of a beat falls: late in the ones that swing,
+  /// halfway in the ones that don't.
+  double get andOfBeat => swings ? 2 / 3 : 0.5;
+
+  /// Whether this feel's eighths are long-short.
+  bool get swings => this == swing || this == shuffle;
 }
 
 /// What kind of tune it is, for filtering the lists. A tune can be several:
@@ -67,7 +80,8 @@ enum Genre {
   /// tagged by hand.
   static Genre ofFeel(Feel feel) => switch (feel) {
     Feel.swing => swing,
-    Feel.bossa => latin,
+    Feel.shuffle => blues,
+    Feel.bossa || Feel.samba => latin,
     Feel.calypso => calypso,
     Feel.funk => funk,
   };
@@ -142,15 +156,17 @@ class BandStyle {
   factory BandStyle.of(Feel feel) => BandStyle(
     drums: feel,
     bass: switch (feel) {
-      Feel.swing => BassStyle.walking,
-      Feel.bossa => BassStyle.bossa,
+      // A shuffle's bass walks like any other blues; the bounce is in the
+      // drums and the comping, not in the notes it chooses.
+      Feel.swing || Feel.shuffle => BassStyle.walking,
+      Feel.bossa || Feel.samba => BassStyle.bossa,
       Feel.funk => BassStyle.funk,
       Feel.calypso => BassStyle.calypso,
     },
     piano: switch (feel) {
-      Feel.swing => PianoStyle.swing,
+      Feel.swing || Feel.shuffle => PianoStyle.swing,
       Feel.calypso => PianoStyle.calypso,
-      Feel.bossa || Feel.funk => PianoStyle.straight,
+      Feel.bossa || Feel.funk || Feel.samba => PianoStyle.straight,
     },
   );
 

@@ -102,6 +102,50 @@ void main() {
     expect(20 * (math.log(loudest / quietest) / math.ln10), lessThan(6));
   });
 
+  test('every feel renders the whole band, and no two sound alike', () async {
+    final bank = await loadBank();
+    final stems = <Feel, Uint8List>{};
+    for (final feel in Feel.values) {
+      final tune = Tune.fromChart(
+        title: feel.label,
+        key: 'C',
+        chart: 'Cmaj7 | Am7 | Dm7 | G7 |',
+        defaultTempo: 140,
+        feel: feel,
+      );
+      final backing = renderBacking(
+        BackingRequest(
+          tune: tune,
+          loop: LoopRange.bars(tune, 0, 3),
+          tempo: 140,
+          countInBars: 0,
+          samples: bank,
+        ),
+      );
+      for (final instrument in backing.stems.keys) {
+        expect(
+          rms(backing.stems[instrument]!),
+          greaterThan(200),
+          reason: '${feel.label}: ${instrument.label} is silent',
+        );
+      }
+      stems[feel] = backing.stems[Instrument.drums]!;
+    }
+    // A groove you cannot tell from another one is not a groove. The two
+    // that swing share a ride pattern, so they are compared on the whole
+    // kit rather than on level alone.
+    for (final a in Feel.values) {
+      for (final b in Feel.values) {
+        if (a.index >= b.index) continue;
+        expect(
+          listEquals(stems[a], stems[b]),
+          isFalse,
+          reason: '${a.label} and ${b.label} render the same drums',
+        );
+      }
+    }
+  });
+
   test('a drill snippet renders to audible sound', () async {
     final bank = await loadBank();
     final wav = renderSnippet(bank, [
@@ -159,26 +203,31 @@ void main() {
     }
   });
 
-  test('every standard renders with the guitar on the chords', () async {
-    final bank = await loadBank();
-    for (final tune in standards) {
-      final backing = renderBacking(
-        BackingRequest(
-          tune: tune,
-          loop: LoopRange.bars(tune, 0, 3),
-          tempo: 140,
-          countInBars: 0,
-          samples: bank,
-          comping: Comping.guitar,
-        ),
-      );
-      expect(
-        rms(backing.stems[Instrument.chords]!),
-        greaterThan(200),
-        reason: '${tune.title}: the guitar is silent',
-      );
-    }
-  }, tags: 'sweep', skip: 'the whole book; run it with --run-skipped');
+  test(
+    'every standard renders with the guitar on the chords',
+    () async {
+      final bank = await loadBank();
+      for (final tune in standards) {
+        final backing = renderBacking(
+          BackingRequest(
+            tune: tune,
+            loop: LoopRange.bars(tune, 0, 3),
+            tempo: 140,
+            countInBars: 0,
+            samples: bank,
+            comping: Comping.guitar,
+          ),
+        );
+        expect(
+          rms(backing.stems[Instrument.chords]!),
+          greaterThan(200),
+          reason: '${tune.title}: the guitar is silent',
+        );
+      }
+    },
+    tags: 'sweep',
+    skip: 'the whole book; run it with --run-skipped',
+  );
 
   test(
     'the guitar has one even tone: no take far brighter than the rest',

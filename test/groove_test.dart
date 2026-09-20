@@ -192,6 +192,107 @@ void main() {
     });
   });
 
+  group('shuffle groove', () {
+    test('every beat carries its "a": the triplet, out loud', () {
+      final rides = beatsOf(bar(Feel.shuffle, 0), Drum.ride);
+      expect(rides, containsAll([0.0, 1.0, 2.0, 3.0]));
+      for (final beat in [0, 1, 2, 3]) {
+        expect(
+          rides.any((r) => (r - (beat + 2 / 3)).abs() < 0.001),
+          isTrue,
+          reason: 'the "a" after beat ${beat + 1}',
+        );
+      }
+    });
+
+    test('the snare cracks on 2 and 4 in every bar', () {
+      for (var index = 0; index < 16; index++) {
+        final hits = bar(Feel.shuffle, index, index);
+        final snares = hits.where((h) => h.drum == Drum.snare);
+        for (final beat in [1.0, 3.0]) {
+          final hit = snares.where((h) => h.beat == beat);
+          expect(hit, hasLength(1), reason: 'bar $index, beat $beat');
+          expect(hit.single.velocity, greaterThan(0.6));
+        }
+      }
+    });
+
+    test('which is what makes it a shuffle and not a swing', () {
+      // Swing answers the soloist on the snare; a shuffle sits on 2 and 4
+      // whatever else is happening.
+      var swingBackbeats = 0;
+      for (var index = 0; index < 16; index++) {
+        final snares = beatsOf(bar(Feel.swing, index, index), Drum.snare);
+        if (snares.contains(1.0) && snares.contains(3.0)) swingBackbeats++;
+      }
+      expect(swingBackbeats, lessThan(16));
+    });
+
+    test('its eighths are long-short, like swing and unlike the rest', () {
+      expect(Feel.shuffle.swings, isTrue);
+      expect(Feel.shuffle.andOfBeat, closeTo(2 / 3, 0.001));
+      expect(Feel.samba.swings, isFalse);
+      expect(Feel.samba.andOfBeat, closeTo(0.5, 0.001));
+    });
+  });
+
+  group('samba groove', () {
+    test('the surdo answers on 2 and 4, and is quiet on 1 and 3', () {
+      for (var index = 0; index < 8; index++) {
+        final surdo = bar(
+          Feel.samba,
+          index,
+          index,
+        ).where((h) => h.drum == Drum.tomLow).toList();
+        expect(beatsOf(bar(Feel.samba, index, index), Drum.tomLow), [
+          0.0,
+          1.0,
+          2.0,
+          3.0,
+        ]);
+        double at(double beat) =>
+            surdo.firstWhere((h) => h.beat == beat).velocity;
+        expect(at(1), greaterThan(at(0)), reason: 'bar $index leans on 2');
+        expect(at(3), greaterThan(at(2)), reason: 'bar $index leans on 4');
+      }
+    });
+
+    test('sixteenths underneath, the ones off the eighth lighter', () {
+      final hats = bar(Feel.samba, 0).where((h) => h.drum == Drum.hiHatClosed);
+      expect(hats, hasLength(16));
+      for (final hit in hats) {
+        final onEighth = (hit.beat * 2) % 1 == 0;
+        expect(hit.velocity, onEighth ? greaterThan(0.2) : lessThan(0.2));
+      }
+    });
+
+    test('the tamborim is syncopated and never lands on beat one', () {
+      for (var index = 0; index < 8; index++) {
+        final figure = beatsOf(bar(Feel.samba, index, index), Drum.crossStick);
+        expect(figure, isNotEmpty);
+        expect(figure, isNot(contains(0.0)));
+        expect(
+          figure.every((beat) => (beat * 4) % 1 == 0),
+          isTrue,
+          reason: 'sixteenths, bar $index',
+        );
+      }
+      // Two bars long, so it doesn't sit still.
+      expect(
+        beatsOf(bar(Feel.samba, 0), Drum.crossStick),
+        isNot(beatsOf(bar(Feel.samba, 1), Drum.crossStick)),
+      );
+    });
+
+    test('it is not a bossa: a bossa has no surdo and plays the clave', () {
+      expect(beatsOf(bar(Feel.bossa, 0), Drum.tomLow), isEmpty);
+      expect(
+        beatsOf(bar(Feel.samba, 0), Drum.crossStick),
+        isNot([0.0, 1.5, 3.0]),
+      );
+    });
+  });
+
   group('piano comping', () {
     final chords = [
       Chord.parse('Dm7'),

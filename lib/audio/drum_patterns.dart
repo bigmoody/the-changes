@@ -68,6 +68,8 @@ List<DrumHit> drumBar({
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
     Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
+    Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
+    Feel.samba => _sambaBar(bar, beatsPerBar, random),
   })
     if (hit.beat < beatsPerBar) hit,
 ];
@@ -422,4 +424,132 @@ List<DrumHit> drumSoloBar({
     for (final hit in hits)
       if (hit.beat < beatsPerBar) hit,
   ];
+}
+
+/// The shuffle: swing's triplet, played out loud.
+///
+/// Every beat gets its "a" — the last note of the triplet — so the ride is
+/// a constant long-short bounce rather than swing's spaced ding-ding-a-ding.
+/// And the snare cracks on the backbeat instead of answering the soloist.
+/// That backbeat is the whole difference: the same eighths, sat on.
+List<DrumHit> _shuffleBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  final backbeats = _backbeats(beatsPerBar);
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    final isBackbeat = backbeats.contains(beat);
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.ride,
+          beat: beat.toDouble(),
+          velocity: (isBackbeat ? 0.6 : 0.5) * _human(random),
+        ),
+      )
+      // The "a": the third of the triplet, where the bounce lives.
+      ..add(
+        DrumHit(
+          drum: Drum.ride,
+          beat: beat + 2 / 3,
+          velocity: 0.34 * _human(random),
+        ),
+      );
+  }
+  for (final beat in backbeats) {
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beat.toDouble(),
+          velocity: 0.78 * _human(random),
+          hard: true,
+        ),
+      )
+      ..add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.4 * _human(random),
+        ),
+      );
+  }
+  // Kick on the odd beats, under the snare rather than with it.
+  for (var beat = 0; beat < beatsPerBar; beat += 2) {
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: (beat == 0 ? 0.6 : 0.46) * _human(random),
+      ),
+    );
+  }
+  // A pickup into the next phrase, on the "a" of the last beat.
+  if (bar % 4 == 3 && random.nextDouble() < 0.5) {
+    hits.add(
+      DrumHit(
+        drum: Drum.snare,
+        beat: beatsPerBar - 1 + 2 / 3,
+        velocity: 0.5 * _human(random),
+      ),
+    );
+  }
+  return hits;
+}
+
+/// The tamborim's figure, in beats, over two bars: the syncopation that
+/// says samba rather than bossa. Sixteenths, and none of them on beat one.
+const _tamborimBarOne = [0.75, 1.5, 2.25, 2.75, 3.5];
+const _tamborimBarTwo = [0.5, 1.25, 1.75, 2.5, 3.25, 3.75];
+
+/// A samba: quicker than a bossa, and leaning the other way.
+///
+/// A bossa sits on beat one. A samba answers on two — the surdo, the big
+/// low drum, is quiet on the odd beats and lands on the even ones, and
+/// everything else is hung off that.
+List<DrumHit> _sambaBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  // Sixteenths running underneath, the ones off the eighth lighter: the
+  // shaker of a bateria, played with a stick.
+  for (var sixteenth = 0; sixteenth < beatsPerBar * 4; sixteenth++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.hiHatClosed,
+        beat: sixteenth / 4,
+        velocity: (sixteenth.isEven ? 0.26 : 0.15) * _human(random),
+      ),
+    );
+  }
+  // The surdo. Light on the odd beats, heavy on the even ones, which is
+  // where a samba's weight goes.
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    final answering = _backbeats(beatsPerBar).contains(beat);
+    hits.add(
+      DrumHit(
+        drum: Drum.tomLow,
+        beat: beat.toDouble(),
+        velocity: (answering ? 0.72 : 0.3) * _human(random),
+        hard: answering,
+      ),
+    );
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: (answering ? 0.5 : 0.34) * _human(random),
+      ),
+    );
+  }
+  // The tamborim across the top, two bars long so it doesn't sit still.
+  for (final beat in (bar.isEven ? _tamborimBarOne : _tamborimBarTwo).where(
+    (beat) => beat < beatsPerBar,
+  )) {
+    hits.add(
+      DrumHit(
+        drum: Drum.crossStick,
+        beat: beat,
+        velocity: 0.55 * _human(random),
+        hard: true,
+      ),
+    );
+  }
+  return hits;
 }

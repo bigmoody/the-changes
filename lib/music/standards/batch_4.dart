@@ -154,7 +154,7 @@ final standardsBatch4 = <Tune>[
     composer: 'Antônio Carlos Jobim',
     year: 1961,
     key: 'B♭',
-    feel: Feel.bossa,
+    feel: Feel.samba,
     defaultTempo: 140,
     chart:
         '| [A] $_oneNoteA | Cm7 | B7 '

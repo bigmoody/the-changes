@@ -28,6 +28,7 @@ final standardsBatch5 = <Tune>[
     year: 1942,
     key: 'D♭',
     description: 'Blues',
+    feel: Feel.shuffle,
     tags: {Genre.blues},
     defaultTempo: 120,
     chart:

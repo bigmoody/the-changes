@@ -103,7 +103,9 @@ String _styleFor(UserProgression progression) =>
         progression.tags.contains(Genre.ballad)
             ? 'Ballad Swing'
             : 'Medium Swing',
+      Feel.shuffle => 'Shuffle Blues',
       Feel.bossa => 'Bossa Nova',
+      Feel.samba => 'Samba',
       Feel.funk => 'Funk',
       Feel.calypso => 'Calypso',
     };

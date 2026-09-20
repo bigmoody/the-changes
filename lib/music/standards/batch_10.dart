@@ -159,6 +159,7 @@ final standardsBatch10 = <Tune>[
     year: 1946,
     key: 'F',
     description: 'Jazz blues',
+    feel: Feel.shuffle,
     tags: {Genre.blues},
     defaultTempo: 150,
     chart: _jazzBluesF,
