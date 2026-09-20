@@ -447,7 +447,7 @@ void main() {
     }
 
     final plain = renderSnippet(bank, notes);
-    final bright = renderSnippet(bank, notes, brightBass: true);
+    final bright = renderSnippet(bank, notes, bassTone: BassTone.bright);
     debugPrint(
       'bass above 1 kHz: ${(above(plain, 1000) * 100).toStringAsFixed(1)}% → '
       '${(above(bright, 1000) * 100).toStringAsFixed(1)}%; on a phone '
@@ -466,7 +466,7 @@ void main() {
       double boom(int pitch) {
         final wav = renderSnippet(bank, [
           (pitch: pitch, start: 0, length: 0.4, velocity: 0.8, bass: true),
-        ], brightBass: true);
+        ], bassTone: BassTone.bright);
         final a = 1 - math.exp(-2 * math.pi * 250 / 44100);
         var l1 = 0.0, l2 = 0.0, low = 0.0, all = 0.0;
         for (final sample in decodeWav(wav)) {

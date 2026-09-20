@@ -65,7 +65,7 @@ class _ChordTonesReferenceScreenState extends State<ChordTonesReferenceScreen> {
         bank,
         fretArpeggioSnippet(shape),
         guitar: !shape.isBass,
-        brightBass: shape.isBass,
+        bassTone: shape.isBass ? BassTone.bright : BassTone.natural,
       ),
     );
   }

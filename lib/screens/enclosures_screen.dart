@@ -99,7 +99,7 @@ class _EnclosuresScreenState extends State<EnclosuresScreen> {
             ),
         ],
         guitar: _under == _Under.guitar,
-        brightBass: _under == _Under.bass,
+        bassTone: _under == _Under.bass ? BassTone.bright : BassTone.tight,
       ),
     );
   }

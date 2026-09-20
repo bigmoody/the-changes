@@ -913,13 +913,30 @@ typedef SnippetNote = ({
 /// bass is given some top end — the string's brightness and bite — for a
 /// bass line heard on its own, which would otherwise be mostly lows a phone
 /// speaker can't play.
+/// How the bass in a snippet is treated.
+enum BassTone {
+  /// As recorded: an upright, body and all. Right when it is one note
+  /// among several and nothing needs to cut through.
+  natural,
+
+  /// The boom taken out and nothing else. For a root sitting under other
+  /// notes, where the low end muddies them but the bass is not the point.
+  tight,
+
+  /// Tightened and then driven, for a bass line heard on its own — which
+  /// would otherwise be mostly lows a phone can't play. It is loud, so it
+  /// is only right when the bass is the exercise.
+  bright,
+}
+
 Uint8List renderSnippet(
   SampleBank bank,
   List<SnippetNote> notes, {
   int sampleRate = 44100,
   bool guitar = false,
-  bool brightBass = false,
+  BassTone bassTone = BassTone.natural,
 }) {
+  final brightBass = bassTone != BassTone.natural;
   final end = notes
       .map((n) => n.start + n.length)
       .fold(0.0, (a, b) => math.max(a, b));
@@ -985,10 +1002,12 @@ Uint8List renderSnippet(
     for (var pass = 0; pass < 3; pass++) {
       cutLows(bass, sampleRate, hertz: 180);
     }
-    saturate(bass, drive: 2);
-    cutLows(bass, sampleRate, hertz: 120);
-    addPresence(bass, sampleRate, hertz: 600, gain: 5);
-    saturate(bass, drive: 2.5);
+    if (bassTone == BassTone.bright) {
+      saturate(bass, drive: 2);
+      cutLows(bass, sampleRate, hertz: 120);
+      addPresence(bass, sampleRate, hertz: 600, gain: 5);
+      saturate(bass, drive: 2.5);
+    }
     for (var i = 0; i < mix.buffer.length; i++) {
       mix.buffer[i] += bassMix.buffer[i];
     }

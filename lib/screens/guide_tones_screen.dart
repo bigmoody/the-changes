@@ -137,12 +137,13 @@ class _GuideTonesScreenState extends State<GuideTonesScreen> {
         [
           for (final (i, at) in voiced.indexed) ...[
             // The root underneath, so the lines are heard against the
-            // change rather than on their own.
+            // change rather than on their own — and quiet, because it is
+            // the thing they are heard against and not the exercise.
             (
               pitch: 40 + (at.tones.chord.root - 40) % 12,
               start: i * beat,
               length: beat,
-              velocity: 0.5,
+              velocity: 0.28,
               bass: true,
             ),
             (
@@ -162,7 +163,10 @@ class _GuideTonesScreenState extends State<GuideTonesScreen> {
           ],
         ],
         guitar: _under == _Under.guitar,
-        brightBass: true,
+        // Driven only when the bass is the exercise. Under the lines it
+        // is merely tightened: the boom taken out so it doesn't muddy
+        // them, without the drive that makes it shout.
+        bassTone: _under == _Under.bass ? BassTone.bright : BassTone.tight,
       ),
     );
   }
