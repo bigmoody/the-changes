@@ -361,40 +361,52 @@ class TuneListControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+    // Room apart rather than a Spacer between: turn the text size up and
+    // the chip and the sort button are together wider than the phone, and
+    // each has to be free to give way.
     child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        FilterChip(
-          key: const ValueKey('starred-only'),
-          selected: starredOnly,
-          onSelected: onStarred,
-          avatar: Icon(
-            starredOnly ? Icons.star : Icons.star_border,
-            size: 18,
-            color: starredOnly ? Theme.of(context).colorScheme.tertiary : null,
+        Flexible(
+          child: FilterChip(
+            key: const ValueKey('starred-only'),
+            selected: starredOnly,
+            onSelected: onStarred,
+            avatar: Icon(
+              starredOnly ? Icons.star : Icons.star_border,
+              size: 18,
+              color: starredOnly
+                  ? Theme.of(context).colorScheme.tertiary
+                  : null,
+            ),
+            label: const Text('Starred', overflow: TextOverflow.ellipsis),
           ),
-          label: const Text('Starred'),
         ),
-        const Spacer(),
-        PopupMenuButton<TuneOrder>(
-          key: const ValueKey('sort'),
-          initialValue: order,
-          onSelected: onOrder,
-          tooltip: 'Sort',
-          itemBuilder: (context) => [
-            for (final option in TuneOrder.values)
-              PopupMenuItem(value: option, child: Text(option.label)),
-          ],
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'By ${order.label}',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const Icon(Icons.arrow_drop_down),
-              ],
+        Flexible(
+          child: PopupMenuButton<TuneOrder>(
+            key: const ValueKey('sort'),
+            initialValue: order,
+            onSelected: onOrder,
+            tooltip: 'Sort',
+            itemBuilder: (context) => [
+              for (final option in TuneOrder.values)
+                PopupMenuItem(value: option, child: Text(option.label)),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'By ${order.label}',
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                  ),
+                  const Icon(Icons.arrow_drop_down),
+                ],
+              ),
             ),
           ),
         ),

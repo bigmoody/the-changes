@@ -35,6 +35,33 @@ Future<void> _openTunes(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// The tune list at a given text size, on the shortest phone we support:
+/// where the strip has the least room for the most letters.
+Future<void> _openTunesAt(WidgetTester tester, double textScale) async {
+  tester.view
+    ..physicalSize = const Size(375, 667) * 3
+    ..devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: appTheme(Brightness.light),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
+      home: TunesPage(
+        player: PracticePlayer(),
+        settings: AppSettings.inMemory(),
+        library: LibraryStore.inMemory(),
+        progressions: ProgressionStore.inMemory(),
+        takes: TakeStore.inMemory(),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 /// The strip's own copy of a letter, not the one in a tune's title.
 Finder _letter(String letter) => find.descendant(
   of: find.byType(AlphabetIndex),
@@ -478,5 +505,30 @@ void main() {
       );
       expect(find.textContaining('Monk, Thelonious'), findsWidgets);
     });
+  });
+
+  group('however large the text is', () {
+    for (final scale in [1.0, 1.5, 2.0, 3.0]) {
+      testWidgets('the strip still fits beside the list at x$scale', (
+        tester,
+      ) async {
+        await _openTunesAt(tester, scale);
+        expect(tester.takeException(), isNull, reason: 'nothing overflows');
+        final strip = tester.getRect(find.byType(AlphabetIndex));
+        // Every letter is inside the strip rather than spilling past its
+        // bottom, which is what the overflow stripes were saying.
+        for (final letter in ['A', 'B', 'W']) {
+          final found = _letter(letter);
+          if (found.evaluate().isEmpty) continue;
+          final box = tester.getRect(found);
+          expect(
+            box.bottom,
+            lessThanOrEqualTo(strip.bottom + 0.5),
+            reason: '$letter at x$scale',
+          );
+          expect(box.top, greaterThanOrEqualTo(strip.top - 0.5));
+        }
+      });
+    }
   });
 }

@@ -139,19 +139,29 @@ class _AlphabetIndexState extends State<AlphabetIndex> {
             fit: StackFit.expand,
             children: [
               Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   for (final letter in widget.letters)
-                    Text(
-                      letter,
-                      textAlign: TextAlign.center,
-                      style: handLettered(
-                        TextStyle(
-                          fontSize: 12,
-                          height: 1,
-                          color: letter == _under
-                              ? scheme.tertiary
-                              : scheme.onSurfaceVariant,
+                    // An equal share of the strip each, and the letter
+                    // shrunk to fit it. Turn the text size right up and
+                    // twenty-seven letters at their asking size are taller
+                    // than the screen; the strip has to stay the height of
+                    // the list whatever they ask for, because where a
+                    // finger lands is worked out from that height.
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          letter,
+                          textAlign: TextAlign.center,
+                          style: handLettered(
+                            TextStyle(
+                              fontSize: 12,
+                              height: 1,
+                              color: letter == _under
+                                  ? scheme.tertiary
+                                  : scheme.onSurfaceVariant,
+                            ),
+                          ),
                         ),
                       ),
                     ),
