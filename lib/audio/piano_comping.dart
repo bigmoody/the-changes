@@ -101,24 +101,20 @@ class Comper {
 
   /// Calypso strums across a whole bar, as (beat, length, velocity). The
   /// off-beats carry the accents; that's the lift.
+  /// Strums across a bar, as (beat, length, velocity).
+  ///
+  /// All three are the 3-3-2 — 1, the "and" of 2, 4 — because that is what
+  /// the bass and the kick are playing, and a guitar answering with a
+  /// different syncopation is what made this groove sound like a pile-up.
+  /// What varies is how much is added around it, not where the weight
+  /// falls.
   static const _calypsoStrums = <(int, _Pattern)>[
-    // Down, down-up, up-down-up: 1, 2, the "and" of 2, the "and" of 3, 4,
-    // the "and" of 4.
-    (
-      4,
-      [
-        (0, 0.35, 0.8),
-        (1, 0.35, 0.6),
-        (1.5, 0.8, 0.95),
-        (2.5, 0.4, 0.85),
-        (3, 0.35, 0.6),
-        (3.5, 0.45, 0.9),
-      ],
-    ),
-    // The same without the downbeats between: lighter.
-    (5, [(0, 0.35, 0.8), (1.5, 0.8, 0.95), (2.5, 0.4, 0.85), (3.5, 0.45, 0.9)]),
-    // With the bass's 3-3-2, held.
-    (2, [(0, 1.3, 0.85), (1.5, 1.3, 0.9), (3, 0.9, 0.8)]),
+    // The figure, held: the plainest way to play it.
+    (4, [(0, 1.3, 0.85), (1.5, 1.3, 0.95), (3, 0.9, 0.8)]),
+    // The same, with a short chop on 2 filling the first gap.
+    (4, [(0, 0.35, 0.8), (1, 0.3, 0.55), (1.5, 0.8, 0.95), (3, 0.8, 0.85)]),
+    // And with a push into the next bar off the last beat.
+    (2, [(0, 0.35, 0.8), (1.5, 0.8, 0.95), (3, 0.35, 0.8), (3.5, 0.45, 0.7)]),
   ];
 
   /// The part of a bar's strum that falls in a chord [beats] long starting

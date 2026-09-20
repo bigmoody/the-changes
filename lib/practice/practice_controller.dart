@@ -88,6 +88,10 @@ class PracticeController extends ChangeNotifier {
     final ref = _ref;
     if (ref != null) library?.setStyle(ref, style);
     _tune = originalTune.transposed(_semitones).withStyle(this.style);
+    // A groove carries its tempo with it: a samba at 90 is not a slow
+    // samba. The tempo only moves when it has to, so a medium swing that
+    // becomes a shuffle stays where it was.
+    _tempo = this.style.drums.tempoFor(_tempo).clamp(minTempo, maxTempo);
     notifyListeners();
     _restartIfPlaying(delay: Duration.zero);
   }

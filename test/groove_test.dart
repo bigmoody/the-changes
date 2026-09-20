@@ -15,23 +15,64 @@ List<double> beatsOf(List<DrumHit> hits, Drum drum) =>
 
 void main() {
   group('calypso groove', () {
-    test('no clave and no snare backbeat: toms and a bell instead', () {
+    test('a rim click says where the backbeat is', () {
       for (var index = 0; index < 16; index++) {
         final hits = bar(Feel.calypso, index, index);
-        expect(beatsOf(hits, Drum.crossStick), isEmpty);
-        expect(beatsOf(hits, Drum.snare), isEmpty);
-        expect(beatsOf(hits, Drum.tomHigh), isNotEmpty);
-        expect(beatsOf(hits, Drum.tomLow), isNotEmpty);
+        expect(beatsOf(hits, Drum.crossStick), [1.0, 3.0]);
+        expect(beatsOf(hits, Drum.snare), isEmpty, reason: 'rim, not snare');
       }
     });
 
-    test('the bell on every off-beat', () {
-      final bells = beatsOf(bar(Feel.calypso, 0), Drum.cowbell);
-      expect(bells, containsAll([0.5, 1.5, 2.5, 3.5]));
-      final hits = bar(Feel.calypso, 0).where((h) => h.drum == Drum.cowbell);
+    test('the bell keeps a steady pulse, accented on the 3-3-2', () {
+      final hits = bar(
+        Feel.calypso,
+        0,
+      ).where((h) => h.drum == Drum.cowbell).toList();
+      expect(
+        [for (final h in hits) h.beat],
+        [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5],
+      );
       for (final hit in hits) {
-        if (hit.beat % 1 == 0) {
-          expect(hit.velocity, lessThan(0.4), reason: 'downbeats are soft');
+        final onTheFigure = [0.0, 1.5, 3.0].contains(hit.beat);
+        expect(
+          hit.velocity,
+          onTheFigure ? greaterThan(0.4) : lessThan(0.3),
+          reason: 'beat ${hit.beat}',
+        );
+      }
+    });
+
+    test('the toms only turn a phrase around, never every bar', () {
+      var barsWithToms = 0;
+      for (var index = 0; index < 32; index++) {
+        final hits = bar(Feel.calypso, index, index);
+        final toms = [
+          ...beatsOf(hits, Drum.tomHigh),
+          ...beatsOf(hits, Drum.tomLow),
+        ];
+        if (toms.isNotEmpty) {
+          barsWithToms++;
+          expect(index % 8, 7, reason: 'bar $index is not a turnaround');
+        }
+      }
+      expect(barsWithToms, greaterThan(0), reason: 'and some bars have them');
+    });
+
+    test('everything that carries weight lands on the 3-3-2', () {
+      // The complaint this guards against: the bell on every off-beat, the
+      // kick on the 3-3-2 and the toms on a third figure, so nothing agreed
+      // where the weight was and the groove sounded like a pile-up.
+      for (var index = 0; index < 16; index++) {
+        // The turnaround is a fill, and a fill is meant to cut across it.
+        if (index % 8 == 7) continue;
+        for (final hit in bar(Feel.calypso, index, index)) {
+          if (!hit.hard && hit.velocity < 0.4) continue;
+          if (hit.drum == Drum.crossStick) continue; // the backbeat
+          expect(
+            [0.0, 1.5, 3.0],
+            contains(hit.beat),
+            reason: '${hit.drum.name} at ${hit.beat} in bar $index',
+          );
         }
       }
     });
@@ -189,6 +230,23 @@ void main() {
           beatsOf(bar(Feel.funk, index, index), Drum.kick).join(','),
       };
       expect(figures.length, greaterThan(2));
+    });
+  });
+
+  group('a groove brings its tempo with it', () {
+    test('a samba will not be played at a ballad tempo', () {
+      expect(Feel.samba.tempoFor(90), 150);
+      expect(Feel.funk.tempoFor(240), 140);
+      expect(Feel.calypso.tempoFor(60), 100);
+    });
+
+    test('a tempo the feel is happy with is left alone', () {
+      expect(Feel.samba.tempoFor(200), 200);
+      expect(Feel.shuffle.tempoFor(120), 120);
+      // Swing is a ballad and a burner both, so it never moves one.
+      for (final tempo in [40, 60, 160, 300]) {
+        expect(Feel.swing.tempoFor(tempo), tempo);
+      }
     });
   });
 

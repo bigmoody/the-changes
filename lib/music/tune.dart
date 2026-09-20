@@ -57,6 +57,24 @@ enum Feel {
 
   /// Whether this feel's eighths are long-short.
   bool get swings => this == swing || this == shuffle;
+
+  /// The tempos this feel lives at, in beats a minute.
+  ///
+  /// Swing is the whole range because it is: a ballad and a burner are both
+  /// swung. The others are narrower — a samba at 90 is not a slow samba,
+  /// it's a mistake — so changing the groove brings the tempo with it.
+  ({int slowest, int fastest}) get tempos => switch (this) {
+    swing => (slowest: 40, fastest: 320),
+    shuffle => (slowest: 70, fastest: 200),
+    bossa => (slowest: 90, fastest: 190),
+    samba => (slowest: 150, fastest: 260),
+    funk => (slowest: 60, fastest: 140),
+    calypso => (slowest: 100, fastest: 200),
+  };
+
+  /// [tempo] brought into the range this feel is played at, staying as
+  /// close to it as the feel allows.
+  int tempoFor(int tempo) => tempo.clamp(tempos.slowest, tempos.fastest);
 }
 
 /// What kind of tune it is, for filtering the lists. A tune can be several:

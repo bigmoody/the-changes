@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/arrangement.dart';
+import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/screens/practice_screen.dart';
@@ -150,5 +151,29 @@ void main() {
     controller.setArrangement(const Arrangement(choruses: 4));
     expect(controller.arrangement.choruses, 4);
     expect(controller.isFinishing, isFalse);
+  });
+
+  test('the groove brings the tempo with it, and only when it has to', () {
+    final tune = standards.firstWhere((t) => t.title == 'Route 66');
+    final controller = PracticeController(
+      tune: tune,
+      player: PracticePlayer(),
+      settings: AppSettings.inMemory(),
+    );
+    addTearDown(controller.dispose);
+    final written = controller.tempo;
+    expect(written, greaterThan(140), reason: 'a shuffle at a fair lick');
+
+    // Funk tops out at 140: too fast a tempo comes down to meet it.
+    controller.setStyle(BandStyle.of(Feel.funk));
+    expect(controller.tempo, 140);
+
+    // A samba starts at 150: too slow a tempo goes up to meet it.
+    controller.setStyle(BandStyle.of(Feel.samba));
+    expect(controller.tempo, 150);
+
+    // Swing is every tempo there is, so it leaves the tempo where it is.
+    controller.setStyle(BandStyle.of(Feel.swing));
+    expect(controller.tempo, 150);
   });
 }

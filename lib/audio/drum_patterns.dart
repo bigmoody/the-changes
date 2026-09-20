@@ -281,6 +281,10 @@ List<DrumHit> _funkBar(int bar, int beatsPerBar, math.Random random) {
 
 /// Tom figures for calypso, in beats: (high tom, low tom). The toms carry
 /// the calypso in place of a snare backbeat — the way Max Roach plays it.
+/// The 3-3-2, in beats: the figure the calypso is built on. Three eighths,
+/// three eighths, two — the one everybody plays together.
+const _tresillo = [0.0, 1.5, 3.0];
+
 const _calypsoToms = [
   ([1.0, 2.5], [3.0]),
   ([1.0, 2.5], [3.0, 3.5]),
@@ -290,52 +294,68 @@ const _calypsoToms = [
 
 List<DrumHit> _calypsoBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
-  // The bell on every off-beat, a soft touch on the downbeat: the sound of
-  // the Caribbean more than anything else in the kit.
+  // The whole band is playing the 3-3-2 — the bass, the kick and the
+  // accents all land on it — so the bell's job is to state a steady pulse
+  // for it to lean against, not to syncopate as well. Eighths, with the
+  // 3-3-2 picked out by weight rather than by leaving gaps: that contrast
+  // is the lift, and everything still agrees on where the bar is.
   for (var eighth = 0; eighth < beatsPerBar * 2; eighth++) {
-    final offBeat = eighth.isOdd;
-    if (!offBeat && eighth != 0) continue;
+    final beat = eighth / 2;
+    final accented = _tresillo.contains(beat);
     hits.add(
       DrumHit(
         drum: Drum.cowbell,
-        beat: eighth / 2,
-        velocity: (offBeat ? 0.5 : 0.3) * _human(random),
-        hard: offBeat,
+        beat: beat,
+        velocity: (accented ? 0.52 : 0.24) * _human(random),
+        hard: accented,
       ),
     );
   }
-  // Hi-hat foot on 2 and 4, keeping time underneath.
-  for (final beat in _backbeats(beatsPerBar)) {
+  // The kick on the 3-3-2 with the bass.
+  for (final beat in _tresillo.where((beat) => beat < beatsPerBar)) {
     hits.add(
       DrumHit(
-        drum: Drum.hiHatPedal,
-        beat: beat.toDouble(),
-        velocity: 0.3 * _human(random),
+        drum: Drum.kick,
+        beat: beat,
+        velocity: (beat == 0 ? 0.58 : 0.44) * _human(random),
       ),
     );
   }
-  // The kick with the bass's 3-3-2: 1, the "and" of 2, 4.
-  hits
-    ..add(DrumHit(drum: Drum.kick, beat: 0, velocity: 0.55 * _human(random)))
-    ..add(DrumHit(drum: Drum.kick, beat: 1.5, velocity: 0.42 * _human(random)))
-    ..add(DrumHit(drum: Drum.kick, beat: 3, velocity: 0.38 * _human(random)));
-
-  // A tom roll to close an eight-bar phrase; otherwise one of the figures,
-  // mostly the first two so the groove settles.
-  final (high, low) = bar % 8 == 7 && random.nextDouble() < 0.6
-      ? ([2.0, 2.5], [3.0, 3.25, 3.5, 3.75])
-      : _calypsoToms[random.nextDouble() < 0.7
-            ? bar % 2
-            : 2 + random.nextInt(2)];
-  for (final beat in high) {
-    hits.add(
-      DrumHit(drum: Drum.tomHigh, beat: beat, velocity: 0.5 * _human(random)),
-    );
+  // A rim click on the backbeat. Without it nothing said where 2 and 4
+  // were, and a groove made only of syncopation has nothing to be
+  // syncopated against.
+  for (final beat in _backbeats(beatsPerBar)) {
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.crossStick,
+          beat: beat.toDouble(),
+          velocity: 0.5 * _human(random),
+        ),
+      )
+      ..add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.28 * _human(random),
+        ),
+      );
   }
-  for (final beat in low) {
-    hits.add(
-      DrumHit(drum: Drum.tomLow, beat: beat, velocity: 0.55 * _human(random)),
-    );
+  // Toms only to turn a phrase around. They used to play a figure every
+  // bar, against the 3-3-2 rather than with it, and that was most of why
+  // this groove sounded like three grooves at once.
+  if (bar % 8 == 7 && random.nextDouble() < 0.7) {
+    final (high, low) = _calypsoToms[random.nextInt(_calypsoToms.length)];
+    for (final beat in high.where((beat) => beat < beatsPerBar)) {
+      hits.add(
+        DrumHit(drum: Drum.tomHigh, beat: beat, velocity: 0.5 * _human(random)),
+      );
+    }
+    for (final beat in low.where((beat) => beat < beatsPerBar)) {
+      hits.add(
+        DrumHit(drum: Drum.tomLow, beat: beat, velocity: 0.55 * _human(random)),
+      );
+    }
   }
   return hits;
 }
