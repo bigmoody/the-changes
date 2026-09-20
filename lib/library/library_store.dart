@@ -87,17 +87,25 @@ typedef Played = ({TuneRef tune, DateTime at});
 
 /// Favourites, recently played and setlists, saved on the device.
 class LibraryStore extends ChangeNotifier {
-  LibraryStore._(this._storage, this._favourites, this._played, this._setlists);
+  LibraryStore._(
+    this._storage,
+    this._favourites,
+    this._played,
+    this._setlists,
+    this._styles,
+  );
 
   /// Nothing saved anywhere, for tests.
   LibraryStore.inMemory({
     Set<TuneRef>? favourites,
     List<Played>? played,
     List<Setlist>? setlists,
+    Map<TuneRef, BandStyle>? styles,
   }) : _storage = MemoryStorage(),
        _favourites = {...?favourites},
        _played = [...?played],
-       _setlists = [...?setlists];
+       _setlists = [...?setlists],
+       _styles = {...?styles};
 
   /// How far back the recently-played list goes. Long enough to find last
   /// week's practice, short enough to still be a shortcut.
@@ -110,6 +118,7 @@ class LibraryStore extends ChangeNotifier {
     final favourites = <TuneRef>{};
     final played = <Played>[];
     final setlists = <Setlist>[];
+    final styles = <TuneRef, BandStyle>{};
     try {
       final text = await store.read();
       if (text != null) {
@@ -117,14 +126,35 @@ class LibraryStore extends ChangeNotifier {
         favourites.addAll(readFavourites(json));
         played.addAll(readPlayed(json));
         setlists.addAll(readSetlists(json));
+        styles.addAll(readStyles(json));
       }
     } catch (e) {
       debugPrint('Could not read the saved library: $e');
     }
-    return LibraryStore._(store, favourites, played, setlists);
+    return LibraryStore._(store, favourites, played, setlists, styles);
   }
 
-  // Reading the three lists is shared with restoring from a backup file.
+  // Reading what was saved is shared with restoring from a backup file.
+
+  /// How the player has chosen to have each tune played, where that isn't
+  /// the way it was written. Anything unreadable is dropped rather than
+  /// losing the rest of the library with it.
+  static Map<TuneRef, BandStyle> readStyles(Map<String, dynamic> json) {
+    final styles = <TuneRef, BandStyle>{};
+    for (final entry in (json['styles'] as Map? ?? const {}).entries) {
+      final parts = (entry.value as List).cast<String>();
+      final drums = Feel.values.where((f) => f.name == parts[0]);
+      final bass = BassStyle.values.where((b) => b.name == parts[1]);
+      final piano = PianoStyle.values.where((p) => p.name == parts[2]);
+      if (drums.isEmpty || bass.isEmpty || piano.isEmpty) continue;
+      styles[TuneRef(entry.key as String)] = BandStyle(
+        drums: drums.first,
+        bass: bass.first,
+        piano: piano.first,
+      );
+    }
+    return styles;
+  }
 
   static Iterable<TuneRef> readFavourites(Map<String, dynamic> json) => [
     for (final ref in json['favourites'] as List? ?? const [])
@@ -148,6 +178,9 @@ class LibraryStore extends ChangeNotifier {
   final Set<TuneRef> _favourites;
   final List<Played> _played;
   final List<Setlist> _setlists;
+
+  /// Tunes the player has chosen to have played another way, by [TuneRef].
+  final Map<TuneRef, BandStyle> _styles;
 
   Set<TuneRef> get favourites => {..._favourites};
 
@@ -268,6 +301,22 @@ class LibraryStore extends ChangeNotifier {
   }
 
   /// Everything, as it's saved — also what goes into a backup file.
+  /// How [ref] should be played, or null to play it as it was written.
+  BandStyle? styleFor(TuneRef ref) => _styles[ref];
+
+  /// Plays [ref] this way from now on. A null [style] puts it back to the
+  /// way the tune was written.
+  void setStyle(TuneRef ref, BandStyle? style) {
+    if (style == null) {
+      if (_styles.remove(ref) == null) return;
+    } else {
+      if (_styles[ref] == style) return;
+      _styles[ref] = style;
+    }
+    _write();
+    notifyListeners();
+  }
+
   Map<String, dynamic> toJson() => {
     'favourites': [for (final ref in _favourites) ref.value],
     'played': [
@@ -275,6 +324,14 @@ class LibraryStore extends ChangeNotifier {
         {'tune': entry.tune.value, 'at': entry.at.millisecondsSinceEpoch},
     ],
     'setlists': [for (final list in _setlists) list.toJson()],
+    'styles': {
+      for (final entry in _styles.entries)
+        entry.key.value: [
+          entry.value.drums.name,
+          entry.value.bass.name,
+          entry.value.piano.name,
+        ],
+    },
   };
 
   /// Replaces the lot with what's in [json] — restoring a backup.
@@ -288,6 +345,9 @@ class LibraryStore extends ChangeNotifier {
     _setlists
       ..clear()
       ..addAll(readSetlists(json));
+    _styles
+      ..clear()
+      ..addAll(readStyles(json));
     notifyListeners();
     await _write();
   }

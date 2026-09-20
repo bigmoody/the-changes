@@ -259,7 +259,9 @@ void showMixer(BuildContext context, PracticeController controller) {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            _TheBand(controller: controller),
+            const SizedBox(height: 8),
             // Who plays the chords, for every tune.
             Row(
               children: [
@@ -363,6 +365,148 @@ void showMixer(BuildContext context, PracticeController controller) {
       },
     ),
   );
+}
+
+/// How this tune is played: the groove, and what the bass and the chords
+/// do with it.
+///
+/// It lives in the mixer because that is where you go when the band isn't
+/// doing what you want. A standard is written with a feel, and this is
+/// where you disagree with it — the choice is kept with the tune, so it is
+/// still yours the next time you open it.
+class _TheBand extends StatelessWidget {
+  const _TheBand({required this.controller});
+
+  final PracticeController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = controller.style;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('The Band', style: theme.textTheme.titleSmall),
+            ),
+            if (controller.styleIsChosen)
+              TextButton(
+                key: const ValueKey('style-reset'),
+                onPressed: () => controller.setStyle(null),
+                child: const Text('As written'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final feel in Feel.values)
+              ChoiceChip(
+                key: ValueKey('groove-${feel.name}'),
+                visualDensity: VisualDensity.compact,
+                showCheckmark: false,
+                label: Text(feel.label),
+                selected: style == BandStyle.of(feel),
+                onSelected: (_) => controller.setStyle(BandStyle.of(feel)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        _BandPart<Feel>(
+          label: 'Drums',
+          value: style.drums,
+          options: Feel.values,
+          name: (feel) => feel.label,
+          onPick: (feel) => controller.setStyle(
+            BandStyle(drums: feel, bass: style.bass, piano: style.piano),
+          ),
+        ),
+        _BandPart<BassStyle>(
+          label: 'Bass',
+          value: style.bass,
+          options: BassStyle.values,
+          name: (bass) => bass.label,
+          onPick: (bass) => controller.setStyle(
+            BandStyle(drums: style.drums, bass: bass, piano: style.piano),
+          ),
+        ),
+        _BandPart<PianoStyle>(
+          label: 'Comping',
+          value: style.piano,
+          options: PianoStyle.values,
+          name: (piano) => piano.label,
+          onPick: (piano) => controller.setStyle(
+            BandStyle(drums: style.drums, bass: style.bass, piano: piano),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One of the three: a label, and what that part of the band is playing.
+class _BandPart<T> extends StatelessWidget {
+  const _BandPart({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.name,
+    required this.onPick,
+  });
+
+  final String label;
+  final T value;
+  final List<T> options;
+  final String Function(T) name;
+  final ValueChanged<T> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 82,
+            child: Text(label, style: theme.textTheme.bodyMedium),
+          ),
+          Expanded(
+            child: DropdownButtonFormField<T>(
+              key: ValueKey('band-$label'),
+              initialValue: value,
+              isDense: true,
+              // "Straight comping" is wider than the room beside its
+              // label; without this the button lays itself out at whatever
+              // the longest name wants and runs off the sheet.
+              isExpanded: true,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+              ),
+              items: [
+                for (final option in options)
+                  DropdownMenuItem(
+                    value: option,
+                    child: Text(name(option), overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (picked) {
+                if (picked != null) onPick(picked);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MixerChannel extends StatelessWidget {

@@ -8,6 +8,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/practice_player.dart';
+import 'package:play_along/library/library_store.dart';
+import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
@@ -128,6 +130,8 @@ void main() {
     });
   }
 
+  _theBandTests();
+
   testWidgets('the last control in Arrangement clears the Done button', (
     tester,
   ) async {
@@ -150,5 +154,65 @@ void main() {
     final window = tester.getRect(scroller);
     expect(export.bottom, lessThanOrEqualTo(window.bottom + 0.5));
     expect(export.top, greaterThanOrEqualTo(window.top - 0.5));
+  });
+}
+
+void _theBandTests() {
+  testWidgets('the mixer changes how a standard is played, and remembers', (
+    tester,
+  ) async {
+    final library = LibraryStore.inMemory();
+    tester.view
+      ..physicalSize = const Size(393, 852) * 3
+      ..devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final tune = standards.firstWhere((t) => t.title == 'All of Me');
+    Widget screen() => MaterialApp(
+      theme: appTheme(Brightness.light, fontFamily: 'Roboto'),
+      home: PracticeScreen(
+        tune: tune,
+        player: PracticePlayer(),
+        settings: AppSettings.inMemory(),
+        library: library,
+      ),
+    );
+    await tester.pumpWidget(screen());
+    await tester.pumpAndSettle();
+    expect(tune.style.drums, Feel.swing, reason: 'as written');
+
+    await tester.tap(find.byTooltip('Mixer'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('groove-samba')));
+    await tester.pumpAndSettle();
+    expect(library.styleFor(TuneRef.of(tune))?.drums, Feel.samba);
+
+    // Still a samba when the tune is opened again.
+    await tester.tap(find.byKey(const ValueKey('sheet-done')));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(screen());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Mixer'));
+    await tester.pumpAndSettle();
+    final chip = tester.widget<ChoiceChip>(
+      find.byKey(const ValueKey('groove-samba')),
+    );
+    expect(chip.selected, isTrue);
+
+    // And "As written" puts it back.
+    await tester.tap(find.byKey(const ValueKey('style-reset')));
+    await tester.pumpAndSettle();
+    expect(library.styleFor(TuneRef.of(tune)), isNull);
+  });
+
+  testWidgets('each part of the band can be set on its own', (tester) async {
+    tester.view
+      ..physicalSize = const Size(393, 852) * 3
+      ..devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await _open(tester, 'Mixer');
+    expect(find.byKey(const ValueKey('band-Drums')), findsOneWidget);
+    expect(find.byKey(const ValueKey('band-Bass')), findsOneWidget);
+    expect(find.byKey(const ValueKey('band-Comping')), findsOneWidget);
   });
 }

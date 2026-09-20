@@ -16,6 +16,7 @@ import '../audio/practice_player.dart';
 import '../audio/export_track.dart';
 import '../audio/take_recorder.dart';
 import '../audio/tuner_listener.dart';
+import '../library/library_store.dart';
 import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
 import '../music/loop_range.dart';
@@ -35,6 +36,8 @@ class PracticeController extends ChangeNotifier {
     required this.player,
     required this.settings,
     this.takes,
+    this.library,
+    TuneRef? ref,
     TakeRecorder? recorder,
     TunerListener? listener,
   }) : // A private field can't be a named parameter, so these are assigned
@@ -43,7 +46,11 @@ class PracticeController extends ChangeNotifier {
        _recorder = recorder,
        _madeListener = listener,
        originalTune = tune,
-       _tune = tune,
+       _ref = ref,
+       _style = ref == null ? null : library?.styleFor(ref),
+       _tune = tune.withStyle(
+         (ref == null ? null : library?.styleFor(ref)) ?? tune.style,
+       ),
        _chart = tune.transposed(settings.instrument.semitones),
        _loop = LoopRange.wholeTune(tune),
        _tempo = tune.defaultTempo {
@@ -56,6 +63,34 @@ class PracticeController extends ChangeNotifier {
 
   /// The tune in its written key.
   final Tune originalTune;
+
+  /// Where the player's choice of how to play this tune is kept, if the
+  /// screen was given one.
+  final LibraryStore? library;
+  final TuneRef? _ref;
+
+  /// The way the player has chosen to have it played, over the way it was
+  /// written. Null means as written.
+  BandStyle? _style;
+
+  /// How the band is playing it: the player's choice, or the tune's own.
+  BandStyle get style => _style ?? originalTune.style;
+
+  /// Whether that is something the player chose rather than how the tune
+  /// was written.
+  bool get styleIsChosen => _style != null;
+
+  /// Has the band play it another way, and remembers it for next time. A
+  /// null [style] puts it back to the way the tune was written.
+  void setStyle(BandStyle? style) {
+    if (style == _style) return;
+    _style = style;
+    final ref = _ref;
+    if (ref != null) library?.setStyle(ref, style);
+    _tune = originalTune.transposed(_semitones).withStyle(this.style);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
 
   /// The tune in the key currently chosen, at concert pitch. The band plays
   /// this.
@@ -236,7 +271,7 @@ class PracticeController extends ChangeNotifier {
     final normalised = semitones % 12;
     if (normalised == _semitones) return;
     _semitones = normalised;
-    _tune = originalTune.transposed(normalised);
+    _tune = originalTune.transposed(normalised).withStyle(style);
     _updateChart();
     _restartIfPlaying(delay: Duration.zero);
   }

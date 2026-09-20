@@ -353,6 +353,25 @@ class Tune {
   /// A copy of this tune [semitones] higher, with every chord respelled for
   /// the new key. The backing band plays whatever chords the tune holds, so
   /// the audio changes key too.
+  /// The same tune with the band playing it another way. What the player
+  /// chose in the mixer, over what the tune was written with.
+  Tune withStyle(BandStyle style) => style == this.style
+      ? this
+      : Tune._(
+          title: title,
+          composer: composer,
+          year: year,
+          key: key,
+          description: description,
+          feel: style.drums,
+          style: style,
+          defaultTempo: defaultTempo,
+          beatsPerBar: beatsPerBar,
+          sections: sections,
+          tags: tags,
+          bars: bars,
+        );
+
   Tune transposed(int semitones) {
     if (semitones % 12 == 0) return this;
     final transposition = _transpositionBy(semitones);

@@ -72,6 +72,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
     player: widget.player,
     settings: widget.settings,
     takes: widget.takes,
+    library: widget.library,
+    ref: _ref,
     listener: widget.listener,
   );
 
