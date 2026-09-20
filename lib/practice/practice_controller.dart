@@ -24,6 +24,7 @@ import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../settings/app_settings.dart';
 import 'play_check.dart';
+import 'practice_record.dart';
 import 'take_store.dart';
 
 /// Holds everything the practice screen shows and reacts to taps.
@@ -53,7 +54,14 @@ class PracticeController extends ChangeNotifier {
        ),
        _chart = tune.transposed(settings.instrument.semitones),
        _loop = LoopRange.wholeTune(tune),
-       _tempo = tune.defaultTempo {
+       // Where you left off, if you have been here before. The written
+       // tempo is what the tune is played at; this is what *you* play it
+       // at, which after a week of work is rarely the same number.
+       _tempo =
+           (ref == null
+               ? null
+               : tempoToOpenAt(library?.runsFor(ref) ?? const [])) ??
+           tune.defaultTempo {
     settings.addListener(_updateChart);
     _applyMix();
   }
@@ -898,6 +906,7 @@ class PracticeController extends ChangeNotifier {
       _lastCheck = marking.asked > 0 ? marking : null;
       _check = null;
     }
+    _noteRun(marking);
     unawaited(_stopListening());
     if (_takePath != null) unawaited(_saveTake());
     _isPlaying = false;
@@ -908,6 +917,54 @@ class PracticeController extends ChangeNotifier {
     _chorus = null;
     notifyListeners();
     await player.stop();
+  }
+
+  /// Every run at this tune, newest first: the practice record.
+  List<Run> get runs {
+    final ref = _ref;
+    if (ref == null) return const [];
+    return library?.runsFor(ref) ?? const [];
+  }
+
+  /// Forgets this tune's record. There is no undo, so the screen asks
+  /// first.
+  Future<void> clearRuns() async {
+    final ref = _ref;
+    if (ref == null) return;
+    await library?.clearRuns(ref);
+  }
+
+  /// The tempo the record says to try next, once a run has earned it, or
+  /// null. Read by the screen when it shows the score.
+  int? get nextTempo {
+    final ref = _ref;
+    if (ref == null) return null;
+    final next = readyToMoveUp(library?.runsFor(ref) ?? const [], at: _tempo);
+    return next == null || next > maxTempo ? null : next;
+  }
+
+  /// Keeps what has just been played: the tempo, and how it was marked.
+  ///
+  /// A false start isn't practice. Stopping before a bar has gone by is
+  /// someone changing their mind, so it isn't written down — but anything
+  /// longer is, marked or not, because the tempo alone is worth keeping.
+  void _noteRun(PlayCheck? marking) {
+    final ref = _ref;
+    final store = library;
+    final reached = _currentBeat;
+    if (ref == null || store == null) return;
+    if ((marking?.asked ?? 0) == 0 &&
+        (reached == null || reached < tune.beatsPerBar)) {
+      return;
+    }
+    unawaited(
+      store.noteRun(ref, (
+        at: DateTime.now(),
+        tempo: _tempo,
+        asked: marking?.asked ?? 0,
+        hits: marking?.hits ?? 0,
+      )),
+    );
   }
 
   void _restartIfPlaying({required Duration delay}) {

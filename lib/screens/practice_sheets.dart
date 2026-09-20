@@ -15,6 +15,7 @@ import '../music/chord_drill.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../practice/practice_controller.dart';
+import '../practice/practice_record.dart';
 import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
@@ -1026,4 +1027,184 @@ String _takeAbout(Take take) {
     if (take.semitones != 0) 'up ${take.semitones}',
     ?bars,
   ].join(' · ');
+}
+
+/// The practice record: what you have actually done at this tune.
+///
+/// The app was already working all of this out and throwing it away. Kept,
+/// it answers the only question that matters between sessions — am I
+/// getting anywhere, and what do I play next.
+void showPracticeRecord(BuildContext context, PracticeController controller) {
+  if (controller.library == null) return;
+  practiceSheet(
+    context,
+    (context) => ListenableBuilder(
+      listenable: Listenable.merge([controller.library, controller]),
+      builder: (context, _) {
+        final theme = Theme.of(context);
+        final quiet = theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        );
+        final runs = controller.runs;
+        final graded = runs.where((run) => run.isGraded).toList();
+        final best = bestCleanTempo(runs);
+        final next = controller.nextTempo;
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Practice Record', style: theme.textTheme.titleLarge),
+            Text(
+              'Every run at this tune, how fast, and how it went. The '
+              'marked ones are the runs the microphone was on for.',
+              style: quiet,
+            ),
+            const SizedBox(height: 12),
+            if (runs.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'Nothing yet. Play the tune and it starts keeping count; '
+                  'switch the microphone on and it marks the changes too.',
+                  key: const ValueKey('record-empty'),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              )
+            else ...[
+              // What to do next, which is the whole point of keeping it.
+              if (next != null)
+                Card(
+                  key: const ValueKey('record-move-up'),
+                  color: theme.colorScheme.tertiaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '$runsToMoveUp clean runs at ${controller.tempo}. '
+                            'Time to try $next.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onTertiaryContainer,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton(
+                          key: const ValueKey('record-take-it-up'),
+                          onPressed: () {
+                            controller.setTempo(next);
+                            Navigator.of(context).pop();
+                          },
+                          child: Text('$next'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              _RecordLine(
+                'Last played',
+                howLongAgo(runs.first.at),
+                key: const ValueKey('record-last'),
+              ),
+              _RecordLine('Runs', '${runs.length}'),
+              if (best != null)
+                _RecordLine(
+                  'Best clean tempo',
+                  '$best BPM',
+                  key: const ValueKey('record-best'),
+                ),
+              if (graded.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('By Tempo', style: theme.textTheme.titleSmall),
+                Text(
+                  'Only the marked runs: a run nobody was listening to is '
+                  'not a verdict on anything.',
+                  style: quiet,
+                ),
+                const SizedBox(height: 6),
+                for (final row in byTempo(runs))
+                  _RecordLine(
+                    '${row.tempo} BPM',
+                    '${row.clean} of ${row.runs} clean',
+                  ),
+              ],
+              const SizedBox(height: 16),
+              Text('Lately', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 6),
+              for (final run in runs.take(8))
+                _RecordLine(
+                  '${howLongAgo(run.at)} · ${run.tempo} BPM',
+                  run.asked == 0
+                      ? 'not marked'
+                      : '${run.hits} of ${run.asked}'
+                            '${run.isClean ? ' ✓' : ''}',
+                ),
+              const SizedBox(height: 12),
+              TextButton(
+                key: const ValueKey('record-clear'),
+                onPressed: () async {
+                  final sheet = Navigator.of(context);
+                  final sure = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Forget This Record?'),
+                      content: const Text(
+                        'Every run at this tune goes, and it cannot be got '
+                        'back. The tune itself is untouched.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Keep It'),
+                        ),
+                        FilledButton(
+                          key: const ValueKey('record-clear-confirm'),
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Forget It'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (sure ?? false) {
+                    await controller.clearRuns();
+                    sheet.pop();
+                  }
+                },
+                child: const Text('Forget This Record'),
+              ),
+            ],
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// One line of the record: what it is on the left, the number on the right.
+class _RecordLine extends StatelessWidget {
+  const _RecordLine(this.label, this.value, {super.key});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -13,6 +13,7 @@ import '../music/tune.dart';
 import '../music/user_progression.dart';
 import '../practice/play_check.dart';
 import '../practice/practice_controller.dart';
+import '../practice/practice_record.dart';
 import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
@@ -118,6 +119,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
     if (identical(result, _scored)) return;
     _scored = result;
     final target = _controller.settings.aimFor;
+    // The run has been written down by now, so the record can already say
+    // whether this one earned the next four beats a minute.
+    final next = _controller.nextTempo;
+    final at = _controller.tempo;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -127,8 +132,15 @@ class _PracticeScreenState extends State<PracticeScreen> {
           content: Text(
             'You found the ${target?.label ?? 'note'} on '
             '${result.hits} of ${result.asked} '
-            '${result.asked == 1 ? 'change' : 'changes'}.',
+            '${result.asked == 1 ? 'change' : 'changes'}.'
+            '${next == null ? '' : " That's $runsToMoveUp clean at $at."}',
           ),
+          action: next == null
+              ? null
+              : SnackBarAction(
+                  label: 'Try $next',
+                  onPressed: () => _controller.setTempo(next),
+                ),
         ),
       );
     });
@@ -230,6 +242,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   builder: (_) => StageScreen(controller: _controller),
                 ),
               ),
+              onRecord: () => showPracticeRecord(context, _controller),
             ),
           ],
         ),
@@ -434,6 +447,7 @@ class _MoreMenu extends StatelessWidget {
     required this.title,
     required this.onShare,
     required this.onStage,
+    required this.onRecord,
   });
 
   final LibraryStore? library;
@@ -443,6 +457,9 @@ class _MoreMenu extends StatelessWidget {
 
   /// Opens the stage: the chart and nothing else.
   final VoidCallback onStage;
+
+  /// Opens the practice record for this tune.
+  final VoidCallback onRecord;
 
   @override
   Widget build(BuildContext context) {
@@ -467,6 +484,8 @@ class _MoreMenu extends StatelessWidget {
               library?.toggleFavourite(tune);
             case 'setlist':
               showAddToSetlist(context, library!, tune, title);
+            case 'record':
+              onRecord();
             case 'share':
               onShare();
             case 'stage':
@@ -497,6 +516,14 @@ class _MoreMenu extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.list_alt_outlined),
                 title: Text('Add To Setlist'),
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'record',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.trending_up),
+                title: Text('Practice Record'),
               ),
             ),
           ],

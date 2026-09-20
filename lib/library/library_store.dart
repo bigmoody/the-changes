@@ -18,6 +18,7 @@ import 'package:flutter/foundation.dart';
 
 import '../music/tune.dart';
 import '../music/user_progression.dart';
+import '../practice/practice_record.dart';
 import '../settings/progression_store.dart'
     show TextStorage, MemoryStorage, preferencesStorage;
 
@@ -93,6 +94,7 @@ class LibraryStore extends ChangeNotifier {
     this._played,
     this._setlists,
     this._styles,
+    this._runs,
   );
 
   /// Nothing saved anywhere, for tests.
@@ -101,11 +103,13 @@ class LibraryStore extends ChangeNotifier {
     List<Played>? played,
     List<Setlist>? setlists,
     Map<TuneRef, BandStyle>? styles,
+    Map<TuneRef, List<Run>>? runs,
   }) : _storage = MemoryStorage(),
        _favourites = {...?favourites},
        _played = [...?played],
        _setlists = [...?setlists],
-       _styles = {...?styles};
+       _styles = {...?styles},
+       _runs = {...?runs};
 
   /// How far back the recently-played list goes. Long enough to find last
   /// week's practice, short enough to still be a shortcut.
@@ -119,6 +123,7 @@ class LibraryStore extends ChangeNotifier {
     final played = <Played>[];
     final setlists = <Setlist>[];
     final styles = <TuneRef, BandStyle>{};
+    final runs = <TuneRef, List<Run>>{};
     try {
       final text = await store.read();
       if (text != null) {
@@ -127,11 +132,12 @@ class LibraryStore extends ChangeNotifier {
         played.addAll(readPlayed(json));
         setlists.addAll(readSetlists(json));
         styles.addAll(readStyles(json));
+        runs.addAll(readRuns(json));
       }
     } catch (e) {
       debugPrint('Could not read the saved library: $e');
     }
-    return LibraryStore._(store, favourites, played, setlists, styles);
+    return LibraryStore._(store, favourites, played, setlists, styles, runs);
   }
 
   // Reading what was saved is shared with restoring from a backup file.
@@ -154,6 +160,29 @@ class LibraryStore extends ChangeNotifier {
       );
     }
     return styles;
+  }
+
+  /// Every run at every tune. Written as bare lists rather than named
+  /// fields because there are a great many of them and they are all the
+  /// same shape. Anything that doesn't read is dropped: a practice record
+  /// is not worth losing the rest of the library over.
+  static Map<TuneRef, List<Run>> readRuns(Map<String, dynamic> json) {
+    final runs = <TuneRef, List<Run>>{};
+    for (final entry in (json['runs'] as Map? ?? const {}).entries) {
+      final forTune = <Run>[];
+      for (final run in entry.value as List? ?? const []) {
+        final parts = (run as List).cast<num>();
+        if (parts.length < 4) continue;
+        forTune.add((
+          at: DateTime.fromMillisecondsSinceEpoch(parts[0].toInt()),
+          tempo: parts[1].toInt(),
+          asked: parts[2].toInt(),
+          hits: parts[3].toInt(),
+        ));
+      }
+      if (forTune.isNotEmpty) runs[TuneRef(entry.key as String)] = forTune;
+    }
+    return runs;
   }
 
   static Iterable<TuneRef> readFavourites(Map<String, dynamic> json) => [
@@ -181,6 +210,9 @@ class LibraryStore extends ChangeNotifier {
 
   /// Tunes the player has chosen to have played another way, by [TuneRef].
   final Map<TuneRef, BandStyle> _styles;
+
+  /// Every run at each tune, newest first: the practice record.
+  final Map<TuneRef, List<Run>> _runs;
 
   Set<TuneRef> get favourites => {..._favourites};
 
@@ -216,6 +248,27 @@ class LibraryStore extends ChangeNotifier {
     if (_played.length > remembers) {
       _played.removeRange(remembers, _played.length);
     }
+    notifyListeners();
+    await _write();
+  }
+
+  /// Every run at [tune], newest first.
+  List<Run> runsFor(TuneRef tune) => [...?_runs[tune]];
+
+  /// Notes a run at [tune]: how fast it was and how it was marked.
+  ///
+  /// A run nobody could learn anything from isn't kept — you start the
+  /// band, change your mind and stop, and that is not practice. With the
+  /// microphone off there is nothing to judge that by, so the test is
+  /// simply whether anything was marked or the tune was left running.
+  Future<void> noteRun(TuneRef tune, Run run) async {
+    _runs[tune] = withRun(runsFor(tune), run);
+    notifyListeners();
+    await _write();
+  }
+
+  Future<void> clearRuns(TuneRef tune) async {
+    if (_runs.remove(tune) == null) return;
     notifyListeners();
     await _write();
   }
@@ -324,6 +377,13 @@ class LibraryStore extends ChangeNotifier {
         {'tune': entry.tune.value, 'at': entry.at.millisecondsSinceEpoch},
     ],
     'setlists': [for (final list in _setlists) list.toJson()],
+    'runs': {
+      for (final entry in _runs.entries)
+        entry.key.value: [
+          for (final run in entry.value)
+            [run.at.millisecondsSinceEpoch, run.tempo, run.asked, run.hits],
+        ],
+    },
     'styles': {
       for (final entry in _styles.entries)
         entry.key.value: [
