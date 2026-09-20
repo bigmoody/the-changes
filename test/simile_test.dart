@@ -77,13 +77,31 @@ void main() {
       expect(_firstRow('| C | C C | C | C |'), [false, false, false, true]);
     });
 
-    test('the run carries on over the end of a row, as iReal Pro does', () {
+    test('every row opens with the chord written out', () {
       final tune = _standard('So What');
-      // Eight bars of Dm7 laid out four to a row: the chord is written
-      // once and everything after it, on both rows, is marked.
+      // Eight bars of Dm7 laid out four to a row. A mark says "the same as
+      // the box to my left", and the first box of a row hasn't got one —
+      // you would have to look back to the end of the row above, which is
+      // slower than reading the chord.
       expect(_marks(tune, 0), [false, true, true, true]);
-      expect(_marks(tune, 1), [true, true, true, true]);
-      expect(_rows(tune)[1], isNot(contains('Dm7')));
+      expect(_marks(tune, 1), [false, true, true, true]);
+      expect(_rows(tune)[1], contains('Dm7'));
+    });
+
+    test('a new phrase says what it is, even after the same chord', () {
+      // The complaint: bar 5 came up as a repeat because bar 4 happened to
+      // be the same chord, which hid where the second four bars began.
+      final tune = Tune.fromChart(
+        title: 'Turnaround',
+        key: 'C',
+        defaultTempo: 120,
+        chart:
+            '| C6 | Em7b5 A7 | Dm7 G7 | C6 |'
+            '| C6 | Em7b5 A7 | Dm7 G7 | C6 |',
+      );
+      final marks = similesFor(tune, layOutChart(tune, 4));
+      expect(marks[0], [false, false, false, false]);
+      expect(marks[1].first, isFalse, reason: 'bar 5 is written out');
     });
 
     test('a section still says what it is, however long the run', () {

@@ -231,9 +231,14 @@ List<List<bool>> similesFor(Tune tune, List<ChartLine> lines) {
       // A gap, where a 2nd ending sits under a 1st: nothing is written.
       if (cell == null) continue;
       final chords = _barText(tune, cell.bars.first);
-      final startsSection = line.startsSection && col == 0;
+      // Never at the start of a line. A repeat mark says "the same as the
+      // box to my left", and at the start of a row there is no box to the
+      // left — you have to look back to the end of the row above, which is
+      // slower than simply reading the chord. It is also where a phrase
+      // usually begins, and a phrase that opens on a repeat sign hides the
+      // shape of the tune.
       marks[row][col] =
-          !startsSection &&
+          col > 0 &&
           before != null &&
           chords == before &&
           cell.ending == beforeEnding;
