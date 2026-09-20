@@ -1,0 +1,23 @@
+# Three tests render the backing for all two hundred standards: two with
+# the recorded instruments, one with the synth. They are what catches a
+# whole instrument going silent across the book, and they are worth having —
+# but between them they were three quarters of the suite's four minutes,
+# which is long enough that you stop running it after every change.
+#
+# So they are skipped by default, and tagged "sweep" so they can be picked
+# out on their own:
+#
+#     flutter test                             the rest, in about half a minute
+#     flutter test --run-skipped               all of it, four minutes
+#     flutter test --tags sweep --run-skipped  just the three sweeps
+#
+# Skipped rather than excluded, for two reasons. Every run prints how many
+# were skipped, so nothing is quietly going untested. And a tag excluded in
+# this file could never be run again: an exclude_tags here is OR'd with the
+# one you type, so --tags sweep would match nothing at all.
+#
+# What has gone from the everyday run is rendering every tune in the book,
+# not rendering — the audio tests that render one tune still run every time.
+
+tags:
+  sweep:

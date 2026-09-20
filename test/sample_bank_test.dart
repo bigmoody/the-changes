@@ -146,6 +146,8 @@ void main() {
         }
       }
     },
+    tags: 'sweep',
+    skip: 'the whole book; run it with --run-skipped',
   );
 
   test('guitar grips never need more than a semitone of pitch shift', () async {
@@ -176,7 +178,7 @@ void main() {
         reason: '${tune.title}: the guitar is silent',
       );
     }
-  });
+  }, tags: 'sweep', skip: 'the whole book; run it with --run-skipped');
 
   test(
     'the guitar has one even tone: no take far brighter than the rest',

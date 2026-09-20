@@ -72,9 +72,12 @@ void main() {
     expect(aTrain.bars[2].single.chord.display, 'D7♯11');
   });
 
-  test('standards are sorted by title and every tune renders', () {
+  test('standards are sorted by title', () {
     final titles = standards.map((t) => t.title).toList();
     expect(titles, [...titles]..sort());
+  });
+
+  test('every tune renders', () {
     for (final tune in byTitle.values) {
       final backing = renderBacking(
         BackingRequest(
@@ -86,7 +89,7 @@ void main() {
       );
       expect(backing.stems, hasLength(3), reason: tune.title);
     }
-  });
+  }, tags: 'sweep', skip: 'the whole book; run it with --run-skipped');
 
   test('every standard appears once, the first seventy-two among them', () {
     final titles = standards.map((t) => t.title).toList();
