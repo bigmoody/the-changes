@@ -54,8 +54,8 @@ class LearnPage extends StatelessWidget {
             icon: Icons.av_timer,
             title: 'Metronome',
             subtitle:
-                'Any tempo and time signature, with the beat divided '
-                'as you like it',
+                'Any tempo and time signature — and it can click on 2 and '
+                '4, or drop out and leave the time to you',
             onTap: () =>
                 open(MetronomeScreen(player: player, settings: settings)),
           ),

@@ -111,6 +111,8 @@ class AppSettings extends ChangeNotifier {
     this._metronomeTempo,
     this._metronomeBeats,
     this._metronomeSubdivision,
+    this._metronomeClickOn,
+    this._metronomeDropout,
     this._takesWithBand,
     this._chordAid,
   );
@@ -129,6 +131,8 @@ class AppSettings extends ChangeNotifier {
        _metronomeTempo = 120,
        _metronomeBeats = 4,
        _metronomeSubdivision = Subdivision.quarters,
+       _metronomeClickOn = ClickOn.everyBeat,
+       _metronomeDropout = Dropout.none,
        _takesWithBand = true;
 
   static const _instrumentKey = 'chartInstrument';
@@ -142,6 +146,8 @@ class AppSettings extends ChangeNotifier {
   static const _metronomeTempoKey = 'metronomeTempo';
   static const _metronomeBeatsKey = 'metronomeBeats';
   static const _metronomeClickKey = 'metronomeClick';
+  static const _metronomeClickOnKey = 'metronomeClickOn';
+  static const _metronomeDropoutKey = 'metronomeDropout';
   static const _chordAidKey = 'chordAid';
 
   /// Reads saved settings. Falls back to defaults if storage is unavailable.
@@ -158,6 +164,8 @@ class AppSettings extends ChangeNotifier {
     var metronomeTempo = 120;
     var metronomeBeats = 4;
     var metronomeSubdivision = Subdivision.quarters;
+    var metronomeClickOn = ClickOn.everyBeat;
+    var metronomeDropout = Dropout.none;
     var chordAid = ChordAid.off;
     try {
       final savedAid = await storage.getString(_chordAidKey);
@@ -171,6 +179,16 @@ class AppSettings extends ChangeNotifier {
       metronomeSubdivision = Subdivision.values.firstWhere(
         (value) => value.name == savedClick,
         orElse: () => Subdivision.quarters,
+      );
+      final savedClickOn = await storage.getString(_metronomeClickOnKey);
+      metronomeClickOn = ClickOn.values.firstWhere(
+        (value) => value.name == savedClickOn,
+        orElse: () => ClickOn.everyBeat,
+      );
+      final savedDropout = await storage.getString(_metronomeDropoutKey);
+      metronomeDropout = Dropout.values.firstWhere(
+        (value) => value.name == savedDropout,
+        orElse: () => Dropout.none,
       );
       final savedStart = await storage.getString(_arpeggioStartKey);
       arpeggioStart = ArpeggioStart.values.firstWhere(
@@ -218,6 +236,8 @@ class AppSettings extends ChangeNotifier {
       metronomeTempo,
       metronomeBeats,
       metronomeSubdivision,
+      metronomeClickOn,
+      metronomeDropout,
       takesWithBand,
       chordAid,
     );
@@ -317,24 +337,38 @@ class AppSettings extends ChangeNotifier {
   Subdivision get metronomeSubdivision => _metronomeSubdivision;
   Subdivision _metronomeSubdivision;
 
+  /// Which beats of the bar it clicks on, and how much of it goes away.
+  ClickOn get metronomeClickOn => _metronomeClickOn;
+  ClickOn _metronomeClickOn;
+  Dropout get metronomeDropout => _metronomeDropout;
+  Dropout _metronomeDropout;
+
   Future<void> setMetronome({
     required int tempo,
     required int beats,
     required Subdivision subdivision,
+    ClickOn clickOn = ClickOn.everyBeat,
+    Dropout dropout = Dropout.none,
   }) async {
     if (tempo == _metronomeTempo &&
         beats == _metronomeBeats &&
-        subdivision == _metronomeSubdivision) {
+        subdivision == _metronomeSubdivision &&
+        clickOn == _metronomeClickOn &&
+        dropout == _metronomeDropout) {
       return;
     }
     _metronomeTempo = tempo;
     _metronomeBeats = beats;
     _metronomeSubdivision = subdivision;
+    _metronomeClickOn = clickOn;
+    _metronomeDropout = dropout;
     notifyListeners();
     try {
       await _storage?.setInt(_metronomeTempoKey, tempo);
       await _storage?.setInt(_metronomeBeatsKey, beats);
       await _storage?.setString(_metronomeClickKey, subdivision.name);
+      await _storage?.setString(_metronomeClickOnKey, clickOn.name);
+      await _storage?.setString(_metronomeDropoutKey, dropout.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

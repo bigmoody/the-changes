@@ -1035,15 +1035,67 @@ enum Subdivision {
   };
 }
 
-/// One bar of metronome clicks, to play on a loop: [beatsPerBar] beats at
-/// [tempo], the first accented, each beat divided by [subdivision].
+/// Which beats of the bar the metronome clicks on.
+enum ClickOn {
+  everyBeat('Every Beat'),
+  backbeat('2 And 4');
+
+  const ClickOn(this.label);
+  final String label;
+
+  /// Whether a click falls on [beat] of the bar, counted from nought.
+  bool sounds(int beat) => switch (this) {
+    everyBeat => true,
+    // 2 and 4 of a bar of four; the even-numbered beats of any bar.
+    backbeat => beat.isOdd,
+  };
+
+  /// Whether this makes sense in a bar of [beatsPerBar] beats. There is no
+  /// 4 in a bar of three, so the backbeat is only offered in even time.
+  bool suits(int beatsPerBar) => this == everyBeat || beatsPerBar.isEven;
+}
+
+/// How much of the click is taken away, as bars on and bars off.
 ///
-/// The bar is a whole number of samples long, so looping it keeps time
-/// exactly however long it runs.
-Uint8List metronomeBar({
+/// The click returns exactly where it would have been, so the gap marks
+/// itself: if it comes back where you expected, your time held. Easiest
+/// first — one bar missing in four is a stumble you can recover from; four
+/// bars off and nothing is holding you up but you.
+enum Dropout {
+  none('Off', on: 1, off: 0),
+  oneInFour('3 On, 1 Off', on: 3, off: 1),
+  everyOther('1 On, 1 Off', on: 1, off: 1),
+  twoInFour('2 On, 2 Off', on: 2, off: 2),
+  fourInEight('4 On, 4 Off', on: 4, off: 4);
+
+  const Dropout(this.label, {required this.on, required this.off});
+
+  final String label;
+
+  /// Bars of clicking, then bars of silence.
+  final int on;
+  final int off;
+
+  /// How long the whole pattern is, in bars.
+  int get bars => on + off;
+
+  /// Whether [bar] of the loop clicks at all.
+  bool sounds(int bar) => bar % bars < on;
+}
+
+/// Metronome clicks to play on a loop: [beatsPerBar] beats at [tempo], the
+/// first of each bar accented, each beat divided by [subdivision], clicking
+/// on the beats [clickOn] asks for and only in the bars [dropout] leaves in.
+///
+/// It is a whole number of samples long, so looping it keeps time exactly
+/// however long it runs — which is what makes the silent bars worth
+/// anything: the click comes back in the right place or not at all.
+Uint8List metronomeLoop({
   required int tempo,
   required int beatsPerBar,
   Subdivision subdivision = Subdivision.quarters,
+  ClickOn clickOn = ClickOn.everyBeat,
+  Dropout dropout = Dropout.none,
   bool accentFirst = true,
   int sampleRate = 44100,
 }) {
@@ -1051,27 +1103,31 @@ Uint8List metronomeBar({
   final mix = _Mix(
     sampleRate: sampleRate,
     loopStart: 0,
-    length: samplesPerBeat * beatsPerBar,
+    length: samplesPerBeat * beatsPerBar * dropout.bars,
   );
-  for (var beat = 0; beat < beatsPerBar; beat++) {
-    for (final offset in subdivision.offsets) {
-      final accent = beat == 0 && offset == 0 && accentFirst;
-      final onBeat = offset == 0;
-      mix.tone(
-        ((beat + offset) * samplesPerBeat).round(),
-        accent
-            ? 2093 // C7: the bar's own click
-            : onBeat
-            ? 1568 // G6
-            : 1175, // D6, for the notes in between
-        0.05,
-        accent
-            ? 0.5
-            : onBeat
-            ? 0.34
-            : 0.16,
-        decay: 0.03,
-      );
+  for (var bar = 0; bar < dropout.bars; bar++) {
+    if (!dropout.sounds(bar)) continue;
+    for (var beat = 0; beat < beatsPerBar; beat++) {
+      if (!clickOn.sounds(beat)) continue;
+      for (final offset in subdivision.offsets) {
+        final accent = beat == 0 && offset == 0 && accentFirst;
+        final onBeat = offset == 0;
+        mix.tone(
+          ((bar * beatsPerBar + beat + offset) * samplesPerBeat).round(),
+          accent
+              ? 2093 // C7: the bar's own click
+              : onBeat
+              ? 1568 // G6
+              : 1175, // D6, for the notes in between
+          0.05,
+          accent
+              ? 0.5
+              : onBeat
+              ? 0.34
+              : 0.16,
+          decay: 0.03,
+        );
+      }
     }
   }
   return _encodeWav(mix.buffer, sampleRate, 1);

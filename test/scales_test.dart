@@ -180,6 +180,10 @@ void main() {
     );
     // The Learn page has grown; scroll it into view before tapping.
     await tester.scrollUntilVisible(find.text('Scales & Modes'), 100);
+    // Built is not the same as on screen: it can stop with the card still
+    // under the bottom edge, and a tap there lands on nothing.
+    await tester.ensureVisible(find.text('Scales & Modes'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Scales & Modes'));
     await tester.pumpAndSettle();
     expect(find.byType(ScalesReferenceScreen), findsOneWidget);
