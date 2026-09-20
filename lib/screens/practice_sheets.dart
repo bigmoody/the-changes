@@ -14,6 +14,7 @@ import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
+import '../practice/hiding_the_chart.dart';
 import '../practice/practice_controller.dart';
 import '../practice/practice_record.dart';
 import '../practice/take_store.dart';
@@ -108,6 +109,35 @@ Future<void> showViewOptions(
                   ),
               ],
             ),
+            heading('Hide The Chart'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final fade in FadeChart.values)
+                  ChoiceChip(
+                    key: ValueKey('fade-${fade.name}'),
+                    label: Text(fade.label),
+                    selected: settings.fadeChart == fade,
+                    onSelected: (_) => settings.setFadeChart(fade),
+                  ),
+              ],
+            ),
+            if (settings.fadeChart.isOn)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'While the band plays on, the chart goes a rung at a '
+                  'time: the chords first, then the bars as well. Keeping '
+                  'your place with nothing to look at is a different skill '
+                  'from knowing the changes, and it is the one that comes '
+                  'apart first. It all comes back when you stop — and you '
+                  'can ask for it back sooner, which is not cheating.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             heading('Aim For'),
             Wrap(
               spacing: 8,

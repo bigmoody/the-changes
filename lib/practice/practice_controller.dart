@@ -23,6 +23,7 @@ import '../music/loop_range.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../settings/app_settings.dart';
+import 'hiding_the_chart.dart';
 import 'play_check.dart';
 import 'practice_record.dart';
 import 'take_store.dart';
@@ -907,6 +908,9 @@ class PracticeController extends ChangeNotifier {
       _check = null;
     }
     _noteRun(marking);
+    // The chart comes back the moment the band stops: this is an exercise,
+    // not a punishment, and the next run has to be set up.
+    _gaveIn = false;
     unawaited(_stopListening());
     if (_takePath != null) unawaited(_saveTake());
     _isPlaying = false;
@@ -917,6 +921,29 @@ class PracticeController extends ChangeNotifier {
     _chorus = null;
     notifyListeners();
     await player.stop();
+  }
+
+  /// How much of the chart is showing: the whole thing, the bars without
+  /// their chords, or nothing at all.
+  ///
+  /// Reading is a crutch, so it goes a rung at a time while the band plays
+  /// on. Giving in puts it back for the rest of the run, and stopping puts
+  /// it back for good — you have to be able to set up the next one.
+  ChartShows get chartShows =>
+      _gaveIn ? ChartShows.everything : settings.fadeChart.showsOn(chorus);
+
+  /// Whether the chart is being taken away on this run at all, which is
+  /// what the screen needs to know to offer a way back to it.
+  bool get chartIsFading => settings.fadeChart.isOn && isPlaying && !_gaveIn;
+
+  bool _gaveIn = false;
+
+  /// Puts the chart back for the rest of this run. No shame in it: being
+  /// lost with no way out is not an exercise, it is just being lost.
+  void showTheChart() {
+    if (_gaveIn) return;
+    _gaveIn = true;
+    notifyListeners();
   }
 
   /// Every run at this tune, newest first: the practice record.

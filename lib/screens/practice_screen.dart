@@ -12,6 +12,7 @@ import '../music/guitar_voicing.dart';
 import '../music/tune.dart';
 import '../music/user_progression.dart';
 import '../practice/play_check.dart';
+import '../practice/hiding_the_chart.dart';
 import '../practice/practice_controller.dart';
 import '../practice/practice_record.dart';
 import '../practice/take_store.dart';
@@ -252,6 +253,31 @@ class _PracticeScreenState extends State<PracticeScreen> {
   }
 }
 
+/// Where the chart was, at the last rung: paper, and a way back.
+class _BlankPaper extends StatelessWidget {
+  const _BlankPaper({required this.controller});
+
+  final PracticeController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      key: const ValueKey('blank-paper'),
+      behavior: HitTestBehavior.opaque,
+      onTap: controller.showTheChart,
+      child: Center(
+        child: Text(
+          'Tap for the chart',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// The tune's name across the top, as large as it will go.
 ///
 /// It used to shrink to whatever fitted on one line, with no floor — and
@@ -375,10 +401,17 @@ class _Reading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // At the last rung there is no chart at all: blank paper, which a tap
+    // anywhere on brings back. A big target, because someone reaching for
+    // it has already lost their place and doesn't want to hunt.
+    final gone = controller.chartShows == ChartShows.nothing;
     final chart = Stack(
       key: const ValueKey('chart'),
       children: [
-        ChordChart(controller: controller),
+        if (gone)
+          _BlankPaper(controller: controller)
+        else
+          ChordChart(controller: controller),
         if (controller.countInBeat != null)
           CountInBubble(beat: controller.countInBeat!),
       ],

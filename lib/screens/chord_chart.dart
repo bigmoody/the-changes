@@ -513,6 +513,10 @@ class _BarCell extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final tune = controller.chart;
     final loop = controller.loop;
+    // Mid-run the chart can be down to its bars: the box, the number and
+    // the letter stay, so you can see where you are, and what is in it is
+    // yours to remember.
+    final blank = !controller.chartShows.hasChords;
     final barIndex = cell.bars.first;
     final slots = tune.bars[barIndex];
     final inLoop = cell.bars.any((bar) => loop.overlapsBar(tune, bar));
@@ -557,8 +561,10 @@ class _BarCell extends StatelessWidget {
               : cell.bars.length > 1
               ? 'Bars'
               : 'Bar'} '
-          '${cell.bars.map((b) => b + 1).join(' and ')}: '
-          '${slots.map((s) => s.chord.display).join(', ')}',
+          '${cell.bars.map((b) => b + 1).join(' and ')}'
+          // Read aloud it would give away exactly what the exercise is
+          // taking off the screen.
+          '${blank ? '' : ': ${slots.map((s) => s.chord.display).join(', ')}'}',
       child: Opacity(
         opacity: inLoop ? 1 : 0.35,
         // Paper, ruled off like a lead sheet's bars; the bar that's playing
@@ -629,7 +635,9 @@ class _BarCell extends StatelessWidget {
                     left: showNumber ? 6 + numberWidth : 4,
                     right: 4,
                   ),
-                  child: simile
+                  child: blank
+                      ? const SizedBox.shrink()
+                      : simile
                       // The same as the bar before it: written once and
                       // then marked, the way it's written by hand.
                       ? Center(

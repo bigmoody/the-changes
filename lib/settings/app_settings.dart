@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../music/chord.dart';
 import '../audio/arpeggios.dart';
 import '../music/chord_drill.dart';
+import '../practice/hiding_the_chart.dart';
 import '../music/tune.dart';
 import '../audio/backing_synth.dart';
 
@@ -113,6 +114,7 @@ class AppSettings extends ChangeNotifier {
     this._metronomeSubdivision,
     this._metronomeClickOn,
     this._metronomeDropout,
+    this._fadeChart,
     this._takesWithBand,
     this._chordAid,
   );
@@ -133,6 +135,7 @@ class AppSettings extends ChangeNotifier {
        _metronomeSubdivision = Subdivision.quarters,
        _metronomeClickOn = ClickOn.everyBeat,
        _metronomeDropout = Dropout.none,
+       _fadeChart = FadeChart.never,
        _takesWithBand = true;
 
   static const _instrumentKey = 'chartInstrument';
@@ -149,6 +152,7 @@ class AppSettings extends ChangeNotifier {
   static const _metronomeClickOnKey = 'metronomeClickOn';
   static const _metronomeDropoutKey = 'metronomeDropout';
   static const _chordAidKey = 'chordAid';
+  static const _fadeChartKey = 'fadeChart';
 
   /// Reads saved settings. Falls back to defaults if storage is unavailable.
   static Future<AppSettings> load() async {
@@ -167,6 +171,7 @@ class AppSettings extends ChangeNotifier {
     var metronomeClickOn = ClickOn.everyBeat;
     var metronomeDropout = Dropout.none;
     var chordAid = ChordAid.off;
+    var fadeChart = FadeChart.never;
     try {
       final savedAid = await storage.getString(_chordAidKey);
       chordAid = ChordAid.values.firstWhere(
@@ -189,6 +194,11 @@ class AppSettings extends ChangeNotifier {
       metronomeDropout = Dropout.values.firstWhere(
         (value) => value.name == savedDropout,
         orElse: () => Dropout.none,
+      );
+      final savedFade = await storage.getString(_fadeChartKey);
+      fadeChart = FadeChart.values.firstWhere(
+        (value) => value.name == savedFade,
+        orElse: () => FadeChart.never,
       );
       final savedStart = await storage.getString(_arpeggioStartKey);
       arpeggioStart = ArpeggioStart.values.firstWhere(
@@ -238,6 +248,7 @@ class AppSettings extends ChangeNotifier {
       metronomeSubdivision,
       metronomeClickOn,
       metronomeDropout,
+      fadeChart,
       takesWithBand,
       chordAid,
     );
@@ -369,6 +380,21 @@ class AppSettings extends ChangeNotifier {
       await _storage?.setString(_metronomeClickKey, subdivision.name);
       await _storage?.setString(_metronomeClickOnKey, clickOn.name);
       await _storage?.setString(_metronomeDropoutKey, dropout.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// When the chart goes away while the band keeps playing.
+  FadeChart get fadeChart => _fadeChart;
+  FadeChart _fadeChart;
+
+  Future<void> setFadeChart(FadeChart value) async {
+    if (value == _fadeChart) return;
+    _fadeChart = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_fadeChartKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

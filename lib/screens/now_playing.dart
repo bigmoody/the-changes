@@ -53,6 +53,15 @@ class NowPlaying extends StatelessWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
 
+    // With the chart down to its bars this strip would simply say the
+    // chord in letters a foot high, which is the whole thing the exercise
+    // is taking away. It says what is happening instead, and offers the
+    // way back.
+    final shows = controller.chartShows;
+    if (!shows.hasChords) {
+      return _HiddenInstead(controller: controller, height: height);
+    }
+
     return InkWell(
       onTap: () => showChordDetails(context, chord),
       child: SizedBox(
@@ -245,4 +254,53 @@ class _Fingering extends StatelessWidget {
     diagram: diagram,
     height: height * (diagram == ChordDiagram.keyboard ? 0.45 : 0.8),
   );
+}
+
+/// What sits where the chord readout was, once the chart has gone: what
+/// has been taken away, and the way back to it.
+class _HiddenInstead extends StatelessWidget {
+  const _HiddenInstead({required this.controller, required this.height});
+
+  final PracticeController controller;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final shows = controller.chartShows;
+    return SizedBox(
+      height: height,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(shows.title, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 2),
+                  Flexible(
+                    child: Text(
+                      shows.line,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              key: const ValueKey('show-the-chart'),
+              onPressed: controller.showTheChart,
+              child: const Text('Show It'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
