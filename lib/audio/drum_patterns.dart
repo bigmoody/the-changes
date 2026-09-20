@@ -305,8 +305,12 @@ List<DrumHit> _calypsoBar(int bar, int beatsPerBar, math.Random random) {
     hits.add(
       DrumHit(
         drum: Drum.cowbell,
+        // Well under the hi-hat a bossa keeps time on, because a cowbell
+        // carries further than a hi-hat does at the same weight. The
+        // in-between notes are ghosts: there to be felt rather than heard,
+        // so what you hear is the figure and not the bell.
         beat: beat,
-        velocity: (accented ? 0.52 : 0.24) * _human(random),
+        velocity: (accented ? 0.34 : 0.13) * _human(random),
         hard: accented,
       ),
     );

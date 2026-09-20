@@ -32,14 +32,19 @@ void main() {
         [for (final h in hits) h.beat],
         [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5],
       );
-      for (final hit in hits) {
-        final onTheFigure = [0.0, 1.5, 3.0].contains(hit.beat);
-        expect(
-          hit.velocity,
-          onTheFigure ? greaterThan(0.4) : lessThan(0.3),
-          reason: 'beat ${hit.beat}',
-        );
-      }
+      // Said as a ratio, not a level: what matters is that the figure
+      // stands well clear of the notes between it, and that the bell as a
+      // whole sits under the hi-hat a bossa keeps time on.
+      final figure = hits.where((h) => [0.0, 1.5, 3.0].contains(h.beat));
+      final between = hits.where((h) => ![0.0, 1.5, 3.0].contains(h.beat));
+      final quietestAccent = figure
+          .map((h) => h.velocity)
+          .reduce((a, b) => a < b ? a : b);
+      final loudestGhost = between
+          .map((h) => h.velocity)
+          .reduce((a, b) => a > b ? a : b);
+      expect(quietestAccent, greaterThan(loudestGhost * 2));
+      expect(quietestAccent, lessThan(0.4), reason: 'a bell carries');
     });
 
     test('the toms only turn a phrase around, never every bar', () {
