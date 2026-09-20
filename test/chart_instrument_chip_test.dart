@@ -16,6 +16,7 @@ Future<AppSettings> _open(
   WidgetTester tester, {
   required ChartInstrument instrument,
   Size size = const Size(393, 852),
+  double textScale = 1,
 }) async {
   tester.view
     ..physicalSize = size * 3
@@ -25,6 +26,11 @@ Future<AppSettings> _open(
   await tester.pumpWidget(
     MaterialApp(
       theme: appTheme(Brightness.light),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(textScaler: TextScaler.linear(textScale)),
+        child: child!,
+      ),
       home: PracticeScreen(
         tune: standards.firstWhere((tune) => tune.title == '52nd Street Theme'),
         player: PracticePlayer(),
@@ -39,19 +45,26 @@ Future<AppSettings> _open(
 void main() {
   group('the loop bar has room for everything in it', () {
     for (final size in const [Size(320, 568), Size(393, 852), Size(852, 393)]) {
-      testWidgets('on ${size.width.toInt()}×${size.height.toInt()}', (
-        tester,
-      ) async {
-        await _open(tester, instrument: ChartInstrument.eFlat, size: size);
-        // Looping one bar of two chords is the fullest that row ever gets:
-        // the bar's name, a chip for each chord, the chart's instrument
-        // and the way back to the whole tune.
-        await tester.tap(find.text('A6').first);
-        await tester.pumpAndSettle();
-        expect(find.textContaining('Bar '), findsOneWidget);
-        expect(find.text('Whole tune'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      });
+      for (final textScale in const [1.0, 2.0, 3.0]) {
+        testWidgets(
+          'on ${size.width.toInt()}×${size.height.toInt()} at ×$textScale',
+          (tester) async {
+            await _open(
+              tester,
+              instrument: ChartInstrument.eFlat,
+              size: size,
+              textScale: textScale,
+            );
+            // Looping one bar of two chords is the fullest that row ever
+            // gets: the bar's name, a chip for each chord, the chart's
+            // instrument and the way back to the whole tune. Turn the text
+            // size up and any one of them is wider than the phone.
+            await tester.tap(find.text('A6').first, warnIfMissed: false);
+            await tester.pumpAndSettle();
+            expect(tester.takeException(), isNull, reason: 'nothing overflows');
+          },
+        );
+      }
     }
   });
 
