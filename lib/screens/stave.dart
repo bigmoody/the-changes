@@ -129,6 +129,37 @@ List<StaveNote> scaleOnStave(
   ];
 }
 
+/// A melodic line: notes at the pitches given, each spelled as it's
+/// written, in the order they're played.
+///
+/// [scaleOnStave] climbs, a letter at a time, because a scale does. A line
+/// goes both ways, so each note is placed by the pitch it actually is —
+/// which is the only way an enclosure, which steps down to step up, lands
+/// where it should.
+List<StaveNote> lineOnStave(
+  List<({int pitch, String name})> line, {
+  Clef clef = Clef.treble,
+  Set<int> marked = const {},
+}) => [
+  for (final (i, note) in line.indexed)
+    () {
+      final spelling = _spelling(note.name);
+      // Which octave the letter belongs to: the one that puts its natural
+      // nearest the pitch actually sounding, so a B♯ is written under the
+      // C it sounds as rather than an octave off.
+      final natural = pitchClassOf((letter: spelling.letter, accidental: 0));
+      // Middle C is MIDI 60 and is called C4, so the octave a pitch is in
+      // is one less than the number of octaves it sits above C-1.
+      final sounding = note.pitch - spelling.accidental;
+      final octave = ((sounding - natural) / 12).round() - 1;
+      return (
+        step: clef.stepOf(noteLetters[spelling.letter], octave),
+        accidental: spelling.accidental,
+        marked: marked.contains(i),
+      );
+    }(),
+];
+
 /// A short stave with [notes] on it, either stacked as a [chord] or in a
 /// row. [space] is the distance between two stave lines.
 class Stave extends StatelessWidget {

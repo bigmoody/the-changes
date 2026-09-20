@@ -13,6 +13,7 @@ import 'chord_reference_screen.dart';
 import 'chord_tones_reference_screen.dart';
 import 'chord_tones_screen.dart';
 import 'guitar_chords_screen.dart';
+import 'enclosures_screen.dart';
 import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
 import 'scales_reference_screen.dart';
@@ -56,6 +57,16 @@ class LearnPage extends StatelessWidget {
                 'as you like it',
             onTap: () =>
                 open(MetronomeScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-enclosures'),
+            icon: Icons.all_inclusive,
+            title: 'Enclosures',
+            subtitle:
+                'Going round a note before landing on it — five shapes, on '
+                'the stave and under the fingers',
+            onTap: () =>
+                open(EnclosuresScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-identify'),
