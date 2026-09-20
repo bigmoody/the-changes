@@ -185,12 +185,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
       listenable: _controller,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          // Long titles shrink to fit rather than trail off.
-          title: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(widget.tune.title),
-          ),
+          title: _TuneTitle(widget.tune.title),
           actions: [
             if (widget.progression != null && widget.progressions != null)
               IconButton(
@@ -240,6 +235,106 @@ class _PracticeScreenState extends State<PracticeScreen> {
         ),
         body: SafeArea(child: _Reading(controller: _controller)),
       ),
+    );
+  }
+}
+
+/// The tune's name across the top, as large as it will go.
+///
+/// It used to shrink to whatever fitted on one line, with no floor — and
+/// with the back arrow, three buttons and a menu beside it there isn't much
+/// line to fit into. "On the Sunny Side of the Street" came out at under
+/// seven points, which is not a title, it's a smudge.
+///
+/// So it takes two lines when it needs them. The bar is the same height
+/// either way, so this costs the chart nothing, and a long name stays
+/// readable instead of trailing off or disappearing.
+class _TuneTitle extends StatelessWidget {
+  const _TuneTitle(this.title);
+
+  final String title;
+
+  /// Tried largest first. The first one that fits is the one used.
+  static const _sizes = <double>[26, 24, 22, 20, 18, 16, 14, 13, 12];
+
+  /// How small it's worth going to keep a title on one line. Past this a
+  /// second line buys back more than it costs.
+  static const _onOneLine = 20.0;
+
+  /// Measured a little short of the room there is, so a title that only
+  /// just fits doesn't come out with its last word docked anyway.
+  static const _margin = 6.0;
+
+  /// Three lines only at the small sizes, where they fit the bar without
+  /// crowding it. The longest name in the book needs them: the title has
+  /// about a third of the width, and the rest is buttons.
+  static const _onThreeLines = 16.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final style =
+        Theme.of(context).appBarTheme.titleTextStyle ??
+        Theme.of(context).textTheme.titleLarge!;
+    final scaler = MediaQuery.textScalerOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // What is left of the toolbar once the title's own padding is out
+        // of it. Two lines of the smallest size still sit inside this.
+        final room = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : kToolbarHeight - 8;
+        bool fits(double size, int lines) {
+          final painter = TextPainter(
+            text: TextSpan(
+              text: title,
+              style: style.copyWith(fontSize: size),
+            ),
+            textDirection: Directionality.of(context),
+            textScaler: scaler,
+            maxLines: lines,
+            // Turn the text size right up on a narrow phone and the
+            // buttons can take the whole bar; a width below zero is not
+            // something a text layout will accept.
+          )..layout(maxWidth: math.max(0, constraints.maxWidth - _margin));
+          return !painter.didExceedMaxLines && painter.height <= room;
+        }
+
+        // One line reads better than two, so a little of the size is worth
+        // giving up for it — but not much, and not all of it.
+        for (final size in _sizes) {
+          if (size < _onOneLine) break;
+          if (fits(size, 1)) {
+            return Text(
+              title,
+              style: style.copyWith(fontSize: size),
+              maxLines: 1,
+            );
+          }
+        }
+        // Then two lines, and for the few names long enough to need it,
+        // three. The bar is the same height whichever it is, so the lines
+        // cost the chart nothing — and a name you can read all of beats a
+        // bigger one with its end taken off.
+        for (final lines in [2, 3]) {
+          for (final size in _sizes) {
+            if (lines == 3 && size > _onThreeLines) continue;
+            if (fits(size, lines)) {
+              return Text(
+                title,
+                style: style.copyWith(fontSize: size),
+                maxLines: lines,
+              );
+            }
+          }
+        }
+        // Longer than two lines even at the smallest size: the end goes.
+        return Text(
+          title,
+          style: style.copyWith(fontSize: _sizes.last),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        );
+      },
     );
   }
 }
