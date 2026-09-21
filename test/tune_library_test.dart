@@ -77,19 +77,24 @@ void main() {
     expect(titles, [...titles]..sort());
   });
 
-  test('every tune renders', () {
-    for (final tune in byTitle.values) {
-      final backing = renderBacking(
-        BackingRequest(
-          tune: tune,
-          loop: LoopRange.bars(tune, 0, 0),
-          tempo: 200,
-          countInBars: 0,
-        ),
-      );
-      expect(backing.stems, hasLength(3), reason: tune.title);
-    }
-  }, tags: 'sweep', skip: 'the whole book; run it with --run-skipped');
+  test(
+    'every tune renders',
+    () {
+      for (final tune in byTitle.values) {
+        final backing = renderBacking(
+          BackingRequest(
+            tune: tune,
+            loop: LoopRange.bars(tune, 0, 0),
+            tempo: 200,
+            countInBars: 0,
+          ),
+        );
+        expect(backing.stems, hasLength(3), reason: tune.title);
+      }
+    },
+    tags: 'sweep',
+    skip: 'the whole book; run it with --run-skipped',
+  );
 
   test('every standard appears once, the first seventy-two among them', () {
     final titles = standards.map((t) => t.title).toList();

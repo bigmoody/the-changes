@@ -145,7 +145,8 @@ List<EnclosureNote> enclosureOn(
           final pitch = scaleStep(target, up: step.isAbove);
           return (
             pitch: pitch,
-            name: pitches[pitch % 12] ?? _chromaticName(pitch, up: step.isAbove),
+            name:
+                pitches[pitch % 12] ?? _chromaticName(pitch, up: step.isAbove),
             isTarget: false,
           );
         }(),

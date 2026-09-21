@@ -109,8 +109,13 @@ void main() {
       ),
     );
     // It's down the Look It Up list, past the end of a phone screen.
-    await tester.scrollUntilVisible(find.byKey(const ValueKey('learn-guitar-chords')), 200);
-    await tester.ensureVisible(find.byKey(const ValueKey('learn-guitar-chords')));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('learn-guitar-chords')),
+      200,
+    );
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('learn-guitar-chords')),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('learn-guitar-chords')));
     await tester.pumpAndSettle();

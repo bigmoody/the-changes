@@ -27,13 +27,19 @@ void main() {
       final up = [for (var s = 0; s <= 8; s++) Clef.treble.noteAt(s).letter];
       expect(up, ['E', 'F', 'G', 'A', 'B', 'C', 'D', 'E', 'F']);
       // The lines are the even steps, the spaces the odd ones.
-      expect([for (var s = 0; s <= 8; s += 2) up[s]], ['E', 'G', 'B', 'D', 'F']);
+      expect(
+        [for (var s = 0; s <= 8; s += 2) up[s]],
+        ['E', 'G', 'B', 'D', 'F'],
+      );
       expect([for (var s = 1; s <= 7; s += 2) up[s]], ['F', 'A', 'C', 'E']);
     });
 
     test('the bass stave reads G B D F A, A C E G', () {
       final up = [for (var s = 0; s <= 8; s++) Clef.bass.noteAt(s).letter];
-      expect([for (var s = 0; s <= 8; s += 2) up[s]], ['G', 'B', 'D', 'F', 'A']);
+      expect(
+        [for (var s = 0; s <= 8; s += 2) up[s]],
+        ['G', 'B', 'D', 'F', 'A'],
+      );
       expect([for (var s = 1; s <= 7; s += 2) up[s]], ['A', 'C', 'E', 'G']);
     });
 
@@ -63,18 +69,16 @@ void main() {
       // F on the top line, then C, G, D, A, E, B.
       final steps = keySignatureSteps(Clef.treble, count: 7, sharp: true);
       expect(steps, [8, 5, 9, 6, 3, 7, 4]);
-      expect(
-        [for (final step in steps) Clef.treble.noteAt(step).letter],
-        sharpOrder,
-      );
+      expect([
+        for (final step in steps) Clef.treble.noteAt(step).letter,
+      ], sharpOrder);
     });
 
     test('the flats fall in the reverse order', () {
       final steps = keySignatureSteps(Clef.treble, count: 7, sharp: false);
-      expect(
-        [for (final step in steps) Clef.treble.noteAt(step).letter],
-        flatOrder,
-      );
+      expect([
+        for (final step in steps) Clef.treble.noteAt(step).letter,
+      ], flatOrder);
       expect(flatOrder, sharpOrder.reversed.toList());
     });
 
@@ -92,10 +96,7 @@ void main() {
 
     test('a key takes the first few, in order', () {
       expect(keySignatureSteps(Clef.treble, count: 0, sharp: true), isEmpty);
-      expect(
-        keySignatureSteps(Clef.treble, count: 3, sharp: false).length,
-        3,
-      );
+      expect(keySignatureSteps(Clef.treble, count: 3, sharp: false).length, 3);
     });
   });
 
@@ -142,7 +143,11 @@ void main() {
           reason: 'time signature $digit',
         );
         // The tuplet numbers, which sit just after them in SMuFL.
-        expect(inTheFont.contains(0xE880 + digit), isTrue, reason: 'tuplet $digit');
+        expect(
+          inTheFont.contains(0xE880 + digit),
+          isTrue,
+          reason: 'tuplet $digit',
+        );
       }
     });
   });
@@ -175,7 +180,11 @@ void main() {
         for (var i = 0; i < 40; i++) {
           await tester.drag(list, const Offset(0, -400));
           await tester.pump();
-          expect(tester.takeException(), isNull, reason: 'after ${i + 1} drags');
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'after ${i + 1} drags',
+          );
         }
       });
     }
@@ -242,16 +251,22 @@ void main() {
       await open(tester, size: const Size(393, 852));
       for (final (section, hooks) in [
         // As the note reads: the label, then the phrase.
-        ('Lines and Spaces', [
-          'Lines\u2003Every Good Boy Deserves Football',
-          'Spaces\u2003F A C E',
-          'Lines\u2003Good Boys Deserve Fine Apples',
-          'Spaces\u2003All Cows Eat Grass',
-        ]),
-        ('Key Signatures', [
-          'Father Charles Goes Down And Ends Battle',
-          'Battle Ends And Down Goes Charles\u2019 Father',
-        ]),
+        (
+          'Lines and Spaces',
+          [
+            'Lines\u2003Every Good Boy Deserves Football',
+            'Spaces\u2003F A C E',
+            'Lines\u2003Good Boys Deserve Fine Apples',
+            'Spaces\u2003All Cows Eat Grass',
+          ],
+        ),
+        (
+          'Key Signatures',
+          [
+            'Father Charles Goes Down And Ends Battle',
+            'Battle Ends And Down Goes Charles\u2019 Father',
+          ],
+        ),
       ]) {
         // Through the bar, which works wherever the last jump left us.
         await tester.tap(find.byKey(const ValueKey('contents')));
@@ -352,10 +367,8 @@ const _named = {
 
 /// A heading on the page itself, as opposed to the same words in the
 /// contents at the top or in the sheet.
-Finder _heading(String title) => find.descendant(
-  of: find.byType(SectionHeader),
-  matching: find.text(title),
-);
+Finder _heading(String title) =>
+    find.descendant(of: find.byType(SectionHeader), matching: find.text(title));
 
 /// The headings written into the guide, straight out of its source, so a
 /// new section can't skip the check by never being scrolled to.
