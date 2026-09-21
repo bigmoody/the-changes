@@ -52,6 +52,9 @@ class ModalScreen extends StatefulWidget {
 class _ModalScreenState extends State<ModalScreen> {
   late Mode _mode = _choices.first;
 
+  /// Whether the chord is shown piled in fourths or in thirds.
+  var _inFourths = true;
+
   static final _choices = modesWritten(_chordSymbol);
 
   /// The chord as it is written on the chart: Dm7, whichever mode is
@@ -78,6 +81,56 @@ class _ModalScreenState extends State<ModalScreen> {
         for (final pitch in voicing)
           (pitch: pitch, start: 0, length: end, velocity: 0.28, bass: false),
         ...line,
+      ]),
+    );
+  }
+
+  /// The chord as it is currently stacked, low to high, from D below
+  /// middle C so a five-note pile still fits under two hands.
+  List<int> get _stackPitches => [
+    for (final step in _stack) 50 + step.semitone,
+  ];
+
+  List<StackStep> get _stack =>
+      _inFourths ? fourthsStack(_mode, _root) : thirdsStack(_mode, _root);
+
+  /// What to say under the pile, which depends on whether the mode made
+  /// the stack stop early.
+  String _aboutStack() {
+    if (!_inFourths) {
+      return 'The root, 3rd, 5th and 7th: the chord symbol, spelled out. '
+          'Nothing wrong with it, but it says "${_chord.display}" and on a '
+          'modal tune that was never the question.';
+    }
+    final refused = refusedBy(_mode, _root);
+    if (refused == null) {
+      return 'In ${_mode.name} the fourths keep coming: the flat 6th means '
+          'nothing forces the stack to stop, so it never has to decide '
+          'anything.';
+    }
+    final below = _stack[_stack.length - 2].note;
+    return 'It stops where the mode makes it. Another fourth on top of '
+        '$below would be ${refused.note}, ${refused.above} rather than a '
+        '4th, sitting right where it is heard most. So it takes the third '
+        'instead, and that is the voicing everybody knows off So What.';
+  }
+
+  Future<void> _playStack() async {
+    final bank = widget.player.samples;
+    if (bank == null) return;
+    // Rolled from the bottom, quickly, the way anybody puts a wide
+    // voicing down: struck dead together it reads as a block rather
+    // than as a pile of intervals.
+    await widget.player.playSnippet(
+      renderSnippet(bank, [
+        for (final (i, pitch) in _stackPitches.indexed)
+          (
+            pitch: pitch,
+            start: i * 0.045,
+            length: 2.6 - i * 0.045,
+            velocity: 0.6,
+            bass: false,
+          ),
       ]),
     );
   }
@@ -179,6 +232,79 @@ class _ModalScreenState extends State<ModalScreen> {
                 icon: const Icon(Icons.play_arrow),
                 label: Text('Hear It Over ${_chord.display}'),
                 onPressed: _play,
+              ),
+            ),
+          ),
+
+          _Heading('Fourths'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            child: Text(
+              'A chord symbol is made of thirds, so a stack of thirds '
+              'announces the chord and nothing else. Pile the same notes '
+              'up in fourths instead and the ear hears the mode rather '
+              'than the chord, which is what you want on a tune that has '
+              'no changes to spell.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Wrap(
+              spacing: 6,
+              children: [
+                for (final (inFourths, label) in const [
+                  (true, 'Fourths'),
+                  (false, 'Thirds'),
+                ])
+                  ChoiceChip(
+                    key: ValueKey('pick-${label.toLowerCase()}'),
+                    visualDensity: VisualDensity.compact,
+                    showCheckmark: false,
+                    label: Text(label),
+                    selected: inFourths == _inFourths,
+                    onSelected: (_) => setState(() => _inFourths = inFourths),
+                  ),
+              ],
+            ),
+          ),
+          _Stack(steps: _stack),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Text(
+              _aboutStack(),
+              key: const ValueKey('about-stack'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('play-stack'),
+                icon: const Icon(Icons.play_arrow),
+                label: Text(
+                  _inFourths ? 'Hear It In Fourths' : 'Hear It In Thirds',
+                ),
+                onPressed: _playStack,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Text(
+              'On a guitar it is one finger. The bottom four strings are '
+              'already tuned in fourths and the G to B is a third, so a '
+              'straight barre across the top five strings is this chord: '
+              'at the 10th fret it is exactly D G C F A.',
+              key: const ValueKey('on-a-guitar'),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.tertiary,
               ),
             ),
           ),
@@ -388,6 +514,63 @@ class _Notes extends StatelessWidget {
               color: scheme.onSurfaceVariant,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The chord drawn as a pile, lowest note at the bottom, with the
+/// interval written beside each step up.
+///
+/// Stacked, because that is the word: laid out in a row it is a list of
+/// notes, and standing up it is a shape you can see the evenness of.
+class _Stack extends StatelessWidget {
+  const _Stack({required this.steps});
+
+  final List<StackStep> steps;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        key: const ValueKey('the-stack'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final step in steps.reversed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  SizedBox(
+                    width: 44,
+                    child: Text(
+                      handSymbol(step.note),
+                      textScaler: TextScaler.noScaling,
+                      style: handLettered(
+                        TextStyle(
+                          fontSize: 22,
+                          height: 1,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (step.above case final interval?)
+                    Text(
+                      interval,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.tertiary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
         ],
       ),
     );

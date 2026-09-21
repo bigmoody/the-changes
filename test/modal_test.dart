@@ -166,9 +166,105 @@ void main() {
     });
   });
 
+  group('stacking it in fourths', () {
+    test('Dorian gives the So What voicing', () {
+      final stack = fourthsStack(_mode('Dorian'), 'D');
+      expect(stack.map((s) => s.note), ['D', 'G', 'C', 'F', 'A']);
+      expect(stack.map((s) => s.semitone), [0, 5, 10, 15, 19]);
+      // Three fourths, then a major third, which is the whole shape.
+      expect(stack.map((s) => s.above), [
+        null,
+        'a 4th',
+        'a 4th',
+        'a 4th',
+        'a major 3rd',
+      ]);
+    });
+
+    test('it stops because the next fourth would be a tritone', () {
+      // The reason is worked out, not written down: in Dorian the note
+      // after F is B, and F to B is six semitones.
+      final refused = refusedBy(_mode('Dorian'), 'D')!;
+      expect(refused.note, 'B');
+      expect(refused.above, 'a tritone');
+      expect(refused.semitone - 15, 6, reason: 'six semitones above the F');
+    });
+
+    test('a flat 6th never forces it to stop', () {
+      // Aeolian and Phrygian have B flat where Dorian has B, so F to
+      // there is a plain fourth and the pile just keeps going.
+      for (final name in ['Aeolian', 'Phrygian']) {
+        final stack = fourthsStack(_mode(name), 'D');
+        expect(stack.map((s) => s.note), [
+          'D',
+          'G',
+          'C',
+          'F',
+          'B♭',
+        ], reason: name);
+        expect(
+          stack.every((s) => s.above == null || s.above == 'a 4th'),
+          isTrue,
+        );
+        expect(refusedBy(_mode(name), 'D'), isNull, reason: name);
+      }
+    });
+
+    test('the thirds stack is just the chord symbol', () {
+      expect(thirdsStack(_mode('Dorian'), 'D').map((s) => s.note), [
+        'D',
+        'F',
+        'A',
+        'C',
+      ]);
+    });
+
+    test('both stacks are built of the same mode, low to high', () {
+      for (final mode in modesWritten('m7')) {
+        for (final stack in [fourthsStack(mode, 'D'), thirdsStack(mode, 'D')]) {
+          expect(stack.first.semitone, 0, reason: mode.name);
+          for (var i = 1; i < stack.length; i++) {
+            expect(
+              stack[i].semitone,
+              greaterThan(stack[i - 1].semitone),
+              reason: '${mode.name} climbs',
+            );
+          }
+          // Every note is in the mode, whichever way it is piled up.
+          for (final step in stack) {
+            expect(
+              mode.semitones,
+              contains(step.semitone % 12),
+              reason: '${step.note} in ${mode.name}',
+            );
+          }
+        }
+      }
+    });
+
+    test('fourths spread wider than thirds, which is the point', () {
+      final wide = fourthsStack(_mode('Dorian'), 'D').last.semitone;
+      final close = thirdsStack(_mode('Dorian'), 'D').last.semitone;
+      expect(wide, greaterThan(close));
+    });
+
+    test('intervals are named the way a player says them', () {
+      expect(intervalName(3), 'a minor 3rd');
+      expect(intervalName(4), 'a major 3rd');
+      expect(intervalName(5), 'a 4th');
+      expect(intervalName(6), 'a tritone');
+    });
+  });
+
   group('what carries it instead', () {
     test('there are ideas, and each says what it is for', () {
       expect(modalIdeas.length, greaterThan(2));
+      // Fourths are not among them: they have their own section, and
+      // saying it twice on one page reads as padding.
+      expect(
+        modalIdeas.map((i) => i.name.toLowerCase()),
+        isNot(contains('fourths')),
+      );
       for (final idea in modalIdeas) {
         expect(idea.name, isNotEmpty);
         expect(idea.about.length, greaterThan(60), reason: idea.name);
@@ -240,6 +336,46 @@ void main() {
       await tester.tap(button);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the pile is drawn, and says why it stops', (tester) async {
+      await open(tester);
+      // Scrolled to the reason rather than to the pile: they are next
+      // to each other, and a ListView has not built what is still below.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('about-stack')),
+        100,
+      );
+      expect(find.byKey(const ValueKey('the-stack')), findsOneWidget);
+      expect(find.text('a major 3rd'), findsOneWidget);
+      expect(find.text('a 4th'), findsNWidgets(3));
+      expect(find.textContaining('would be B, a tritone'), findsOneWidget);
+    });
+
+    testWidgets('switching to thirds redraws it as the chord symbol', (
+      tester,
+    ) async {
+      await open(tester);
+      final thirds = find.byKey(const ValueKey('pick-thirds'));
+      await tester.scrollUntilVisible(thirds, 100);
+      await tester.tap(thirds);
+      await tester.pumpAndSettle();
+      expect(find.text('a 4th'), findsNothing);
+      expect(
+        find.textContaining('the chord symbol, spelled out'),
+        findsOneWidget,
+      );
+      expect(find.text('Hear It In Thirds'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the guitar shortcut is there, because it is one finger', (
+      tester,
+    ) async {
+      await open(tester);
+      final line = find.byKey(const ValueKey('on-a-guitar'));
+      await tester.scrollUntilVisible(line, 100);
+      expect(find.textContaining('straight barre'), findsOneWidget);
     });
 
     testWidgets('it counts the tunes rather than claiming a number', (

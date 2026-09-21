@@ -124,6 +124,10 @@ List<String> differenceBetween(Mode a, Mode b) {
 /// Not rules. There is no substitute for the changes, which is the
 /// honest thing to say, but these are what people reach for and they
 /// are worth knowing you are allowed to reach for.
+///
+/// Fourths belong on this list too and are not on it, because they have
+/// a section of their own: a thing you can be shown is worth more than
+/// a thing you can be told, and a stack of fourths can be drawn.
 typedef ModalIdea = ({String name, String about});
 
 const modalIdeas = <ModalIdea>[
@@ -149,11 +153,106 @@ const modalIdeas = <ModalIdea>[
         'instead. Starting a chorus an octave up does more for a modal '
         'solo than any note choice.',
   ),
-  (
-    name: 'Fourths',
-    about:
-        'Stacked fourths fit the mode without spelling the chord, so they '
-        'sound open rather than like an arpeggio. It is the piano voicing '
-        'everybody associates with So What, and it works in a line too.',
-  ),
 ];
+
+// ── Stacking a chord in fourths ─────────────────────────────────────────
+
+/// One note of a stack: its name, how far above the root it sits, and the
+/// interval from the note below it.
+typedef StackStep = ({String note, int semitone, String? above});
+
+/// Three semitones is a minor 3rd, five a perfect 4th, six a tritone.
+String intervalName(int semitones) => switch (semitones) {
+  3 => 'a minor 3rd',
+  4 => 'a major 3rd',
+  5 => 'a 4th',
+  6 => 'a tritone',
+  _ => '$semitones semitones',
+};
+
+/// A perfect fourth.
+const _fourth = 5;
+
+/// How tall a fourths stack is built before it has said enough. Five is
+/// the So What voicing; more than that and both hands are busy.
+const _stackNotes = 5;
+
+/// [mode] stacked from [root] in thirds: the chord as its symbol is made,
+/// root, 3rd, 5th and 7th.
+List<StackStep> thirdsStack(Mode mode, String root) =>
+    _stack(mode, root, step: 2, notes: 4);
+
+/// [mode] stacked from [root] in fourths, stopping where the mode would
+/// force a tritone and taking a third instead.
+///
+/// The stop is the interesting part and it is worked out rather than
+/// written down. Piling fourths on D in Dorian gives D G C F, and the
+/// next one would be B: a tritone, sitting right at the top where it is
+/// heard most. So the stack takes the third above F instead, which is A,
+/// and that is the voicing everybody knows off So What. In another mode
+/// it stops somewhere else, and this finds that too.
+List<StackStep> fourthsStack(Mode mode, String root) =>
+    _stack(mode, root, step: 3, notes: _stackNotes, only: _fourth);
+
+/// The note a fourths stack turned down, and what it would have been.
+///
+/// Null where the stack ran its full length without meeting one, which
+/// is what happens in a mode with a flat 6th: Aeolian gives five clean
+/// fourths and never has to decide anything.
+///
+/// Asked over the same height as the stack itself, so it cannot report a
+/// refusal that happens past the end of what is drawn.
+StackStep? refusedBy(Mode mode, String root) {
+  final stack = _stack(mode, root, step: 3, notes: _stackNotes);
+  for (var i = 1; i < stack.length; i++) {
+    if (stack[i].semitone - stack[i - 1].semitone != _fourth) return stack[i];
+  }
+  return null;
+}
+
+/// Walks the mode in [step]s, gathering [notes] of them.
+///
+/// With [only] set, the walk stops as soon as a step is not that many
+/// semitones, and takes one note a third above the last instead.
+List<StackStep> _stack(
+  Mode mode,
+  String root, {
+  required int step,
+  required int notes,
+  int? only,
+}) {
+  final names = mode.notesFrom(root);
+  final semitones = mode.semitones;
+  final length = names.length;
+  final stack = <StackStep>[];
+  var degree = 0;
+  var octave = 0;
+  var last = 0;
+  for (var i = 0; i < notes; i++) {
+    final semitone = semitones[degree] + octave * 12;
+    final gap = i == 0 ? null : semitone - last;
+    if (only != null && gap != null && gap != only) {
+      // The mode will not give another one of these. A third above the
+      // note below keeps the stack inside the mode and off the tritone.
+      final third = (degree - step + 2 + length) % length;
+      final wrapped = degree - step + 2 < 0 ? octave - 1 : octave;
+      final at = semitones[third] + wrapped * 12;
+      stack.add((
+        note: names[third],
+        semitone: at,
+        above: intervalName(at - last),
+      ));
+      break;
+    }
+    stack.add((
+      note: names[degree],
+      semitone: semitone,
+      above: gap == null ? null : intervalName(gap),
+    ));
+    last = semitone;
+    final next = degree + step;
+    if (next >= length) octave++;
+    degree = next % length;
+  }
+  return stack;
+}
