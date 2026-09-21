@@ -19,6 +19,7 @@ import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
 import 'bebop_scales_screen.dart';
 import 'number_patterns_screen.dart';
+import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
@@ -102,6 +103,16 @@ class LearnPage extends StatelessWidget {
                 'hand stays still while the notes move',
             onTap: () =>
                 open(NumberPatternsScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-tritone-subs'),
+            icon: Icons.swap_horiz,
+            title: 'Tritone Subs',
+            subtitle:
+                'Why one dominant can stand in for another — they are the '
+                'same two notes in the middle',
+            onTap: () =>
+                open(TritoneSubsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
