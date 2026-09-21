@@ -157,13 +157,25 @@ List<EnclosureNote> enclosureOn(
 /// The scale a line over [chord] is most likely in, as spelled notes, or an
 /// empty list when nothing in the book fits the chord.
 List<String> scaleFor(Chord chord) {
+  final want = chord.quality.symbols.first;
   for (final mode in modes) {
-    if (mode.chord == chord.quality.symbols.first) {
-      return mode.notesFrom(chord.rootName);
+    if (mode.chord == want) return mode.notesFrom(chord.rootName);
+  }
+  // A chord the book has no mode of its own for, but which plainly
+  // belongs to one: a 6 chord and a plain triad are in the major scale,
+  // and a minor 6 sits in Dorian — the ♮6 is what Dorian is for. Without
+  // this they came back with no scale at all and every scale step
+  // quietly became a semitone.
+  final same = _sameScaleAs[want];
+  if (same != null) {
+    for (final mode in modes) {
+      if (mode.chord == same) return mode.notesFrom(chord.rootName);
     }
   }
   return const [];
 }
+
+const _sameScaleAs = {'6': '^7', '': '^7', 'm': 'm7', 'm6': 'm7'};
 
 const _sharpNames = [
   'C',
