@@ -256,3 +256,73 @@ List<StackStep> _stack(
   }
   return stack;
 }
+
+/// [mode] run through in fourths as a line, from [root] and back to it.
+///
+/// Not the stack rolled out. Stepping a fourth at a time through seven
+/// notes lands on every one of them before it comes home, because three
+/// and seven share no factor, so the line is the whole mode rather than
+/// the five notes a voicing had room for.
+///
+/// And it goes through the tritone the stack refused. A tritone sitting
+/// on top of a chord is heard as a chord tone and sounds harsh; the same
+/// two notes one after the other are a wide leap that is over before it
+/// can offend, and in Dorian it is the natural 6th, the note that made
+/// the mode worth choosing in the first place.
+List<StackStep> fourthsLine(Mode mode, String root) {
+  final names = mode.notesFrom(root);
+  final semitones = mode.semitones;
+  final length = names.length;
+  final line = <StackStep>[];
+  var degree = 0;
+  var octave = 0;
+  var last = 0;
+  for (var i = 0; i <= length; i++) {
+    final at = i == length ? octave * 12 : semitones[degree] + octave * 12;
+    line.add((
+      note: i == length ? names.first : names[degree],
+      semitone: at,
+      above: i == 0 ? null : intervalName(at - last),
+    ));
+    last = at;
+    final next = degree + 3;
+    if (next >= length) octave++;
+    degree = next % length;
+  }
+  return line;
+}
+
+/// Where the one tritone falls in [mode]'s fourths line: the step that
+/// is not a perfect fourth.
+///
+/// There is always exactly one. Every mode of the major scale holds a
+/// single tritone, so running the mode in fourths meets it once, and
+/// which pair of notes it lands between is what tells the modes apart.
+/// In Dorian it is the 4th to the natural 6th; in Aeolian, a step later.
+int tritoneStep(Mode mode, String root) {
+  final line = fourthsLine(mode, root);
+  for (var i = 1; i < line.length; i++) {
+    if (line[i].above != intervalName(_fourth)) return i;
+  }
+  return -1;
+}
+
+/// The fourths line as pitches to play, folded back down when it climbs
+/// out of range.
+///
+/// Running fourths straight up leaves the instrument after two laps, so
+/// a player drops an octave and carries on. That is what this does, and
+/// the downward leaps it produces are part of how the exercise sounds
+/// rather than a flaw in it.
+List<int> fourthsLinePitches(Mode mode, String root, {int from = 62}) {
+  final pitches = <int>[];
+  var pitch = from;
+  for (final (i, step) in fourthsLine(mode, root).indexed) {
+    if (i > 0) {
+      pitch += step.semitone - fourthsLine(mode, root)[i - 1].semitone;
+      if (pitch > from + 17) pitch -= 12;
+    }
+    pitches.add(pitch);
+  }
+  return pitches;
+}

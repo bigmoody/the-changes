@@ -2,6 +2,8 @@
 // rather than asserted, and whether the screen asks the question the
 // chart actually leaves open.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
@@ -248,6 +250,68 @@ void main() {
       expect(wide, greaterThan(close));
     });
 
+    test('the line is the whole mode, not the voicing rolled out', () {
+      // Stepping a fourth through seven notes lands on all of them,
+      // because three and seven share no factor. The stack only had room
+      // for five.
+      final line = fourthsLine(_mode('Dorian'), 'D');
+      expect(line.map((s) => s.note), ['D', 'G', 'C', 'F', 'B', 'E', 'A', 'D']);
+      expect(
+        line.take(7).map((s) => s.note).toSet(),
+        _mode('Dorian').notesFrom('D').toSet(),
+        reason: 'every note of the mode, once',
+      );
+      expect(
+        line.length,
+        greaterThan(fourthsStack(_mode('Dorian'), 'D').length),
+      );
+    });
+
+    test('a line goes through the tritone the stack refused', () {
+      final line = fourthsLine(_mode('Dorian'), 'D');
+      final at = tritoneStep(_mode('Dorian'), 'D');
+      expect(line[at - 1].note, 'F');
+      expect(line[at].note, 'B', reason: 'the note the stack turned down');
+      expect(line[at].above, 'a tritone');
+    });
+
+    test('there is exactly one, in every mode, and it moves', () {
+      final steps = <int>{};
+      for (final mode in modesWritten('m7')) {
+        final line = fourthsLine(mode, 'D');
+        final wide = [
+          for (final step in line.skip(1))
+            if (step.above != 'a 4th') step,
+        ];
+        expect(wide, hasLength(1), reason: '${mode.name} has one tritone');
+        steps.add(tritoneStep(mode, 'D'));
+      }
+      // And it falls somewhere different in each, which is one more way
+      // of telling three modes apart that share a chord symbol.
+      expect(steps, hasLength(modesWritten('m7').length));
+    });
+
+    test('the line comes home to the note it started on', () {
+      for (final mode in modesWritten('m7')) {
+        final line = fourthsLine(mode, 'D');
+        expect(line.last.note, line.first.note, reason: mode.name);
+        expect(line.last.semitone % 12, 0, reason: mode.name);
+      }
+    });
+
+    test('it is folded back down so it stays playable', () {
+      // Run straight up, seven fourths leave any instrument behind.
+      for (final mode in modesWritten('m7')) {
+        final pitches = fourthsLinePitches(mode, 'D');
+        expect(pitches, hasLength(fourthsLine(mode, 'D').length));
+        expect(
+          pitches.reduce(math.max) - pitches.reduce(math.min),
+          lessThanOrEqualTo(18),
+          reason: '${mode.name} stays within a range a horn has',
+        );
+      }
+    });
+
     test('intervals are named the way a player says them', () {
       expect(intervalName(3), 'a minor 3rd');
       expect(intervalName(4), 'a major 3rd');
@@ -367,6 +431,22 @@ void main() {
       );
       expect(find.text('Hear It In Thirds'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the line is drawn for anybody holding a horn', (tester) async {
+      // Most of Learn is written for a single note at a time, and a
+      // chord voicing was the odd one out.
+      await open(tester);
+      // Scrolled to the button, which is the lowest of the three: a
+      // ListView has not built what is still below the fold.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('play-line')),
+        100,
+      );
+      expect(find.byKey(const ValueKey('the-line')), findsOneWidget);
+      expect(find.byKey(const ValueKey('about-line')), findsOneWidget);
+      expect(find.textContaining('F to B, the tritone'), findsOneWidget);
+      expect(find.text('Hear It As A Line'), findsOneWidget);
     });
 
     testWidgets('the guitar shortcut is there, because it is one finger', (

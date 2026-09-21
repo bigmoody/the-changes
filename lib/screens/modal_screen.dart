@@ -94,6 +94,23 @@ class _ModalScreenState extends State<ModalScreen> {
   List<StackStep> get _stack =>
       _inFourths ? fourthsStack(_mode, _root) : thirdsStack(_mode, _root);
 
+  /// What to say under the line: where its one tritone falls, and why
+  /// it is welcome here when the stack would not have it.
+  String _aboutLine() {
+    final line = fourthsLine(_mode, _root);
+    final at = tritoneStep(_mode, _root);
+    if (at < 1) return 'Seven notes, every step a fourth.';
+    final from = line[at - 1].note;
+    final to = line[at].note;
+    return 'One step is not a fourth, and there is always exactly one: '
+        '$from to $to, the tritone. The stack would not have it on top, '
+        'where it would be heard as part of the chord. In a line it is a '
+        'wide leap that is over before it can offend, and in ${_mode.name} '
+        'it is the ${degreeLabel(colourOf(_mode).first)} that made the '
+        'mode worth choosing. Where it falls is different in each of the '
+        'three, which is another way of telling them apart.';
+  }
+
   /// What to say under the pile, which depends on whether the mode made
   /// the stack stop early.
   String _aboutStack() {
@@ -113,6 +130,34 @@ class _ModalScreenState extends State<ModalScreen> {
         '$below would be ${refused.note}, ${refused.above} rather than a '
         '4th, sitting right where it is heard most. So it takes the third '
         'instead, and that is the voicing everybody knows off So What.';
+  }
+
+  Future<void> _playLine() async {
+    final bank = widget.player.samples;
+    if (bank == null) return;
+    const step = 0.26;
+    final pitches = fourthsLinePitches(_mode, _root);
+    await widget.player.playSnippet(
+      renderSnippet(bank, [
+        // The chord underneath, so the tritone is heard against
+        // something rather than in mid air.
+        (
+          pitch: 38 + (_chord.root - 38) % 12,
+          start: 0,
+          length: pitches.length * step + 0.9,
+          velocity: 0.28,
+          bass: true,
+        ),
+        for (final (i, pitch) in pitches.indexed)
+          (
+            pitch: pitch,
+            start: i * step,
+            length: i == pitches.length - 1 ? 1.1 : step * 1.4,
+            velocity: 0.72,
+            bass: false,
+          ),
+      ]),
+    );
   }
 
   Future<void> _playStack() async {
@@ -305,6 +350,44 @@ class _ModalScreenState extends State<ModalScreen> {
               key: const ValueKey('on-a-guitar'),
               style: theme.textTheme.labelMedium?.copyWith(
                 color: scheme.tertiary,
+              ),
+            ),
+          ),
+
+          _Heading('The Same Thing On One Note At A Time'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+            child: Text(
+              'A horn cannot stack anything, so you run them instead. Not '
+              'the voicing rolled out: stepping a fourth at a time through '
+              'seven notes lands on every one of them before it comes '
+              'home, so the line is the whole mode rather than the five '
+              'notes a chord had room for.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          _Line(mode: _mode, root: _root),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Text(
+              _aboutLine(),
+              key: const ValueKey('about-line'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('play-line'),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Hear It As A Line'),
+                onPressed: _playLine,
               ),
             ),
           ),
@@ -572,6 +655,51 @@ class _Stack extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// The mode run in fourths, left to right, with the one step that is not
+/// a fourth marked at both ends.
+class _Line extends StatelessWidget {
+  const _Line({required this.mode, required this.root});
+
+  final Mode mode;
+  final String root;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final line = fourthsLine(mode, root);
+    final at = tritoneStep(mode, root);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          key: const ValueKey('the-line'),
+          children: [
+            for (final (i, step) in line.indexed)
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Text(
+                  handSymbol(step.note),
+                  textScaler: TextScaler.noScaling,
+                  style: handLettered(
+                    TextStyle(
+                      fontSize: 22,
+                      height: 1,
+                      color: i == at || i == at - 1
+                          ? scheme.tertiary
+                          : scheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
