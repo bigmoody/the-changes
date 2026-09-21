@@ -73,6 +73,29 @@ const comparisons = <Comparison>[
   ),
 ];
 
+/// Why the blues sit in the key they do, where there is anything worth
+/// saying. Null where a key is just a key.
+///
+/// It is the first thing anybody notices about a shelf of blues heads —
+/// they are nearly all in F or B♭ — and the answer has nothing to do with
+/// the music. It is what the people calling the tune were holding.
+String? whyThisKey(String key) => _keyNotes[key];
+
+const _keyNotes = <String, String>{
+  'F':
+      'The horns. Jazz grew up on band instruments pitched in B♭ and E♭, '
+      'and an F blues comes out as G for a tenor or a trumpet and '
+      'D for an alto — one sharp and two, sitting in the comfortable part '
+      'of the horn. Guitar blues are in E and A for the same kind of '
+      'reason: that is where the open strings are. F and B♭ stuck because '
+      'the players who called the tune were reading off horn parts.',
+  'B♭':
+      'The other horn key, and the easiest of the lot: a B♭ blues is in C '
+      'for a tenor and G for an alto, so nobody is reading accidentals '
+      'while they work out what to play. Between F and B♭ you have most '
+      'of the blues ever called on a bandstand.',
+};
+
 /// One bar across the versions.
 typedef BarRow = ({
   /// Counted from one, as it is written on a chart.

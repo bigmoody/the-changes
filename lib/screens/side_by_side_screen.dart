@@ -37,6 +37,11 @@ class SideBySideScreen extends StatefulWidget {
 class _SideBySideScreenState extends State<SideBySideScreen> {
   var _chosen = comparisons.first;
 
+  /// Whether the note about the key is open. Shut to start with: the
+  /// table is what the screen is for, and an answer nobody asked for
+  /// would push the first bars off the bottom of the phone.
+  var _whyOpen = false;
+
   /// Which column is playing, and where it has got to. A version is played
   /// whole, from the top, because that is the only way any of this is
   /// audible: a bar lifted out of three tunes and stitched together is not
@@ -139,7 +144,10 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
                     selected: _chosen == comparison,
                     onSelected: (_) {
                       unawaited(_stop());
-                      setState(() => _chosen = comparison);
+                      setState(() {
+                        _chosen = comparison;
+                        _whyOpen = false;
+                      });
                     },
                   ),
               ],
@@ -165,6 +173,13 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
               ),
             ),
           ),
+          if (whyThisKey(_chosen.key) case final note?)
+            _WhyTheKey(
+              musicKey: _chosen.key,
+              note: note,
+              open: _whyOpen,
+              onToggle: () => setState(() => _whyOpen = !_whyOpen),
+            ),
           _Heading(
             tunes: tunes,
             playing: _playingColumn,
@@ -174,6 +189,73 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
             _Row(row: row, playingColumn: _playingColumn, at: _playingBar),
         ],
       ),
+    );
+  }
+}
+
+/// A one-line question above the table, and the answer when it is asked
+/// for.
+///
+/// Every set here is in a key somebody chose for a reason, and "why F?"
+/// is the question the summary line provokes. Folded away by default so
+/// it costs one line rather than a paragraph — the table has been pushed
+/// off the screen by explanation before now.
+class _WhyTheKey extends StatelessWidget {
+  const _WhyTheKey({
+    required this.musicKey,
+    required this.note,
+    required this.open,
+    required this.onToggle,
+  });
+
+  final String musicKey;
+  final String note;
+  final bool open;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          key: const ValueKey('why-the-key'),
+          onTap: onToggle,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Why $musicKey?',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    decoration: TextDecoration.underline,
+                    decorationColor: theme.colorScheme.outlineVariant,
+                  ),
+                ),
+                Icon(
+                  open ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (open)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Text(
+              note,
+              key: const ValueKey('why-the-key-note'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

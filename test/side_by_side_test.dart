@@ -68,6 +68,32 @@ void main() {
     });
   });
 
+  group('why the key is the key', () {
+    test('F and B♭ have an answer, because they are horn keys', () {
+      for (final key in ['F', 'B♭']) {
+        final note = whyThisKey(key);
+        expect(note, isNotNull, reason: key);
+        expect(note!.length, greaterThan(80), reason: '$key: say why');
+      }
+      // And it is the horns, not something about the notes: an answer
+      // that did not mention the instruments would be the wrong one.
+      expect(whyThisKey('F'), contains('B♭'));
+      expect(whyThisKey('F'), contains('alto'));
+      // And it does not open by asking the question again: the line you
+      // tapped to get here already says "Why F?".
+      for (final key in ['F', 'B♭']) {
+        expect(whyThisKey(key), isNot(startsWith('Why')), reason: key);
+      }
+    });
+
+    test('a key with nothing to say says nothing', () {
+      // The contrafact set is in G and the minor one in C, and neither is
+      // in that key for any reason worth a paragraph.
+      expect(whyThisKey('G'), isNull);
+      expect(whyThisKey('C'), isNull);
+    });
+  });
+
   group('putting them in one key', () {
     test('a tune already in the key does not move', () {
       final tune = _standard("Now's the Time");
@@ -214,6 +240,55 @@ void main() {
         );
       }
       expect(find.text('F7'), findsWidgets, reason: 'chords, straight away');
+    });
+
+    testWidgets('why F is asked in one line and answered when tapped', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(find.text('Why F?'), findsOneWidget);
+      // Folded away to begin with, so the answer cannot push the table
+      // off the bottom of a phone before anybody has asked for it.
+      final note = find.byKey(const ValueKey('why-the-key-note'));
+      expect(note, findsNothing);
+      for (final bar in [1, 2, 3, 4]) {
+        expect(find.byKey(ValueKey('bar-row-$bar')), findsOneWidget);
+      }
+
+      await tester.tap(find.byKey(const ValueKey('why-the-key')));
+      await tester.pumpAndSettle();
+      expect(note, findsOneWidget);
+      expect(find.textContaining('tenor'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('why-the-key')));
+      await tester.pumpAndSettle();
+      expect(note, findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a set in a key with no story does not ask the question', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('set-A Contrafact')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('why-the-key')), findsNothing);
+    });
+
+    testWidgets('the answer folds itself away when the set changes', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('why-the-key')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('why-the-key-note')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('set-Monk And The Blues')));
+      await tester.pumpAndSettle();
+      // Still an F set, so the question is still there — but the table
+      // comes back first.
+      expect(find.text('Why F?'), findsOneWidget);
+      expect(find.byKey(const ValueKey('why-the-key-note')), findsNothing);
+      expect(find.byKey(const ValueKey('bar-row-4')), findsOneWidget);
     });
 
     testWidgets('choosing another set redraws it in that key', (tester) async {
