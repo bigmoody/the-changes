@@ -111,9 +111,11 @@ class _TritoneSubsScreenState extends State<TritoneSubsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
-              'Any dominant 7th can be swapped for the dominant a tritone '
-              'away. It is usually taught as a trick. It is not: the two '
-              'chords are made of the same two notes in the middle.',
+              'A tritone is half an octave: six semitones. Every dominant '
+              '7th has one, and it is the sound that makes the chord want '
+              'to move. Any dominant can be swapped for the dominant a '
+              'tritone away, and this is why it is allowed:',
+              key: const ValueKey('tritone-in-short'),
               style: theme.textTheme.bodyMedium,
             ),
           ),
@@ -211,11 +213,16 @@ class _TheSwap extends StatelessWidget {
                 shared
                     ? '${_names(from)} in ${from.display}, '
                           '${_names(to)} in ${to.display}. The same two '
-                          'notes — the 3rd and the ♭7 change places, and '
-                          'nothing the ear was listening to has moved.'
+                          'notes with their jobs swapped — nothing the ear '
+                          'was listening to has moved.\n\n'
+                          'Those two are six semitones apart: three whole '
+                          'tones, which is what a tritone is. It is the '
+                          'one interval that is its own opposite — half an '
+                          'octave either way lands on the same note — so '
+                          'the swap goes both ways.'
                     : '${from.display} is not a dominant, so it has no '
                           'tritone to swap.',
-                key: const ValueKey('the-swap'),
+                key: const ValueKey('what-a-tritone-is'),
                 style: theme.textTheme.bodySmall,
               ),
             ],

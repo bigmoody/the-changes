@@ -153,12 +153,63 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    /// The progressions sit under the explanation, which fills the first
+    /// screen on a phone.
+    Future<void> toTheChanges(WidgetTester tester) async {
+      await tester.scrollUntilVisible(
+        find.text('With The Sub'),
+        120,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const ValueKey('subs-list')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('it says what a tritone is before using the word', (
+      tester,
+    ) async {
+      // The screen is called Tritone Subs and used the word throughout
+      // without ever defining it.
+      await open(tester);
+      // Short, at the top, before the word is leaned on.
+      final intro = tester
+          .widget<Text>(find.byKey(const ValueKey('tritone-in-short')))
+          .data!;
+      expect(intro, contains('half an octave'));
+      expect(intro, contains('six semitones'));
+      expect(
+        intro.indexOf('six semitones'),
+        lessThan(intro.indexOf('swapped')),
+        reason: 'defined before it is leaned on',
+      );
+      // And in full beside the two notes that are one.
+      final full = tester
+          .widget<Text>(find.byKey(const ValueKey('what-a-tritone-is')))
+          .data!;
+      expect(full, contains('three whole tones'));
+      expect(full, contains('six semitones apart'));
+    });
+
+    testWidgets('and why the swap goes both ways', (tester) async {
+      await open(tester);
+      expect(find.textContaining('its own opposite'), findsOneWidget);
+    });
+
     testWidgets('it leads with the two chords and why they swap', (
       tester,
     ) async {
       await open(tester);
-      expect(find.byKey(const ValueKey('dyad-G7')), findsOneWidget);
-      expect(find.byKey(const ValueKey('dyad-D♭7')), findsOneWidget);
+      // On screen the moment it opens: the mechanism is the lesson, and
+      // everything under it is only where you would use it.
+      for (final key in ['tritone-in-short', 'dyad-G7', 'dyad-D♭7']) {
+        final at = find.byKey(ValueKey(key));
+        expect(at, findsOneWidget, reason: key);
+        expect(tester.getRect(at).bottom, lessThan(852), reason: key);
+      }
       expect(find.textContaining('The same two notes'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -167,6 +218,7 @@ void main() {
       tester,
     ) async {
       await open(tester);
+      await toTheChanges(tester);
       expect(find.byKey(const ValueKey('As Written-G7')), findsOneWidget);
       expect(find.byKey(const ValueKey('With The Sub-D♭7')), findsOneWidget);
       // The chords either side are untouched.
@@ -177,6 +229,7 @@ void main() {
     testWidgets('the bass movement is named, not just counted', (tester) async {
       // "↑ 5" beside "↓ semitone" reads as two different kinds of thing.
       await open(tester);
+      await toTheChanges(tester);
       expect(find.text('↓ semitone'), findsNWidgets(2));
       expect(find.text('↑ a 4th'), findsNWidgets(2));
       expect(find.textContaining('↑ 5'), findsNothing);
@@ -188,6 +241,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('dyad-C7')), findsOneWidget);
       expect(find.byKey(const ValueKey('dyad-G♭7')), findsOneWidget);
+      await toTheChanges(tester);
       expect(find.byKey(const ValueKey('With The Sub-G♭7')), findsOneWidget);
     });
 
@@ -195,6 +249,7 @@ void main() {
       tester,
     ) async {
       await open(tester);
+      await toTheChanges(tester);
       for (final which in ['As Written', 'With The Sub']) {
         final button = find.byKey(ValueKey('play-$which'));
         await tester.ensureVisible(button);
