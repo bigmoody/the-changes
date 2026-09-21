@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/drum_patterns.dart';
 import 'package:play_along/audio/practice_player.dart';
@@ -235,6 +236,7 @@ void main() {
           of: 4,
           beatsPerBar: 4,
           random: math.Random(bar),
+          swing: tripletSwing,
         );
         expect(
           hits.where((h) => h.drum == Drum.hiHatPedal).map((h) => h.beat),
@@ -257,6 +259,7 @@ void main() {
             of: 4,
             beatsPerBar: 4,
             random: math.Random(seed),
+            swing: tripletSwing,
           ),
       ];
       final drums = hits.map((h) => h.drum).toSet();
@@ -271,6 +274,7 @@ void main() {
         of: 4,
         beatsPerBar: 4,
         random: math.Random(7),
+        swing: tripletSwing,
       );
       final closing = last.where((h) => h.beat >= 2 && h.drum != Drum.kick);
       // Every eighth of the last two beats is struck.
@@ -285,6 +289,7 @@ void main() {
           of: 4,
           beatsPerBar: 3,
           random: math.Random(seed),
+          swing: tripletSwing,
         );
         expect([for (final h in hits) h.beat], everyElement(lessThan(3)));
       }

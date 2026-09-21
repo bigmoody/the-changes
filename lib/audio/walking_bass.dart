@@ -34,12 +34,13 @@ List<BassNote> walkingBassLine(
   List<(Chord, int)> chords, {
   required int choruses,
   required math.Random random,
+  required double swing,
   int beatsPerBar = 4,
   int? startPitch,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch),
+  _Bassist(random, startPitch, swing: swing),
   _Style.walking,
   beatsPerBar,
 );
@@ -50,12 +51,13 @@ List<BassNote> twoFeelBassLine(
   List<(Chord, int)> chords, {
   required int choruses,
   required math.Random random,
+  required double swing,
   int beatsPerBar = 4,
   int? startPitch,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch, alwaysTwoFeel: true),
+  _Bassist(random, startPitch, swing: swing, alwaysTwoFeel: true),
   _Style.walking,
   beatsPerBar,
 );
@@ -67,12 +69,13 @@ List<BassNote> bossaBassLine(
   List<(Chord, int)> chords, {
   required int choruses,
   required math.Random random,
+  required double swing,
   int beatsPerBar = 4,
   int? startPitch,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch),
+  _Bassist(random, startPitch, swing: swing),
   _Style.bossa,
   beatsPerBar,
 );
@@ -82,12 +85,13 @@ List<BassNote> funkBassLine(
   List<(Chord, int)> chords, {
   required int choruses,
   required math.Random random,
+  required double swing,
   int beatsPerBar = 4,
   int? startPitch,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch),
+  _Bassist(random, startPitch, swing: swing),
   _Style.funk,
   beatsPerBar,
 );
@@ -98,12 +102,13 @@ List<BassNote> calypsoBassLine(
   List<(Chord, int)> chords, {
   required int choruses,
   required math.Random random,
+  required double swing,
   int beatsPerBar = 4,
   int? startPitch,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch),
+  _Bassist(random, startPitch, swing: swing),
   _Style.calypso,
   beatsPerBar,
 );
@@ -161,12 +166,20 @@ enum _Feel { walking, twoFeel }
 /// The bassist's memory while playing: where the line is, the current
 /// phrase's register and feel, and what was played on each chord last time.
 class _Bassist {
-  _Bassist(this.random, int? startPitch, {this.alwaysTwoFeel = false})
-    : previous = startPitch ?? 38 {
+  _Bassist(
+    this.random,
+    int? startPitch, {
+    required this.swing,
+    this.alwaysTwoFeel = false,
+  }) : previous = startPitch ?? 38 {
     _newPhrase();
   }
 
   final math.Random random;
+
+  /// Where the off-beat eighth falls inside the beat, so the ghost notes
+  /// and the pushes land with the ride rather than beside it.
+  final double swing;
 
   /// Stay in two-feel rather than drifting in and out of it.
   final bool alwaysTwoFeel;
@@ -618,7 +631,7 @@ class _Bassist {
         ],
         () => [
           _note(first, 0, 1.4, accent: true),
-          _ghost(first, 1 + 2 / 3),
+          _ghost(first, 1 + swing),
           _note(fifth, 2, 1.9),
         ],
       ] else ...[
@@ -656,7 +669,7 @@ class _Bassist {
             length: 0.6,
             velocity: note.velocity,
           ))
-          ..add(_note(target, note.beat + 2 / 3, 1.25, accent: true));
+          ..add(_note(target, note.beat + swing, 1.25, accent: true));
         skipNextDownbeat = true;
       } else if (note.beat > 0 && isQuarter && roll < 0.12) {
         // Triplet skip: a shortened note plus a quiet pickup.
@@ -670,7 +683,7 @@ class _Bassist {
             length: 0.6,
             velocity: note.velocity,
           ))
-          ..add(_ghost(pickup, note.beat + 2 / 3));
+          ..add(_ghost(pickup, note.beat + swing));
       } else if (note.beat > 0 && isQuarter && !isLast && roll < 0.15) {
         // A muted "thump" instead of a full note.
         out.add((

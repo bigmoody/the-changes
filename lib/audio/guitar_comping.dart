@@ -139,11 +139,18 @@ class GuitarComper {
     required int bar,
     Chord? next,
     int tempo = 120,
+    required double swing,
   }) {
     if (style == PianoStyle.swing) {
       // Swing: the comper's own rhythms, played as quick downstrokes.
       return [
-        for (final hit in _comper.comp(chord, beats, Feel.swing, next: next))
+        for (final hit in _comper.comp(
+          chord,
+          beats,
+          Feel.swing,
+          next: next,
+          swing: swing,
+        ))
           (
             beat: hit.beat,
             length: hit.length,

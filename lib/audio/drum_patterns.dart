@@ -17,6 +17,7 @@
 
 import 'dart:math' as math;
 
+import '../music/swing.dart';
 import '../music/tune.dart';
 
 /// The pieces of the kit the patterns can call for.
@@ -55,16 +56,21 @@ class DrumHit {
 
 /// The hits for one bar of [feel]. [bar] counts from the start of the loop,
 /// so two-bar patterns (like the clave) and phrase-ending fills line up.
+///
+/// [swing] is where the off-beat eighth falls inside the beat — a half is
+/// even. It only reaches the swing feel: a shuffle is a triplet feel by
+/// definition and the even feels are even.
 List<DrumHit> drumBar({
   required Feel feel,
   required int bar,
   required int beatsPerBar,
   required math.Random random,
+  required double swing,
 }) => [
   // Figures written for a four-beat bar lose whatever falls past the end
   // of a shorter one (a waltz keeps the first two beats of the clave).
   for (final hit in switch (feel) {
-    Feel.swing => _swingBar(bar, beatsPerBar, random),
+    Feel.swing => _swingBar(bar, beatsPerBar, random, swing),
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
     Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
@@ -85,7 +91,12 @@ List<int> _backbeats(int beatsPerBar) => switch (beatsPerBar) {
   _ => [for (var beat = 1; beat < beatsPerBar; beat += 2) beat],
 };
 
-List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
+List<DrumHit> _swingBar(
+  int bar,
+  int beatsPerBar,
+  math.Random random,
+  double swing,
+) {
   final hits = <DrumHit>[];
   final backbeats = _backbeats(beatsPerBar);
   for (var beat = 0; beat < beatsPerBar; beat++) {
@@ -102,7 +113,7 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
       hits.add(
         DrumHit(
           drum: Drum.ride,
-          beat: beat + 2 / 3,
+          beat: beat + swing,
           velocity: 0.4 * _human(random),
         ),
       );
@@ -127,7 +138,7 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
 
   // Quiet snare comping on an off-beat, now and then.
   if (random.nextDouble() < 0.3) {
-    final beat = random.nextInt(beatsPerBar) + 2 / 3;
+    final beat = random.nextInt(beatsPerBar) + swing;
     hits.add(
       DrumHit(drum: Drum.snare, beat: beat, velocity: 0.22 * _human(random)),
     );
@@ -137,7 +148,7 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
     hits.add(
       DrumHit(
         drum: Drum.kick,
-        beat: random.nextInt(beatsPerBar) + 2 / 3,
+        beat: random.nextInt(beatsPerBar) + swing,
         velocity: 0.62 * _human(random),
         hard: true,
       ),
@@ -150,7 +161,7 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
       ..add(
         DrumHit(drum: Drum.snare, beat: from, velocity: 0.55 * _human(random)),
       )
-      ..add(DrumHit(drum: Drum.snare, beat: from + 2 / 3, velocity: 0.45))
+      ..add(DrumHit(drum: Drum.snare, beat: from + swing, velocity: 0.45))
       ..add(
         DrumHit(
           drum: Drum.snare,
@@ -158,7 +169,7 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
           velocity: 0.6 * _human(random),
         ),
       )
-      ..add(DrumHit(drum: Drum.snare, beat: from + 1 + 2 / 3, velocity: 0.5));
+      ..add(DrumHit(drum: Drum.snare, beat: from + 1 + swing, velocity: 0.5));
   }
   return hits;
 }
@@ -381,6 +392,7 @@ List<DrumHit> drumSoloBar({
   required int of,
   required int beatsPerBar,
   required math.Random random,
+  required double swing,
 }) {
   final hits = <DrumHit>[];
   final swung = feel == Feel.swing;
@@ -411,7 +423,7 @@ List<DrumHit> drumSoloBar({
         : 0.5;
     if (random.nextDouble() > chance) continue;
     // Swung eighths sit late, as they do on the ride.
-    final beat = onBeat ? eighth / 2 : (eighth ~/ 2) + (swung ? 2 / 3 : 0.5);
+    final beat = onBeat ? eighth / 2 : (eighth ~/ 2) + (swung ? swing : 0.5);
     // The snare leads; the toms answer it, lower as the phrase falls.
     final drum = inTheRun
         ? (eighth >= eighths - 2 ? Drum.tomLow : Drum.tomHigh)
@@ -436,7 +448,7 @@ List<DrumHit> drumSoloBar({
       hits.add(
         DrumHit(
           drum: Drum.kick,
-          beat: beat + (random.nextBool() ? 0.0 : (swung ? 2 / 3 : 0.5)),
+          beat: beat + (random.nextBool() ? 0.0 : (swung ? swing : 0.5)),
           velocity: 0.6 * _human(random),
           hard: true,
         ),
@@ -473,7 +485,7 @@ List<DrumHit> _shuffleBar(int bar, int beatsPerBar, math.Random random) {
       ..add(
         DrumHit(
           drum: Drum.ride,
-          beat: beat + 2 / 3,
+          beat: beat + tripletSwing,
           velocity: 0.34 * _human(random),
         ),
       );
@@ -511,7 +523,7 @@ List<DrumHit> _shuffleBar(int bar, int beatsPerBar, math.Random random) {
     hits.add(
       DrumHit(
         drum: Drum.snare,
-        beat: beatsPerBar - 1 + 2 / 3,
+        beat: beatsPerBar - 1 + tripletSwing,
         velocity: 0.5 * _human(random),
       ),
     );

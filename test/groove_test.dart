@@ -1,14 +1,20 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/drum_patterns.dart';
 import 'package:play_along/audio/piano_comping.dart';
 import 'package:play_along/audio/walking_bass.dart';
 import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/tune.dart';
 
-List<DrumHit> bar(Feel feel, int index, [int seed = 1]) =>
-    drumBar(feel: feel, bar: index, beatsPerBar: 4, random: math.Random(seed));
+List<DrumHit> bar(Feel feel, int index, [int seed = 1]) => drumBar(
+  feel: feel,
+  bar: index,
+  beatsPerBar: 4,
+  random: math.Random(seed),
+  swing: tripletSwing,
+);
 
 List<double> beatsOf(List<DrumHit> hits, Drum drum) =>
     [for (final h in hits.where((h) => h.drum == drum)) h.beat]..sort();
@@ -108,6 +114,7 @@ void main() {
           chords,
           choruses: 8,
           random: math.Random(3),
+          swing: tripletSwing,
         );
         final places = {for (final note in line) note.beat % 4};
         expect(
@@ -122,6 +129,7 @@ void main() {
         [(Chord.parse('Dm7'), 2), (Chord.parse('G7'), 2)],
         choruses: 4,
         random: math.Random(1),
+        swing: tripletSwing,
       );
       // A G (7) sounding from the "and" of 2 of every bar but the last.
       final early = line.where((n) => (n.beat % 4 - 1.5).abs() < 0.05);
@@ -138,6 +146,7 @@ void main() {
             4,
             Feel.bossa,
             calypso: true,
+            swing: tripletSwing,
           ),
       ];
       expect(hits.length, greaterThan(40), reason: 'a strum, not sparse jazz');
@@ -383,7 +392,12 @@ void main() {
       final comper = Comper(math.Random(2));
       final rhythms = <String>{};
       for (var i = 0; i < 40; i++) {
-        final hits = comper.comp(chords[i % chords.length], 4, Feel.swing);
+        final hits = comper.comp(
+          chords[i % chords.length],
+          4,
+          Feel.swing,
+          swing: tripletSwing,
+        );
         expect(hits, isNotEmpty, reason: 'skipped a chord change');
         rhythms.add(hits.map((h) => h.beat.toStringAsFixed(2)).join(','));
       }
@@ -405,6 +419,7 @@ void main() {
             chords[i % chords.length],
             i.isEven ? 4 : 2,
             feel,
+            swing: tripletSwing,
           )) {
             if (hit.beat < 0) early.add(hit.beat);
           }
@@ -421,12 +436,12 @@ void main() {
       // bars of "Take the 'A' Train".
       final comper = Comper(math.Random(2));
       final c6 = Chord.parse('C6');
-      final first = comper.comp(c6, 4, Feel.swing);
+      final first = comper.comp(c6, 4, Feel.swing, swing: tripletSwing);
       expect(first, isNotEmpty, reason: 'the chord must be stated once');
       var rests = 0;
       var reattacksOnOne = 0;
       for (var i = 0; i < 30; i++) {
-        final hits = comper.comp(c6, 4, Feel.swing);
+        final hits = comper.comp(c6, 4, Feel.swing, swing: tripletSwing);
         if (hits.isEmpty) {
           rests++;
           continue;
@@ -451,6 +466,7 @@ void main() {
           chords[i % chords.length],
           4,
           Feel.swing,
+          swing: tripletSwing,
         )) {
           expect(hit.notes, isNotEmpty);
           for (final note in hit.notes) {
@@ -532,7 +548,10 @@ void main() {
       final comper = Comper(math.Random(3));
       final voicings = [
         for (final symbol in ['Dm7', 'G7', 'CΔ7'])
-          comper.comp(Chord.parse(symbol), 4, Feel.swing).first.notes,
+          comper
+              .comp(Chord.parse(symbol), 4, Feel.swing, swing: tripletSwing)
+              .first
+              .notes,
       ];
       for (var i = 1; i < voicings.length; i++) {
         var movement = 0;

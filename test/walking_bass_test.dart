@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/walking_bass.dart';
 import 'package:play_along/music/loop_range.dart';
@@ -11,8 +12,12 @@ void main() {
   final autumnLeaves = standards.firstWhere((t) => t.title == 'Autumn Leaves');
   final chords = [for (final s in autumnLeaves.slots) (s.chord, s.beats)];
 
-  List<BassNote> line(int seed, {int choruses = 4}) =>
-      walkingBassLine(chords, choruses: choruses, random: math.Random(seed));
+  List<BassNote> line(int seed, {int choruses = 4}) => walkingBassLine(
+    chords,
+    choruses: choruses,
+    random: math.Random(seed),
+    swing: tripletSwing,
+  );
 
   test('chord changes land on chord tones, mostly the root', () {
     var changes = 0, roots = 0;
@@ -63,6 +68,7 @@ void main() {
       oneBar,
       choruses: 32,
       random: math.Random(11),
+      swing: tripletSwing,
     );
     final bars = <String>{};
     final rhythms = <String>{};
@@ -164,7 +170,12 @@ void main() {
   test('bossa bass varies too, while staying a bossa figure', () {
     final blueBossa = standards.firstWhere((t) => t.title == 'Blue Bossa');
     final oneBar = [(blueBossa.slots.first.chord, 4)];
-    final notes = bossaBassLine(oneBar, choruses: 32, random: math.Random(5));
+    final notes = bossaBassLine(
+      oneBar,
+      choruses: 32,
+      random: math.Random(5),
+      swing: tripletSwing,
+    );
     final bars = <String>{};
     var roots = 0;
     for (var bar = 0; bar < 32; bar++) {

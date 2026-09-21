@@ -16,6 +16,7 @@ import 'dart:typed_data';
 
 import '../music/arrangement.dart';
 import '../music/loop_range.dart';
+import '../music/swing.dart';
 import '../music/tune.dart';
 import 'arpeggios.dart';
 import 'drum_patterns.dart';
@@ -189,6 +190,17 @@ class RenderedBacking {
         .round(),
   );
 }
+
+/// How late the off-beat eighth lands for everybody in the band who plays
+/// one, on the pass starting at [firstChorus].
+///
+/// Worked out once for the whole pass so the drummer, the bass and the
+/// comper cannot land in different places. A tempo ramp moves it between
+/// passes rather than inside one, which is what keeps the band together
+/// while it speeds up. Each part still decides for itself whether it is
+/// swinging at all — this is only how far.
+double swingForPass(BackingRequest request, int firstChorus) =>
+    swingAt(tempoForChorus(request, firstChorus));
 
 /// The tempo on a given pass through the form: the tempo asked for, plus
 /// whatever a tempo ramp has added to it by then.
@@ -456,6 +468,8 @@ _Parts _renderParts(
     }
   }
 
+  final swing = swingForPass(request, firstChorus);
+
   // ── Bass ───────────────────────────────────────────────────────────────
   final chords = [
     for (final slot in loop.slotsIn(tune))
@@ -497,6 +511,7 @@ _Parts _renderParts(
       chords,
       choruses: choruses,
       random: math.Random(seed),
+      swing: swing,
       beatsPerBar: beatsPerBar,
       startPitch: state.bassPitch,
     );
@@ -510,6 +525,7 @@ _Parts _renderParts(
         chords,
         choruses: 1,
         random: math.Random(seed + chorus * 101),
+        swing: swing,
         beatsPerBar: beatsPerBar,
         startPitch: from,
       );
@@ -651,6 +667,7 @@ _Parts _renderParts(
           groove: tune.style.drums,
           next: compSlots[(index + 1) % compSlots.length].chord,
           tempo: tempoForChorus(request, firstChorus + chorus),
+          swing: swing,
           beatInBar: (tuneBeat % beatsPerBar).toDouble(),
           // Counted from the start of the loop, as the drums count, so the
           // guitar's clave lines up with the drummer's.
@@ -710,6 +727,7 @@ _Parts _renderParts(
           next: next,
           held: tune.style.piano == PianoStyle.held,
           calypso: tune.style.piano == PianoStyle.calypso,
+          swing: swing,
           beatInBar: (math.max(slot.startBeat, loop.startBeat) % beatsPerBar)
               .toDouble(),
         )) {
@@ -740,7 +758,7 @@ _Parts _renderParts(
     final line = arpeggioLine(
       chords,
       choruses: choruses,
-      swing: tune.style.piano.feel == Feel.swing,
+      swing: tune.style.piano.feel == Feel.swing ? swing : straight,
       from: request.arpeggioStart,
       startNote: state.arpeggioRoot,
     );
@@ -827,12 +845,14 @@ _Parts _renderParts(
               of: trading.bars,
               beatsPerBar: beatsPerBar,
               random: drumRandom,
+              swing: swing,
             )
           : drumBar(
               feel: tune.style.drums,
               bar: chorus * bars.length + i,
               beatsPerBar: beatsPerBar,
               random: drumRandom,
+              swing: swing,
             );
       for (final hit in hits) {
         final beatInTune = bars[i] * beatsPerBar + hit.beat;

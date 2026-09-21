@@ -73,8 +73,8 @@ const arpeggioHighestStart = 67;
 
 /// The arpeggio line over [chords] (each with how many beats it lasts), for
 /// [choruses] passes, and the note it last started from (for the next
-/// stretch to carry on from). [swing] plays the off-beat eighths late, as
-/// swing eighths are.
+/// stretch to carry on from). [swing] is where the off-beat eighth falls
+/// inside the beat — a half is even, and anything more is swung.
 ///
 /// Each chord goes up four chord tones from [from] — the root, 3rd, 5th or
 /// 7th — to that note an octave higher, then back down. On a triad the "7th"
@@ -82,11 +82,10 @@ const arpeggioHighestStart = 67;
 ({List<ArpeggioNote> notes, int lastStart}) arpeggioLine(
   List<(Chord, int)> chords, {
   required int choruses,
-  required bool swing,
+  required double swing,
   ArpeggioStart from = ArpeggioStart.root,
   int? startNote,
 }) {
-  final and = swing ? 2 / 3 : 0.5;
   final notes = <ArpeggioNote>[];
   var previousStart = startNote ?? 60;
   var start = 0;
@@ -123,11 +122,11 @@ const arpeggioHighestStart = 67;
 
       for (var eighth = 0; eighth < beats * 2; eighth++) {
         final onBeat = eighth.isEven;
-        final beat = eighth ~/ 2 + (onBeat ? 0.0 : and);
+        final beat = eighth ~/ 2 + (onBeat ? 0.0 : swing);
         notes.add((
           pitch: cycle[eighth % cycle.length],
           beat: start + beat,
-          length: onBeat ? and * 0.95 : (1 - and) * 0.95,
+          length: onBeat ? swing * 0.95 : (1 - swing) * 0.95,
           // The first note of each chord a little louder.
           velocity: eighth == 0 ? 0.72 : (onBeat ? 0.6 : 0.5),
         ));

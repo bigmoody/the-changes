@@ -4,6 +4,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/guitar_comping.dart';
 import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/guitar_voicing.dart';
@@ -23,6 +24,7 @@ List<GuitarHit> bar(
   groove: groove,
   beatInBar: 0,
   bar: index,
+  swing: tripletSwing,
 );
 
 /// Whether [notes] sit on four strings with no fret more than three apart.
@@ -111,6 +113,7 @@ void main() {
         beatInBar: 0,
         bar: i,
         next: Chord.parse(changesInTune[(i + 1) % changesInTune.length]),
+        swing: tripletSwing,
       );
       rhythms.add(hits.map((h) => h.beat.toStringAsFixed(2)).join(' '));
       for (final hit in hits) {
@@ -139,6 +142,7 @@ void main() {
         groove: Feel.bossa,
         beatInBar: 0,
         bar: 0,
+        swing: tripletSwing,
       );
       final second = comper.comp(
         Chord.parse('G7'),
@@ -147,6 +151,7 @@ void main() {
         groove: Feel.bossa,
         beatInBar: 0,
         bar: 1,
+        swing: tripletSwing,
       );
       final figure =
           '${first.map((h) => h.beat).toList()} '
@@ -197,6 +202,7 @@ void main() {
         beatInBar: 0,
         bar: index,
         tempo: 72,
+        swing: tripletSwing,
       );
       expect(hits.map((h) => h.beat).where((b) => b % 1 == 0), [
         1,
@@ -219,6 +225,7 @@ void main() {
               beatInBar: 0,
               bar: index,
               tempo: 110,
+              swing: tripletSwing,
             )
             .map((h) => h.beat)
             .join(' '),

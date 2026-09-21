@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/drum_patterns.dart';
 import 'package:play_along/audio/fft.dart';
@@ -89,6 +90,7 @@ void main() {
         bar: bar,
         beatsPerBar: 4,
         random: random,
+        swing: tripletSwing,
       )) {
         if (hit.drum != Drum.ride) continue;
         final layer = hit.hard ? bank.ride.length - 1 : 0;

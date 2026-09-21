@@ -14,8 +14,10 @@
 // short note takes up more and more of the beat until there is nothing
 // left to swing, and the pair is straight.
 //
-// This is the thing the app has been doing to everybody without saying
-// so: the band plays a fixed two-thirds at every tempo.
+// The band plays to this too. Every part that puts a note between the
+// beats — the ride, the bass's ghosts and pushes, the comper, the
+// arpeggios — asks [swingAt] rather than assuming two thirds, so what
+// the Swing screen teaches is what a tune at that tempo actually does.
 
 import 'dart:math' as math;
 

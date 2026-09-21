@@ -73,6 +73,7 @@ class Comper {
     bool held = false,
     bool calypso = false,
     double beatInBar = 0,
+    required double swing,
   }) {
     final isNew = chord.display != _sounding;
     _held = isNew ? 0 : _held + 1;
@@ -82,7 +83,7 @@ class Comper {
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
         : calypso
         ? _calypsoPattern(beats, beatInBar)
-        : _pickPattern(beats, feel, isNew: isNew);
+        : _pickPattern(beats, feel, swing, isNew: isNew);
     if (pattern.isEmpty) return const [];
     final notes = _pickVoicing(chord, next, reuse: !isNew);
     // A chord that's still ringing is touched more gently than a fresh one.
@@ -145,9 +146,15 @@ class Comper {
 
   _Pattern? _strum;
 
-  _Pattern _pickPattern(int beats, Feel feel, {required bool isNew}) {
-    // The swung "and" of a beat lands late; in straight feels it's halfway.
-    final and = feel == Feel.swing ? 2 / 3 : 0.5;
+  _Pattern _pickPattern(
+    int beats,
+    Feel feel,
+    double swing, {
+    required bool isNew,
+  }) {
+    // The swung "and" of a beat lands late; in straight feels it's halfway,
+    // and how late is the band's business rather than this one's.
+    final and = feel == Feel.swing ? swing : 0.5;
     // A push lands on the "and" of the beat *before* the chord — so it's
     // early by what's left of that beat, not by the "and" itself. In swing
     // that's a third of a beat; pushing by two thirds put the chord on a

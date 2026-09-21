@@ -4,6 +4,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/drum_patterns.dart';
 import 'package:play_along/audio/walking_bass.dart';
@@ -32,6 +33,7 @@ void main() {
               bar: bar,
               beatsPerBar: beatsPerBar,
               random: math.Random(bar),
+              swing: tripletSwing,
             );
             expect(hits, isNotEmpty, reason: '$feel, bar $bar');
             for (final hit in hits) {
@@ -51,6 +53,7 @@ void main() {
             bar: bar,
             beatsPerBar: 3,
             random: math.Random(bar),
+            swing: tripletSwing,
           ))
             if (hit.drum == Drum.hiHatPedal) hit.beat,
       };
@@ -67,6 +70,7 @@ void main() {
       choruses: 1,
       random: math.Random(1),
       beatsPerBar: 3,
+      swing: tripletSwing,
     );
     // Three bars' worth of notes, nothing past the end, and every bar
     // played (a bassist may hold two beats rather than walk all three).

@@ -13,6 +13,7 @@ import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/chord_drill.dart';
 import 'package:play_along/music/loop_range.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/screens/practice_screen.dart';
@@ -21,7 +22,7 @@ import 'package:play_along/theme.dart';
 
 List<ArpeggioNote> line(
   List<(String, int)> chords, {
-  bool swing = false,
+  double swing = straight,
   ArpeggioStart from = ArpeggioStart.root,
 }) => arpeggioLine(
   [for (final (symbol, beats) in chords) (Chord.parse(symbol), beats)],
@@ -136,7 +137,7 @@ void main() {
   });
 
   test('swung eighths land late', () {
-    final notes = line([('C^7', 2)], swing: true);
+    final notes = line([('C^7', 2)], swing: tripletSwing);
     expect(notes[1].beat, closeTo(2 / 3, 1e-9));
   });
 

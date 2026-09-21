@@ -3,6 +3,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/piano_comping.dart';
 import 'package:play_along/audio/walking_bass.dart';
@@ -21,11 +22,13 @@ void main() {
       changes,
       choruses: 4,
       random: math.Random(1),
+      swing: tripletSwing,
     );
     final twoFeel = twoFeelBassLine(
       changes,
       choruses: 4,
       random: math.Random(1),
+      swing: tripletSwing,
     );
     expect(notesPerBar(walking), greaterThanOrEqualTo(4));
     expect(notesPerBar(twoFeel), lessThanOrEqualTo(3));
@@ -35,15 +38,25 @@ void main() {
   test('held piano plays each chord once, for its whole length', () {
     final comper = Comper(math.Random(2));
     for (final (chord, beats) in changes) {
-      final hits = comper.comp(chord, beats, Feel.swing, held: true);
+      final hits = comper.comp(
+        chord,
+        beats,
+        Feel.swing,
+        held: true,
+        swing: tripletSwing,
+      );
       expect(hits, hasLength(1));
       expect(hits.single.beat, 0);
       expect(hits.single.length, closeTo(beats, 0.1));
     }
     // A chord held into a second bar is struck again, more gently.
     final c = Chord.parse('C^7');
-    final first = comper.comp(c, 4, Feel.swing, held: true).single;
-    final again = comper.comp(c, 4, Feel.swing, held: true).single;
+    final first = comper
+        .comp(c, 4, Feel.swing, held: true, swing: tripletSwing)
+        .single;
+    final again = comper
+        .comp(c, 4, Feel.swing, held: true, swing: tripletSwing)
+        .single;
     expect(again.velocity, lessThan(first.velocity));
   });
 
