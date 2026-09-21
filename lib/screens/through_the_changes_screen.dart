@@ -163,8 +163,8 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
     _slots,
     exercise: exercise,
     beatsPerBar: _picked.tune.beatsPerBar,
-    low: _reading == _Reading.bass ? 43 : 55,
-    high: _reading == _Reading.bass ? 67 : 79,
+    low: _reading == _Reading.bass ? 45 : 57,
+    high: _reading == _Reading.bass ? 63 : 75,
   );
 
   List<ToneNote> get _line => _lineOf(_exercise);

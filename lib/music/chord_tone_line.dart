@@ -207,10 +207,21 @@ int _startFrom(List<_Rung> ladder, int from, int direction) {
 
 /// [exercise] played through [slots], as a line of notes at concert pitch.
 ///
-/// [low] and [high] are the range to stay inside. The default is the
-/// octave and a half in the middle of a treble stave, which is where a
-/// horn sounds like itself and where a singer can follow what you are
-/// doing. The line turns round rather than climbing out of it.
+/// [low] and [high] are the range to stay inside, at concert pitch. The
+/// line turns round rather than climbing out of it.
+///
+/// The default is worked backwards from what the part has to look like
+/// once [writtenFor] has moved it. An E♭ instrument reads a major 6th
+/// above concert, so the top of the range has to sit 9 semitones below
+/// the highest note worth writing, and a concert part sits at the bottom
+/// of the range as it stands. A3 up to E♭5 is what comes out: every part
+/// the app writes, from concert to E♭, then falls between A3 and C6, two
+/// ledger lines either side of the treble stave and no more.
+///
+/// It is narrower than the range one instrument on its own would want.
+/// That is the cost of everybody practising the same notes, and it is
+/// paid in the line turning round a little more often, which is not a
+/// bad thing to practise either.
 ///
 /// Slots come in playing order: `tune.slots`, or the slots of one section.
 /// One note per beat of every chord, so a chord lasting two beats gets two
@@ -218,8 +229,8 @@ int _startFrom(List<_Rung> ladder, int from, int direction) {
 List<ToneNote> chordToneLine(
   List<ChordSlot> slots, {
   required ToneExercise exercise,
-  int low = 55,
-  int high = 79,
+  int low = 57,
+  int high = 75,
   int beatsPerBar = 4,
 }) {
   final line = <ToneNote>[];

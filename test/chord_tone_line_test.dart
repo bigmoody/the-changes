@@ -15,6 +15,7 @@ import 'package:play_along/music/chord_tone_line.dart';
 import 'package:play_along/music/guide_tones.dart';
 import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
+import 'package:play_along/screens/stave.dart';
 import 'package:play_along/settings/app_settings.dart';
 
 Tune get _blues =>
@@ -284,6 +285,60 @@ void main() {
           expect(note.pitch % 12, note.chord.pitchClassFor(note.degree));
         }
       }
+    });
+  });
+
+  group('what the part looks like', () {
+    /// Where [line] sits on a treble stave, read by [instrument]: 0 is the
+    /// bottom line and 8 the top, so the ledger lines are at -2 and -4
+    /// below and 10 and 12 above.
+    (int, int) steps(List<ToneNote> line, ChartInstrument instrument) {
+      final read = writtenFor(line, instrument.transposition);
+      final placed = lineOnStave([
+        for (final note in read) (pitch: note.pitch, name: note.name),
+      ], clef: Clef.treble);
+      final all = [for (final note in placed) note.step]..sort();
+      return (all.first, all.last);
+    }
+
+    test('two ledger lines is the worst any of them has to read', () {
+      // The concert range is picked so this comes out true, which is the
+      // only reason it is that width. If the range moves, this is what
+      // says whether it can.
+      for (final tune in [_blues, _rhythm]) {
+        for (final exercise in ToneExercise.values) {
+          if (exercise == ToneExercise.fromTheRoot) continue;
+          final line = _line(tune, exercise);
+          for (final instrument in ChartInstrument.values) {
+            final (lowest, highest) = steps(line, instrument);
+            expect(
+              lowest,
+              greaterThanOrEqualTo(-4),
+              reason:
+                  '${instrument.symbol} reading ${exercise.label} on '
+                  '${tune.title} goes below A3',
+            );
+            expect(
+              highest,
+              lessThanOrEqualTo(12),
+              reason:
+                  '${instrument.symbol} reading ${exercise.label} on '
+                  '${tune.title} goes above C6',
+            );
+          }
+        }
+      }
+    });
+
+    test('from the root climbs out of it, which is the point', () {
+      // It is the one exercise allowed past the range, because going
+      // wherever the next root is and then climbing from there is what is
+      // wrong with it. If it ever stopped doing that, the comparison the
+      // screen makes would have quietly stopped meaning anything.
+      final line = _line(_blues, ToneExercise.fromTheRoot);
+      final (_, highest) = steps(line, ChartInstrument.eFlat);
+      expect(highest, greaterThan(12));
+      expect(highest, lessThan(17), reason: 'but not off the page');
     });
   });
 
