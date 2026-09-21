@@ -137,6 +137,33 @@ void main() {
     expect(chords, isNot(contains('F7')));
   });
 
+  testWidgets('the exercise is the same notes whoever reads it', (
+    tester,
+  ) async {
+    // The range is a concert one, so the line is the same sounds for
+    // everybody and only the writing moves. If it were worked out in the
+    // player's own key instead, a tenor and an alto would be practising
+    // different lines over the same twelve bars and the card under them
+    // would quietly disagree about how far the changes are.
+    Future<List<String?>> card(ChartInstrument instrument) async {
+      await open(tester, instrument: instrument);
+      await reach(tester, find.byKey(const ValueKey('the-cost')));
+      return [
+        for (final key in ['worst-jump', 'smooth-changes', 'against-root'])
+          tester.widget<Text>(find.byKey(ValueKey(key))).data,
+      ];
+    }
+
+    final concert = await card(ChartInstrument.concert);
+    for (final instrument in [ChartInstrument.bFlat, ChartInstrument.eFlat]) {
+      expect(
+        await card(instrument),
+        concert,
+        reason: '${instrument.symbol} was given a different exercise',
+      );
+    }
+  });
+
   testWidgets('the numbers follow the exercise showing', (tester) async {
     await open(tester);
     await reach(tester, find.byKey(const ValueKey('the-cost')));
@@ -188,6 +215,20 @@ void main() {
     expect(figures.every((figure) => figure.clef == Clef.bass), isTrue);
     // The chords are the player's own, untouched: a clef is not a key.
     expect(chordsOver(tester), contains('F7'));
+  });
+
+  testWidgets('the stave makes room for notes that leave it', (tester) async {
+    // Written for an F instrument the same line sits a fifth higher, and
+    // with fixed room above the stave its ledger lines came up through
+    // the chord symbols. The room has to follow the notes.
+    await open(tester, instrument: ChartInstrument.f);
+    await reach(tester, find.byKey(const ValueKey('written-out')));
+    final figures = tester.widgetList<StaveFigure>(find.byType(StaveFigure));
+    expect(
+      figures.any((figure) => figure.above > 4),
+      isTrue,
+      reason: 'nothing made room for the notes above the stave',
+    );
   });
 
   testWidgets('hearing it does not throw without a sample bank', (

@@ -15,6 +15,7 @@ import 'package:play_along/music/chord_tone_line.dart';
 import 'package:play_along/music/guide_tones.dart';
 import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
+import 'package:play_along/settings/app_settings.dart';
 
 Tune get _blues =>
     practiceProgressions.firstWhere((t) => t.title == 'Jazz blues in F');
@@ -233,6 +234,55 @@ void main() {
           isNot(ways[i - 1]),
           reason: 'two runs in a row went the same way',
         );
+      }
+    });
+  });
+
+  group('writing it for the player', () {
+    final alto = ChartInstrument.eFlat.transposition;
+
+    test('the notes are the same sounds, moved', () {
+      final line = _line(_blues, ToneExercise.nearest);
+      final read = writtenFor(line, alto);
+      expect(read.length, line.length);
+      for (final (i, note) in read.indexed) {
+        expect(note.pitch, line[i].pitch + 9);
+        expect(note.degree, line[i].degree);
+        expect(note.beats, line[i].beats);
+        expect(note.opens, line[i].opens);
+      }
+    });
+
+    test('nothing about the line itself changes', () {
+      final line = _line(_blues, ToneExercise.nearest);
+      final read = writtenFor(line, alto);
+      // The steps between notes are the same, so every measurement the
+      // screen makes comes out the same for every player.
+      expect(biggestJumpAtChanges(read), biggestJumpAtChanges(line));
+      expect(changesWithin(read, 2), changesWithin(line, 2));
+    });
+
+    test('chords and notes are spelled in the key it is read in', () {
+      final line = _line(_blues, ToneExercise.fromTheRoot);
+      final read = writtenFor(line, ChartInstrument.bFlat.transposition);
+      // An F blues is a G blues for a B♭ instrument.
+      expect(read.first.chord.display, 'G7');
+      expect(read.first.name, 'G');
+      expect({
+        for (final note in read) note.chord.display,
+      }, isNot(contains('F7')));
+    });
+
+    test('every written note is still a tone of its written chord', () {
+      for (final move in [
+        for (final i in ChartInstrument.values) i.transposition,
+      ]) {
+        for (final note in writtenFor(
+          _line(_rhythm, ToneExercise.upAndDown),
+          move,
+        )) {
+          expect(note.pitch % 12, note.chord.pitchClassFor(note.degree));
+        }
       }
     });
   });

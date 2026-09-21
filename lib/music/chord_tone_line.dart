@@ -20,8 +20,13 @@
 // apart have more in common than not. Nothing here has to claim that: both
 // lines get measured, and the numbers say it.
 //
-// Everything is at concert pitch. A screen showing this to a tenor player
-// transposes what is written and leaves what is played alone.
+// Everything is worked out at concert pitch, in a concert range, so that
+// every player practises the same notes and the measurements of a line
+// are the same whoever is reading it. [writtenFor] then moves the writing
+// into the key the player reads. That way round rather than the other:
+// working it out in the written key would hand a tenor and an alto
+// different exercises over the same twelve bars, and the numbers under
+// them would disagree.
 
 import 'chord.dart';
 import 'guide_tones.dart' show seventhDegreeOf, thirdDegreeOf;
@@ -135,6 +140,28 @@ String landingDegree(Chord chord, ToneExercise exercise) =>
     exercise == ToneExercise.landOnTheThird
     ? thirdDegreeOf(chord)
     : seventhDegreeOf(chord);
+
+/// [line] as the player reads it, moved by [move].
+///
+/// Only the writing changes: the notes are the same sounds in the same
+/// order, so a transposing instrument's part sits higher or lower on the
+/// stave than a concert one, exactly as a real part does. Each note is
+/// respelled by its own degree of the moved chord, so the ♭3 of the
+/// transposed chord is spelled as that chord spells it.
+List<ToneNote> writtenFor(List<ToneNote> line, Transposition move) => [
+  for (final note in line)
+    (
+      chord: note.chord.transposed(move),
+      pitch: note.pitch + move.semitones,
+      name: note.chord.transposed(move).noteFor(note.degree),
+      degree: note.degree,
+      bar: note.bar,
+      beat: note.beat,
+      beats: note.beats,
+      opens: note.opens,
+      step: note.step,
+    ),
+];
 
 /// A chord tone and the pitch it sits at.
 typedef _Rung = ({int pitch, String degree});

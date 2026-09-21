@@ -17,6 +17,8 @@
 // Chord symbols sit over the note they change on rather than in a row of
 // their own, because the whole point is which note the change lands on.
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../audio/backing_synth.dart';
@@ -144,23 +146,19 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
   var _reading = _Reading.treble;
   var _tempo = 100;
 
-  /// How far what is written sits above what is played: a tenor player
-  /// reads a tone up and hears concert pitch. The bass clef is not a
-  /// transposition, it is a different part of the range, so it is handled
-  /// by writing the line lower rather than by moving it.
-  int get _written => widget.settings.instrument.semitones;
+  /// The bars being worked on, at concert pitch, which is where the
+  /// exercise is worked out.
+  List<ChordSlot> get _slots => [
+    for (final slot in _picked.tune.slots)
+      if (slot.barIndex >= _picked.firstBar && slot.barIndex <= _picked.lastBar)
+        slot,
+  ];
 
-  /// The bars being worked on, transposed into the key the player reads.
-  List<ChordSlot> get _slots {
-    final tune = _picked.tune.transposed(widget.settings.instrument.semitones);
-    return [
-      for (final slot in tune.slots)
-        if (slot.barIndex >= _picked.firstBar &&
-            slot.barIndex <= _picked.lastBar)
-          slot,
-    ];
-  }
-
+  /// The line as it sounds. The range is a concert one, so every player
+  /// gets the same notes in the same order and the numbers under them
+  /// mean the same thing whoever is reading. The bass clef is not a
+  /// transposition, it is a different part of the range, which is why it
+  /// changes this and the instrument does not.
   List<ToneNote> _lineOf(ToneExercise exercise) => chordToneLine(
     _slots,
     exercise: exercise,
@@ -170,6 +168,11 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
   );
 
   List<ToneNote> get _line => _lineOf(_exercise);
+
+  /// The same line in the key the player reads, which is the only thing
+  /// the instrument setting changes.
+  List<ToneNote> get _read =>
+      writtenFor(_line, widget.settings.instrument.transposition);
 
   /// Plays the line, with the roots under it so the changes are heard
   /// rather than taken on trust, and the ride keeping the time so it is an
@@ -187,7 +190,7 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
     for (final note in line) {
       final length = beat * note.beats;
       notes.add((
-        pitch: note.pitch - _written,
+        pitch: note.pitch,
         start: at,
         length: length * 0.96,
         velocity: 0.85,
@@ -197,7 +200,7 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
         sounding = note.chord;
         notes.add((
           // The root where a bass player would put it, not under the line.
-          pitch: 40 + (note.chord.root - _written - 40) % 12,
+          pitch: 40 + (note.chord.root - 40) % 12,
           start: at,
           length: length,
           velocity: 0.3,
@@ -322,7 +325,7 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
             ),
           ),
           _Written(
-            line: line,
+            line: _read,
             clef: _reading == _Reading.bass ? Clef.bass : Clef.treble,
           ),
           _Tempo(
@@ -506,6 +509,8 @@ class _Written extends StatelessWidget {
                       key: ValueKey('row-${row.first}'),
                       clef: clef,
                       space: 9,
+                      above: _room(row, placed, above: true),
+                      below: _room(row, placed, above: false),
                       columns: _columnsFor(row, placed),
                       semanticsLabel: _spoken(row),
                     ),
@@ -516,6 +521,26 @@ class _Written extends StatelessWidget {
           ),
       ],
     );
+  }
+
+  /// How much room [row] needs past the stave, in steps.
+  ///
+  /// Fixed room is enough until the line goes somewhere the default did
+  /// not expect, and then the chord symbols land on top of the ledger
+  /// lines. That turned up as soon as the same line was written for an F
+  /// instrument, a fifth higher, which is the whole point of writing it
+  /// for the player: the notes are wherever the instrument puts them.
+  double _room(List<int> row, List<StaveNote> placed, {required bool above}) {
+    final steps = [
+      for (final (i, note) in line.indexed)
+        if (row.contains(note.bar)) placed[i].step,
+    ];
+    if (steps.isEmpty) return 4;
+    // Step 0 is the bottom line and 8 the top, so anything outside that
+    // is hanging off the stave and needs room of its own, plus a little
+    // so a notehead is not flush against what is written beyond it.
+    final past = above ? steps.reduce(math.max) - 8 : -steps.reduce(math.min);
+    return math.max(4, past + 3);
   }
 
   /// The columns for one row: each note behind its own accidental, with a
