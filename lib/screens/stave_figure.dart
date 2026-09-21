@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../music/clef.dart';
+import '../theme.dart';
 
 export '../music/clef.dart' show Clef;
 
@@ -123,6 +124,7 @@ class StaveColumn {
   const StaveColumn(
     List<Sym> symbols, {
     this.label,
+    this.over,
     this.gap = 1.2,
     this.stem = false,
   }) : _symbols = symbols,
@@ -136,6 +138,7 @@ class StaveColumn {
     bool ledgers = false,
     double scale = 1,
     this.label,
+    this.over,
     this.gap = 1.2,
     this.stem = false,
   }) : _symbols = null,
@@ -155,6 +158,14 @@ class StaveColumn {
 
   /// Written under the stave, e.g. a note's name.
   final String? label;
+
+  /// Written over the stave, where a chord symbol goes. It sits above this
+  /// column rather than in a row of its own, so a chord always lands over
+  /// the note it changes on, however the font has spaced the notes.
+  ///
+  /// Not to be confused with [StaveFigure.above], which is room rather
+  /// than writing.
+  final String? over;
 
   /// The room after this column, in spaces.
   final double gap;
@@ -222,6 +233,12 @@ class StaveFigure extends StatelessWidget {
     final labelStyle =
         theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant) ??
         const TextStyle(fontSize: 12);
+    // Chord symbols over a stave are hand lettered here as they are
+    // everywhere else in the app, so a written-out exercise reads as the
+    // same kind of page as a chart.
+    final overStyle = handLettered(
+      TextStyle(fontSize: space * 2.1, height: 1, color: scheme.onSurface),
+    );
     final layout = _FigureLayout(
       columns: columns,
       clef: clef,
@@ -229,6 +246,7 @@ class StaveFigure extends StatelessWidget {
       above: above,
       below: below,
       labelStyle: labelStyle,
+      overStyle: overStyle,
       textScaler: MediaQuery.textScalerOf(context),
     );
     return Semantics(
@@ -249,6 +267,7 @@ class StaveFigure extends StatelessWidget {
             rules: scheme.onSurfaceVariant.withValues(alpha: 0.6),
             marked: scheme.tertiary,
             labelStyle: labelStyle,
+            overStyle: overStyle,
           ),
         ),
       ),
@@ -293,6 +312,7 @@ class _FigureLayout {
     required this.above,
     required this.below,
     required TextStyle labelStyle,
+    required TextStyle overStyle,
     required TextScaler textScaler,
   }) {
     // A stave that starts flush with its first symbol reads as a fragment,
@@ -316,17 +336,36 @@ class _FigureLayout {
               textScaler: textScaler,
             )..layout());
       labels.add(label);
+      final chord = column.over == null
+          ? null
+          : (TextPainter(
+              text: TextSpan(text: column.over, style: overStyle),
+              textDirection: TextDirection.ltr,
+              textScaler: textScaler,
+            )..layout());
+      overs.add(chord);
+      // A chord symbol is wider than its note and is written from the
+      // note's own left edge, the way a chart writes it, so it is allowed
+      // to reach into the gap after the column rather than pushing the
+      // notes apart. Nothing else would space evenly.
       final width = math.max(widest, label?.width ?? 0);
       // The symbol sits in the middle of whatever the caption needs.
       xs.add(x + (width - widest) / 2);
       x += width + column.gap * space;
     }
-    width = x;
+    // Room for the last chord symbol to finish in, so it isn't clipped.
+    final lastOver = overs.isEmpty ? null : overs.last;
+    width = math.max(x, xs.isEmpty ? x : xs.last + (lastOver?.width ?? 0));
     labelHeight = labels.fold(
       0,
       (tallest, label) => math.max(tallest, label?.height ?? 0),
     );
+    overHeight = overs.fold(
+      0,
+      (tallest, over) => math.max(tallest, over?.height ?? 0),
+    );
     height =
+        overHeight +
         (8 + above + below) * space / 2 +
         (labelHeight > 0 ? 6 : 0) +
         labelHeight;
@@ -342,9 +381,11 @@ class _FigureLayout {
   final xs = <double>[];
   final symbolWidths = <double>[];
   final labels = <TextPainter?>[];
+  final overs = <TextPainter?>[];
   late final double width;
   late final double height;
   late final double labelHeight;
+  late final double overHeight;
 
   double get fontSize => space * 4;
   double get _clefWidth => _measure(clef!.glyph, 1);
@@ -353,8 +394,9 @@ class _FigureLayout {
   double _measure(String code, double scale) => _measured[(code, scale)] ??=
       _Glyph(code, fontSize * scale, const Color(0xFF000000)).width;
 
-  /// The top of the box down to [step].
-  double y(num step) => (8 + above - step) * space / 2;
+  /// The top of the box down to [step]. Everything on the stave is pushed
+  /// down by whatever the chord symbols above it need.
+  double y(num step) => overHeight + (8 + above - step) * space / 2;
 }
 
 class _FigurePainter extends CustomPainter {
@@ -368,6 +410,7 @@ class _FigurePainter extends CustomPainter {
     required this.rules,
     required this.marked,
     required this.labelStyle,
+    required this.overStyle,
   });
 
   final _FigureLayout layout;
@@ -379,6 +422,7 @@ class _FigurePainter extends CustomPainter {
   final Color rules;
   final Color marked;
   final TextStyle labelStyle;
+  final TextStyle overStyle;
 
   /// How far a stem reaches from its notehead, in steps.
   static const _stemLength = 7.0;
@@ -470,6 +514,11 @@ class _FigurePainter extends CustomPainter {
           ),
         );
       }
+      // A chord symbol starts at its note's left edge rather than being
+      // centred on it, because that is where a chart puts it and because
+      // centring a wide symbol over a narrow notehead would have it
+      // hanging back over the note before.
+      layout.overs[i]?.paint(canvas, Offset(x, 0));
     }
 
     for (final tie in ties) {
@@ -576,7 +625,11 @@ class _FigurePainter extends CustomPainter {
   static bool _sameSymbols(List<StaveColumn> a, List<StaveColumn> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
-      if (a[i].label != b[i].label || a[i].stem != b[i].stem) return false;
+      if (a[i].label != b[i].label ||
+          a[i].over != b[i].over ||
+          a[i].stem != b[i].stem) {
+        return false;
+      }
       // Sym is a record, so this is value equality down to the glyph,
       // the step and whether it is marked.
       if (!listEquals(a[i].symbols, b[i].symbols)) return false;

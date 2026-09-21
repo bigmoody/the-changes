@@ -34,6 +34,7 @@ import 'scales_reference_screen.dart';
 import 'comping_screen.dart';
 import 'stave_figure.dart';
 import 'swing_screen.dart';
+import 'through_the_changes_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 class LearnPage extends StatelessWidget {
@@ -231,6 +232,17 @@ class LearnPage extends StatelessWidget {
                 'a progression while everything else moves',
             onTap: () =>
                 open(GuideTonesScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-through-the-changes'),
+            icon: Icons.show_chart,
+            title: 'Through the Changes',
+            subtitle:
+                'Chord tones over a whole chorus, one note at a time: what '
+                'to play when the chord changes and you are already on one',
+            onTap: () => open(
+              ThroughTheChangesScreen(player: player, settings: settings),
+            ),
           ),
           _LearnCard(
             key: const ValueKey('learn-identify'),

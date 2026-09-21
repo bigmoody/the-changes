@@ -86,7 +86,7 @@ String _moveLabel(int move) => switch (move) {
 /// Each chord contributes its 3rd and its 7th, taken from its own formula so
 /// they come out spelled as the chord spells them. Not every chord has both,
 /// and a line cannot stop halfway through a tune, so two stand-ins are used
-/// (see [_thirdDegree] and [_seventhDegree] for exactly which).
+/// (see [thirdDegreeOf] and [seventhDegreeOf] for exactly which).
 ///
 /// The two notes are then put round the way that keeps the lines still: of the
 /// two possible assignments (3rd on top or 7th on top), the one whose total
@@ -105,8 +105,8 @@ List<GuideTones> guideTonesThrough(List<Chord> chords) {
   var upperHasThird = true;
 
   for (final chord in chords) {
-    final thirdDegree = _thirdDegree(chord);
-    final seventhDegree = _seventhDegree(chord);
+    final thirdDegree = thirdDegreeOf(chord);
+    final seventhDegree = seventhDegreeOf(chord);
     final thirdPitch = chord.pitchClassFor(thirdDegree);
     final seventhPitch = chord.pitchClassFor(seventhDegree);
 
@@ -171,7 +171,7 @@ String? _degreeNumbered(Chord chord, int number) {
 /// (which has deliberately replaced its 3rd with the 4th), the 4th, since that
 /// suspended note is the one the ear is waiting on and the one that resolves.
 /// The root is a last resort for a chord with neither, so that nothing throws.
-String _thirdDegree(Chord chord) =>
+String thirdDegreeOf(Chord chord) =>
     _degreeNumbered(chord, 3) ?? _degreeNumbered(chord, 4) ?? '1';
 
 /// The degree the other guide tone is built on: the 7th, or the 6th when there
@@ -188,7 +188,7 @@ String _thirdDegree(Chord chord) =>
 ///    7ths on either side of it live, which makes the line leap. The root sits
 ///    right beside them, and it is where the classic descending lines actually
 ///    start: Cm, CmΔ7, Cm7, Cm6 is the line C–B–B♭–A.
-String _seventhDegree(Chord chord) {
+String seventhDegreeOf(Chord chord) {
   final fifth = _degreeNumbered(chord, 5);
   return _degreeNumbered(chord, 7) ??
       _degreeNumbered(chord, 6) ??
