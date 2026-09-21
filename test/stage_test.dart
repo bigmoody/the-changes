@@ -20,15 +20,18 @@ Future<PracticeController> _openStage(
   WidgetTester tester, {
   Size size = const Size(393, 852),
   String title = 'Cherokee',
+  ChordAid aid = ChordAid.off,
 }) async {
   tester.view
     ..physicalSize = size * 3
     ..devicePixelRatio = 3;
   addTearDown(tester.view.reset);
+  final settings = AppSettings.inMemory();
+  await settings.setChordAid(aid);
   final controller = PracticeController(
     tune: _standard(title),
     player: PracticePlayer(),
-    settings: AppSettings.inMemory(),
+    settings: settings,
   );
   addTearDown(controller.dispose);
   await tester.pumpWidget(
@@ -86,6 +89,41 @@ void main() {
       // The first chord of Cherokee, written large in the bar below.
       expect(find.byKey(const ValueKey('stage-play')), findsOneWidget);
       expect(find.textContaining('BPM'), findsOneWidget);
+    });
+
+    testWidgets('nothing written under the chords, whatever is set', (
+      tester,
+    ) async {
+      // The stage is the chart and nothing else. There is no loop bar on
+      // it to say what small red letters are, so they do not go on it.
+      await _openStage(tester, title: 'Blue Bossa', aid: ChordAid.roman);
+      expect(find.byType(ChordChart), findsOneWidget);
+      expect(find.text('Fm7'), findsWidgets, reason: 'the chords are there');
+      expect(find.text('iv7'), findsNothing);
+      expect(find.byKey(const ValueKey('chord-aid')), findsNothing);
+    });
+
+    testWidgets('the practice chart still has them', (tester) async {
+      // Guarding the other half: turning them off on the stage must not
+      // turn them off where they were asked for.
+      tester.view
+        ..physicalSize = const Size(393, 852) * 3
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final settings = AppSettings.inMemory();
+      await settings.setChordAid(ChordAid.roman);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(Brightness.light),
+          home: PracticeScreen(
+            tune: _standard('Blue Bossa'),
+            player: PracticePlayer(),
+            settings: settings,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('iv7'), findsWidgets);
     });
 
     testWidgets('and none of the practice controls', (tester) async {

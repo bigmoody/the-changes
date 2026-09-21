@@ -183,7 +183,13 @@ class _ChordChartState extends State<ChordChart> {
 
         // What's written under each chord, bar by bar: the numbers, or the
         // guide tones, or nothing at all.
-        final aids = aidsFor(tune, controller.settings.chordAid);
+        //
+        // Never on the stage. That view is the chart and nothing else —
+        // there is no loop bar on it to say what the small red letters
+        // are, and it is for playing off, not learning from.
+        final aids = widget.stage
+            ? const <int, List<String?>>{}
+            : aidsFor(tune, controller.settings.chordAid);
 
         // Bars that repeat the one before them are written as a simile
         // mark rather than the same chords twice over.
