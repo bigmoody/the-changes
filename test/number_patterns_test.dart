@@ -222,8 +222,79 @@ void main() {
 
     testWidgets('playing without a sample bank is harmless', (tester) async {
       await open(tester);
-      await tester.tap(find.byKey(const ValueKey('play-pattern')));
+      await tester.tap(find.byKey(const ValueKey('play-through')));
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('every chord can be played on its own', (tester) async {
+      // For the bar you keep fumbling, rather than listening to the whole
+      // progression to hear one of them.
+      await open(tester);
+      for (final chord in ['Dm7', 'G7', 'CΔ7']) {
+        final button = find.byKey(ValueKey('play-$chord'));
+        expect(button, findsOneWidget, reason: chord);
+        // The staves sit low, under the reading — the controls are what
+        // is pinned, not these.
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        await tester.tap(button);
+        await tester.pumpAndSettle();
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('hearing it is on the screen, not hidden in the bar', (
+      tester,
+    ) async {
+      // It was an unlabelled icon in the app bar, which is where things
+      // go to not be found.
+      await open(tester);
+      // On screen the moment it opens, without scrolling: they are
+      // pinned under the reading rather than sitting after it.
+      expect(find.text('Play It Through'), findsOneWidget);
+      expect(find.text('Play Along'), findsOneWidget);
+      expect(find.text('100 BPM'), findsOneWidget);
+      expect(
+        tester.getCenter(find.byKey(const ValueKey('loop-band'))).dy,
+        lessThan(852),
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AppBar),
+          matching: find.byIcon(Icons.play_circle_outline),
+        ),
+        findsNothing,
+      );
+    });
+
+    testWidgets('the band loops, and stops, and only one at a time', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('loop-band')));
+      await tester.pump();
+      expect(find.text('Stop'), findsOneWidget);
+      expect(find.textContaining('band is going round'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('loop-band')));
+      await tester.pump();
+      expect(find.text('Play Along'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the tempo moves and holds its bounds', (tester) async {
+      await open(tester);
+      expect(find.text('100 BPM'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('faster')));
+      await tester.pumpAndSettle();
+      expect(find.text('105 BPM'), findsOneWidget);
+      for (var i = 0; i < 40; i++) {
+        await tester.tap(find.byKey(const ValueKey('slower')));
+        await tester.pump();
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('40 BPM'), findsOneWidget, reason: 'as slow as it goes');
       expect(tester.takeException(), isNull);
     });
 
