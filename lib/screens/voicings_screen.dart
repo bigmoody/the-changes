@@ -65,6 +65,26 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
     );
   }
 
+  /// A run of chords, one after the other rather than all at once.
+  Future<void> _playRun(List<List<VoicedNote>> chords) async {
+    final bank = widget.player.samples;
+    if (bank == null) return;
+    const bar = 1.1;
+    await widget.player.playSnippet(
+      renderSnippet(bank, [
+        for (final (i, chord) in chords.indexed)
+          for (final note in chord)
+            (
+              pitch: note.pitch,
+              start: i * bar,
+              length: i == chords.length - 1 ? 2.2 : bar * 0.95,
+              velocity: 0.58,
+              bass: false,
+            ),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -157,6 +177,11 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
             ),
           ),
           if (_voicing == Voicing.shell) _Shells(root: _chord),
+          if (_voicing == Voicing.rootSeventh || _voicing == Voicing.rootThird)
+            _Alternating(
+              from7th: _voicing == Voicing.rootSeventh,
+              onPlay: _playRun,
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
             child: Text('On', style: theme.textTheme.titleSmall),
@@ -177,6 +202,120 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
               'tune with no changes to spell.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A ii–V–I with the two forms swapped chord by chord, and what that
+/// does to the note on top.
+///
+/// The reason there are two of them. Alone, either form is just a pair
+/// of notes; alternated, the upper voice steps instead of leaping, and
+/// that is the whole of why a bebop left hand sounds joined up.
+class _Alternating extends StatelessWidget {
+  const _Alternating({required this.from7th, required this.onPlay});
+
+  final bool from7th;
+  final ValueChanged<List<List<VoicedNote>>> onPlay;
+
+  /// A ii–V–I in C, because it is the progression everybody has under
+  /// their hands already.
+  static final _changes = [
+    Chord.parse('Dm7'),
+    Chord.parse('G7'),
+    Chord.parse('C^7'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final rows = alternatingShells(_changes, from7th: from7th);
+    final tops = [for (final row in rows) row.last];
+    final steps = [
+      for (var i = 1; i < tops.length; i++)
+        (tops[i].pitch - tops[i - 1].pitch).abs(),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      child: Column(
+        key: const ValueKey('alternating'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Why There Are Two', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 2),
+          Text(
+            'A ii–V–I with the forms swapped chord by chord. Watch the '
+            'top note rather than the chords: it is the note doing the '
+            'work, and it hardly moves.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (final (i, row) in rows.indexed)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        handSymbol(_changes[i].display),
+                        textScaler: TextScaler.noScaling,
+                        style: handLettered(
+                          TextStyle(
+                            fontSize: 18,
+                            height: 1,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      for (final note in row.reversed)
+                        Text(
+                          '${handSymbol(note.note)}  ${note.degree}',
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: note == row.last
+                                ? scheme.tertiary
+                                : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            steps.every((step) => step <= 2)
+                ? 'The top note moves '
+                      '${steps.map((s) => s == 0 ? 'not at all' : '$s semitone${s == 1 ? '' : 's'}').join(', then ')}. '
+                      'The hand stays where it is and the chords change '
+                      'underneath it.'
+                : 'The top note moves '
+                      '${steps.join(' then ')} semitones.',
+            key: const ValueKey('how-far-it-moves'),
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: scheme.tertiary,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('play-alternating'),
+                icon: const Icon(Icons.play_arrow),
+                label: const Text('Hear the ii–V–I'),
+                onPressed: () => onPlay(rows),
               ),
             ),
           ),

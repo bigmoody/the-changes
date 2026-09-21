@@ -165,6 +165,30 @@ enum Voicing {
         'chord and the missing 5th is never missed. The first voicing '
         'worth learning and the last one you stop using.',
   ),
+  rootSeventh(
+    'Root & 7th',
+    whyCalled:
+        'A shell with one note taken out of it. Three notes are already '
+        'the frame of the chord; two are the frame of the frame, and the '
+        'root with the 7th is one of the two ways to do it.',
+    about:
+        'The left hand a bebop pianist actually plays. Two notes are '
+        'enough because the bass has the root anyway and the one note on '
+        'top is doing all the work of saying what the chord is.',
+  ),
+  rootThird(
+    'Root & 3rd',
+    whyCalled:
+        'The other of the two. Same idea, the 3rd on top instead of the '
+        '7th, and which one you pick is decided by where the last chord '
+        'left your hand rather than by the chord itself.',
+    about:
+        'Swap between this and the 7th as the chords go past and the top '
+        'note barely moves: a ii with its 7th on top, a V with its 3rd, '
+        'and the two notes are a semitone apart. That is the whole trick '
+        'and it is why a good left hand sounds joined up rather than '
+        'jumping about.',
+  ),
   rootlessA(
     'Rootless A',
     whyCalled:
@@ -217,6 +241,8 @@ enum Voicing {
       drop2 => _drop(closeNotes, 2),
       drop3 => _drop(closeNotes, 3),
       shell => _shell(chord),
+      rootSeventh => _twoNoteShell(chord, seventh: true),
+      rootThird => _twoNoteShell(chord, seventh: false),
       rootlessA => _rootless(chord, 0),
       rootlessB => _rootless(chord, 1),
     };
@@ -315,6 +341,62 @@ List<VoicedNote> _drop(List<VoicedNote> voicing, int from) {
         note,
   ]..sort((a, b) => a.pitch.compareTo(b.pitch));
   return dropped;
+}
+
+/// The root and one other: the 7th, or the 3rd.
+///
+/// Two notes, which is what a bebop left hand plays. Whichever of the
+/// two is on top carries the chord on its own, so the choice is made by
+/// where the hand already is rather than by the chord.
+List<VoicedNote> _twoNoteShell(Chord chord, {required bool seventh}) {
+  final all = _close(chord);
+  return [all[0], seventh ? all[3] : all[1]];
+}
+
+/// A run of chords with the two-note shells alternated, so the top note
+/// moves as little as it can.
+///
+/// The point of having two forms. Take the 7th on one chord and the 3rd
+/// on the next and the upper voice steps rather than leaps, which is
+/// what makes a left hand sound joined up. Where it starts is a choice;
+/// after that it alternates.
+List<List<VoicedNote>> alternatingShells(
+  List<Chord> chords, {
+  bool from7th = true,
+}) {
+  final out = <List<VoicedNote>>[];
+  int? previousTop;
+  for (final (i, chord) in chords.indexed) {
+    final shell = (i.isEven ? from7th : !from7th)
+        ? Voicing.rootSeventh.on(chord)
+        : Voicing.rootThird.on(chord);
+    // Each chord is placed on its own, so left alone the hand would
+    // jump an octave between two notes that are a semitone apart. Move
+    // the whole shape to wherever its top note is nearest the last one,
+    // which is what a hand does without being told.
+    var shift = 0;
+    if (previousTop != null) {
+      final top = shell.last.pitch;
+      for (final octave in [-24, -12, 0, 12, 24]) {
+        if ((top + octave - previousTop).abs() <
+            (top + shift - previousTop).abs()) {
+          shift = octave;
+        }
+      }
+    }
+    final moved = [
+      for (final note in shell)
+        (
+          pitch: note.pitch + shift,
+          note: note.note,
+          degree: note.degree,
+          moved: note.moved,
+        ),
+    ];
+    previousTop = moved.last.pitch;
+    out.add(moved);
+  }
+  return out;
 }
 
 /// Root, 3rd and 7th: the three notes that say what the chord is.

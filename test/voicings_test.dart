@@ -292,6 +292,78 @@ void main() {
     });
   });
 
+  group('the two-note shells', () {
+    test('each is the root and one other note', () {
+      expect(_notesOf(Voicing.rootSeventh.on(_cmaj7)), ['C', 'B']);
+      expect(_notesOf(Voicing.rootThird.on(_cmaj7)), ['C', 'E']);
+      for (final voicing in [Voicing.rootSeventh, Voicing.rootThird]) {
+        for (final symbol in ['C^7', 'Dm7', 'G7']) {
+          final notes = voicing.on(Chord.parse(symbol));
+          expect(notes, hasLength(2), reason: '$voicing on $symbol');
+          expect(notes.first.degree, 'root', reason: '$voicing on $symbol');
+        }
+      }
+    });
+
+    test('the note on top is the one that says what the chord is', () {
+      // A shell with the 5th on top would not tell a m7 from a 7.
+      for (final voicing in [Voicing.rootSeventh, Voicing.rootThird]) {
+        for (final symbol in ['Dm7', 'D7']) {
+          final top = voicing.on(Chord.parse(symbol)).last.degree;
+          expect(top, isNot('5th'), reason: '$voicing on $symbol');
+        }
+      }
+      expect(
+        Voicing.rootThird.on(Chord.parse('Dm7')).last.note,
+        isNot(Voicing.rootThird.on(Chord.parse('D7')).last.note),
+      );
+    });
+
+    test('alternating them keeps the top note still', () {
+      // The whole reason there are two forms, and the claim the screen
+      // makes out loud, so it had better be true both ways round.
+      final iiVI = [Chord.parse('Dm7'), Chord.parse('G7'), Chord.parse('C^7')];
+      for (final from7th in [true, false]) {
+        final rows = alternatingShells(iiVI, from7th: from7th);
+        final tops = [for (final row in rows) row.last.pitch];
+        for (var i = 1; i < tops.length; i++) {
+          expect(
+            (tops[i] - tops[i - 1]).abs(),
+            lessThanOrEqualTo(2),
+            reason: 'from7th $from7th, step $i: $tops',
+          );
+        }
+      }
+    });
+
+    test('it really does alternate rather than repeat one form', () {
+      final iiVI = [Chord.parse('Dm7'), Chord.parse('G7'), Chord.parse('C^7')];
+      final rows = alternatingShells(iiVI);
+      expect(rows[0].last.degree, '♭7th');
+      expect(rows[1].last.degree, '3rd');
+      expect(rows[2].last.degree, '7th');
+      // Starting the other way round swaps every one of them.
+      final other = alternatingShells(iiVI, from7th: false);
+      for (var i = 0; i < rows.length; i++) {
+        expect(other[i].last.degree, isNot(rows[i].last.degree), reason: '$i');
+      }
+    });
+
+    test('without the voice leading it would leap, which is the point', () {
+      // Each voicing on its own is placed in its own register. Left
+      // like that the hand jumps an octave between notes a semitone
+      // apart, so the run has to move them.
+      final plain = [
+        for (final symbol in ['Dm7', 'G7', 'C^7'])
+          Voicing.rootThird.on(Chord.parse(symbol)).last.pitch,
+      ];
+      final leaps = [
+        for (var i = 1; i < plain.length; i++) (plain[i] - plain[i - 1]).abs(),
+      ];
+      expect(leaps.any((l) => l > 2), isTrue, reason: 'unled: $plain');
+    });
+  });
+
   group('the names', () {
     test('every one says where its name comes from', () {
       for (final voicing in Voicing.values) {
@@ -537,6 +609,34 @@ void main() {
       expect(shells, findsOneWidget);
       expect(find.text('Root on the 6th string'), findsOneWidget);
       expect(find.text('Root on the 5th string'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the two-note shell shows why there are two', (tester) async {
+      await open(tester);
+      expect(find.byKey(const ValueKey('alternating')), findsNothing);
+      await pick(tester, 'rootSeventh', 'close');
+      final run = find.byKey(const ValueKey('alternating'));
+      await tester.scrollUntilVisible(
+        run,
+        140,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const ValueKey('voicings-list')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(run, findsOneWidget);
+      expect(
+        find.textContaining('moves 1 semitone, then not at all'),
+        findsOneWidget,
+      );
+      final button = find.byKey(const ValueKey('play-alternating'));
+      await tester.ensureVisible(button);
+      await tester.pumpAndSettle();
+      await tester.tap(button);
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
 
