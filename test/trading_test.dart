@@ -221,6 +221,68 @@ void main() {
       expect(find.text('Start Trading'), findsOneWidget);
     });
 
+    testWidgets('the tempo can be moved, and says what it is', (tester) async {
+      // Trading at 200 is a different exercise from trading at 100, so
+      // walking it up is the point rather than a convenience.
+      await open(tester);
+      expect(find.byKey(const ValueKey('trading-tempo')), findsOneWidget);
+      final shown = tester
+          .widget<Text>(find.byKey(const ValueKey('trading-tempo')))
+          .data!;
+      await tester.tap(find.byKey(const ValueKey('trading-faster')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('trading-tempo'))).data,
+        '${int.parse(shown) + 1}',
+      );
+      await tester.tap(find.byKey(const ValueKey('trading-slower')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('trading-tempo'))).data,
+        shown,
+      );
+    });
+
+    testWidgets('dragging the tempo does not stop it', (tester) async {
+      // The band is picked up again at the new tempo rather than left
+      // stopped, because you are in the middle of practising.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('play-trading')));
+      await tester.pumpAndSettle();
+      expect(find.text('Stop'), findsOneWidget);
+      await tester.drag(
+        find.byKey(const ValueKey('trading-tempo-slider')),
+        const Offset(60, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Stop'), findsOneWidget, reason: 'still going');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('it does not run past the ends of the dial', (tester) async {
+      await open(tester);
+      await tester.drag(
+        find.byKey(const ValueKey('trading-tempo-slider')),
+        const Offset(-600, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        int.parse(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('trading-tempo')))
+              .data!,
+        ),
+        40,
+      );
+      expect(
+        tester
+            .widget<IconButton>(find.byKey(const ValueKey('trading-slower')))
+            .onPressed,
+        isNull,
+        reason: 'nothing slower to go to',
+      );
+    });
+
     testWidgets('it opens from Learn', (tester) async {
       tester.view
         ..physicalSize = const Size(393, 852) * 3

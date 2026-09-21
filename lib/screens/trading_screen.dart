@@ -22,6 +22,7 @@ import '../music/arrangement.dart';
 import '../music/loop_range.dart';
 import '../music/tune_library.dart';
 import '../settings/app_settings.dart';
+import '../theme.dart';
 
 /// The blues, because trading is something you do on a form you already
 /// know, and twelve bars is short enough that the swaps come round.
@@ -45,6 +46,12 @@ class _TradingScreenState extends State<TradingScreen> {
   var _trading = Trading.fours;
   var _with = TradeWith.drums;
   var _playing = false;
+  late int _tempo = _form.defaultTempo;
+
+  /// Dragging the tempo changes it many times a second, so the band is
+  /// only re-rendered once the slider has settled. The same wait the
+  /// practice controller uses, for the same reason.
+  Timer? _retune;
 
   /// Whose four it is now, and which bar of it, read off the clock.
   bool? _mine;
@@ -62,13 +69,40 @@ class _TradingScreenState extends State<TradingScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _retune?.cancel();
     unawaited(widget.player.stop());
     super.dispose();
+  }
+
+  /// Slow it down or wind it up, restarting the band if it is going.
+  ///
+  /// Trading at 200 is a different exercise from trading at 100: at the
+  /// slow end you have time to think of an answer, and at the fast end
+  /// the four bars are gone before you have decided, which is the whole
+  /// difficulty and worth being able to walk up to.
+  void _setTempo(int bpm) {
+    final wanted = bpm.clamp(40, 320);
+    if (wanted == _tempo) return;
+    setState(() => _tempo = wanted);
+    if (!_playing) return;
+    _retune?.cancel();
+    _retune = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted || !_playing) return;
+      unawaited(_restart());
+    });
+  }
+
+  /// Picks the band up again at whatever the tempo is now.
+  Future<void> _restart() async {
+    await _stop();
+    await _start();
   }
 
   Future<void> _stop() async {
     _ticker?.cancel();
     _ticker = null;
+    _retune?.cancel();
+    _retune = null;
     if (mounted) {
       setState(() {
         _playing = false;
@@ -91,7 +125,7 @@ class _TradingScreenState extends State<TradingScreen> {
         BackingRequest(
           tune: _form,
           loop: LoopRange.wholeTune(_form),
-          tempo: _form.defaultTempo,
+          tempo: _tempo,
           comping: widget.settings.comping,
           seed: math.Random().nextInt(1 << 31),
           arrangement: _arrangement,
@@ -150,6 +184,7 @@ class _TradingScreenState extends State<TradingScreen> {
                     ),
                   ),
                   _Whose(mine: _mine, count: _count, playing: _playing),
+                  _Tempo(tempo: _tempo, onChanged: _setTempo),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                     child: Text('How Many', style: theme.textTheme.titleSmall),
@@ -211,9 +246,9 @@ class _TradingScreenState extends State<TradingScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                     child: Text(
-                      'On ${_form.title}, at ${_form.defaultTempo}. The '
-                      'band is out on your four either way: what you are '
-                      'playing over is the form, not a backing track.',
+                      'On ${_form.title}. The band is out on your four '
+                      'either way: what you are playing over is the form, '
+                      'not a backing track.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -311,6 +346,71 @@ class _Whose extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// The tempo, written large, with a slider and a nudge either side.
+///
+/// The same shape the metronome uses, because somebody who has set a
+/// tempo once in this app should not have to learn a second way of
+/// doing it.
+class _Tempo extends StatelessWidget {
+  const _Tempo({required this.tempo, required this.onChanged});
+
+  final int tempo;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tempo', style: theme.textTheme.titleSmall),
+          Row(
+            children: [
+              Text(
+                '$tempo',
+                key: const ValueKey('trading-tempo'),
+                style: handLettered(theme.textTheme.headlineMedium)
+                    .copyWith(height: 1.1),
+              ),
+              const SizedBox(width: 6),
+              Text('beats a minute', style: theme.textTheme.bodySmall),
+            ],
+          ),
+          Row(
+            children: [
+              IconButton.outlined(
+                key: const ValueKey('trading-slower'),
+                icon: const Icon(Icons.remove),
+                tooltip: 'Slower',
+                visualDensity: VisualDensity.compact,
+                onPressed: tempo > 40 ? () => onChanged(tempo - 1) : null,
+              ),
+              Expanded(
+                child: Slider(
+                  key: const ValueKey('trading-tempo-slider'),
+                  value: tempo.toDouble(),
+                  min: 40,
+                  max: 320,
+                  onChanged: (value) => onChanged(value.round()),
+                ),
+              ),
+              IconButton.outlined(
+                key: const ValueKey('trading-faster'),
+                icon: const Icon(Icons.add),
+                tooltip: 'Faster',
+                visualDensity: VisualDensity.compact,
+                onPressed: tempo < 320 ? () => onChanged(tempo + 1) : null,
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
