@@ -25,6 +25,7 @@ import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
 import 'stave_figure.dart';
+import 'swing_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 class LearnPage extends StatelessWidget {
@@ -124,6 +125,15 @@ class LearnPage extends StatelessWidget {
                 'comes in, and which notes get the weight',
             onTap: () =>
                 open(PhrasingScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-swing'),
+            icon: Icons.waves,
+            title: 'Swing',
+            subtitle:
+                'How late the "and" really is — and why it is not the '
+                'triplet you were taught, except at one tempo',
+            onTap: () => open(SwingScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
