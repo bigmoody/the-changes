@@ -22,6 +22,7 @@ import 'reading_music_screen.dart';
 import 'rhythm_changes_screen.dart';
 import 'bebop_scales_screen.dart';
 import 'number_patterns_screen.dart';
+import 'passing_chords_screen.dart';
 import 'phrasing_screen.dart';
 import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
@@ -119,6 +120,16 @@ class LearnPage extends StatelessWidget {
                 'same two notes in the middle',
             onTap: () =>
                 open(TritoneSubsScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-passing'),
+            icon: Icons.more_horiz,
+            title: 'Between The Chords',
+            subtitle:
+                'The chords that are not on the chart: what you can put '
+                'in the gap, and why it fits',
+            onTap: () =>
+                open(PassingChordsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-phrasing'),
