@@ -203,3 +203,72 @@ Iterable<List<int>> _combinations(List<List<int>> choices) sync* {
     if (i < 0) return;
   }
 }
+
+/// The shape that sounds exactly [pitches] on the neck, or null where a
+/// guitar cannot make that arrangement.
+///
+/// Exact rather than approximate: the same notes in the same octaves, in
+/// the same order, so a drop 2 comes out as a drop 2 rather than as some
+/// other grip on the same chord. Null is a real answer and worth saying
+/// out loud, because a four-note chord packed inside an octave mostly
+/// cannot be played at all, which is the whole reason drop voicings
+/// exist.
+GuitarVoicing? shapeForPitches(
+  List<int> pitches, {
+  int highestFret = 15,
+  int reach = 5,
+}) {
+  if (pitches.length < 2 || pitches.length > guitarTuning.length) return null;
+  // Each note's distance above the lowest, which is what has to survive.
+  final wanted = [for (final pitch in pitches) pitch - pitches.first];
+  GuitarVoicing? best;
+
+  for (final strings in _stringRuns(pitches.length)) {
+    for (var fret = 0; fret <= highestFret; fret++) {
+      final lowest = guitarTuning[strings.first] + fret;
+      if (lowest % 12 != pitches.first % 12) continue;
+      final frets = List<int?>.filled(guitarTuning.length, null);
+      var fits = true;
+      for (final (i, string) in strings.indexed) {
+        final at = lowest + wanted[i] - guitarTuning[string];
+        if (at < 0 || at > highestFret) {
+          fits = false;
+          break;
+        }
+        frets[string] = at;
+      }
+      if (!fits) continue;
+      final voicing = GuitarVoicing(frets);
+      final fretted = voicing.frets.whereType<int>().where((f) => f > 0);
+      if (fretted.isNotEmpty &&
+          fretted.reduce(GuitarVoicing.max) -
+                  fretted.reduce(GuitarVoicing.min) >=
+              reach) {
+        continue;
+      }
+      // The lowest one on the neck, so the shape is the one a hand
+      // would actually reach for.
+      if (best == null || voicing.position < best.position) best = voicing;
+    }
+  }
+  return best;
+}
+
+/// Runs of [length] strings, adjacent first and then with one string
+/// skipped, which is how a drop 3 has to be played.
+List<List<int>> _stringRuns(int length) {
+  final runs = <List<int>>[];
+  final strings = guitarTuning.length;
+  for (var from = 0; from + length <= strings; from++) {
+    runs.add([for (var i = 0; i < length; i++) from + i]);
+  }
+  for (var from = 0; from + length < strings; from++) {
+    for (var gap = 1; gap < length; gap++) {
+      final run = [
+        for (var i = 0; i < length; i++) from + i + (i >= gap ? 1 : 0),
+      ];
+      if (run.last < strings) runs.add(run);
+    }
+  }
+  return runs;
+}

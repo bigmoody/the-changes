@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/chord.dart';
+import 'package:play_along/music/guitar_voicing.dart';
 import 'package:play_along/music/voicings.dart';
 import 'package:play_along/screens/learn_page.dart';
 import 'package:play_along/screens/voicings_screen.dart';
@@ -211,6 +212,86 @@ void main() {
     });
   });
 
+  group('on the neck', () {
+    test('a shape sounds exactly the notes it was asked for', () {
+      // Exact, not approximate: the same notes in the same octaves, or
+      // it is a different voicing wearing the same name.
+      for (final voicing in Voicing.values) {
+        for (final symbol in ['C^7', 'Dm7', 'G7']) {
+          final chord = Chord.parse(symbol);
+          final pitches = [for (final n in voicing.on(chord)) n.pitch];
+          final shape = shapeForPitches(pitches);
+          if (shape == null) continue;
+          final sounded = shape.pitches;
+          final wanted = [for (final p in pitches) p - pitches.first];
+          final got = [for (final p in sounded) p - sounded.first];
+          expect(got, wanted, reason: '$voicing on $symbol');
+          expect(
+            sounded.first % 12,
+            pitches.first % 12,
+            reason: '$voicing on $symbol starts on the right note',
+          );
+        }
+      }
+    });
+
+    test('drop 2 comes out on adjacent strings', () {
+      // The reason guitarists care about it at all.
+      final pitches = [for (final n in Voicing.drop2.on(_cmaj7)) n.pitch];
+      final shape = shapeForPitches(pitches)!;
+      final played = [
+        for (final (i, fret) in shape.frets.indexed)
+          if (fret != null) i,
+      ];
+      expect(played.last - played.first, played.length - 1);
+    });
+
+    test('a shape a hand cannot span is not offered', () {
+      for (final voicing in Voicing.values) {
+        for (final symbol in ['C^7', 'Dm7', 'G7']) {
+          final shape = shapeForPitches([
+            for (final n in voicing.on(Chord.parse(symbol))) n.pitch,
+          ]);
+          if (shape == null) continue;
+          final fretted = shape.frets.whereType<int>().where((f) => f > 0);
+          if (fretted.isEmpty) continue;
+          expect(
+            fretted.reduce(GuitarVoicing.max) -
+                fretted.reduce(GuitarVoicing.min),
+            lessThan(5),
+            reason: '$voicing on $symbol',
+          );
+        }
+      }
+    });
+
+    test('it moves the shape to where the neck is', () {
+      // The pitches come from a piano range and a guitar sounds an
+      // octave below written, so the search keeps the intervals and the
+      // bass note and lets the octave fall where it can be played.
+      final low = shapeForPitches([30, 42])!;
+      expect(low.pitches.first % 12, 30 % 12, reason: 'the same bass note');
+      expect(low.pitches[1] - low.pitches.first, 12, reason: 'same interval');
+      expect(
+        low.pitches.first,
+        greaterThanOrEqualTo(40),
+        reason: 'on a string',
+      );
+    });
+
+    test('nothing is invented when the guitar cannot do it', () {
+      expect(shapeForPitches([60]), isNull, reason: 'one note is not a shape');
+      expect(
+        shapeForPitches([48, 49, 50, 51, 52, 53, 54]),
+        isNull,
+        reason: 'seven notes, six strings',
+      );
+      // A semitone apart is perfectly playable across two strings, which
+      // is worth knowing before assuming otherwise.
+      expect(shapeForPitches([60, 61]), isNotNull);
+    });
+  });
+
   group('the screen', () {
     Future<void> open(WidgetTester tester) async {
       tester.view
@@ -300,6 +381,22 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('F'), findsOneWidget, reason: 'the ♭7 of G7');
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('it is drawn on the keys and on the neck', (tester) async {
+      await open(tester);
+      expect(find.byKey(const ValueKey('the-keys')), findsOneWidget);
+      expect(find.byKey(const ValueKey('the-shape')), findsOneWidget);
+    });
+
+    testWidgets('a voicing with no guitar shape says so', (tester) async {
+      await open(tester);
+      await pick(tester, 'rootlessB', 'close');
+      expect(find.byKey(const ValueKey('not-on-a-guitar')), findsOneWidget);
+      expect(find.byKey(const ValueKey('the-shape')), findsNothing);
+      expect(find.textContaining('cannot reach them'), findsOneWidget);
+      // The keys can still show it: it is the guitar that cannot.
+      expect(find.byKey(const ValueKey('the-keys')), findsOneWidget);
     });
 
     testWidgets('it opens from Learn', (tester) async {

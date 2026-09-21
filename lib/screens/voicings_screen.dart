@@ -14,7 +14,9 @@ import 'package:flutter/material.dart';
 import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
+import '../music/guitar_voicing.dart';
 import '../music/voicings.dart';
+import 'chord_diagram.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 
@@ -94,7 +96,7 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
               () => _voicing = Voicing.values.firstWhere((v) => v.name == name),
             ),
           ),
-          _Stack(notes: notes),
+          _UnderTheHands(notes: notes, chord: _chord),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
@@ -168,6 +170,101 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The voicing three ways: written out, on the keys, and on the neck.
+///
+/// The guitar box is beside the written stack because it is narrow and
+/// the stack is not, and the keyboard goes underneath where it can have
+/// the width a spread voicing needs.
+class _UnderTheHands extends StatelessWidget {
+  const _UnderTheHands({required this.notes, required this.chord});
+
+  final List<VoicedNote> notes;
+  final Chord chord;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final pitches = [for (final note in notes) note.pitch];
+    final shape = shapeForPitches(pitches);
+    final keyboard = VoicingKeyboard(pitches: pitches, chord: chord);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: _Stack(notes: notes)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 14, 16, 0),
+              child: SizedBox(
+                width: 104,
+                height: 104 / GuitarDiagram.aspect,
+                child: shape == null
+                    ? _NotOnAGuitar(key: const ValueKey('not-on-a-guitar'))
+                    : GuitarDiagram(
+                        key: const ValueKey('the-shape'),
+                        chord: chord,
+                        voicing: shape,
+                      ),
+              ),
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: SizedBox(
+            height: 62,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: AspectRatio(
+                key: const ValueKey('the-keys'),
+                aspectRatio: keyboard.aspect,
+                child: keyboard,
+              ),
+            ),
+          ),
+        ),
+        if (shape == null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Text(
+              'No guitar shape for this one: the notes are where they '
+              'are, and six strings tuned the way they are cannot reach '
+              'them. Which is a real answer rather than a gap.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// What stands in for the chord box when the guitar cannot play it.
+class _NotOnAGuitar extends StatelessWidget {
+  const _NotOnAGuitar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Center(
+        child: Text(
+          'not on a\nguitar',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+        ),
       ),
     );
   }

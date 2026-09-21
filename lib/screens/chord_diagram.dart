@@ -154,6 +154,73 @@ class KeyboardDiagram extends StatelessWidget {
   }
 }
 
+/// A particular arrangement of a chord on the keys: the notes where they
+/// actually sound, rather than the chord in root position.
+///
+/// Drawn from exact pitches because that is the whole subject. A drop 2
+/// and the close voicing it came from are the same four notes, and the
+/// only way to show the difference is to put them where they are.
+class VoicingKeyboard extends StatelessWidget {
+  const VoicingKeyboard({
+    super.key,
+    required this.pitches,
+    required this.chord,
+  });
+
+  /// The notes as they sound, lowest first.
+  final List<int> pitches;
+
+  /// What they are notes of, so the root and the colour tones can be
+  /// told apart from the plain chord tones.
+  final Chord chord;
+
+  List<({int semitone, KeyRole role})> get _notes {
+    final plain = {
+      for (final degree in chord.quality.formula)
+        if (int.parse(degree.replaceAll(RegExp(r'[b#]'), '')) <= 7)
+          chord.pitchClassFor(degree),
+    };
+    final notes = [
+      for (final pitch in pitches)
+        (
+          semitone: pitch,
+          role: pitch % 12 == chord.root % 12
+              ? KeyRole.root
+              : plain.contains(pitch % 12)
+              ? KeyRole.tone
+              : KeyRole.extension,
+        ),
+    ];
+    // Start the drawing from the C at or below the lowest note, as the
+    // chord diagram does.
+    final shift = (notes.first.semitone / 12).floor() * 12;
+    return [
+      for (final note in notes)
+        (semitone: note.semitone - shift, role: note.role),
+    ];
+  }
+
+  /// As wide as the notes need: a spread voicing covers more keys than a
+  /// close one, and squeezing it into the same box would hide that.
+  double get aspect =>
+      KeyboardDiagram.aspect * math.min(_whiteKeysFor(_notes).length, 16) / 7;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return CustomPaint(
+      painter: _KeyboardPainter(
+        notes: _notes,
+        marked: scheme.tertiary,
+        hole: scheme.surface,
+        outline: scheme.outlineVariant,
+        white: scheme.surface,
+        black: scheme.onSurface,
+      ),
+    );
+  }
+}
+
 /// A scale on the keys, from its root up to the octave: every note marked,
 /// the roots with a hole through them, and its [colour] notes (the ones
 /// that give it its sound) as rings.
