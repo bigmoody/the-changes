@@ -17,6 +17,7 @@ import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
+import 'bebop_scales_screen.dart';
 import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
@@ -80,6 +81,16 @@ class LearnPage extends StatelessWidget {
                 'what bebop did to the blues, in one look',
             onTap: () =>
                 open(SideBySideScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-bebop-scales'),
+            icon: Icons.stairs,
+            title: 'Bebop Scales',
+            subtitle:
+                'The extra note that keeps the chord tones on the beat, '
+                'and what happens without it',
+            onTap: () =>
+                open(BebopScalesScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
