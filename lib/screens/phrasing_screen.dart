@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio/backing_synth.dart';
+import '../audio/drum_patterns.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
 import '../music/number_patterns.dart';
@@ -53,7 +54,7 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
     // A click on every beat, so the line has something to be early or
     // late against — a rim click rather than a note, because a pitched
     // metronome under a pitched exercise is one more thing to listen to.
-    final clicks = <SnippetClick>[];
+    final clicks = <SnippetDrum>[];
     for (var bar = 0; bar < bars; bar++) {
       notes.add((
         pitch: 38 + (_chord.root - 38) % 12,
@@ -63,7 +64,13 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
         bass: true,
       ));
       for (var beat = 0; beat < 4; beat++) {
-        clicks.add((at: (bar * 8 + beat * 2) * quaver, accent: beat == 0));
+        final downbeat = beat == 0;
+        clicks.add((
+          at: (bar * 8 + beat * 2) * quaver,
+          drum: Drum.crossStick,
+          velocity: downbeat ? 0.5 : 0.34,
+          hard: downbeat,
+        ));
       }
     }
     // The phrase, placed in the second bar so a pick-up has room.
@@ -77,7 +84,7 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
         bass: false,
       ));
     }
-    await widget.player.playSnippet(renderSnippet(bank, notes, clicks: clicks));
+    await widget.player.playSnippet(renderSnippet(bank, notes, drums: clicks));
   }
 
   @override

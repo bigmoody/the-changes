@@ -7,11 +7,20 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/drum_patterns.dart';
 import 'package:play_along/audio/fft.dart';
 import 'package:play_along/audio/sample_bank.dart';
 
 Future<SampleBank> loadBank() =>
     SampleBank.load((path) async => File('assets/sounds/$path').readAsBytes());
+
+/// A rim click at [at] seconds, as the exercises ask for one.
+SnippetDrum click(double at, {bool accent = false}) => (
+  at: at,
+  drum: Drum.crossStick,
+  velocity: accent ? 0.5 : 0.34,
+  hard: accent,
+);
 
 /// The loudest sample in a window around [at] seconds.
 int peakNear(List<int> samples, double at, {double window = 0.05}) {
@@ -36,7 +45,7 @@ void main() {
       renderSnippet(
         bank,
         [(pitch: 60, start: 0, length: 0.4, velocity: 0.7, bass: false)],
-        clicks: [(at: 0.6, accent: false)],
+        drums: [click(0.6)],
       ),
     );
     // Nothing at 0.6 s without a click there, something with one.
@@ -49,11 +58,7 @@ void main() {
       renderSnippet(
         bank,
         const [],
-        clicks: [
-          (at: 0.0, accent: true),
-          (at: 0.5, accent: false),
-          (at: 1.0, accent: false),
-        ],
+        drums: [click(0, accent: true), click(0.5), click(1.0)],
       ),
     );
     for (final at in [0.0, 0.5, 1.0]) {
@@ -69,7 +74,7 @@ void main() {
       renderSnippet(
         bank,
         const [],
-        clicks: [(at: 0.0, accent: true), (at: 0.5, accent: false)],
+        drums: [click(0, accent: true), click(0.5)],
       ),
     );
     expect(peakNear(samples, 0.0), greaterThan(peakNear(samples, 0.5)));
@@ -80,11 +85,11 @@ void main() {
     // tone piles it into one bin. Anything with a single strong partial
     // would be one more note under an exercise about placement.
     final bank = await loadBank();
-    final click = decodeWav(
-      renderSnippet(bank, const [], clicks: [(at: 0.0, accent: true)]),
+    final rim = decodeWav(
+      renderSnippet(bank, const [], drums: [click(0, accent: true)]),
     );
     final tone = decodeWav(metronomeLoop(tempo: 120, beatsPerBar: 1));
-    final inClick = loudestShare(click);
+    final inClick = loudestShare(rim);
     final inTone = loudestShare(tone);
     expect(inTone, greaterThan(0.2), reason: 'the tone really is one pitch');
     expect(

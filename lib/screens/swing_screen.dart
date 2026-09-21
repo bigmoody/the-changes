@@ -1,9 +1,11 @@
-// Swing: one repeated note, and the only thing changing is how late the
-// "and" is.
+// Swing: the ride cymbal, and the only thing changing is how late the
+// "a" is.
 //
-// The note never moves in pitch on purpose. A line with any interest in
-// it would take the attention off the rhythm, and the rhythm is the only
-// thing this screen has to say.
+// A ride rather than a line of notes, because the ride *is* the swing —
+// ding, ding-a, ding, ding-a is the sound everybody learns the feel
+// from, and its "a" is a swung eighth with nothing else attached. A
+// melody would only take the attention off the rhythm, and the rhythm is
+// the only thing this screen has to say.
 //
 // Following the tempo is on to begin with, because that is the lesson:
 // tap through the tempos and watch the swing flatten itself out without
@@ -12,9 +14,54 @@
 import 'package:flutter/material.dart';
 
 import '../audio/backing_synth.dart';
+import '../audio/drum_patterns.dart';
 import '../audio/practice_player.dart';
 import '../music/swing.dart';
 import '../settings/app_settings.dart';
+
+/// The ride under the example: a ding on every beat, leaning on 2 and 4,
+/// with the swung "a" after each of those and the hi-hat closing
+/// underfoot with it.
+///
+/// The same figure the band plays behind every swing tune in the app, so
+/// what is being demonstrated is the real thing rather than a diagram of
+/// it. The "a" is the only part that moves.
+List<SnippetDrum> ridePattern({
+  required int tempo,
+  required double at,
+  int? bars,
+}) {
+  // Long enough to settle into, short enough to want to tap again. A fast
+  // tempo gets through a bar in well under a second, so it gets more.
+  final over = bars ?? (tempo >= 180 ? 4 : 2);
+  final ride = <SnippetDrum>[];
+  for (final (beat, pair) in swungEighths(
+    tempo: tempo,
+    at: at,
+    bars: over,
+  ).indexed) {
+    final backbeat = beat.isOdd;
+    ride.add((
+      at: pair.downbeat,
+      drum: Drum.ride,
+      velocity: backbeat ? 0.62 : 0.52,
+      hard: backbeat,
+    ));
+    if (backbeat) {
+      // The "a": a swung eighth with nothing else attached to it.
+      ride.add((at: pair.and, drum: Drum.ride, velocity: 0.4, hard: false));
+      // What the "a" is heard against — without a beat underneath there
+      // is nothing for it to be late to.
+      ride.add((
+        at: pair.downbeat,
+        drum: Drum.hiHatPedal,
+        velocity: 0.5,
+        hard: true,
+      ));
+    }
+  }
+  return ride;
+}
 
 class SwingScreen extends StatefulWidget {
   const SwingScreen({super.key, required this.player, required this.settings});
@@ -31,47 +78,16 @@ class _SwingScreenState extends State<SwingScreen> {
   var _follow = true;
   var _at = swingAt(swingTempos[1].tempo);
 
-  /// One note, repeated. See the note at the top of the file.
-  static const _pitch = 69;
-
   Future<void> _play() async {
     final bank = widget.player.samples;
     if (bank == null) return;
-    final beat = 60 / _chosen.tempo;
-    const bars = 2;
-    final notes = <SnippetNote>[
-      for (var bar = 0; bar < bars; bar++)
-        (
-          pitch: 38 + (_pitch - 38) % 12,
-          start: bar * 4 * beat,
-          length: 4 * beat,
-          velocity: 0.28,
-          bass: true,
-        ),
-    ];
-    final clicks = <SnippetClick>[];
-    final eighths = swungEighths(tempo: _chosen.tempo, at: _at, bars: bars);
-    for (final (b, pair) in eighths.indexed) {
-      clicks.add((at: pair.downbeat, accent: b % 4 == 0));
-      // The downbeat eighth, then the "and" wherever the swing puts it.
-      // The weight goes on the offbeat, which is what makes a run of
-      // these sound played rather than counted.
-      notes.add((
-        pitch: _pitch,
-        start: pair.downbeat,
-        length: (pair.and - pair.downbeat) * 0.9,
-        velocity: 0.55,
-        bass: false,
-      ));
-      notes.add((
-        pitch: _pitch,
-        start: pair.and,
-        length: (1 - _at) * beat * 0.9,
-        velocity: 0.9,
-        bass: false,
-      ));
-    }
-    await widget.player.playSnippet(renderSnippet(bank, notes, clicks: clicks));
+    await widget.player.playSnippet(
+      renderSnippet(
+        bank,
+        const [],
+        drums: ridePattern(tempo: _chosen.tempo, at: _at),
+      ),
+    );
   }
 
   void _pickTempo(SwingTempo tempo) => setState(() {
@@ -164,6 +180,18 @@ class _SwingScreenState extends State<SwingScreen> {
                       'as the tempo climbs.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Text(
+                      'Played on the ride, which is where you hear it: the '
+                      '"a" in ding, ding-a is the swung eighth, and it is '
+                      'the only thing that moves.',
+                      key: const ValueKey('about-the-ride'),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.tertiary,
                       ),
                     ),
                   ),

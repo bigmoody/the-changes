@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/drum_patterns.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/swing.dart';
 import 'package:play_along/screens/learn_page.dart';
@@ -119,6 +120,85 @@ void main() {
       final eighths = swungEighths(tempo: 120, at: tripletSwing);
       expect(eighths, hasLength(8));
       expect(eighths.first.downbeat, 0);
+    });
+  });
+
+  group('the ride', () {
+    List<SnippetDrum> rideOnly(List<SnippetDrum> hits) => [
+      for (final hit in hits)
+        if (hit.drum == Drum.ride) hit,
+    ];
+
+    test('a ding on every beat, and nothing pitched anywhere', () {
+      final hits = ridePattern(tempo: 120, at: tripletSwing, bars: 2);
+      final onTheBeat = [
+        for (final hit in rideOnly(hits))
+          if ((hit.at * 2 - (hit.at * 2).roundToDouble()).abs() < 1e-9) hit.at,
+      ];
+      expect(onTheBeat, [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]);
+      // Cymbals and a foot. A pitch anywhere in here would be a note to
+      // listen to instead of a rhythm.
+      expect({for (final hit in hits) hit.drum}, {Drum.ride, Drum.hiHatPedal});
+    });
+
+    test('the "a" comes after 2 and 4, and only there', () {
+      final hits = ridePattern(tempo: 120, at: tripletSwing, bars: 2);
+      final swung = [
+        for (final hit in rideOnly(hits))
+          if ((hit.at * 2 - (hit.at * 2).roundToDouble()).abs() > 1e-9) hit.at,
+      ];
+      // Two bars, so two backbeats each: after 2 and after 4.
+      expect(swung, hasLength(4));
+      for (final at in swung) {
+        final beat = at / 0.5;
+        expect(beat.floor().isOdd, isTrue, reason: '$at is after 2 or 4');
+        expect(beat - beat.floorToDouble(), closeTo(tripletSwing, 1e-9));
+      }
+    });
+
+    test('swinging harder moves the "a" and nothing else', () {
+      // The whole demonstration. If the beats moved too it would be a
+      // tempo change, and if the "a" did not move there would be nothing
+      // to hear.
+      List<double> atSwing(double at) => [
+        for (final hit in ridePattern(tempo: 120, at: at, bars: 2)) hit.at,
+      ];
+      final even = atSwing(straight);
+      final hard = atSwing(widestSwing);
+      expect(even, isNot(hard));
+      // The strokes on the beat are in the same places either way.
+      bool onBeat(double at) =>
+          (at * 2 - (at * 2).roundToDouble()).abs() < 1e-9;
+      expect(
+        even.where(onBeat).toList(),
+        hard.where(onBeat).toList(),
+        reason: 'the beat does not move',
+      );
+      // And the swung ones are later when it swings harder.
+      final laterEven = even.where((at) => !onBeat(at)).toList();
+      final laterHard = hard.where((at) => !onBeat(at)).toList();
+      expect(laterEven, hasLength(laterHard.length));
+      for (var i = 0; i < laterEven.length; i++) {
+        expect(laterHard[i], greaterThan(laterEven[i]));
+      }
+    });
+
+    test('the foot keeps 2 and 4, so there is a beat to be late to', () {
+      final feet = [
+        for (final hit in ridePattern(tempo: 120, at: tripletSwing, bars: 2))
+          if (hit.drum == Drum.hiHatPedal) hit.at,
+      ];
+      expect(feet, [0.5, 1.5, 2.5, 3.5]);
+    });
+
+    test('a fast tempo gets more bars, so it is not over in a blink', () {
+      final slow = ridePattern(tempo: 80, at: swingAt(80));
+      final fast = ridePattern(tempo: 300, at: swingAt(300));
+      expect(fast.length, greaterThan(slow.length));
+      // And neither drags on: a few seconds either way.
+      for (final hits in [slow, fast]) {
+        expect(hits.last.at, inInclusiveRange(1.5, 8));
+      }
     });
   });
 
