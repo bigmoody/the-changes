@@ -24,6 +24,7 @@ import 'bebop_scales_screen.dart';
 import 'number_patterns_screen.dart';
 import 'passing_chords_screen.dart';
 import 'phrasing_screen.dart';
+import 'trading_screen.dart';
 import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
@@ -80,6 +81,16 @@ class LearnPage extends StatelessWidget {
                 'it stopped in',
             onTap: () =>
                 open(WhereAmIScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-trading'),
+            icon: Icons.swap_vert,
+            title: 'Trading Fours',
+            subtitle:
+                'They play four, you play four, round and round: the '
+                'oldest way of learning this music',
+            onTap: () =>
+                open(TradingScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-side-by-side'),

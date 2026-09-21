@@ -70,6 +70,22 @@ enum Trading {
   final int bars;
 }
 
+/// Who takes the other four when you are trading.
+///
+/// Trading with the drummer is what a band does and what everybody means
+/// by the phrase. Trading against the time alone is the practice version
+/// of it: the band is still out, but nobody fills the gap, so keeping
+/// your place in the form for four bars is on you. It is harder than it
+/// sounds and it is the whole reason to practise it.
+enum TradeWith {
+  drums('The Drummer'),
+  time('Just The Time');
+
+  const TradeWith(this.label);
+
+  final String label;
+}
+
 /// A part that can drop out and leave it to you.
 enum LayOut {
   chords('Chords'),
@@ -97,6 +113,7 @@ class Arrangement {
     this.headInAndOut = false,
     this.twoFeelOnHead = false,
     this.trading = Trading.off,
+    this.tradeWith = TradeWith.drums,
     this.layOut = const {},
     this.ramp = TempoRamp.off,
   });
@@ -115,6 +132,9 @@ class Arrangement {
 
   /// Swapping bars with the drummer on the solo choruses.
   final Trading trading;
+
+  /// Who answers in the bars you are not playing.
+  final TradeWith tradeWith;
 
   /// Who lays out on the solo choruses, leaving their part to you.
   final Set<LayOut> layOut;
@@ -151,18 +171,30 @@ class Arrangement {
     );
   }
 
-  /// Whether the drummer has [bar] to themselves. [bar] counts from the
-  /// start of the chorus.
-  bool drummerHas(int chorus, int bar) {
+  /// Whether [bar] belongs to whoever is answering rather than to you.
+  /// [bar] counts from the start of the chorus.
+  ///
+  /// The band is out either way: what changes is whether the drummer
+  /// fills it or the time is left bare.
+  bool traded(int chorus, int bar) {
     final swapping = planFor(chorus).trading;
     if (swapping == Trading.off) return false;
     return (bar ~/ swapping.bars).isOdd;
   }
 
+  /// Whether the drummer has [bar] to themselves, which is [traded] and
+  /// the drummer being the one who answers.
+  bool drummerHas(int chorus, int bar) =>
+      traded(chorus, bar) && tradeWith == TradeWith.drums;
+
+  /// Whether [bar] is one of yours: either you are not trading at all, or
+  /// it is your turn.
+  bool yours(int chorus, int bar) => !traded(chorus, bar);
+
   /// Whether [part] sounds in this bar: it hasn't laid out for the chorus,
   /// and the bar isn't the drummer's.
   bool plays(LayOut part, int chorus, int bar) =>
-      !planFor(chorus).layOut.contains(part) && !drummerHas(chorus, bar);
+      !planFor(chorus).layOut.contains(part) && !traded(chorus, bar);
 
   /// One line for the button: "Keep going", "4 choruses, head in and out".
   String describe() {
@@ -175,7 +207,9 @@ class Arrangement {
         '$choruses choruses',
       if (headInAndOut) 'head in and out',
       if (twoFeelOnHead) 'two-feel on the head',
-      if (trading != Trading.off) 'trading ${trading.label.toLowerCase()}',
+      if (trading != Trading.off)
+        'trading ${trading.label.toLowerCase()}'
+            '${tradeWith == TradeWith.drums ? '' : ' against the time'}',
       if (ramp.isOn) ramp.describe(),
       for (final part in LayOut.values)
         if (layOut.contains(part)) 'no ${part.label.toLowerCase()}',
@@ -189,6 +223,7 @@ class Arrangement {
     bool? headInAndOut,
     bool? twoFeelOnHead,
     Trading? trading,
+    TradeWith? tradeWith,
     Set<LayOut>? layOut,
     TempoRamp? ramp,
   }) => Arrangement(
@@ -196,6 +231,7 @@ class Arrangement {
     headInAndOut: headInAndOut ?? this.headInAndOut,
     twoFeelOnHead: twoFeelOnHead ?? this.twoFeelOnHead,
     trading: trading ?? this.trading,
+    tradeWith: tradeWith ?? this.tradeWith,
     layOut: layOut ?? this.layOut,
     ramp: ramp ?? this.ramp,
   );
@@ -206,6 +242,7 @@ class Arrangement {
       other.choruses == choruses &&
       other.headInAndOut == headInAndOut &&
       other.twoFeelOnHead == twoFeelOnHead &&
+      other.tradeWith == tradeWith &&
       other.trading == trading &&
       other.layOut.length == layOut.length &&
       other.layOut.containsAll(layOut) &&
@@ -217,6 +254,7 @@ class Arrangement {
     headInAndOut,
     twoFeelOnHead,
     trading,
+    tradeWith,
     Object.hashAllUnordered(layOut),
     ramp,
   );

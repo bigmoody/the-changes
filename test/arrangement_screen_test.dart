@@ -82,13 +82,22 @@ void main() {
     expect(_isOn(tester, 'trading-fours'), isTrue);
     expect(_isOn(tester, 'lay-out-chords'), isTrue);
     expect(
-      find.textContaining('You take 4, the drummer takes 4'),
+      find.textContaining('You take 4, whoever answers takes 4'),
       findsOneWidget,
     );
+
+    // Who answers only comes up once there is trading to answer, and it
+    // starts where it always did, with the drummer.
+    expect(_isOn(tester, 'trade-with-drums'), isTrue);
+    await _tap(tester, 'trade-with-time');
+    expect(_isOn(tester, 'trade-with-time'), isTrue);
+    expect(find.textContaining('Nobody fills them'), findsOneWidget);
 
     await _tap(tester, 'arrangement-reset');
     expect(_isOn(tester, 'trading-off'), isTrue);
     expect(_isOn(tester, 'lay-out-chords'), isFalse);
+    // With nobody trading there is nothing to answer, so the choice goes.
+    expect(find.byKey(const ValueKey('trade-with-drums')), findsNothing);
     expect(_isOn(tester, 'choruses-keep'), isTrue);
   });
 

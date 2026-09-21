@@ -782,7 +782,7 @@ void showArrangement(BuildContext context, PracticeController controller) {
                 ),
               ),
             ),
-            heading('Trade With the Drums'),
+            heading('Trading'),
             Wrap(
               spacing: 6,
               runSpacing: 6,
@@ -803,7 +803,7 @@ void showArrangement(BuildContext context, PracticeController controller) {
               child: Text(
                 a.trading == Trading.off
                     ? 'The band plays all the way through.'
-                    : 'You take ${a.trading.bars}, the drummer takes '
+                    : 'You take ${a.trading.bars}, whoever answers takes '
                           '${a.trading.bars}, all the way round, '
                           'except on the head.',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -811,6 +811,36 @@ void showArrangement(BuildContext context, PracticeController controller) {
                 ),
               ),
             ),
+            if (a.trading != Trading.off) ...[
+              heading('Who Answers'),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final who in TradeWith.values)
+                    ChoiceChip(
+                      key: ValueKey('trade-with-${who.name}'),
+                      label: Text(who.label),
+                      showCheckmark: false,
+                      selected: a.tradeWith == who,
+                      onSelected: (_) =>
+                          controller.setArrangement(a.copyWith(tradeWith: who)),
+                    ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  a.tradeWith == TradeWith.drums
+                      ? 'The drummer fills the bars you are not playing.'
+                      : 'Nobody fills them: the time keeps going and the '
+                            'four bars are yours to keep your place in.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
             heading('Lay Out on the Solos'),
             Wrap(
               spacing: 6,
