@@ -15,6 +15,7 @@ import 'chord_tones_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
+import 'listening_screen.dart';
 import 'metronome_screen.dart';
 import 'modal_screen.dart';
 import 'reading_music_screen.dart';
@@ -196,6 +197,15 @@ class LearnPage extends StatelessWidget {
                 'names it',
             onTap: () =>
                 open(ChordIdentifierScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-listening'),
+            icon: Icons.album_outlined,
+            title: 'Listening',
+            subtitle:
+                'The records these tunes come from, because a chart is a '
+                'reminder of a performance and not the tune',
+            onTap: () => open(const ListeningScreen()),
           ),
           const SectionHeader('Look It Up'),
           _LearnCard(
