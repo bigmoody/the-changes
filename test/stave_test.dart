@@ -10,6 +10,7 @@ import 'package:play_along/screens/chord_tones_reference_screen.dart';
 import 'package:play_along/screens/chord_tones_screen.dart';
 import 'package:play_along/screens/scales_reference_screen.dart';
 import 'package:play_along/screens/stave.dart';
+import 'package:play_along/screens/stave_figure.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
@@ -19,6 +20,7 @@ List<int> accidentals(List<StaveNote> notes) => [
 ];
 
 void main() {
+  _repaintTests();
   group('chords', () {
     test('CΔ7: middle C on its ledger line, then E G B up the stave', () {
       final notes = chordOnStave(Chord.parse('C^7'));
@@ -153,6 +155,76 @@ void main() {
       );
       // The 3rd it asked for, in pencil.
       expect(stave.notes.where((n) => n.marked), hasLength(1));
+    });
+  });
+}
+
+/// The figure's painter, so what it decides about redrawing can be asked
+/// directly rather than inferred from pixels.
+CustomPainter _painterIn(WidgetTester tester) => tester
+    .widget<CustomPaint>(
+      find
+          .descendant(
+            of: find.byType(StaveFigure),
+            matching: find.byType(CustomPaint),
+          )
+          .first,
+    )
+    .painter!;
+
+Future<void> _show(WidgetTester tester, List<StaveColumn> columns) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: appTheme(Brightness.light),
+      home: Scaffold(
+        body: StaveFigure(columns: columns, clef: Clef.treble),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Four quavers, with the one at [marked] in the accent colour.
+List<StaveColumn> _four(int marked) => [
+  for (var i = 0; i < 4; i++)
+    StaveColumn([
+      sym(Smufl.noteheadBlack, step: i.toDouble(), marked: i == marked),
+    ], stem: true),
+];
+
+void _repaintTests() {
+  group('redrawing the figure', () {
+    testWidgets('marking a different note redraws it', (tester) async {
+      // The bug this guards against: the painter decided whether to
+      // redraw from the figure's size alone, so moving the marks around
+      // a run of the same length changed nothing on screen. On the
+      // phrasing screen that made the weight buttons appear dead.
+      await _show(tester, _four(0));
+      final before = _painterIn(tester);
+      await _show(tester, _four(2));
+      final after = _painterIn(tester);
+      expect(after.shouldRepaint(before), isTrue);
+    });
+
+    testWidgets('swapping a glyph for one the same width redraws it', (
+      tester,
+    ) async {
+      await _show(tester, _four(0));
+      final before = _painterIn(tester);
+      await _show(tester, [
+        StaveColumn([sym(Smufl.restQuarter)], stem: false),
+        ..._four(0).skip(1),
+      ]);
+      expect(_painterIn(tester).shouldRepaint(before), isTrue);
+    });
+
+    testWidgets('and an identical figure is left alone', (tester) async {
+      // The check still has to be worth having: redrawing everything on
+      // every build would make it pointless.
+      await _show(tester, _four(1));
+      final before = _painterIn(tester);
+      await _show(tester, _four(1));
+      expect(_painterIn(tester).shouldRepaint(before), isFalse);
     });
   });
 }

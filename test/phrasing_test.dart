@@ -206,6 +206,43 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('flipping the weight moves the marks on the stave', (
+      tester,
+    ) async {
+      // The figure is the same size whichever weight is chosen, and the
+      // painter used to decide it had nothing to redraw on that basis —
+      // so the marks stayed where they were and the buttons appeared to
+      // do nothing at all.
+      await open(tester);
+      await pick(tester, 'On 1', 'The & Of 4, Before');
+
+      List<bool> markedNow() => [
+        for (final column
+            in tester.widget<StaveFigure>(find.byType(StaveFigure)).columns)
+          column.symbols.any((s) => s.marked),
+      ];
+
+      await pick(tester, 'downbeats', 'upbeats');
+      final onTheBeats = markedNow();
+      await pick(tester, 'upbeats', 'downbeats');
+      final offTheBeats = markedNow();
+
+      expect(onTheBeats.any((m) => m), isTrue, reason: 'something is marked');
+      expect(offTheBeats.any((m) => m), isTrue);
+      expect(
+        onTheBeats,
+        isNot(offTheBeats),
+        reason: 'and they are not the same notes',
+      );
+
+      await pick(tester, 'even', 'upbeats');
+      expect(
+        markedNow().any((m) => m),
+        isFalse,
+        reason: 'flat pushes nothing, so nothing is marked',
+      );
+    });
+
     testWidgets('the weight can be flipped and says what it is for', (
       tester,
     ) async {

@@ -12,6 +12,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../music/clef.dart';
@@ -559,6 +560,27 @@ class _FigurePainter extends CustomPainter {
       old.marked != marked ||
       old.lines != lines ||
       old.tuplet != tuplet ||
+      old.labelStyle != labelStyle ||
       old.layout.width != layout.width ||
-      old.layout.height != layout.height;
+      old.layout.height != layout.height ||
+      !listEquals(old.beams, beams) ||
+      !listEquals(old.ties, ties) ||
+      // What is actually written on the stave. This used to be left out,
+      // on the assumption that changing it would change the figure's
+      // size — and it usually does, which is why it went unnoticed. But
+      // marking a different note of the same run, or swapping a glyph
+      // for one the same width, changes nothing about the layout and
+      // everything about the picture, and the old one stayed on screen.
+      !_sameSymbols(old.layout.columns, layout.columns);
+
+  static bool _sameSymbols(List<StaveColumn> a, List<StaveColumn> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].label != b[i].label || a[i].stem != b[i].stem) return false;
+      // Sym is a record, so this is value equality down to the glyph,
+      // the step and whether it is marked.
+      if (!listEquals(a[i].symbols, b[i].symbols)) return false;
+    }
+    return true;
+  }
 }
