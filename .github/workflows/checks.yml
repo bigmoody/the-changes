@@ -1,0 +1,70 @@
+# What has to pass before anything lands.
+#
+# The three checks are the ones worth running on every push: the code is
+# formatted, the analyser is happy, and the tests pass. They take about a
+# minute between them, which is short enough that nobody is tempted to
+# skip them.
+#
+# The formatting check is here because four files had quietly drifted out
+# of what `dart format` produces and were being dragged into unrelated
+# commits for weeks. It cannot build up again without failing here first.
+
+name: Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # So the long sweep below can be started by hand when it is wanted.
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          # Pinned, so a Flutter release cannot change what "formatted"
+          # means underneath us — which is exactly how the drift started.
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Formatted
+        run: dart format --output=none --set-exit-if-changed lib test tool
+
+      - name: Analysed
+        run: flutter analyze
+
+      - name: Tested
+        run: flutter test
+
+  # The three tests that render every tune in the book: four minutes, and
+  # what catches a whole instrument going silent across two hundred
+  # standards. Skipped in the everyday run (see dart_test.yaml), so they
+  # get their own job.
+  #
+  # On merges rather than nightly: nothing renders differently until the
+  # code changes, so a nightly run on an untouched repo is four minutes
+  # of nothing. On a pull request it would only slow the useful checks
+  # down, and it will run on the merge anyway.
+  sweep:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.4
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Every tune in the book
+        run: flutter test --tags sweep --run-skipped
