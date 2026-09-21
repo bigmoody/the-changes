@@ -135,6 +135,7 @@ class _FixedPlayer extends PracticePlayer {
     BackingRequest request, {
     String? alongside,
     Duration leadIn = Duration.zero,
+    int pickUpBeats = 0,
   }) async {}
 
   @override

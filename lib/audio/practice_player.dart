@@ -106,10 +106,17 @@ class PracticePlayer {
     BackingRequest request, {
     String? alongside,
     Duration leadIn = Duration.zero,
+    int pickUpBeats = 0,
   }) async {
     final generation = ++_generation;
-    final backing = await _renderInBackground(request.withSamples(samples));
+    final rendered = await _renderInBackground(request.withSamples(samples));
     if (generation != _generation) return;
+    // Coming in part-way through the form: the band is written whole and
+    // the beats before the pick-up are cut off the front of the first
+    // batch. Everything after it — the top-ups, the ring-out, the clock —
+    // then works out as it always did, because only the first time round
+    // is short.
+    final backing = fromPickUp(rendered, pickUpBeats);
 
     final sources = <AudioSource>[];
     // Everything is streamed rather than looped: fresh playing is added
@@ -197,7 +204,11 @@ class PracticePlayer {
     _soloud.destroyVoiceGroup(group);
 
     _sources.addAll(sources);
-    _clock = PlaybackClock(backing: backing, loop: request.loop);
+    _clock = PlaybackClock(
+      backing: backing,
+      loop: request.loop,
+      pickUpBeats: pickUpBeats,
+    );
 
     final stream = _BandStream(
       request: request.withSamples(samples),
@@ -213,6 +224,42 @@ class PracticePlayer {
     _streamTimer = Timer.periodic(
       const Duration(seconds: 2),
       (_) => _topUp(stream, generation),
+    );
+  }
+
+  /// [backing] with [pickUpBeats] of its first time through the form taken
+  /// off the front, leaving the count-in where it is — you still get
+  /// counted in, you just come in at the bridge.
+  @visibleForTesting
+  static RenderedBacking fromPickUp(RenderedBacking backing, int beats) {
+    if (beats <= 0) return backing;
+    final countIn = backing.countInBeats * backing.samplesPerBeat * 2;
+    final cut = beats * backing.samplesPerBeatByChorus.first * 2;
+    Uint8List trim(Uint8List pcm) {
+      if (countIn + cut >= pcm.length) return pcm;
+      return Uint8List.fromList([
+        ...pcm.sublist(0, countIn),
+        ...pcm.sublist(countIn + cut),
+      ]);
+    }
+
+    return RenderedBacking(
+      stems: backing.stems,
+      countIn: backing.countIn,
+      sampleRate: backing.sampleRate,
+      samplesPerBeat: backing.samplesPerBeat,
+      samplesPerBeatByChorus: backing.samplesPerBeatByChorus,
+      countInBeats: backing.countInBeats,
+      gain: backing.gain,
+      batch: BackingBatch(
+        pcm: {
+          for (final entry in backing.batch.pcm.entries)
+            entry.key: trim(entry.value),
+        },
+        clicks: trim(backing.batch.clicks),
+        tails: backing.batch.tails,
+        state: backing.batch.state,
+      ),
     );
   }
 
@@ -429,10 +476,19 @@ class PracticePlayer {
 /// flashed up at every loop on some devices. Once the count-in has finished,
 /// this clock never goes back to it.
 class PlaybackClock {
-  PlaybackClock({required this.backing, required this.loop});
+  PlaybackClock({
+    required this.backing,
+    required this.loop,
+    this.pickUpBeats = 0,
+  });
 
   final RenderedBacking backing;
   final LoopRange loop;
+
+  /// How far into the first time through the form the band came in. The
+  /// beats before it were never played, so the clock counts them as
+  /// already gone: the first chorus is short, the rest are whole.
+  final int pickUpBeats;
   bool _countInFinished = false;
 
   /// How long a beat lasts on [chorus]. A tempo ramp shortens it every time
@@ -459,6 +515,7 @@ class PlaybackClock {
     // when the tempo is climbing.
     var left = samples - countInSamples;
     if (left < 0) left = 0;
+    left += pickUpBeats * _samplesPerBeat(0);
     var chorus = 0;
     while (true) {
       final chorusSamples = loop.lengthBeats * _samplesPerBeat(chorus);

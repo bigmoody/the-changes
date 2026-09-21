@@ -269,6 +269,42 @@ class PracticeController extends ChangeNotifier {
   void _setLoop(LoopRange loop) {
     if (loop == _loop) return;
     _loop = loop;
+    // A different stretch of the tune is a different plan, and a pick-up
+    // into the old one would land somewhere you didn't choose.
+    if (!loop.overlapsBar(tune, startBar ?? -1)) _startBeat = null;
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  // ── Coming in part-way through ─────────────────────────────────────────
+
+  /// Where the first time through starts, as a beat of the tune, or null to
+  /// start at the top of the loop.
+  int? _startBeat;
+
+  /// The bar the band comes in on, or null when it starts at the top.
+  int? get startBar =>
+      _startBeat == null ? null : _startBeat! ~/ tune.beatsPerBar;
+
+  /// How far into the form the band comes in, in beats. Nought is the top.
+  int get pickUpBeats => (_startBeat ?? _loop.startBeat) - _loop.startBeat;
+
+  /// Takes it from [barIndex]: the first time through starts there and runs
+  /// to the end of the form, and after that it comes round to the top and
+  /// plays whole, the way "take it from the bridge" means it.
+  ///
+  /// Asking for the bar it already starts on puts it back to the top.
+  void startFromBar(int barIndex) {
+    if (!_loop.overlapsBar(tune, barIndex)) return;
+    final beat = tune.barStartBeat(barIndex);
+    _startBeat = (beat == _startBeat || beat == _loop.startBeat) ? null : beat;
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  void startFromTheTop() {
+    if (_startBeat == null) return;
+    _startBeat = null;
     notifyListeners();
     _restartIfPlaying(delay: Duration.zero);
   }
@@ -871,6 +907,7 @@ class PracticeController extends ChangeNotifier {
           arrangement: _arrangement,
         ),
         alongside: takePath,
+        pickUpBeats: pickUpBeats,
         leadIn: take == null
             ? Duration.zero
             : Duration(milliseconds: (take.leadIn * 1000).round()),

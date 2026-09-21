@@ -70,6 +70,31 @@ class LoopBar extends StatelessWidget {
                     style: theme.textTheme.titleSmall,
                   ),
                 ),
+                // Where the band comes in, when that isn't the top. It sits
+                // outside the scrolling strip: it is a thing you have
+                // switched on, and it has to be as easy to switch off.
+                if (controller.startBar case final bar?) ...[
+                  const SizedBox(width: 6),
+                  InputChip(
+                    key: const ValueKey('starts-at'),
+                    visualDensity: VisualDensity.compact,
+                    avatar: Icon(
+                      Icons.keyboard_tab,
+                      size: 16,
+                      color: theme.colorScheme.tertiary,
+                    ),
+                    label: Text('From ${bar + 1}'),
+                    deleteIcon: const Icon(
+                      Icons.close,
+                      key: ValueKey('starts-at-clear'),
+                      size: 16,
+                    ),
+                    onDeleted: controller.startFromTheTop,
+                    tooltip:
+                        'The first time through starts at bar ${bar + 1}, '
+                        'then it comes round to the top',
+                  ),
+                ],
                 const SizedBox(width: 8),
                 // Everything between the loop's name and the way out of it
                 // goes in one strip that scrolls. Nothing in here is a fixed
@@ -132,7 +157,7 @@ class LoopBar extends StatelessWidget {
                             )
                           else if (wholeTune)
                             Text(
-                              'Tap or drag across bars to loop',
+                              'Tap or drag to loop · hold to start there',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),

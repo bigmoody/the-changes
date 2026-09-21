@@ -9,6 +9,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../music/chart_layout.dart';
 import '../music/chord_aids.dart';
@@ -525,6 +526,8 @@ class _BarCell extends StatelessWidget {
         ? null
         : currentBeat ~/ tune.beatsPerBar;
     final isCurrentBar = cell.bars.contains(currentBar);
+    // Where the band comes in, when that isn't the top of the loop.
+    final startsHere = controller.startBar == barIndex;
     // A loop is marked on the chart as you'd pencil it in: repeat signs
     // where it starts and ends.
     final marked = !loop.isWholeTune(tune);
@@ -561,6 +564,7 @@ class _BarCell extends StatelessWidget {
               : cell.bars.length > 1
               ? 'Bars'
               : 'Bar'} '
+          '${startsHere ? 'Starts here, ' : ''}'
           '${cell.bars.map((b) => b + 1).join(' and ')}'
           // Read aloud it would give away exactly what the exercise is
           // taking off the screen.
@@ -580,6 +584,14 @@ class _BarCell extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: stage ? null : () => controller.loopBar(barIndex),
+            // Take it from here: the first time through starts on this bar.
+            // A long press, so tapping to loop is untouched.
+            onLongPress: stage
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    controller.startFromBar(barIndex);
+                  },
             child: Stack(
               children: [
                 // A 1st or 2nd ending is bracketed across the top, as on a
@@ -592,6 +604,27 @@ class _BarCell extends StatelessWidget {
                     child: Container(
                       height: 3,
                       color: scheme.onSurface.withValues(alpha: 0.6),
+                    ),
+                  ),
+                // A wedge in the margin, pointing in: this is where the
+                // band comes in the first time through.
+                if (startsHere)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: Container(
+                        key: const ValueKey('starts-here'),
+                        width: 5,
+                        height: height * 0.55,
+                        decoration: BoxDecoration(
+                          color: scheme.tertiary,
+                          borderRadius: const BorderRadius.horizontal(
+                            right: Radius.circular(3),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 if (opensLoop || closesLoop)
