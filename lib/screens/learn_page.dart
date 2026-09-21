@@ -17,6 +17,7 @@ import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
+import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
 import 'stave_figure.dart';
 import 'tunes_page.dart' show SectionHeader;
@@ -58,6 +59,16 @@ class LearnPage extends StatelessWidget {
                 '4, or drop out and leave the time to you',
             onTap: () =>
                 open(MetronomeScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-where-am-i'),
+            icon: Icons.explore_outlined,
+            title: 'Where Am I?',
+            subtitle:
+                'The band plays from the top and cuts out — say which bar '
+                'it stopped in',
+            onTap: () =>
+                open(WhereAmIScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
