@@ -42,10 +42,8 @@ const comparisons = <Comparison>[
     key: 'F',
     about:
         'Three chords, then the jazz blues, then what bebop did to it. '
-        'Look at bar 5: whatever else happens, every version is on the IV. '
-        'That is the load-bearing wall, and bars 9 to 12 are the door. '
-        'Everything between them is filling, and the third column fills '
-        'the first half with a dozen chords to reach the same B♭.',
+        'Every version is on the IV at bar 5 — that is the wall. The rest '
+        'is filling, and the third column uses a dozen chords to get there.',
     titles: ['Night Train', "Now's the Time", 'Blues for Alice'],
   ),
   Comparison(
@@ -53,20 +51,16 @@ const comparisons = <Comparison>[
     key: 'F',
     about:
         'Two of Monk\'s against the ordinary jazz blues. He changes very '
-        'little on paper — the interest is in what is played over it, '
-        'which is exactly why the charts are worth reading against each '
-        'other first.',
+        'little on paper; the interest is in what gets played over it.',
     titles: ["Now's the Time", 'Blue Monk', 'Straight, No Chaser'],
   ),
   Comparison(
     name: 'A Contrafact',
     key: 'G',
     about:
-        'Ornithology is How High the Moon with a new tune written over it '
-        '— a contrafact, which is how a good deal of the bebop repertoire '
-        'got made. The form is the same and most of the changes are too. '
-        'The handful of bars that move are where bebop sharpened them: a '
-        'plain ii–V becomes a minor one, a major 7th becomes a dominant.',
+        'Ornithology is How High the Moon with a new tune written over it. '
+        'Where the bars move, bebop has sharpened them: a plain ii–V '
+        'becomes a minor one, a major 7th becomes a dominant.',
     titles: ['How High the Moon', 'Ornithology'],
   ),
   Comparison(
@@ -74,9 +68,7 @@ const comparisons = <Comparison>[
     key: 'C',
     about:
         'The same twelve bars in the same key, one major and one minor. '
-        'Almost every bar moves — but look at bar 10, where they agree: '
-        'both are heading home the same way, and everything either of '
-        'them does has to get there.',
+        'Almost everything moves — but look at bar 10, where they agree.',
     titles: ["Now's the Time", 'Mr. P.C.'],
   ),
 ];

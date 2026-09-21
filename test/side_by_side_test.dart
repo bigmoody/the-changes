@@ -200,6 +200,22 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('the table is on screen when it opens, not below the fold', (
+      tester,
+    ) async {
+      // The table is the whole feature. It once grew enough explanation
+      // above it that opening the screen showed no chords at all.
+      await open(tester);
+      for (final bar in [1, 2, 3, 4]) {
+        expect(
+          find.byKey(ValueKey('bar-row-$bar')),
+          findsOneWidget,
+          reason: 'bar $bar should be visible without scrolling',
+        );
+      }
+      expect(find.text('F7'), findsWidgets, reason: 'chords, straight away');
+    });
+
     testWidgets('choosing another set redraws it in that key', (tester) async {
       await open(tester);
       await tester.tap(find.byKey(const ValueKey('set-A Contrafact')));
@@ -209,15 +225,52 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('a bar can be tapped without a sample bank loaded', (
+    testWidgets('each version plays whole, and only one at a time', (
       tester,
     ) async {
-      // There is no audio in tests; tapping must be harmless rather than
-      // throwing on a null bank.
+      // A bar lifted out of three tunes and played end to end is not
+      // music. Each column is played through instead, from the top.
       await open(tester);
-      await tester.tap(find.byKey(const ValueKey('bar-row-2')));
-      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.stop_circle), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('play-0')));
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_circle), findsOneWidget);
+
+      // Starting another stops the first: two blues at once is a mess.
+      await tester.tap(find.byKey(const ValueKey('play-2')));
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_circle), findsOneWidget);
+
+      // And the same button again stops it.
+      await tester.tap(find.byKey(const ValueKey('play-2')));
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_circle), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('changing the set stops whatever was playing', (tester) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('play-0')));
+      await tester.pump();
+      expect(find.byIcon(Icons.stop_circle), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('set-A Contrafact')));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.stop_circle), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a bar is not a button any more', (tester) async {
+      // It used to play that bar from each version in turn, which taught
+      // nothing: you cannot hear a substitution without hearing it
+      // resolve.
+      await open(tester);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('bar-row-2')),
+          matching: find.byType(InkWell),
+        ),
+        findsNothing,
+      );
     });
 
     testWidgets('it opens from Learn', (tester) async {
