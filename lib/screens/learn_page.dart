@@ -27,6 +27,7 @@ import 'phrasing_screen.dart';
 import 'trading_screen.dart';
 import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
+import 'upper_structures_screen.dart';
 import 'voicings_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
@@ -210,6 +211,16 @@ class LearnPage extends StatelessWidget {
                 'forms, and what drop 2 actually means',
             onTap: () =>
                 open(VoicingsScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-upper-structures'),
+            icon: Icons.change_history,
+            title: 'Upper Structures',
+            subtitle:
+                'A plain triad on top of a dominant: the altered sound '
+                'without having to spell it',
+            onTap: () =>
+                open(UpperStructuresScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-guide-tones'),
