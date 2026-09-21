@@ -1,4 +1,4 @@
-// Digital patterns: one shape, run through the changes.
+// Number patterns: one shape, run through the changes.
 //
 // The screen is built so the numbers stay still and the notes move, which
 // is the whole idea. Pick 1-2-3-5 and it is written out over every chord
@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
-import '../music/digital_patterns.dart';
+import '../music/number_patterns.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'stave_figure.dart';
@@ -35,8 +35,8 @@ const _steps = [
   'B',
 ];
 
-class DigitalPatternsScreen extends StatefulWidget {
-  const DigitalPatternsScreen({
+class NumberPatternsScreen extends StatefulWidget {
+  const NumberPatternsScreen({
     super.key,
     required this.player,
     required this.settings,
@@ -46,11 +46,11 @@ class DigitalPatternsScreen extends StatefulWidget {
   final AppSettings settings;
 
   @override
-  State<DigitalPatternsScreen> createState() => _DigitalPatternsScreenState();
+  State<NumberPatternsScreen> createState() => _NumberPatternsScreenState();
 }
 
-class _DigitalPatternsScreenState extends State<DigitalPatternsScreen> {
-  var _pattern = digitalPatterns.first;
+class _NumberPatternsScreenState extends State<NumberPatternsScreen> {
+  var _pattern = numberPatterns.first;
   var _changes = patternChanges.first;
   var _key = 'C';
 
@@ -112,7 +112,7 @@ class _DigitalPatternsScreenState extends State<DigitalPatternsScreen> {
     final chords = _chords;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Digital Patterns'),
+        title: const Text('Number Patterns'),
         actions: [
           IconButton(
             key: const ValueKey('play-pattern'),
@@ -132,15 +132,17 @@ class _DigitalPatternsScreenState extends State<DigitalPatternsScreen> {
               '"1235" is not a lick, it is a shape: the 1st, 2nd, 3rd and '
               '5th of whatever scale the chord wants. Your hand does the '
               'same thing over every chord and different notes come out. '
-              'Practise the numbers and the changes do the rest.',
+              'Practise the numbers and the changes do the rest. The books '
+              'call these digital patterns — "digital" meaning the digits '
+              'you count on, not anything electronic.',
               style: theme.textTheme.bodyMedium,
             ),
           ),
           _Chips(
-            values: [for (final p in digitalPatterns) (p.written, p.written)],
+            values: [for (final p in numberPatterns) (p.written, p.written)],
             selected: _pattern.written,
             onPick: (written) => setState(
-              () => _pattern = digitalPatterns.firstWhere(
+              () => _pattern = numberPatterns.firstWhere(
                 (p) => p.written == written,
               ),
             ),

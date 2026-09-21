@@ -1,4 +1,4 @@
-// Digital patterns: four numbers, played off every chord that goes by.
+// Number patterns: four numbers, played off every chord that goes by.
 //
 // "1235" is not a lick. It is a shape — the 1st, 2nd, 3rd and 5th of
 // whatever scale the chord is asking for — and the whole point is that it
@@ -10,6 +10,10 @@
 // shapes, run round the cycle until the fingers stop asking which key it
 // is. It is also the quickest way to stop playing scales up and down,
 // because a pattern has a shape of its own that a scale has not.
+//
+// The books call these digital patterns, meaning "of the digits" — the
+// fingers you count on, nothing to do with computers. That reading of
+// the word has not survived, so they are called what they are here.
 //
 // The numbers are scale degrees, not chord degrees. The 3rd of a pattern
 // over a minor chord is the ♭3, because that is what the 3rd note of its
@@ -23,8 +27,8 @@ import 'enclosures.dart' show scaleFor;
 /// Numbers run past 7 into the octave above (9 is the 2nd, up an octave)
 /// and below 1 into the one below (0 is the 7th, down an octave), because
 /// that is how the useful ones are shaped.
-class DigitalPattern {
-  const DigitalPattern({
+class NumberPattern {
+  const NumberPattern({
     required this.degrees,
     required this.name,
     required this.about,
@@ -38,8 +42,8 @@ class DigitalPattern {
   String get written => degrees.join(' ');
 }
 
-const digitalPatterns = <DigitalPattern>[
-  DigitalPattern(
+const numberPatterns = <NumberPattern>[
+  NumberPattern(
     degrees: [1, 2, 3, 5],
     name: 'Up From The Root',
     about:
@@ -47,7 +51,7 @@ const digitalPatterns = <DigitalPattern>[
         'steps up and then skips, which is what keeps it from sounding '
         'like a scale.',
   ),
-  DigitalPattern(
+  NumberPattern(
     degrees: [3, 4, 5, 7],
     name: 'Up From The 3rd',
     about:
@@ -55,7 +59,7 @@ const digitalPatterns = <DigitalPattern>[
         'than the root is most of what makes a line sound like it knows '
         'the chord.',
   ),
-  DigitalPattern(
+  NumberPattern(
     degrees: [1, 3, 5, 7],
     name: 'The Arpeggio',
     about:
@@ -63,7 +67,7 @@ const digitalPatterns = <DigitalPattern>[
         'other pattern is measured against — you have to be able to play '
         'this one in your sleep before the rest are worth anything.',
   ),
-  DigitalPattern(
+  NumberPattern(
     degrees: [3, 5, 7, 9],
     name: 'From The 3rd, Up',
     about:
@@ -71,14 +75,14 @@ const digitalPatterns = <DigitalPattern>[
         'note is the one outside the chord, which is why it sounds like '
         'bebop and the plain arpeggio does not.',
   ),
-  DigitalPattern(
+  NumberPattern(
     degrees: [5, 3, 2, 1],
     name: 'Down To The Root',
     about:
         'Coming down lands you somewhere to go next. Most lines that '
         'sound finished are descending, and this is the plainest one.',
   ),
-  DigitalPattern(
+  NumberPattern(
     degrees: [7, 5, 3, 1],
     name: 'Arpeggio Down',
     about:
@@ -86,7 +90,7 @@ const digitalPatterns = <DigitalPattern>[
         'V and the ♭7 is the first thing anyone hears, which is the whole '
         'sound of the chord.',
   ),
-  DigitalPattern(
+  NumberPattern(
     degrees: [3, 2, 1, 0],
     name: 'Over The Bar',
     about:

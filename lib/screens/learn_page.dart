@@ -18,7 +18,7 @@ import 'guide_tones_screen.dart';
 import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
 import 'bebop_scales_screen.dart';
-import 'digital_patterns_screen.dart';
+import 'number_patterns_screen.dart';
 import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
@@ -94,14 +94,14 @@ class LearnPage extends StatelessWidget {
                 open(BebopScalesScreen(player: player, settings: settings)),
           ),
           _LearnCard(
-            key: const ValueKey('learn-digital-patterns'),
+            key: const ValueKey('learn-number-patterns'),
             icon: Icons.pin_outlined,
-            title: 'Digital Patterns',
+            title: 'Number Patterns',
             subtitle:
                 'One shape — 1-2-3-5 — run through the changes, so your '
                 'hand stays still while the notes move',
             onTap: () =>
-                open(DigitalPatternsScreen(player: player, settings: settings)),
+                open(NumberPatternsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),

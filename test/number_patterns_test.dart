@@ -1,13 +1,13 @@
-// Digital patterns: the same shape coming out different over every chord.
+// Number patterns: the same shape coming out different over every chord.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/chord.dart';
-import 'package:play_along/music/digital_patterns.dart';
+import 'package:play_along/music/number_patterns.dart';
 import 'package:play_along/music/enclosures.dart';
-import 'package:play_along/screens/digital_patterns_screen.dart';
+import 'package:play_along/screens/number_patterns_screen.dart';
 import 'package:play_along/screens/learn_page.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
@@ -96,7 +96,7 @@ void main() {
               'B',
             ][at];
             final chord = Chord.parse('$name$quality');
-            for (final pattern in digitalPatterns) {
+            for (final pattern in numberPatterns) {
               expect(
                 fits(pattern.degrees, chord),
                 isTrue,
@@ -112,7 +112,7 @@ void main() {
   group('the patterns themselves', () {
     test('each is four numbers and no two are the same pattern', () {
       final seen = <String>{};
-      for (final pattern in digitalPatterns) {
+      for (final pattern in numberPatterns) {
         expect(pattern.degrees, hasLength(4), reason: pattern.name);
         expect(pattern.about, isNotEmpty, reason: pattern.name);
         expect(seen.add(pattern.written), isTrue, reason: pattern.written);
@@ -121,12 +121,12 @@ void main() {
 
     test('there are ascending ones and descending ones', () {
       bool climbs(List<int> d) => d.last > d.first;
-      expect(digitalPatterns.any((p) => climbs(p.degrees)), isTrue);
-      expect(digitalPatterns.any((p) => !climbs(p.degrees)), isTrue);
+      expect(numberPatterns.any((p) => climbs(p.degrees)), isTrue);
+      expect(numberPatterns.any((p) => !climbs(p.degrees)), isTrue);
     });
 
     test('written out, it reads as the numbers you would say', () {
-      expect(digitalPatterns.first.written, '1 2 3 5');
+      expect(numberPatterns.first.written, '1 2 3 5');
     });
   });
 
@@ -154,7 +154,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: appTheme(Brightness.light),
-          home: DigitalPatternsScreen(
+          home: NumberPatternsScreen(
             player: _FakePlayer(),
             settings: AppSettings.inMemory(),
           ),
@@ -241,13 +241,13 @@ void main() {
           ),
         ),
       );
-      final card = find.byKey(const ValueKey('learn-digital-patterns'));
+      final card = find.byKey(const ValueKey('learn-number-patterns'));
       await tester.scrollUntilVisible(card, 100);
       await tester.ensureVisible(card);
       await tester.pumpAndSettle();
       await tester.tap(card);
       await tester.pumpAndSettle();
-      expect(find.byType(DigitalPatternsScreen), findsOneWidget);
+      expect(find.byType(NumberPatternsScreen), findsOneWidget);
     });
   });
 }
