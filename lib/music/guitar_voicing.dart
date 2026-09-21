@@ -207,6 +207,10 @@ Iterable<List<int>> _combinations(List<List<int>> choices) sync* {
 /// The shape that sounds exactly [pitches] on the neck, or null where a
 /// guitar cannot make that arrangement.
 ///
+/// With [onStrings], only that set of strings is tried, which is how you
+/// ask for a shape on the top three rather than wherever it happens to
+/// fall most easily.
+///
 /// Exact rather than approximate: the same notes in the same octaves, in
 /// the same order, so a drop 2 comes out as a drop 2 rather than as some
 /// other grip on the same chord. Null is a real answer and worth saying
@@ -217,13 +221,17 @@ GuitarVoicing? shapeForPitches(
   List<int> pitches, {
   int highestFret = 15,
   int reach = 5,
+  List<int>? onStrings,
 }) {
   if (pitches.length < 2 || pitches.length > guitarTuning.length) return null;
   // Each note's distance above the lowest, which is what has to survive.
   final wanted = [for (final pitch in pitches) pitch - pitches.first];
   GuitarVoicing? best;
 
-  for (final strings in _stringRuns(pitches.length)) {
+  final runs = onStrings == null
+      ? _stringRuns(pitches.length)
+      : [if (onStrings.length == pitches.length) onStrings];
+  for (final strings in runs) {
     for (var fret = 0; fret <= highestFret; fret++) {
       final lowest = guitarTuning[strings.first] + fret;
       if (lowest % 12 != pitches.first % 12) continue;
@@ -344,3 +352,31 @@ GuitarVoicing? shellShape(
   }
   return null;
 }
+
+/// The three inversions of [triad] on [strings], lowest note first.
+///
+/// How a guitarist actually uses a triad: not as a chord with a name but
+/// as three shapes in a row up the neck, so whichever one is nearest the
+/// hand is the one that gets played. Any that will not fit comes back
+/// null rather than being left out, so the three stay in their places.
+List<GuitarVoicing?> triadInversions(
+  Chord triad, {
+  List<int> strings = const [3, 4, 5],
+}) {
+  // Root position, then the 3rd on the bottom, then the 5th: the same
+  // three notes rotated, and each rotation has its own spacing.
+  const rotations = [
+    (0, [0, 4, 7]),
+    (4, [0, 3, 8]),
+    (7, [0, 5, 9]),
+  ];
+  return [
+    for (final (from, spacing) in rotations)
+      shapeForPitches([
+        for (final step in spacing) 60 + triad.root + from + step,
+      ], onStrings: strings),
+  ];
+}
+
+/// What each inversion is called.
+const inversionNames = ['root position', '1st inversion', '2nd inversion'];

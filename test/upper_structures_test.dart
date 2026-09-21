@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/chord.dart';
+import 'package:play_along/music/guitar_voicing.dart';
 import 'package:play_along/music/tritone_subs.dart' show isDominant, subFor;
 import 'package:play_along/music/upper_structures.dart';
 import 'package:play_along/screens/learn_page.dart';
@@ -164,6 +165,90 @@ void main() {
     });
   });
 
+  group('on the guitar', () {
+    test('every structure has all three inversions on the top strings', () {
+      // A guitarist plays whichever one is nearest, so all three have to
+      // be there or the point of showing them is lost.
+      for (final structure in upperStructures) {
+        for (final symbol in ['C7', 'F7', 'G7']) {
+          final triad = Chord.parse(triadName(Chord.parse(symbol), structure));
+          final shapes = triadInversions(triad);
+          expect(shapes, hasLength(3), reason: '${structure.roman} on $symbol');
+          for (final (i, shape) in shapes.indexed) {
+            expect(
+              shape,
+              isNotNull,
+              reason: '${structure.roman} on $symbol, ${inversionNames[i]}',
+            );
+          }
+        }
+      }
+    });
+
+    test('they are on the top three strings and nowhere else', () {
+      final shapes = triadInversions(Chord.parse('D'));
+      for (final shape in shapes) {
+        final played = [
+          for (final (i, fret) in shape!.frets.indexed)
+            if (fret != null) i,
+        ];
+        expect(played, [3, 4, 5], reason: 'G, B and the top E');
+      }
+    });
+
+    test('each one really is that inversion', () {
+      // Root position has the root at the bottom, the first has the 3rd
+      // and the second has the 5th. If they were all the same shape in
+      // three places there would be nothing to choose between them.
+      final triad = Chord.parse('D');
+      final shapes = triadInversions(triad);
+      for (final (i, wanted) in [0, 4, 7].indexed) {
+        expect(
+          shapes[i]!.pitches.first % 12,
+          (triad.root + wanted) % 12,
+          reason: inversionNames[i],
+        );
+      }
+    });
+
+    test('all three sound the same three notes', () {
+      final triad = Chord.parse('A♭');
+      final wanted = {
+        for (final shape in triadInversions(triad))
+          ...shape!.pitches.map((p) => p % 12),
+      };
+      expect(wanted, hasLength(3));
+      expect(wanted, {
+        triad.root % 12,
+        (triad.root + 4) % 12,
+        (triad.root + 7) % 12,
+      });
+    });
+
+    test('a hand can reach every one of them', () {
+      for (final name in ['C', 'D', 'E♭', 'G♭', 'A', 'A♭', 'B']) {
+        for (final shape in triadInversions(Chord.parse(name))) {
+          final fretted = shape!.frets.whereType<int>().where((f) => f > 0);
+          if (fretted.isEmpty) continue;
+          expect(
+            fretted.reduce(GuitarVoicing.max) -
+                fretted.reduce(GuitarVoicing.min),
+            lessThan(5),
+            reason: name,
+          );
+        }
+      }
+    });
+
+    test('asking for a string set that cannot hold it gets nothing', () {
+      expect(
+        shapeForPitches([60, 64, 67], onStrings: const [4, 5]),
+        isNull,
+        reason: 'three notes, two strings',
+      );
+    });
+  });
+
   group('the screen', () {
     Future<void> open(WidgetTester tester) async {
       tester.view
@@ -181,6 +266,20 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
+
+    /// Brings something further down the page into view. The page is
+    /// long enough now that a ListView has not built the bottom of it.
+    Future<void> scrollTo(WidgetTester tester, Finder target) =>
+        tester.scrollUntilVisible(
+          target,
+          140,
+          scrollable: find
+              .descendant(
+                of: find.byKey(const ValueKey('upper-list')),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
 
     testWidgets('the triad is the biggest thing on it, and on screen', (
       tester,
@@ -207,6 +306,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('A♭ over C7'), findsOneWidget);
       expect(find.text('is C7♯9♭13'), findsOneWidget);
+      await scrollTo(tester, find.byKey(const ValueKey('about-structure')));
       expect(find.textContaining('The darkest of them'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -215,6 +315,7 @@ void main() {
       tester,
     ) async {
       await open(tester);
+      await scrollTo(tester, find.byKey(const ValueKey('play-plain')));
       await tester.tap(find.byKey(const ValueKey('play-plain')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('play-structure')));
@@ -255,6 +356,20 @@ void main() {
       );
       expect(find.text('A over G7'), findsOneWidget);
       expect(find.text('is G13♯11'), findsOneWidget);
+    });
+
+    testWidgets('the three inversions are drawn for the guitar', (
+      tester,
+    ) async {
+      await open(tester);
+      final guitar = find.byKey(const ValueKey('on-the-guitar'));
+      await scrollTo(tester, guitar);
+      expect(guitar, findsOneWidget);
+      for (final name in inversionNames) {
+        expect(find.text(name), findsOneWidget, reason: name);
+      }
+      expect(find.byKey(const ValueKey('inversion-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('inversion-2')), findsOneWidget);
     });
 
     testWidgets('it opens from Learn', (tester) async {

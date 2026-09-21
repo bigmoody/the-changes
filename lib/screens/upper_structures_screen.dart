@@ -76,7 +76,6 @@ class _UpperStructuresScreenState extends State<UpperStructuresScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final tensions = tensionsOf(_chord, _structure);
-    final shape = shapeForPitches(_triad);
     final keyboard = VoicingKeyboard(
       pitches: [..._under, ..._triad],
       chord: _chord,
@@ -142,17 +141,6 @@ class _UpperStructuresScreenState extends State<UpperStructuresScreen> {
                     ],
                   ),
                 ),
-                SizedBox(
-                  width: 100,
-                  height: 100 / GuitarDiagram.aspect,
-                  child: shape == null
-                      ? const SizedBox.shrink()
-                      : GuitarDiagram(
-                          key: const ValueKey('the-shape'),
-                          chord: Chord.parse(triadName(_chord, _structure)),
-                          voicing: shape,
-                        ),
-                ),
               ],
             ),
           ),
@@ -209,6 +197,7 @@ class _UpperStructuresScreenState extends State<UpperStructuresScreen> {
               ),
             ),
           ),
+          _OnTheGuitar(triad: Chord.parse(triadName(_chord, _structure))),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Text(
@@ -279,6 +268,85 @@ class _UpperStructuresScreenState extends State<UpperStructuresScreen> {
       7 => '5',
       _ => '1',
     });
+  }
+}
+
+/// The triad on the top three strings, all three ways up.
+///
+/// A guitarist does not play "the A triad", they play whichever A triad
+/// is under the hand, so the three inversions in a row are the useful
+/// thing rather than one shape somewhere on the neck. Top three strings
+/// because something else has the bottom of the chord: that is what
+/// makes it an upper structure.
+class _OnTheGuitar extends StatelessWidget {
+  const _OnTheGuitar({required this.triad});
+
+  final Chord triad;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final shapes = triadInversions(triad);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Column(
+        key: const ValueKey('on-the-guitar'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'On the top three strings',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: scheme.tertiary,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'All three ways up, so whichever is nearest your hand is the '
+            'one to play. Something else has the bottom of the chord, '
+            'which is what makes it an upper structure.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final (i, shape) in shapes.indexed)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          inversionNames[i],
+                          textScaler: TextScaler.noScaling,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        AspectRatio(
+                          aspectRatio: GuitarDiagram.aspect,
+                          child: shape == null
+                              ? const SizedBox.shrink()
+                              : GuitarDiagram(
+                                  key: ValueKey('inversion-$i'),
+                                  chord: triad,
+                                  voicing: shape,
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
