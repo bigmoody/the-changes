@@ -299,24 +299,9 @@ void main() {
       expect(seen, {for (final clef in Clef.values) clef.label});
     });
 
-    testWidgets('every heading is in Title Case', (tester) async {
-      await open(tester, size: const Size(393, 852));
-      // Short joining words stay lowercase; everything else is capitalised.
-      const joins = {'and', 'a', 'on', 'the', 'of', 'in', 'to'};
-      for (final heading in _headingsIn(
-        File('lib/screens/reading_music_screen.dart'),
-      )) {
-        final words = heading.split(' ');
-        for (final (i, word) in words.indexed) {
-          if (i > 0 && joins.contains(word)) continue;
-          expect(
-            word[0],
-            word[0].toUpperCase(),
-            reason: '"$heading": "$word" is not capitalised',
-          );
-        }
-      }
-    });
+    // Title Case is checked for the whole app in title_case_test.dart,
+    // which is where this one used to live when it only watched this
+    // screen and the rest of the app drifted behind its back.
   });
 }
 
@@ -372,14 +357,6 @@ Finder _heading(String title) =>
 
 /// The headings written into the guide, straight out of its source, so a
 /// new section can't skip the check by never being scrolled to.
-List<String> _headingsIn(File source) {
-  final text = source.readAsStringSync();
-  return [
-    for (final match in RegExp(r"SectionHeader\('([^']*)'\)").allMatches(text))
-      match.group(1)!.replaceAll('\\u2019', '’'),
-  ];
-}
-
 /// The Unicode code points an OpenType font covers, read out of its `cmap`
 /// table. Only the two subtable formats a modern font uses are handled,
 /// enough to answer "is this symbol in here".

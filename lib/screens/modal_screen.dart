@@ -206,7 +206,7 @@ class _ModalScreenState extends State<ModalScreen> {
             ),
           ),
 
-          _Heading('How Long A Chord Lasts'),
+          _Heading('How Long a Chord Lasts'),
           for (final tune in compared)
             _StayBar(
               key: ValueKey('stay-${tune.title}'),
@@ -334,7 +334,7 @@ class _ModalScreenState extends State<ModalScreen> {
                 key: const ValueKey('play-stack'),
                 icon: const Icon(Icons.play_arrow),
                 label: Text(
-                  _inFourths ? 'Hear It In Fourths' : 'Hear It In Thirds',
+                  _inFourths ? 'Hear It in Fourths' : 'Hear It in Thirds',
                 ),
                 onPressed: _playStack,
               ),
@@ -386,7 +386,7 @@ class _ModalScreenState extends State<ModalScreen> {
               child: FilledButton.tonalIcon(
                 key: const ValueKey('play-line'),
                 icon: const Icon(Icons.play_arrow),
-                label: const Text('Hear It As A Line'),
+                label: const Text('Hear It as a Line'),
                 onPressed: _playLine,
               ),
             ),

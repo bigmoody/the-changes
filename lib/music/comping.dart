@@ -43,7 +43,7 @@ enum CompFigure {
         'already going for it to be early against.',
   ),
   offbeat(
-    'Off The Beats',
+    'Off the Beats',
     weight: 3,
     about:
         'Nothing on a downbeat at all: the "and" of 1 and the "and" of '
@@ -52,7 +52,7 @@ enum CompFigure {
         'is already there.',
   ),
   twice(
-    'Twice A Bar',
+    'Twice a Bar',
     weight: 3,
     about:
         'Beat 1 and the "and" of 3: the bar split in half, one at the '

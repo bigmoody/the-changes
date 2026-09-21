@@ -415,7 +415,7 @@ void main() {
     testWidgets('offers starring, setlists and sharing', (tester) async {
       await openMenu(tester, LibraryStore.inMemory());
       expect(find.text('Star'), findsOneWidget);
-      expect(find.text('Add To Setlist'), findsOneWidget);
+      expect(find.text('Add to Setlist'), findsOneWidget);
       expect(find.text('Share Chart'), findsOneWidget);
     });
 

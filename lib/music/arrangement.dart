@@ -79,7 +79,7 @@ enum Trading {
 /// sounds and it is the whole reason to practise it.
 enum TradeWith {
   drums('The Drummer'),
-  time('Just The Time');
+  time('Just the Time');
 
   const TradeWith(this.label);
 

@@ -157,7 +157,7 @@ void main() {
     /// screen on a phone.
     Future<void> toTheChanges(WidgetTester tester) async {
       await tester.scrollUntilVisible(
-        find.text('With The Sub'),
+        find.text('With the Sub'),
         120,
         scrollable: find
             .descendant(
@@ -220,10 +220,10 @@ void main() {
       await open(tester);
       await toTheChanges(tester);
       expect(find.byKey(const ValueKey('As Written-G7')), findsOneWidget);
-      expect(find.byKey(const ValueKey('With The Sub-D♭7')), findsOneWidget);
+      expect(find.byKey(const ValueKey('With the Sub-D♭7')), findsOneWidget);
       // The chords either side are untouched.
-      expect(find.byKey(const ValueKey('With The Sub-Dm7')), findsOneWidget);
-      expect(find.byKey(const ValueKey('With The Sub-CΔ7')), findsOneWidget);
+      expect(find.byKey(const ValueKey('With the Sub-Dm7')), findsOneWidget);
+      expect(find.byKey(const ValueKey('With the Sub-CΔ7')), findsOneWidget);
     });
 
     testWidgets('the bass movement is named, not just counted', (tester) async {
@@ -242,7 +242,7 @@ void main() {
       expect(find.byKey(const ValueKey('dyad-C7')), findsOneWidget);
       expect(find.byKey(const ValueKey('dyad-G♭7')), findsOneWidget);
       await toTheChanges(tester);
-      expect(find.byKey(const ValueKey('With The Sub-G♭7')), findsOneWidget);
+      expect(find.byKey(const ValueKey('With the Sub-G♭7')), findsOneWidget);
     });
 
     testWidgets('playing either version is harmless without audio', (
@@ -250,7 +250,7 @@ void main() {
     ) async {
       await open(tester);
       await toTheChanges(tester);
-      for (final which in ['As Written', 'With The Sub']) {
+      for (final which in ['As Written', 'With the Sub']) {
         final button = find.byKey(ValueKey('play-$which'));
         await tester.ensureVisible(button);
         await tester.pumpAndSettle();

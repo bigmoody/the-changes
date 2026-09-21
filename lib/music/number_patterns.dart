@@ -45,7 +45,7 @@ class NumberPattern {
 const numberPatterns = <NumberPattern>[
   NumberPattern(
     degrees: [1, 2, 3, 5],
-    name: 'Up From The Root',
+    name: 'Up From the Root',
     about:
         'The one everybody starts on, and the one you will hear most. It '
         'steps up and then skips, which is what keeps it from sounding '
@@ -53,7 +53,7 @@ const numberPatterns = <NumberPattern>[
   ),
   NumberPattern(
     degrees: [3, 4, 5, 7],
-    name: 'Up From The 3rd',
+    name: 'Up From the 3rd',
     about:
         'The same shape started higher up. Beginning on the 3rd rather '
         'than the root is most of what makes a line sound like it knows '
@@ -69,7 +69,7 @@ const numberPatterns = <NumberPattern>[
   ),
   NumberPattern(
     degrees: [3, 5, 7, 9],
-    name: 'From The 3rd, Up',
+    name: 'From the 3rd, Up',
     about:
         'The arpeggio moved up a notch, so it reaches the 9th. The top '
         'note is the one outside the chord, which is why it sounds like '
@@ -77,7 +77,7 @@ const numberPatterns = <NumberPattern>[
   ),
   NumberPattern(
     degrees: [5, 3, 2, 1],
-    name: 'Down To The Root',
+    name: 'Down to the Root',
     about:
         'Coming down lands you somewhere to go next. Most lines that '
         'sound finished are descending, and this is the plainest one.',
@@ -92,7 +92,7 @@ const numberPatterns = <NumberPattern>[
   ),
   NumberPattern(
     degrees: [3, 2, 1, 0],
-    name: 'Over The Bar',
+    name: 'Over the Bar',
     about:
         'Ends on the 7th below the root, which is a semitone or a tone '
         'from the next chord almost every time. The only one here that is '
@@ -124,7 +124,7 @@ const patternChanges = <PatternChanges>[
     chords: [(0, '6'), (9, 'm7'), (2, 'm7'), (7, '7')],
   ),
   (
-    name: 'Round The Cycle',
+    name: 'Round the Cycle',
     about:
         'Dominants a fourth apart, which is where every V is going. Four '
         'of the twelve; move the key on and you have the rest.',

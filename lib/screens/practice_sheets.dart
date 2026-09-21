@@ -109,7 +109,7 @@ Future<void> showViewOptions(
                   ),
               ],
             ),
-            heading('Under The Chords'),
+            heading('Under the Chords'),
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -133,7 +133,7 @@ Future<void> showViewOptions(
                   ),
                 ),
               ),
-            heading('Hide The Chart'),
+            heading('Hide the Chart'),
             Wrap(
               spacing: 8,
               runSpacing: 4,

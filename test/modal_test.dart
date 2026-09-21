@@ -429,7 +429,7 @@ void main() {
         find.textContaining('the chord symbol, spelled out'),
         findsOneWidget,
       );
-      expect(find.text('Hear It In Thirds'), findsOneWidget);
+      expect(find.text('Hear It in Thirds'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -446,7 +446,7 @@ void main() {
       expect(find.byKey(const ValueKey('the-line')), findsOneWidget);
       expect(find.byKey(const ValueKey('about-line')), findsOneWidget);
       expect(find.textContaining('F to B, the tritone'), findsOneWidget);
-      expect(find.text('Hear It As A Line'), findsOneWidget);
+      expect(find.text('Hear It as a Line'), findsOneWidget);
     });
 
     testWidgets('the guitar shortcut is there, because it is one finger', (

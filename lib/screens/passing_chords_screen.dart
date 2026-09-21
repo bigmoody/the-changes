@@ -76,7 +76,7 @@ class _PassingChordsScreenState extends State<PassingChordsScreen> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Between The Chords')),
+      appBar: AppBar(title: const Text('Between the Chords')),
       body: ListView(
         key: const ValueKey('passing-list'),
         padding: const EdgeInsets.only(bottom: 24),

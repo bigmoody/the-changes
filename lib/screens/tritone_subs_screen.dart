@@ -150,7 +150,7 @@ class _TritoneSubsScreenState extends State<TritoneSubsScreen> {
             onPlay: () => _play(written),
           ),
           _Line(
-            title: 'With The Sub',
+            title: 'With the Sub',
             chords: subbed,
             changedAt: _changes.at,
             onPlay: () => _play(subbed),

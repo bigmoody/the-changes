@@ -20,7 +20,7 @@ class StartingOrderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Where To Start')),
+      appBar: AppBar(title: const Text('Where to Start')),
       body: ListenableBuilder(
         listenable: deps.library,
         builder: (context, _) => ListView(

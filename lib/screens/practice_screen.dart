@@ -548,7 +548,7 @@ class _MoreMenu extends StatelessWidget {
               child: ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.list_alt_outlined),
-                title: Text('Add To Setlist'),
+                title: Text('Add to Setlist'),
               ),
             ),
             const PopupMenuItem(

@@ -110,7 +110,7 @@ class _StageBar extends StatelessWidget {
             IconButton(
               key: const ValueKey('stage-done'),
               icon: const Icon(Icons.close_fullscreen),
-              tooltip: 'Leave The Stage',
+              tooltip: 'Leave the Stage',
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],

@@ -106,7 +106,7 @@ const subChanges = <SubChanges>[
     chords: [(0, '6'), (9, 'm7'), (2, 'm7'), (7, '7')],
   ),
   (
-    name: 'The V Of The V',
+    name: 'The V of the V',
     at: 0,
     about:
         'Substituting earlier, on the II7 rather than the V. Do both and '

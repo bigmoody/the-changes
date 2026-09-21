@@ -208,7 +208,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('where-to-start')));
       await tester.pumpAndSettle();
       expect(find.byType(StartingOrderScreen), findsOneWidget);
-      expect(find.text('Where To Start'), findsWidgets);
+      expect(find.text('Where to Start'), findsWidgets);
     });
   });
 }

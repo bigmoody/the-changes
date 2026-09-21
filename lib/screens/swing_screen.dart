@@ -147,7 +147,7 @@ class _SwingScreenState extends State<SwingScreen> {
                     key: const ValueKey('follow-the-tempo'),
                     dense: true,
                     contentPadding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-                    title: const Text('Follow The Tempo'),
+                    title: const Text('Follow the Tempo'),
                     subtitle: const Text(
                       'Swing it the way a player would at that tempo',
                     ),

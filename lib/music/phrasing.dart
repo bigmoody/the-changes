@@ -26,7 +26,7 @@ typedef Placement = ({int at, String name, String about});
 const placements = <Placement>[
   (
     at: -1,
-    name: 'The & Of 4, Before',
+    name: 'The & of 4, Before',
     about:
         'Coming in on the last quaver of the bar before, so the line is '
         'already moving when the bar turns over. If bebop has a default '
@@ -43,7 +43,7 @@ const placements = <Placement>[
   ),
   (
     at: 1,
-    name: 'The & Of 1',
+    name: 'The & of 1',
     about:
         'A quaver late. Nothing else is playing on it, so the line is '
         'heard on its own rather than with the band.',
@@ -57,7 +57,7 @@ const placements = <Placement>[
   ),
   (
     at: 3,
-    name: 'The & Of 2',
+    name: 'The & of 2',
     about:
         'Late into the bar and off the beat. It leaves room at the front, '
         'which is worth more than it sounds: a phrase that starts later '
@@ -65,7 +65,7 @@ const placements = <Placement>[
   ),
   (
     at: 5,
-    name: 'The & Of 3',
+    name: 'The & of 3',
     about:
         'Halfway through and climbing over the barline. A short phrase '
         'from here has the same lift as coming in on the & of 4.',
@@ -76,10 +76,10 @@ const placements = <Placement>[
 enum Accent {
   /// One, two, three, four: what a beginner does, and what makes the
   /// line sound like it is being counted rather than played.
-  downbeats('On The Beats'),
+  downbeats('On the Beats'),
 
   /// The and of one, the and of two: where bebop puts it.
-  upbeats('Off The Beats'),
+  upbeats('Off the Beats'),
 
   /// Nothing pushed, which is worth hearing beside the other two.
   even('Flat');

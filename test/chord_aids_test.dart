@@ -146,7 +146,7 @@ void main() {
       await open(tester, ChordAid.guideTones);
       await tester.tap(find.byKey(const ValueKey('chord-aid')));
       await tester.pumpAndSettle();
-      expect(find.text('Under The Chords'), findsOneWidget);
+      expect(find.text('Under the Chords'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('aid-off')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('sheet-done')));

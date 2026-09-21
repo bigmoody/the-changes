@@ -95,7 +95,7 @@ class LearnPage extends StatelessWidget {
           _LearnCard(
             key: const ValueKey('learn-side-by-side'),
             icon: Icons.compare_arrows,
-            title: 'Side By Side',
+            title: 'Side by Side',
             subtitle:
                 'Two or three versions of the same form, bar against bar: '
                 'what bebop did to the blues, in one look',
@@ -135,7 +135,7 @@ class LearnPage extends StatelessWidget {
           _LearnCard(
             key: const ValueKey('learn-passing'),
             icon: Icons.more_horiz,
-            title: 'Between The Chords',
+            title: 'Between the Chords',
             subtitle:
                 'The chords that are not on the chart: what you can put '
                 'in the gap, and why it fits',

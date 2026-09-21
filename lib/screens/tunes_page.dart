@@ -101,7 +101,7 @@ class _TunesPageState extends State<TunesPage> {
           IconButton(
             key: const ValueKey('where-to-start'),
             icon: const Icon(Icons.signpost_outlined),
-            tooltip: 'Where To Start',
+            tooltip: 'Where to Start',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => StartingOrderScreen(deps: _deps),
@@ -503,7 +503,7 @@ class _StartHereCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Where To Start',
+                        'Where to Start',
                         style: theme.textTheme.titleSmall?.copyWith(
                           color: scheme.onTertiaryContainer,
                         ),

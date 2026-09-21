@@ -193,11 +193,11 @@ void main() {
       tester,
     ) async {
       await open(tester);
-      await pick(tester, 'On 1', 'The & Of 4, Before');
+      await pick(tester, 'On 1', 'The & of 4, Before');
       expect(find.textContaining('Square'), findsOneWidget);
       expect(find.text('Inside the bar.'), findsOneWidget);
 
-      await pick(tester, 'The & Of 3', 'On 1');
+      await pick(tester, 'The & of 3', 'On 1');
       expect(
         find.textContaining('Over the bar line'),
         findsOneWidget,
@@ -214,7 +214,7 @@ void main() {
       // so the marks stayed where they were and the buttons appeared to
       // do nothing at all.
       await open(tester);
-      await pick(tester, 'On 1', 'The & Of 4, Before');
+      await pick(tester, 'On 1', 'The & of 4, Before');
 
       List<bool> markedNow() => [
         for (final column

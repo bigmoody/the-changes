@@ -148,7 +148,7 @@ class _RhythmChangesScreenState extends State<RhythmChangesScreen> {
             ),
           ),
           _PlayRow(
-            label: 'Hear The Bridge',
+            label: 'Hear the Bridge',
             playing: _playing == _Playing.bridge,
             onTap: () => _play(_Playing.bridge),
             id: 'play-bridge',
@@ -169,13 +169,13 @@ class _RhythmChangesScreenState extends State<RhythmChangesScreen> {
           for (final part in aSectionParts)
             _APartRow(key: ValueKey('a-part-${part.bars}'), part: part),
           _PlayRow(
-            label: 'Hear The A Section',
+            label: 'Hear the A Section',
             playing: _playing == _Playing.aSection,
             onTap: () => _play(_Playing.aSection),
             id: 'play-a-section',
           ),
 
-          _Heading('All Of It'),
+          _Heading('All of It'),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Text(
@@ -188,7 +188,7 @@ class _RhythmChangesScreenState extends State<RhythmChangesScreen> {
             ),
           ),
           _PlayRow(
-            label: 'Hear The Form',
+            label: 'Hear the Form',
             playing: _playing == _Playing.whole,
             onTap: () => _play(_Playing.whole),
             id: 'play-whole',

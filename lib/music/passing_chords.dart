@@ -48,7 +48,7 @@ const passingMoves = <PassingMove>[
     filled: [(0, '6'), (1, 'o7'), (2, 'm7')],
   ),
   (
-    name: 'Adding The ii',
+    name: 'Adding the ii',
     at: 0,
     about:
         'A lone V7 sitting in a bar of its own is a bar half empty. Put '
@@ -81,7 +81,7 @@ const passingMoves = <PassingMove>[
     filled: [(0, '6'), (3, 'm7'), (2, 'm7')],
   ),
   (
-    name: 'Coming Back From The IV',
+    name: 'Coming Back From the IV',
     at: 1,
     about:
         'Bar six of a jazz blues, and the reason bar six has a '

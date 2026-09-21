@@ -282,7 +282,7 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('why-the-key')));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('why-the-key-note')), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('set-Monk And The Blues')));
+      await tester.tap(find.byKey(const ValueKey('set-Monk and the Blues')));
       await tester.pumpAndSettle();
       // Still an F set, so the question is still there, but the table
       // comes back first.

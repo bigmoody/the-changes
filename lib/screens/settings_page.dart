@@ -61,7 +61,7 @@ class SettingsPage extends StatelessWidget {
             ),
             _ChoiceTile<ChordAid>(
               icon: Icons.school_outlined,
-              title: 'Under The Chords',
+              title: 'Under the Chords',
               value: settings.chordAid,
               options: ChordAid.values,
               label: (aid) => aid.label,

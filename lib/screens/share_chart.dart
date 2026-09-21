@@ -85,7 +85,7 @@ Future<_How?> _askHow(BuildContext context, int tunes) =>
             ListTile(
               key: const ValueKey('share-ireal'),
               leading: const Icon(Icons.link),
-              title: const Text('As An iReal Pro Link'),
+              title: const Text('As an iReal Pro Link'),
               subtitle: const Text('Opens in iReal Pro on the other end'),
               onTap: () => Navigator.of(context).pop(_How.ireal),
             ),

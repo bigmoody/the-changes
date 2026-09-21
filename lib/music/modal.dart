@@ -132,7 +132,7 @@ typedef ModalIdea = ({String name, String about});
 
 const modalIdeas = <ModalIdea>[
   (
-    name: 'A Shape, Then The Same Shape',
+    name: 'A Shape, Then the Same Shape',
     about:
         'With no changes to mark the time, repetition is what tells a '
         'listener where they are. Play three notes, play them again a '
@@ -147,7 +147,7 @@ const modalIdeas = <ModalIdea>[
         'thing that makes the next entry mean something.',
   ),
   (
-    name: 'Moving The Register',
+    name: 'Moving the Register',
     about:
         'The harmony is not going anywhere, so let the line go somewhere '
         'instead. Starting a chorus an octave up does more for a modal '

@@ -133,7 +133,7 @@ const startingOrder = <Stage>[
     ],
   ),
   Stage(
-    name: 'Thirty-Two Bars And A Bridge',
+    name: 'Thirty-Two Bars and a Bridge',
     about:
         'AABA: eight bars said three times with something else in the '
         'middle. Most of the songbook is this shape, and knowing you are '

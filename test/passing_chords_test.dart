@@ -87,7 +87,7 @@ void main() {
     });
 
     test('adding the ii keeps the bass in fourths', () {
-      final filled = chordsIn(_move('Adding The ii').filled, 'C');
+      final filled = chordsIn(_move('Adding the ii').filled, 'C');
       expect(filled.map((c) => c.display), ['Dm7', 'G7', 'CΔ7']);
       expect(bassMoves(filled), [5, 5]);
     });
@@ -113,7 +113,7 @@ void main() {
           if (bar.length == 1) bar.single.chord.display,
       ];
       final move = chordsIn(
-        _move('Coming Back From The IV').filled,
+        _move('Coming Back From the IV').filled,
         'B♭',
       ).map((c) => c.display).toList();
       expect(move, ['E♭7', 'E°7', 'B♭7']);

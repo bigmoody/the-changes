@@ -47,7 +47,7 @@ const comparisons = <Comparison>[
     titles: ['Night Train', "Now's the Time", 'Blues for Alice'],
   ),
   Comparison(
-    name: 'Monk And The Blues',
+    name: 'Monk and the Blues',
     key: 'F',
     about:
         'Two of Monk\'s against the ordinary jazz blues. He changes very '
@@ -64,7 +64,7 @@ const comparisons = <Comparison>[
     titles: ['How High the Moon', 'Ornithology'],
   ),
   Comparison(
-    name: 'Major And Minor',
+    name: 'Major and Minor',
     key: 'C',
     about:
         'The same twelve bars in the same key, one major and one minor. '

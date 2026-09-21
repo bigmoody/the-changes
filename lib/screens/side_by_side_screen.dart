@@ -127,7 +127,7 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
     final tunes = _tunes;
     final rows = alignBars(tunes);
     return Scaffold(
-      appBar: AppBar(title: const Text('Side By Side')),
+      appBar: AppBar(title: const Text('Side by Side')),
       body: ListView(
         padding: const EdgeInsets.only(bottom: 24),
         children: [
