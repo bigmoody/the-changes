@@ -24,6 +24,7 @@ import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
+import 'comping_screen.dart';
 import 'stave_figure.dart';
 import 'swing_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
@@ -134,6 +135,16 @@ class LearnPage extends StatelessWidget {
                 'How late the "and" really is — and why it is not the '
                 'triplet you were taught, except at one tempo',
             onTap: () => open(SwingScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-comping'),
+            icon: Icons.piano,
+            title: 'Comping',
+            subtitle:
+                'When to put the chord down, and when to leave the bar '
+                'alone — the other half of playing changes',
+            onTap: () =>
+                open(CompingScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),

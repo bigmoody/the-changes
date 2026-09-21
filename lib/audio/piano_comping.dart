@@ -16,6 +16,7 @@
 import 'dart:math' as math;
 
 import '../music/chord.dart';
+import '../music/comping.dart';
 import '../music/tune.dart';
 
 /// One comped chord: when to play it, how long, how hard, and which notes.
@@ -168,13 +169,11 @@ class Comper {
     final patterns = <(String, int, _Pattern)>[
       if (beats >= 4) ...[
         if (isNew) ...[
-          // Charleston: the bread-and-butter jazz comping rhythm.
-          ('charleston', 6, [(0, 0.6, 1), (1 + and, 1.4, 0.9)]),
-          ('held', 4, [(0, 3.2, 0.9)]),
-          ('two', 3, [(0, 0.5, 1), (2 + and, 1.0, 0.85)]),
-          ('offbeat', 3, [(and, 0.7, 0.95), (2 + and, 1.1, 0.85)]),
-          if (canPush) ('pushed', 3, [(push, 2.2, 1)]),
-          ('three', 2, [(0, 0.5, 1), (1 + and, 0.5, 0.8), (3, 0.9, 0.9)]),
+          // The figures themselves live in music/comping.dart, where the
+          // screen that teaches them reads the same list — so what is
+          // taught and what is played cannot drift apart.
+          for (final (figure, weight) in bandFigures(canPush: canPush))
+            (figure.name, weight, figure.strikes(and)),
         ] else ...[
           // Still the same chord: mostly leave it alone.
           ('rest', quiet ? 8 : 5, const []),
