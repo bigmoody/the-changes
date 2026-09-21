@@ -214,8 +214,17 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
     );
   }
 
+  /// Everything on the page is written for whichever instrument the
+  /// player reads, and that is chosen in the app bar, so the page has to
+  /// be listening: without this the chords and the line stay in the old
+  /// key until something else happens to rebuild them.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.settings,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final line = _line;

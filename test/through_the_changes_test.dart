@@ -32,7 +32,7 @@ class _FakePlayer extends PracticePlayer {
 }
 
 void main() {
-  Future<void> open(
+  Future<AppSettings> open(
     WidgetTester tester, {
     ChartInstrument instrument = ChartInstrument.concert,
   }) async {
@@ -52,6 +52,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    return settings;
   }
 
   /// Scrolls [finder] into view. The page is a lazy list, so a widget
@@ -115,6 +116,24 @@ void main() {
     // with it: this is the reason the app has the setting at all.
     expect(chords, contains('G7'));
     expect(chords, contains('C7'));
+    expect(chords, isNot(contains('F7')));
+  });
+
+  testWidgets('changing instrument rewrites what is already on screen', (
+    tester,
+  ) async {
+    // The test above starts in the player's key, which is not the same
+    // thing at all: it passes whether or not the page is listening to the
+    // setting. This one changes it while the page is up, which is what a
+    // player actually does, and is how the page came to sit in the old
+    // key until the clef was touched.
+    final settings = await open(tester);
+    await reach(tester, find.byKey(const ValueKey('written-out')));
+    expect(chordsOver(tester), contains('F7'));
+    await settings.setInstrument(ChartInstrument.bFlat);
+    await tester.pumpAndSettle();
+    final chords = chordsOver(tester);
+    expect(chords, contains('G7'));
     expect(chords, isNot(contains('F7')));
   });
 
