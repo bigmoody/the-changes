@@ -17,6 +17,7 @@ import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
+import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
 import 'stave_figure.dart';
@@ -69,6 +70,16 @@ class LearnPage extends StatelessWidget {
                 'it stopped in',
             onTap: () =>
                 open(WhereAmIScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-side-by-side'),
+            icon: Icons.compare_arrows,
+            title: 'Side By Side',
+            subtitle:
+                'Two or three versions of the same form, bar against bar — '
+                'what bebop did to the blues, in one look',
+            onTap: () =>
+                open(SideBySideScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
