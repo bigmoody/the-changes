@@ -1,4 +1,4 @@
-// Where am I? — the question the exercise asks, and whether it can be
+// Where am I? The question the exercise asks, and whether it can be
 // answered honestly.
 
 import 'dart:math' as math;
@@ -116,7 +116,7 @@ void main() {
 
     test('the form is round: bar 32 is a bar from bar 1', () {
       // Answering the last bar when it was the first is one bar out, not
-      // thirty-one — it is the same mistake as answering bar 2.
+      // thirty-one; it is the same mistake as answering bar 2.
       expect(barsOut(31, 0, 32), 1);
       expect(markAnswer(31, 0, 32), Marking.nearly);
       expect(barsOut(1, 0, 32), 1);

@@ -96,7 +96,7 @@ List<BassNote> funkBassLine(
   beatsPerBar,
 );
 
-/// A calypso bass line: the 3-3-2 — 1, the "and" of 2 held over 3, then 4 —
+/// A calypso bass line: the 3-3-2 (1, the "and" of 2 held over 3, then 4),
 /// on roots, 5ths and 3rds, with the odd anticipation of the next chord.
 List<BassNote> calypsoBassLine(
   List<(Chord, int)> chords, {
@@ -289,7 +289,7 @@ class _Bassist {
   }) {
     final funk = style == _Style.funk;
     // Calypso, two chords to a bar: the second chord's root comes in early,
-    // on the "and" of 2, and is held over 3 — the 3-3-2 across the change.
+    // on the "and" of 2, and is held over 3, the 3-3-2 across the change.
     final anticipated = _calypsoAnticipated;
     _calypsoAnticipated = false;
     if (beatsLeftInPhrase <= 0) _newPhrase();
@@ -301,7 +301,7 @@ class _Bassist {
     // A Latin bass rocks *up* to the 5th; dropping to the 5th below is what
     // makes it sound like a rock bass line instead. So if the 5th above
     // would run off the top of the instrument, take the root down an octave
-    // to make room — unless that would leave the line leaping.
+    // to make room, unless that would leave the line leaping.
     if (root + tones.fifth > bassHighest &&
         root - 12 >= bassLowest &&
         (root - 12 - previous).abs() <= 12) {
@@ -319,7 +319,7 @@ class _Bassist {
     final figures = <(int, List<(int, double, double)>)>[
       if (style == _Style.calypso) ...[
         // The 3-3-2: 1, the "and" of 2 held over 3, then 4. Beat 3 is left
-        // empty — that's what makes it lift rather than oom-pah.
+        // empty: that's what makes it lift rather than oom-pah.
         if (beats >= 4) ...[
           (5, [(root, 0, 1.4), (fifth, 1.5, 1.4), (root, 3, 0.9)]),
           (4, [(root, 0, 1.4), (thirdUp, 1.5, 1.4), (fifth, 3, 0.9)]),

@@ -166,7 +166,7 @@ void main() {
     test('it runs on to the end of the section you finished in', () {
       final tune = sectioned();
       final loop = LoopRange.wholeTune(tune);
-      // Sections start at bars 0, 4, 8 and 12 — beats 0, 16, 32 and 48.
+      // Sections start at bars 0, 4, 8 and 12: beats 0, 16, 32 and 48.
       expect(finishSectionAfter(tune, loop, 1), 16, reason: 'into A');
       expect(finishSectionAfter(tune, loop, 15), 16);
       expect(finishSectionAfter(tune, loop, 16), 16, reason: 'already there');
@@ -187,7 +187,7 @@ void main() {
     test('the file is as long as the section, not the arrangement', () {
       final full = decodeWav(exportTrack(request(choruses: 4)));
       // Somebody played about ten seconds: twenty beats, which is into the
-      // B section, so the band runs to the end of B — 32 beats, 16 seconds.
+      // B section, so the band runs to the end of B: 32 beats, 16 seconds.
       final short = decodeWav(exportTrack(request(choruses: 4), endBeat: 32));
       expect(short.length, lessThan(full.length ~/ 2));
       final seconds = short.length / 44100;

@@ -15,8 +15,8 @@ import 'dart:typed_data';
 /// One drum, recorded at two or three strengths of stroke ("layers"), each
 /// with a few takes of the same stroke.
 ///
-/// The layers are recorded at very different levels — the ride's hard stroke
-/// is 12 dB above its soft one — so playing them raw makes a hit's loudness
+/// The layers are recorded at very different levels (the ride's hard stroke
+/// is 12 dB above its soft one), so playing them raw makes a hit's loudness
 /// depend on which recording it landed on rather than on the part. Instead
 /// each layer is [levelled] to the same peak, and the part's own velocity
 /// decides how loud the hit is. Picking a harder layer then changes the

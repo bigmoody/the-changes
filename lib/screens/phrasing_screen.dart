@@ -1,8 +1,8 @@
 // Where phrases start: the same notes, moved, so the difference is the
 // placement and nothing else.
 //
-// The notes are deliberately dull — four from a number pattern over one
-// chord — because the moment the line is interesting you stop hearing
+// The notes are deliberately dull (four from a number pattern over one
+// chord) because the moment the line is interesting you stop hearing
 // where it began. A click on every beat goes under it, so there is
 // something to be early or late against; without that the whole thing is
 // inaudible.
@@ -52,7 +52,7 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
     const bars = 2;
     final notes = <SnippetNote>[];
     // A click on every beat, so the line has something to be early or
-    // late against — a rim click rather than a note, because a pitched
+    // late against: a rim click rather than a note, because a pitched
     // metronome under a pitched exercise is one more thing to listen to.
     final clicks = <SnippetDrum>[];
     for (var bar = 0; bar < bars; bar++) {
@@ -104,10 +104,10 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Text(
                       'Everything else here is about which notes to play. '
-                      'This is about when. The four notes below never '
-                      'change — only where they come in — because the '
-                      'moment a line gets interesting you stop hearing '
-                      'where it began.',
+                      'This is about when. The notes below never change; '
+                      'what moves is where they come in. The moment a '
+                      'line gets interesting you stop hearing where it '
+                      'began.',
                       style: theme.textTheme.bodyMedium,
                     ),
                   ),
@@ -154,7 +154,7 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
                                 'counting out loud makes you do, and most '
                                 'of why beginners\' quavers sound stiff.'
                           : _accent == Accent.downbeats
-                          ? 'The weight on the beats — what you do if you '
+                          ? 'The weight on the beats: what you do if you '
                                 'are counting. Hear it once and then go '
                                 'back to the other.'
                           : 'Nothing pushed either way, for comparison.',
@@ -212,7 +212,7 @@ class _Bar extends StatelessWidget {
     var beamFrom = -1;
 
     /// A note, drawn as a bare head for a beam to join or as a whole
-    /// quaver when it stands alone — a lone head on a stem with no flag
+    /// quaver when it stands alone: a lone head on a stem with no flag
     /// is a crotchet, which would be the wrong rhythm on the page.
     void addNote(int position, PatternNote note, {required bool beamed}) {
       final step = Clef.treble.stepOf(note.name[0], note.octave).toDouble();
@@ -278,7 +278,7 @@ class _Bar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             crossesTheBar(placement.at, notes.length)
-                ? 'Over the bar line — which is where you want to be.'
+                ? 'Over the bar line, which is where you want to be.'
                 : 'Inside the bar.',
             key: const ValueKey('crosses'),
             style: theme.textTheme.labelMedium?.copyWith(

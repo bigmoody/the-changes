@@ -1,6 +1,6 @@
 // Hearing several notes at once: what's in a chord somebody just played.
 //
-// A plucked string doesn't produce one frequency but a stack of them — the
+// A plucked string doesn't produce one frequency but a stack of them: the
 // note, then the octave above, then the fifth above that, and on up. So the
 // loudest thing in the spectrum of a C major chord is often not C, E and G
 // at all, and a peak at G may be the E's harmonic rather than a G anybody
@@ -121,7 +121,7 @@ HeardNotes listenForNotes(
   /// pitch, however faintly.
   ///
   /// How faintly depends on the register. A low string is stiff and radiates
-  /// its own note poorly — a piano's bottom octave is nearly all harmonics —
+  /// its own note poorly (a piano's bottom octave is nearly all harmonics)
   /// while a note up the top is mostly its fundamental. So the test is
   /// lenient down low, where it would otherwise throw away real notes, and
   /// strict up high, where anything below is a phantom.
@@ -192,7 +192,7 @@ HeardNotes listenForNotes(
     strength.add(bestScore);
 
     // Take out what this note explains, so its harmonics aren't mistaken
-    // for notes of their own next time round — but only as much as it can
+    // for notes of their own next time round, but only as much as it can
     // account for. A guitar's C and the G above it share a frequency
     // exactly, so clearing the bin outright would delete the G somebody
     // actually played; taking out what the C's own harmonic would amount

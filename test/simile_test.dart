@@ -80,7 +80,7 @@ void main() {
     test('every row opens with the chord written out', () {
       final tune = _standard('So What');
       // Eight bars of Dm7 laid out four to a row. A mark says "the same as
-      // the box to my left", and the first box of a row hasn't got one —
+      // the box to my left", and the first box of a row hasn't got one;
       // you would have to look back to the end of the row above, which is
       // slower than reading the chord.
       expect(_marks(tune, 0), [false, true, true, true]);

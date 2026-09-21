@@ -133,7 +133,7 @@ void main() {
   group('chords the book had no scale for', () {
     test('a 6 chord takes the major scale rather than nothing', () {
       // It used to come back empty, which left the turnaround with a
-      // blank first bar — and quietly broke the enclosures too.
+      // blank first bar, and quietly broke the enclosures too.
       expect(scaleFor(Chord.parse('C6')), isNotEmpty);
       expect(_names([1, 2, 3, 5], 'C6'), ['C', 'D', 'E', 'G']);
     });
@@ -164,7 +164,7 @@ void main() {
     }
 
     /// Picks [value] from a chip strip, dragging it along if the chip is
-    /// off the side — with seven patterns and four progressions, some of
+    /// off the side: with seven patterns and four progressions, some of
     /// them always are.
     Future<void> pick(
       WidgetTester tester,
@@ -234,7 +234,7 @@ void main() {
       for (final chord in ['Dm7', 'G7', 'CΔ7']) {
         final button = find.byKey(ValueKey('play-$chord'));
         expect(button, findsOneWidget, reason: chord);
-        // The staves sit low, under the reading — the controls are what
+        // The staves sit low, under the reading; the controls are what
         // is pinned, not these.
         await tester.ensureVisible(button);
         await tester.pumpAndSettle();

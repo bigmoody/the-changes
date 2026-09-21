@@ -1,14 +1,14 @@
 // Tritone substitution: playing a different dominant and getting away
 // with it.
 //
-// Any dominant 7th can be swapped for the dominant a tritone away — G7
+// Any dominant 7th can be swapped for the dominant a tritone away: G7
 // for D♭7, and back. It is the one reharmonisation everybody learns
 // first, and it is usually explained as though it were a trick. It is
 // not. The two chords are made of the same two notes in the middle.
 //
 // G7's 3rd is B and its ♭7 is F. D♭7's 3rd is F and its ♭7 is C♭, which
 // is B under another name. The pair that makes a dominant sound like
-// itself — the tritone between the 3rd and the ♭7 — is the same tritone
+// itself, the tritone between the 3rd and the ♭7, is the same tritone
 // in both chords, with the two notes swapped over. Nothing that matters
 // has changed, so the ear lets it pass.
 //
@@ -21,7 +21,7 @@ import 'chord.dart';
 import 'guide_tones.dart';
 
 /// Six semitones: half an octave, and the same distance whichever way you
-/// count it — which is the whole reason the substitution works in both
+/// count it, which is the whole reason the substitution works in both
 /// directions at once.
 const tritone = 6;
 
@@ -38,7 +38,7 @@ Chord? subFor(Chord chord) {
   return Chord.parse('${_flatNames[root]}7');
 }
 
-/// Whether [chord] is a dominant 7th — a major 3rd and a minor 7th.
+/// Whether [chord] is a dominant 7th: a major 3rd and a minor 7th.
 bool isDominant(Chord chord) {
   final intervals = chord.quality.intervals.map((i) => i % 12).toSet();
   return intervals.contains(4) && intervals.contains(10);

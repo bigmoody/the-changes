@@ -4,7 +4,7 @@
 // for one: pick a set of strings, a hand position, and a note on each string
 // that belongs to the chord. Most of the work is in the rules that separate
 // the shapes a guitarist would actually play from the thousands that are
-// merely correct — the hand spans three frets, open strings only belong to
+// merely correct: the hand spans three frets, open strings only belong to
 // shapes at the nut, the lowest note has to be the root, and the 3rd and 7th
 // (plus any altered 5th) are what make the chord sound like itself.
 
@@ -67,8 +67,8 @@ GuitarVoicing? guitarVoicingFor(Chord chord) => _cache.putIfAbsent(
   () => _search(chord) ?? _search(guitarShapeChord(chord)),
 );
 
-/// The chord a guitar grip for [chord] plays: [chord] itself, or — for a
-/// slash chord no hand can put the bass under, like D/E♭ — the chord without
+/// The chord a guitar grip for [chord] plays: [chord] itself, or (for a
+/// slash chord no hand can put the bass under, like D/E♭) the chord without
 /// its bass, which is left to the bass player.
 Chord guitarShapeChord(Chord chord) =>
     chord.bass == chord.root || _search(chord) != null
@@ -149,7 +149,7 @@ double? _score(GuitarVoicing voicing, Chord chord, Set<int> guides) {
   final highest = fretted.reduce(GuitarVoicing.max);
 
   // The hand covers three frets comfortably. Four is a stretch most players
-  // can't make — least of all near the nut, where the frets are widest.
+  // can't make, least of all near the nut, where the frets are widest.
   if (highest - lowest > 2) return null;
 
   // Open strings belong to shapes at the nut. Mixed into a shape further up
@@ -157,7 +157,7 @@ double? _score(GuitarVoicing voicing, Chord chord, Set<int> guides) {
   if (frets.contains(0) && highest > 3) return null;
 
   // Four fingers. If that's not enough, the first finger barres the lowest
-  // fret — which only works if nothing under the barre is meant to be muted
+  // fret, which only works if nothing under the barre is meant to be muted
   // or open.
   if (fretted.length > 4) {
     if (fretted.where((fret) => fret != lowest).length > 3) return null;

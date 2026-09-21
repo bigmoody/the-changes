@@ -2,7 +2,7 @@
 //
 // The first version of Check My Playing turned people away at the door: a
 // loudness gate meant for a tuner held right against a guitar. These pin
-// what the measurements showed — that YIN doesn't care how loud a note is,
+// what the measurements showed: that YIN doesn't care how loud a note is,
 // only how cleanly it repeats, so the limit is the room's noise and not the
 // level.
 
@@ -101,7 +101,7 @@ void main() {
   test('what limits it is the room, not the level', () {
     final detector = _checking();
     final size = detector.windowSize;
-    // Well above the hiss: heard. Down among it: nothing at all — which is
+    // Well above the hiss: heard. Down among it: nothing at all, which is
     // reported as nothing rather than guessed at.
     final clear = _play(midiToHz(65), size, level: 0.02, noise: 0.002);
     expect(detector.detect(clear), isNotNull);
@@ -113,7 +113,7 @@ void main() {
     final listener = TunerListener.forChecking();
     expect(listener.lowestHz, greaterThanOrEqualTo(100));
     final detector = _checking();
-    // Most of a walking bass line — E1 up to G2 — is simply not heard, so
+    // Most of a walking bass line (E1 up to G2) is simply not heard, so
     // through a speaker it can't be credited to you. It isn't folded up an
     // octave into the same note name either, which would be worse than
     // useless.
@@ -125,7 +125,7 @@ void main() {
         reason: 'midi $midi is the bass player\'s',
       );
     }
-    // The top of their range does overlap yours, though — which is why
+    // The top of their range does overlap yours, though, which is why
     // headphones are the real answer, not this.
     final high = _play(midiToHz(52), detector.windowSize, level: 0.2);
     expect(detector.detect(high), isNotNull);

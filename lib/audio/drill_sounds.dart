@@ -4,7 +4,7 @@
 // without giving the answer away. Afterwards:
 //  • Spell it plays the chord, then its notes one by one, low to high.
 //  • Aim for plays the chord with the target note on top of it, so you hear
-//    the colour that note gives the chord — which is the point of aiming for it.
+//    the colour that note gives the chord, which is the point of aiming for it.
 //
 // Everything sounds at concert pitch: a trumpet player's written D7 comes out
 // as a concert C7, the same as the band would play under them.
@@ -70,7 +70,7 @@ List<SnippetNote> drillSnippet(
 
 /// [chord] (at concert pitch) as an arpeggio: up from the root through
 /// every note of the chord to the octave, back down, then all together over
-/// the root in the bass — what the Chord tones page plays.
+/// the root in the bass, what the Chord tones page plays.
 List<SnippetNote> chordArpeggioSnippet(Chord chord) {
   // The root between C3 and B3, so the chord sits around middle C.
   final root = 48 + chord.root % 12;
@@ -139,7 +139,7 @@ List<SnippetNote> modeSnippet(List<int> semitones, int root) {
 }
 
 /// An arpeggio [shape] on the guitar or bass, note by note in the order it's
-/// played — up across the strings and back down — the last note left to
+/// played (up across the strings and back down), the last note left to
 /// ring. For [renderSnippet], with `guitar: true` for a guitar shape and
 /// `brightBass: true` for a bass one.
 List<SnippetNote> fretArpeggioSnippet(FretArpeggio shape) {

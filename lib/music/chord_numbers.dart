@@ -1,7 +1,7 @@
 // Naming what a chord *does* in a key: Roman numerals and Nashville numbers.
 //
 // A chord symbol says which notes to play; a number says what the chord is
-// for. Dm7 G7 CΔ7 and Fm7 Bb7 EbΔ7 are the same three chords — ii7 V7 IΔ7 —
+// for. Dm7 G7 CΔ7 and Fm7 Bb7 EbΔ7 are the same three chords (ii7 V7 IΔ7),
 // and a player who hears that hears the same phrase in both keys. These two
 // functions turn a [Chord] into that reading, either as Roman numerals (the
 // way theory books and jazz teachers write it) or as Nashville numbers (the
@@ -11,7 +11,7 @@
 // *written* in, and a tune that modulates doesn't stay there. Cherokee is
 // written in B♭, and its bridge is four ii–V–Is stepping down from B through
 // A and G, which read here as ♭iii7 ♭VI7 ♭IIΔ7, ♭ii7 ♯IV7 VIIΔ7, vii7 III7
-// VIΔ7 — every one of them true, and none of them how a player thinks about
+// VIΔ7: every one of them true, and none of them how a player thinks about
 // it. What a player thinks is "ii–V–I in B, then in A, then in G". The
 // numbers say how far each chord is from home, not what key the music is in
 // at that moment, because the chart names only the one key.
@@ -26,8 +26,8 @@ const _majorScale = [0, 2, 4, 5, 7, 9, 11];
 /// E♭ is the 3, A♭ the 6 and B♭ the 7 of C minor, not ♭3, ♭6 and ♭7. The
 /// cost is that the raised degrees of harmonic and melodic minor come out
 /// marked: in C minor a B natural is ♯7, so a B°7 reads ♯vii°7. That is
-/// consistent — an accidental always means "this far from the reference
-/// scale" — and it has the virtue of showing the player exactly which note
+/// consistent (an accidental always means "this far from the reference
+/// scale"), and it has the virtue of showing the player exactly which note
 /// has been raised.
 const _minorScale = [0, 2, 3, 5, 7, 8, 10];
 
@@ -37,8 +37,8 @@ const _romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 /// the reference scale (0 = as the scale has it, -1 = flattened, +1 = raised).
 typedef _Degree = ({int number, int alteration});
 
-/// What each chromatic note away from home is called, in a major key —
-/// see [_degreeOf]. Indexed by semitones above the tonic. The flats win over
+/// What each chromatic note away from home is called, in a major key.
+/// See [_degreeOf]. Indexed by semitones above the tonic. The flats win over
 /// the sharps (♭II, ♭III, ♭VI, ♭VII rather than ♯I, ♯II, ♯V, ♯VI) because
 /// those are the names players actually use for the borrowed chords: the
 /// bridge of Cherokee goes to ♭II, not to ♯I. The tritone is the exception
@@ -60,7 +60,7 @@ const _majorBySound = <_Degree>[
 
 /// The same for a minor key, measured from the natural minor scale, so the
 /// notes that are already in it (the 3, 6 and 7) are plain and the ones
-/// raised out of it — the leading tone, the Dorian 6th — are sharp.
+/// raised out of it (the leading tone, the Dorian 6th) are sharp.
 const _minorBySound = <_Degree>[
   (number: 1, alteration: 0),
   (number: 2, alteration: -1),
@@ -93,7 +93,7 @@ final Map<String, String> _shortForm = {
   '6/9': '6/9',
 };
 
-/// Whether [key] — "C minor", "D Dorian", "B♭" — is a minor key. Dorian
+/// Whether [key] ("C minor", "D Dorian", "B♭") is a minor key. Dorian
 /// counts as minor, exactly as the rest of the app reads a key string: a
 /// Dorian tune is a minor tune with a raised 6th, and So What's Dm7 is its
 /// i chord, not its ii.
@@ -109,7 +109,7 @@ Spelling _tonicOf(String key) =>
 /// Where [note] falls in the key whose tonic is [tonic].
 ///
 /// A note that is in the key is counted by its letter: in C, a D is the 2
-/// and an E♭ — one letter further on — the ♭3. A note that isn't in the key
+/// and an E♭ (one letter further on) the ♭3. A note that isn't in the key
 /// could be counted either way, and then it's named by sound, from
 /// [_majorBySound], rather than by how the chart happened to spell it. This
 /// matters because charts spell chromatic roots for the player's fingers,
@@ -142,8 +142,8 @@ _Degree _degreeOf(
 String _accidentals(int alteration) =>
     (alteration < 0 ? '♭' : '♯') * alteration.abs();
 
-/// Whether the chord is one of the minor-sounding kinds — minor, minor 6th,
-/// half-diminished, diminished — which is what decides upper or lower case.
+/// Whether the chord is one of the minor-sounding kinds (minor, minor 6th,
+/// half-diminished, diminished), which is what decides upper or lower case.
 /// Worked out from the notes rather than the text, so every quality the app
 /// knows is covered: a ♭3 makes it lower case, and nothing else does. A sus
 /// chord has no 3rd at all and stays upper case, as V7sus4 always is.
@@ -154,7 +154,7 @@ bool _isMinorish(ChordQuality quality) => quality.intervals.contains(3);
 bool _isDominant(ChordQuality quality) =>
     quality.intervals.contains(10) && !_isMinorish(quality);
 
-/// Whether the chord is a diminished one — a ♭3 and a ♭5 with no ♭7, so the
+/// Whether the chord is a diminished one: a ♭3 and a ♭5 with no ♭7, so the
 /// diminished triad and the diminished 7th but not the half-diminished,
 /// whose spelling carries no such promise. See [_degreeOf].
 bool _isDiminished(ChordQuality quality) =>
@@ -163,7 +163,7 @@ bool _isDiminished(ChordQuality quality) =>
     !quality.intervals.contains(10);
 
 /// What goes after the numeral: the chord's own character, written the way
-/// the chart writes it — 7♭9, Δ7, ø7, 7alt. A minor chord's "m" comes off,
+/// the chart writes it: 7♭9, Δ7, ø7, 7alt. A minor chord's "m" comes off,
 /// because the lower-case numeral has already said it (ii7, not iim7), and
 /// a plain triad keeps nothing at all, so C in C is just "I".
 String _suffix(Chord chord) {
@@ -230,7 +230,7 @@ String romanFor(Chord chord, String key) {
 /// music wants, so the 7 of a dominant chord isn't written: G7 in C is "5",
 /// and a blues in F reads 1 4 1 1 4 4 1 1 5 4 1 5, which is exactly how a
 /// Nashville chart writes a blues. The rest of the alteration stays, with
-/// the assumed 7 taken off the front of it — G7♭9 in C is "5♭9", G7alt is
+/// the assumed 7 taken off the front of it: G7♭9 in C is "5♭9", G7alt is
 /// "5alt". The price is that a plain major triad and a dominant 7th look
 /// alike here (C and C7 in C are both "1"); the Roman numeral tells them
 /// apart (I and I7), which is why the app can show both readings.

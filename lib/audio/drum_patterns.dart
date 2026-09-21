@@ -7,7 +7,7 @@
 //    and 4, a barely-there kick, occasional quiet snare comping, the odd
 //    kick accent ("dropping bombs") and a fill at the end of a phrase.
 //  • Bossa nova: straight eighths on the hi-hat or ride, and the cross-stick
-//    playing the bossa clave — a two-bar pattern, not a backbeat.
+//    playing the bossa clave: a two-bar pattern, not a backbeat.
 //  • Funk: eighths on the hi-hat, snare backbeat on 2 and 4, and a
 //    syncopated kick that changes from bar to bar.
 //  • Calypso: cowbell on the off-beats, toms instead of a snare backbeat,
@@ -37,7 +37,7 @@ enum Drum {
 /// One hit: [beat] counts from the start of the bar.
 ///
 /// [hard] asks for the harder-struck recording of the drum. That changes the
-/// *tone* — more attack, more of the stick — not the loudness, which is
+/// *tone* (more attack, more of the stick), not the loudness, which is
 /// [velocity]'s job. A jazz ride is stroked with the tip all night; a funk
 /// backbeat is cracked.
 class DrumHit {
@@ -57,7 +57,7 @@ class DrumHit {
 /// The hits for one bar of [feel]. [bar] counts from the start of the loop,
 /// so two-bar patterns (like the clave) and phrase-ending fills line up.
 ///
-/// [swing] is where the off-beat eighth falls inside the beat — a half is
+/// [swing] is where the off-beat eighth falls inside the beat: a half is
 /// even. It only reaches the swing feel: a shuffle is a triplet feel by
 /// definition and the even feels are even.
 List<DrumHit> drumBar({
@@ -82,7 +82,7 @@ List<DrumHit> drumBar({
 
 double _human(math.Random random) => 0.85 + random.nextDouble() * 0.15;
 
-/// The beats that carry the backbeat — where the hi-hat closes and the
+/// The beats that carry the backbeat, where the hi-hat closes and the
 /// snare cracks. In four, 2 and 4; in a waltz, 2 and 3; otherwise every
 /// other beat. (Beats count from 0.)
 List<int> _backbeats(int beatsPerBar) => switch (beatsPerBar) {
@@ -143,7 +143,7 @@ List<DrumHit> _swingBar(
       DrumHit(drum: Drum.snare, beat: beat, velocity: 0.22 * _human(random)),
     );
   }
-  // A kick accent dropped in occasionally — a bomb, struck hard.
+  // A kick accent dropped in occasionally: a bomb, struck hard.
   if (random.nextDouble() < 0.12) {
     hits.add(
       DrumHit(
@@ -182,8 +182,8 @@ const _claveBarTwo = [1.0, 2.5];
 List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
   // Straight eighths, on the hi-hat. A drummer moves to the ride for a whole
-  // section, not for the odd bar, so this changes only every eight bars —
-  // switching at random made the ride wander in and out of the groove.
+  // section, not for the odd bar, so this changes only every eight bars.
+  // Switching at random made the ride wander in and out of the groove.
   final onRide = (bar ~/ 8) % 3 == 2;
   for (var eighth = 0; eighth < beatsPerBar * 2; eighth++) {
     final beat = eighth / 2;
@@ -291,9 +291,9 @@ List<DrumHit> _funkBar(int bar, int beatsPerBar, math.Random random) {
 }
 
 /// Tom figures for calypso, in beats: (high tom, low tom). The toms carry
-/// the calypso in place of a snare backbeat — the way Max Roach plays it.
+/// the calypso in place of a snare backbeat, the way Max Roach plays it.
 /// The 3-3-2, in beats: the figure the calypso is built on. Three eighths,
-/// three eighths, two — the one everybody plays together.
+/// three eighths, two: the one everybody plays together.
 const _tresillo = [0.0, 1.5, 3.0];
 
 const _calypsoToms = [
@@ -305,8 +305,8 @@ const _calypsoToms = [
 
 List<DrumHit> _calypsoBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
-  // The whole band is playing the 3-3-2 — the bass, the kick and the
-  // accents all land on it — so the bell's job is to state a steady pulse
+  // The whole band is playing the 3-3-2 (the bass, the kick and the
+  // accents all land on it), so the bell's job is to state a steady pulse
   // for it to lean against, not to syncopate as well. Eighths, with the
   // 3-3-2 picked out by weight rather than by leaving gaps: that contrast
   // is the lift, and everything still agrees on where the bar is.
@@ -375,7 +375,7 @@ List<DrumHit> _calypsoBar(int bar, int beatsPerBar, math.Random random) {
   return hits;
 }
 
-/// What the drummer plays when the band leaves them the bars — trading
+/// What the drummer plays when the band leaves them the bars: trading
 /// fours, and the like.
 ///
 /// It's a phrase, not a pattern: an answer to what you just played, built
@@ -410,8 +410,8 @@ List<DrumHit> drumSoloBar({
     );
   }
 
-  // Which eighths are struck. The phrase leaves gaps — the rests are what
-  // make it a phrase — but the last bar fills up as it drives back in.
+  // Which eighths are struck. The phrase leaves gaps (the rests are what
+  // make it a phrase), but the last bar fills up as it drives back in.
   final eighths = beatsPerBar * 2;
   for (var eighth = 0; eighth < eighths; eighth++) {
     final onBeat = eighth.isEven;
@@ -464,7 +464,7 @@ List<DrumHit> drumSoloBar({
 
 /// The shuffle: swing's triplet, played out loud.
 ///
-/// Every beat gets its "a" — the last note of the triplet — so the ride is
+/// Every beat gets its "a", the last note of the triplet, so the ride is
 /// a constant long-short bounce rather than swing's spaced ding-ding-a-ding.
 /// And the snare cracks on the backbeat instead of answering the soloist.
 /// That backbeat is the whole difference: the same eighths, sat on.
@@ -539,7 +539,7 @@ const _tamborimBarTwo = [0.5, 1.5, 2.0, 3.0];
 /// A samba: quicker than a bossa, and leaning the other way.
 ///
 /// A bossa sits on beat one. A samba answers on the second half of the
-/// bar — the surdo, the big low drum, is quiet on one and lands on three —
+/// bar (the surdo, the big low drum, is quiet on one and lands on three),
 /// and everything else is hung off that.
 ///
 /// Written in four, at the tempo a samba is actually counted off. A samba

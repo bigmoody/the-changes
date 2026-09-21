@@ -1,8 +1,8 @@
 // Arpeggios: each chord played as a broken chord, so you hear exactly which
 // notes it's made of as the changes go by.
 //
-// Eighth notes, up through the chord to the octave and back — 1 3 5 7 8 7
-// 5 3 over a four-beat chord, 1 3 5 7 over two, 1 3 over one — starting on
+// Eighth notes, up through the chord to the octave and back (1 3 5 7 8 7
+// 5 3 over a four-beat chord, 1 3 5 7 over two, 1 3 over one), starting on
 // the root or, to practise inversions, on the 3rd, 5th or 7th.
 // The chord in its plain form (a 7th chord, a 6th, a triad), not its
 // extensions: this is for learning the shape of the changes. Each arpeggio
@@ -32,7 +32,7 @@ enum ArpeggioStart {
 }
 
 /// Where [chord]'s arpeggio starts when starting [from] that tone: the note
-/// and which degree of the chord it is — "A", "6th" on C6 from the 7th.
+/// and which degree of the chord it is. "A", "6th" on C6 from the 7th.
 ({String note, String degree}) arpeggioStartOf(
   Chord chord,
   ArpeggioStart from,
@@ -66,7 +66,7 @@ String _degreeName(String degree) => switch (degree) {
   _ => degree,
 };
 
-/// Where the arpeggios sit: first notes from G3 to G4, around middle C —
+/// Where the arpeggios sit: first notes from G3 to G4, around middle C,
 /// above the bass, in the middle of the piano.
 const arpeggioLowestStart = 55;
 const arpeggioHighestStart = 67;
@@ -74,10 +74,10 @@ const arpeggioHighestStart = 67;
 /// The arpeggio line over [chords] (each with how many beats it lasts), for
 /// [choruses] passes, and the note it last started from (for the next
 /// stretch to carry on from). [swing] is where the off-beat eighth falls
-/// inside the beat — a half is even, and anything more is swung.
+/// inside the beat: a half is even, and anything more is swung.
 ///
-/// Each chord goes up four chord tones from [from] — the root, 3rd, 5th or
-/// 7th — to that note an octave higher, then back down. On a triad the "7th"
+/// Each chord goes up four chord tones from [from] (the root, 3rd, 5th or
+/// 7th) to that note an octave higher, then back down. On a triad the "7th"
 /// is the root an octave up; on a 6th chord it's the 6th.
 ({List<ArpeggioNote> notes, int lastStart}) arpeggioLine(
   List<(Chord, int)> chords, {

@@ -35,7 +35,7 @@ HeardNote noteNear(double midi) {
 }
 
 /// How far [midi] is from the note [target] (a pitch class, 0 = C), in
-/// cents, in whichever octave it's closest — a singer or a bass player
+/// cents, in whichever octave it's closest: a singer or a bass player
 /// matching a note an octave away has still matched it.
 double centsFromPitchClass(double midi, int target) {
   final difference = (midi - target) % 12; // 0 … 12

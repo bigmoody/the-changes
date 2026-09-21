@@ -2,7 +2,7 @@
 //
 // It follows what's on screen rather than the bar-by-bar chords: four bars
 // to a line, a line per section, repeats folded and marked ×2, and 1st and
-// 2nd endings written under each other — so what comes out reads like the
+// 2nd endings written under each other, so what comes out reads like the
 // chart the player has been looking at.
 //
 // Only the changes are written. There is no melody and no lyric anywhere in

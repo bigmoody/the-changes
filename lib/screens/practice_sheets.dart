@@ -24,8 +24,8 @@ import 'chart_instrument_button.dart';
 
 /// The practice screen's sheets, all opened the same way.
 ///
-/// Any of them can grow taller than the screen — a long arrangement, a mixer
-/// with every channel, or simply large text — and a sheet that reaches the
+/// Any of them can grow taller than the screen (a long arrangement, a mixer
+/// with every channel, or simply large text) and a sheet that reaches the
 /// top leaves nothing to tap to get out of it, while dragging its contents
 /// only scrolls them. So they stop short of the top, and carry a Done button
 /// underneath that can't be scrolled away.
@@ -155,7 +155,7 @@ Future<void> showViewOptions(
                   'time: the chords first, then the bars as well. Keeping '
                   'your place with nothing to look at is a different skill '
                   'from knowing the changes, and it is the one that comes '
-                  'apart first. It all comes back when you stop — and you '
+                  'apart first. It all comes back when you stop, and you '
                   'can ask for it back sooner, which is not cheating.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
@@ -192,7 +192,7 @@ Future<void> showViewOptions(
               _MicMeter(controller: controller),
             Text(
               'Wear headphones. Through a speaker the microphone hears the '
-              'band as well as you — and what it hears loudest is what it '
+              'band as well as you, and what it hears loudest is what it '
               'marks.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -206,7 +206,7 @@ Future<void> showViewOptions(
 }
 
 /// Proof that the microphone is hearing you: how loud, and what note. Play
-/// something and it moves — which is the difference between "this doesn't
+/// something and it moves, which is the difference between "this doesn't
 /// work" and "hold it nearer".
 class _MicMeter extends StatelessWidget {
   const _MicMeter({required this.controller});
@@ -248,7 +248,7 @@ class _MicMeter extends StatelessWidget {
               heard != null
                   ? 'Hearing ${pitchClassName(heard.midi % 12)}'
                   : controller.tooQuiet
-                  ? 'Too quiet — play a note'
+                  ? 'Too quiet: play a note'
                   : 'Sound, but no clear note',
               key: const ValueKey('mic-hearing'),
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -272,7 +272,7 @@ String _listenLine(PracticeController controller) {
   }
   return switch (controller.listenState) {
     Listening.denied =>
-      "The microphone is blocked — allow it in the phone's settings",
+      "The microphone is blocked: allow it in the phone's settings",
     Listening.failed => "The microphone wouldn't start",
     Listening.starting => 'Starting the microphone…',
     Listening.listening => 'Listening',
@@ -427,7 +427,7 @@ void showMixer(BuildContext context, PracticeController controller) {
 ///
 /// It lives in the mixer because that is where you go when the band isn't
 /// doing what you want. A standard is written with a feel, and this is
-/// where you disagree with it — the choice is kept with the tune, so it is
+/// where you disagree with it; the choice is kept with the tune, so it is
 /// still yours the next time you open it.
 class _TheBand extends StatelessWidget {
   const _TheBand({required this.controller});
@@ -804,7 +804,7 @@ void showArrangement(BuildContext context, PracticeController controller) {
                 a.trading == Trading.off
                     ? 'The band plays all the way through.'
                     : 'You take ${a.trading.bars}, the drummer takes '
-                          '${a.trading.bars}, all the way round — '
+                          '${a.trading.bars}, all the way round, '
                           'except on the head.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -842,7 +842,7 @@ void showArrangement(BuildContext context, PracticeController controller) {
               child: Text(
                 a.layOut.isEmpty
                     ? "Drop a part and it's yours to cover."
-                    : 'Nobody plays it but you — the band comes back '
+                    : 'Nobody plays it but you; the band comes back '
                           'for the head.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -853,7 +853,7 @@ void showArrangement(BuildContext context, PracticeController controller) {
             Text(
               a.choruses == null
                   ? 'Set a number of choruses above and the band can be '
-                        'written out as a file — a track has to end.'
+                        'written out as a file: a track has to end.'
                   : 'The whole arrangement as a file, to send somewhere or '
                         'play on anything.',
               style: theme.textTheme.bodySmall?.copyWith(
@@ -1041,7 +1041,7 @@ void showTakes(BuildContext context, PracticeController controller) {
   );
 }
 
-/// "1:04" — how long an exported track will run.
+/// "1:04": how long an exported track will run.
 String _minutes(Duration length) {
   final seconds = (length.inSeconds % 60).toString().padLeft(2, '0');
   return '${length.inMinutes}:$seconds';
@@ -1086,7 +1086,7 @@ String _takeAbout(Take take) {
 /// The practice record: what you have actually done at this tune.
 ///
 /// The app was already working all of this out and throwing it away. Kept,
-/// it answers the only question that matters between sessions — am I
+/// it answers the only question that matters between sessions: am I
 /// getting anywhere, and what do I play next.
 void showPracticeRecord(BuildContext context, PracticeController controller) {
   if (controller.library == null) return;

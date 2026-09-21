@@ -1,7 +1,7 @@
 // The chart itself: the whole tune at once, in bars, with the bar being
 // played lit up.
 //
-// Everything in here serves one promise — the whole tune on one screen.
+// Everything in here serves one promise: the whole tune on one screen.
 // The bars are sized so the longest line fits across it, and every chord
 // is drawn at the same size, because a chart you have to squint at in one
 // corner isn't one you can read at tempo.
@@ -184,7 +184,7 @@ class _ChordChartState extends State<ChordChart> {
         // What's written under each chord, bar by bar: the numbers, or the
         // guide tones, or nothing at all.
         //
-        // Never on the stage. That view is the chart and nothing else —
+        // Never on the stage. That view is the chart and nothing else;
         // there is no loop bar on it to say what the small red letters
         // are, and it is for playing off, not learning from.
         final aids = widget.stage
@@ -442,7 +442,7 @@ class BarLayout {
             (fit: layout.fits[i], chords: layout.lines[i].length),
     ];
     // The one size every chord can be drawn at, with this layout. Chords
-    // far too long for it are let off only if they're rare — one chord in
+    // far too long for it are let off only if they're rare: one chord in
     // ten at most, counted as the eye sees them. Any more and they're part
     // of the tune's look, and everything matches them.
     double sizeWith(bool stack) {
@@ -735,7 +735,7 @@ class _BarCell extends StatelessWidget {
                                                         fontSize: sizes[l],
                                                         // Chord symbols have no descenders, so
                                                         // they don't need the space a line of
-                                                        // text keeps below and above itself —
+                                                        // text keeps below and above itself;
                                                         // without it they fit a third bigger.
                                                         height: 1,
                                                         leadingDistribution:

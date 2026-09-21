@@ -1,7 +1,7 @@
 // Icon buttons have to be visible.
 //
 // The app paints plain icon buttons in the same ink as the text, and a
-// theme's icon button style applies to every kind of icon button — filled
+// theme's icon button style applies to every kind of icon button, filled
 // ones included. In this palette the primary colour and the text ink are
 // the same near-black, so a filled icon button inherits dark-on-dark and
 // vanishes. It happened once, on the stage screen's play button.

@@ -98,8 +98,8 @@ class LoopBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 // Everything between the loop's name and the way out of it
                 // goes in one strip that scrolls. Nothing in here is a fixed
-                // width, so however many chips a bar wants — looping one bar
-                // of two chords asks for three — the row can't be pushed over
+                // width, so however many chips a bar wants (looping one bar
+                // of two chords asks for three) the row can't be pushed over
                 // the edge of the screen.
                 Expanded(
                   child: ShaderMask(

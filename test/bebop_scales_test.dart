@@ -63,7 +63,7 @@ void main() {
     test('the chord tones are the ones the chord has got', () {
       expect(_named('Dominant Bebop').tones, ['1', '3', '5', 'b7']);
       // The major scale's passing note lands the 6th on a beat, not the
-      // 7th, so the chord it belongs to is the 6th — which is why the
+      // 7th, so the chord it belongs to is the 6th, which is why the
       // songbook is full of 6 chords where you expected a Δ7.
       expect(_named('Major Bebop').tones, ['1', '3', '5', '6']);
       expect(_named('Major Bebop').quality, '6');

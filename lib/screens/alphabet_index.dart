@@ -15,7 +15,7 @@ import 'package:flutter/services.dart';
 import '../theme.dart';
 import 'anchors.dart';
 
-/// Anything that isn't a letter — "52nd Street Theme", "'Round Midnight" —
+/// Anything that isn't a letter ("52nd Street Theme", "'Round Midnight")
 /// goes under this, which sorts before A as those titles do.
 const otherLetters = '#';
 
@@ -30,8 +30,8 @@ String letterOf(String title) {
 
 /// The letters a list uses, in the order it uses them.
 ///
-/// [filedAs] is what each row is filed under — its title, or whoever wrote
-/// it — in the order the list shows them. The strip is built from that
+/// [filedAs] is what each row is filed under (its title, or whoever wrote
+/// it) in the order the list shows them. The strip is built from that
 /// rather than from the alphabet, for two reasons. A letter that goes
 /// nowhere is a strip lying about what's in the book. And the odd ones
 /// don't always fall in the same place: a title starting with a number or

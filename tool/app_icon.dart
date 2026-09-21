@@ -2,7 +2,7 @@
 //
 //   flutter test tool/app_icon.dart
 //
-// The icon is the chart's rehearsal mark — a boxed letter — holding C7: the
+// The icon is the chart's rehearsal mark (a boxed letter) holding C7: the
 // C in ink, the 7 in the red pencil the app uses for the player's own marks.
 // Drawn from shapes rather than set in a font, so it's the app's own, and
 // written at each size directly (not scaled down from one image) so the

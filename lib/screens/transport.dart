@@ -75,7 +75,7 @@ class Transport extends StatelessWidget {
                   ),
                   color: c.recording ? theme.colorScheme.error : null,
                   tooltip: c.recording
-                      ? 'Recording is on — Play starts the take'
+                      ? 'Recording is on: Play starts the take'
                       : 'Record yourself over the band',
                   onPressed: () => c.setRecording(!c.recording),
                 ),
@@ -308,7 +308,7 @@ class _KeyButton extends StatelessWidget {
 }
 
 /// The Arpeggios button: off when a tune opens. A tap brings up the choices
-/// — off, or which chord tone to start each arpeggio from — and what they're
+/// (off, or which chord tone to start each arpeggio from) and what they're
 /// played on.
 class _ArpeggioButton extends StatelessWidget {
   const _ArpeggioButton({required this.controller});
@@ -376,7 +376,7 @@ class _ArpeggioButton extends StatelessWidget {
 const _partChipPadding = EdgeInsets.symmetric(horizontal: 6);
 
 /// A part that's playing reads plainly, on paper; a muted one is faded and
-/// struck through. (Filled chips are for choosing one of several — with
+/// struck through. (Filled chips are for choosing one of several: with
 /// every part on, they'd be a row of black blocks.)
 ({WidgetStateProperty<Color?> color, BorderSide side, TextStyle labelStyle})
 _partChipStyle(BuildContext context, {required bool on}) {

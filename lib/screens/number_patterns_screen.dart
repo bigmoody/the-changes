@@ -2,7 +2,7 @@
 //
 // The screen is built so the numbers stay still and the notes move, which
 // is the whole idea. Pick 1-2-3-5 and it is written out over every chord
-// of the progression — D E F A, then G A B D, then C D E G — with the
+// of the progression (D E F A, then G A B D, then C D E G) with the
 // numbers underneath each one so you can see your hand doing the same
 // thing while the music does something different.
 
@@ -23,7 +23,7 @@ import 'stave_figure.dart';
 
 const _keys = ['C', 'F', 'B♭', 'E♭', 'G', 'D', 'A'];
 
-/// Note names for each step above a key's root, spelled for flat keys —
+/// Note names for each step above a key's root, spelled for flat keys,
 /// which is most of them.
 const _steps = [
   'C',
@@ -159,7 +159,7 @@ class _NumberPatternsScreenState extends State<NumberPatternsScreen> {
   /// Plays the pattern through the changes, each chord under its own four
   /// notes so the shape is heard against what it is being played over.
   /// Plays the pattern through the changes, or over one chord when [only]
-  /// names it — for the bar you keep fumbling.
+  /// names it, for the bar you keep fumbling.
   Future<void> _play({int? only}) async {
     final bank = widget.player.samples;
     if (bank == null) return;
@@ -228,7 +228,7 @@ class _NumberPatternsScreenState extends State<NumberPatternsScreen> {
                       '5th of whatever scale the chord wants. Your hand does the '
                       'same thing over every chord and different notes come out. '
                       'Practise the numbers and the changes do the rest. The books '
-                      'call these digital patterns — "digital" meaning the digits '
+                      'call these digital patterns, "digital" meaning the digits '
                       'you count on, not anything electronic.',
                       style: theme.textTheme.bodyMedium,
                     ),
@@ -301,7 +301,7 @@ class _NumberPatternsScreenState extends State<NumberPatternsScreen> {
                     child: Text(
                       'The numbers under the stave are the same in every '
                       'bar. The notes are not. Once a shape is in your '
-                      'hands, move the key on and do it again — that is '
+                      'hands, move the key on and do it again; that is '
                       'the whole exercise, and it is meant to take weeks '
                       'rather than minutes.',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -557,7 +557,7 @@ class _Controls extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           looping
-              ? 'The band is going round. Play the numbers over it — that '
+              ? 'The band is going round. Play the numbers over it: that '
                     'is the exercise; the rest of this screen is only the '
                     'instructions.'
               : 'Play Along puts the band on a loop so you can practise '

@@ -47,7 +47,7 @@ class PracticePlayer {
     if (handle != null) _soloud.setVolume(handle, _takeVolume);
   }
 
-  /// The clicks stem. Its position — how much of it the engine has taken —
+  /// The clicks stem. Its position (how much of it the engine has taken)
   /// is what the app keeps time by: it runs straight through, counts the
   /// count-in and the playing alike, and can't be got wrong by a tempo that
   /// changes.
@@ -100,7 +100,7 @@ class PracticePlayer {
   /// Renders the backing for [request] and starts playing it.
   ///
   /// With [alongside], a recording of you is played over the top, starting
-  /// on the same sample as the band's first beat — so a take lines up with
+  /// on the same sample as the band's first beat, so a take lines up with
   /// the band without either having to be recorded against the other.
   Future<void> start(
     BackingRequest request, {
@@ -113,7 +113,7 @@ class PracticePlayer {
     if (generation != _generation) return;
     // Coming in part-way through the form: the band is written whole and
     // the beats before the pick-up are cut off the front of the first
-    // batch. Everything after it — the top-ups, the ring-out, the clock —
+    // batch. Everything after it (the top-ups, the ring-out, the clock)
     // then works out as it always did, because only the first time round
     // is short.
     final backing = fromPickUp(rendered, pickUpBeats);
@@ -121,7 +121,7 @@ class PracticePlayer {
     final sources = <AudioSource>[];
     // Everything is streamed rather than looped: fresh playing is added
     // before the current batch runs out, so nothing ever repeats. The clicks
-    // are streamed with the band — silence after the count-in — so their
+    // are streamed with the band (silence after the count-in), so their
     // playing position is a clock that runs straight through, whatever the
     // tempo is doing.
     final streams = {
@@ -190,8 +190,8 @@ class PracticePlayer {
     }
     if (take != null) {
       _takeHandle = _soloud.play(take, paused: true, volume: _takeVolume);
-      // The recording began before the band did — the band has to be
-      // written first — so wind past that much of it.
+      // The recording began before the band did (the band has to be
+      // written first), so wind past that much of it.
       if (leadIn > Duration.zero) _soloud.seek(_takeHandle!, leadIn);
     }
     final group = _soloud.createVoiceGroup();
@@ -228,7 +228,7 @@ class PracticePlayer {
   }
 
   /// [backing] with [pickUpBeats] of its first time through the form taken
-  /// off the front, leaving the count-in where it is — you still get
+  /// off the front, leaving the count-in where it is: you still get
   /// counted in, you just come in at the bridge.
   @visibleForTesting
   static RenderedBacking fromPickUp(RenderedBacking backing, int beats) {
@@ -351,7 +351,7 @@ class PracticePlayer {
 
   AudioSource? _snippet;
 
-  /// Plays a short WAV once, over anything else — the drills' "hear it".
+  /// Plays a short WAV once, over anything else: the drills' "hear it".
   /// Each new one replaces the last, so tapping twice doesn't pile them up.
   Future<void> playSnippet(Uint8List wav) async {
     final previous = _snippet;
@@ -362,7 +362,7 @@ class PracticePlayer {
     _soloud.play(source);
   }
 
-  /// Plays [wav] over and over until [stopLoop] — the metronome's bar of
+  /// Plays [wav] over and over until [stopLoop]: the metronome's bar of
   /// clicks. It plays on its own, apart from the band.
   /// How many times a looping sound has been started: the metronome's
   /// tests watch this to see that changing the tempo doesn't restart it
@@ -402,8 +402,8 @@ class PracticePlayer {
   bool get isPaused => _paused;
   bool _paused = false;
 
-  /// Pauses every instrument at once. They're paused as one voice group — the
-  /// same way they're started — so they stop on the same sample and resume
+  /// Pauses every instrument at once. They're paused as one voice group, the
+  /// same way they're started, so they stop on the same sample and resume
   /// in step, and the clock (the count-in stem) stops with them.
   void pause() => _setPaused(true);
 

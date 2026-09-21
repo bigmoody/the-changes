@@ -185,7 +185,7 @@ bool _sameChords(Tune tune, _Section a, _Section b) {
 }
 
 /// How many bars at the end of [b] differ from [a], when everything before
-/// them is the same — the length of the 1st and 2nd endings. Zero if they
+/// them is the same: the length of the 1st and 2nd endings. Zero if they
 /// aren't the same section with a new ending. Endings are at most half the
 /// section; more than that is a different section, not a repeat.
 int _endingLength(Tune tune, _Section a, _Section b) {
@@ -201,8 +201,8 @@ int _endingLength(Tune tune, _Section a, _Section b) {
   return ending > 0 && ending <= a.length ~/ 2 ? ending : 0;
 }
 
-/// Which boxes are written as a simile mark — "play the bar before again"
-/// — instead of having the same chords written out twice.
+/// Which boxes are written as a simile mark, "play the bar before again",
+/// instead of having the same chords written out twice.
 ///
 /// This is how a chart is written by hand, and how iReal Pro and the fake
 /// books show it: four bars of Cm7 are Cm7 and then three repeat marks, so
@@ -221,7 +221,7 @@ List<List<bool>> similesFor(Tune tune, List<ChartLine> lines) {
     for (final line in lines) List.filled(line.cells.length, false),
   ];
   // The last box actually written out or marked, which is what the next
-  // one repeats — the box to its left, or the end of the row above.
+  // one repeats: the box to its left, or the end of the row above.
   String? before;
   int? beforeEnding;
   for (var row = 0; row < lines.length; row++) {
@@ -233,7 +233,7 @@ List<List<bool>> similesFor(Tune tune, List<ChartLine> lines) {
       final chords = _barText(tune, cell.bars.first);
       // Never at the start of a line. A repeat mark says "the same as the
       // box to my left", and at the start of a row there is no box to the
-      // left — you have to look back to the end of the row above, which is
+      // left; you have to look back to the end of the row above, which is
       // slower than simply reading the chord. It is also where a phrase
       // usually begins, and a phrase that opens on a repeat sign hides the
       // shape of the tune.

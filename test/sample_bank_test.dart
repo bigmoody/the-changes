@@ -376,7 +376,7 @@ void main() {
       expect(rms(bassClef), greaterThan(500));
       expect(boom(bassClef), lessThan(0.35), reason: 'clear, not a rumble');
 
-      // Two octaves down — where it used to go — is far muddier on either
+      // Two octaves down, where it used to go, is far muddier on either
       // instrument, which is what this is here to stop coming back.
       expect(boom(played(24, onBass: false)), greaterThan(0.5));
       expect(boom(played(24, onBass: true)), greaterThan(0.5));
@@ -436,7 +436,7 @@ void main() {
       return high / all;
     }
 
-    /// How loud it is above 200 Hz — what a phone speaker plays.
+    /// How loud it is above 200 Hz: what a phone speaker plays.
     double onAPhone(Uint8List wav) {
       final a = 1 - math.exp(-2 * math.pi * 200 / 44100);
       var low = 0.0, sum = 0.0;

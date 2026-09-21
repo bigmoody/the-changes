@@ -1,5 +1,5 @@
-// The metronome: the clicks that loop in time — including the ones it
-// takes away — and the screen that sets them.
+// The metronome: the clicks that loop in time (including the ones it
+// takes away) and the screen that sets them.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,7 +114,7 @@ void main() {
     });
 
     test('it splits the backbeat, not the bar', () {
-      // Eighths on 2 and 4: 2, 2-and, 4, 4-and — and nothing on 1 or 3.
+      // Eighths on 2 and 4: 2, 2-and, 4, 4-and; and nothing on 1 or 3.
       final clicks = onsets(
         decodeWav(
           metronomeLoop(

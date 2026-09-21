@@ -1,7 +1,7 @@
 // Tuner and pitch practice.
 //
 // Tap one of the twelve notes to hear it; it becomes the target. Then play
-// or sing it back, and the needle shows how close you are — in whatever
+// or sing it back, and the needle shows how close you are, in whatever
 // octave you're in. With no target it's a chromatic tuner: it names the note
 // you're playing and how far off it is.
 //
@@ -205,7 +205,7 @@ class _TunerScreenState extends State<TunerScreen> {
   }
 }
 
-/// The note heard, and a needle showing how far off it is — from the target
+/// The note heard, and a needle showing how far off it is: from the target
 /// if there is one, otherwise from the nearest note.
 class _Reading extends StatelessWidget {
   const _Reading({
@@ -271,8 +271,8 @@ class _Reading extends StatelessWidget {
     final advice = inTune
         ? (target == null ? 'In tune' : 'Spot on')
         : cents < 0
-        ? 'Flat — go up'
-        : 'Sharp — go down';
+        ? 'Flat, go up'
+        : 'Sharp, go down';
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -281,7 +281,7 @@ class _Reading extends StatelessWidget {
           target == null
               ? 'You\'re playing'
               : wrongNote
-              ? 'You\'re on $playedName — aim for ${pitchClassName(target)}'
+              ? 'You\'re on $playedName, aim for ${pitchClassName(target)}'
               : 'Aiming for ${pitchClassName(target)}',
           key: const ValueKey('tuner-heading'),
           textAlign: TextAlign.center,

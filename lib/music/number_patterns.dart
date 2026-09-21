@@ -1,7 +1,7 @@
 // Number patterns: four numbers, played off every chord that goes by.
 //
-// "1235" is not a lick. It is a shape — the 1st, 2nd, 3rd and 5th of
-// whatever scale the chord is asking for — and the whole point is that it
+// "1235" is not a lick. It is a shape (the 1st, 2nd, 3rd and 5th of
+// whatever scale the chord is asking for), and the whole point is that it
 // comes out different over every chord while your hand does the same
 // thing. Over a Dm7 it is D E F A; over the G7 after it, G A B D. You
 // practise the number, not the notes, and the changes do the rest.
@@ -11,13 +11,13 @@
 // is. It is also the quickest way to stop playing scales up and down,
 // because a pattern has a shape of its own that a scale has not.
 //
-// The books call these digital patterns, meaning "of the digits" — the
+// The books call these digital patterns, meaning "of the digits": the
 // fingers you count on, nothing to do with computers. That reading of
 // the word has not survived, so they are called what they are here.
 //
 // The numbers are scale degrees, not chord degrees. The 3rd of a pattern
 // over a minor chord is the ♭3, because that is what the 3rd note of its
-// scale is — nothing here needs a special case for it.
+// scale is; nothing here needs a special case for it.
 
 import 'chord.dart';
 import 'enclosures.dart' show scaleFor;
@@ -64,7 +64,7 @@ const numberPatterns = <NumberPattern>[
     name: 'The Arpeggio',
     about:
         'Nothing but chord tones. Dull on its own and the thing every '
-        'other pattern is measured against — you have to be able to play '
+        'other pattern is measured against: you have to be able to play '
         'this one in your sleep before the rest are worth anything.',
   ),
   NumberPattern(
@@ -149,7 +149,7 @@ List<PatternNote> patternOn(List<int> degrees, Chord chord, {int octave = 4}) {
       () {
         // Dart's % is never negative but its ~/ truncates towards zero,
         // so the octave is worked out from the remainder rather than by
-        // dividing — otherwise a 0 (the 7th below) lands in the wrong one.
+        // dividing; otherwise a 0 (the 7th below) lands in the wrong one.
         final index = (degree - 1) % 7;
         final octaves = ((degree - 1) - index) ~/ 7;
         final name = scale[index];

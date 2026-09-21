@@ -44,7 +44,7 @@ void main() {
     });
 
     test('a medium-up tempo lands on the triplet everybody is taught', () {
-      // 2 : 1 is not wrong, it is a snapshot of one tempo — and this is
+      // 2 : 1 is not wrong, it is a snapshot of one tempo, and this is
       // roughly the tempo. If the model did not pass through it the
       // screen would be arguing with the whole world for no reason.
       expect(swingAt(200), closeTo(tripletSwing, 0.01));
@@ -258,7 +258,7 @@ void main() {
         tester.widget<Text>(find.byKey(const ValueKey('swing-ratio'))).data!;
 
     /// Picks a tempo, dragging the strip along if that one is off the
-    /// side — five tempos with their numbers never all fit at once.
+    /// side: five tempos with their numbers never all fit at once.
     Future<void> pickTempo(WidgetTester tester, String name) async {
       final chip = find.byKey(ValueKey('pick-$name'));
       await tester.dragUntilVisible(

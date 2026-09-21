@@ -1,13 +1,13 @@
 // Where to start, and what to learn next.
 //
 // The book is alphabetical, which is no help at all to someone who has
-// never played any of it. Alphabetical puts "All the Things You Are" —
-// which changes key every four bars — third, and buries the tunes you
+// never played any of it. Alphabetical puts "All the Things You Are" (
+// which changes key every four bars) third, and buries the tunes you
 // could actually get through on a first evening somewhere in the S's.
 //
 // So this is an order: five stages, each one asking for something the last
 // did not, and a line on every tune saying what it is there to teach. It
-// is a suggestion and nothing more — nothing is locked, nothing has to be
+// is a suggestion and nothing more: nothing is locked, nothing has to be
 // finished, and the whole book stays where it was.
 //
 // The order is ours, argued from what each tune does harmonically and how
@@ -161,7 +161,7 @@ const startingOrder = <Stage>[
       (
         title: 'Oleo',
         why:
-            'Rhythm changes — the second most played form there is, and '
+            'Rhythm changes: the second most played form there is, and '
             'the bridge is four dominants going round the circle. Learn it '
             'once and you can busk a hundred tunes.',
       ),

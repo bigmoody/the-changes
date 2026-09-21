@@ -61,8 +61,8 @@ enum Feel {
   /// The tempos this feel lives at, in beats a minute.
   ///
   /// Swing is the whole range because it is: a ballad and a burner are both
-  /// swung. The others are narrower — a samba at 90 is not a slow samba,
-  /// it's a mistake — so changing the groove brings the tempo with it.
+  /// swung. The others are narrower (a samba at 90 is not a slow samba,
+  /// it's a mistake) so changing the groove brings the tempo with it.
   ({int slowest, int fastest}) get tempos => switch (this) {
     swing => (slowest: 40, fastest: 320),
     shuffle => (slowest: 70, fastest: 200),
@@ -142,7 +142,7 @@ enum PianoStyle {
   held('Held chords'),
 
   /// Short chords in the calypso strum: 1, 2, the "and" of 2, the "and"
-  /// of 3, 4, the "and" of 4 — or a lighter version of it.
+  /// of 3, 4, the "and" of 4; or a lighter version of it.
   calypso('Calypso strum');
 
   const PianoStyle(this.label);
@@ -299,7 +299,7 @@ class Tune {
   final String key;
   final String description;
 
-  /// The groove the tune is known for — what the list shows.
+  /// The groove the tune is known for (what the list shows).
   final Feel feel;
 
   /// What each instrument actually plays: [feel] for every instrument unless

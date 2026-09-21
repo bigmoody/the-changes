@@ -2,7 +2,7 @@
 // how many times round, which of those is the melody, and who lays out
 // while you play.
 //
-// A performance is counted in choruses — one pass through whatever is
+// A performance is counted in choruses: one pass through whatever is
 // looped. Chorus 0 is the first one after the count-in.
 
 import 'dart:math' as math;
@@ -31,7 +31,7 @@ class TempoRamp {
     return (from + added).clamp(40, 320);
   }
 
-  /// How many times round the form before it stops getting faster — so the
+  /// How many times round the form before it stops getting faster, so the
   /// band knows how long the changing part of the performance is.
   int chorusesToTop(int from) {
     if (step == 0) return 0;
@@ -110,7 +110,7 @@ class Arrangement {
   /// The first and last chorus are the melody, with solos in between.
   final bool headInAndOut;
 
-  /// The head in two, the solos walking — how a band usually breathes.
+  /// The head in two, the solos walking: how a band usually breathes.
   final bool twoFeelOnHead;
 
   /// Swapping bars with the drummer on the solo choruses.

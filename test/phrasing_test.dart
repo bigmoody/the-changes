@@ -150,7 +150,7 @@ void main() {
     }
 
     /// Picks from a chip strip, dragging it along if the chip is off the
-    /// side — six placements with names this long never all fit.
+    /// side: six placements with names this long never all fit.
     Future<void> pick(
       WidgetTester tester,
       String value,
@@ -173,7 +173,7 @@ void main() {
       await open(tester);
       expect(find.textContaining('already moving'), findsOneWidget);
       // A pick-up crosses the bar line going in, and the screen has to
-      // say so — it is the reason this placement is the default.
+      // say so; it is the reason this placement is the default.
       expect(find.textContaining('Over the bar line'), findsOneWidget);
     });
 
@@ -210,7 +210,7 @@ void main() {
       tester,
     ) async {
       // The figure is the same size whichever weight is chosen, and the
-      // painter used to decide it had nothing to redraw on that basis —
+      // painter used to decide it had nothing to redraw on that basis,
       // so the marks stayed where they were and the buttons appeared to
       // do nothing at all.
       await open(tester);

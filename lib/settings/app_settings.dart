@@ -89,7 +89,7 @@ enum ChordAid {
   /// The same, the way Nashville writes it: 2-7, 5, 1Δ7.
   nashville('Nashville Numbers'),
 
-  /// The 3rd and the 7th — the notes that make the chord sound like
+  /// The 3rd and the 7th: the notes that make the chord sound like
   /// itself, and the ones that move least between changes.
   guideTones('Guide Tones');
 

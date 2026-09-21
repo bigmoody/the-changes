@@ -10,15 +10,15 @@
 // Several songs join with "===" and the playlist's name goes last; the
 // whole thing is URL-encoded after "irealb://".
 //
-// The music is the chart as cells — an opening barline, a time signature,
+// The music is the chart as cells: an opening barline, a time signature,
 // section marks, repeats, endings, chords and barlines, ending with Z.
 // iReal Pro scrambles it by swapping characters about within each
 // 50-character block, which undoes itself, so the same swapping writes it.
 // It also shortens three common runs when it reads a chart ("XyQ" for three
 // spaces, "LZ" for " |", "Kcl" for "| x"); those change the length, and so
 // would throw the blocks out. Nothing written here uses the abbreviations
-// or happens to contain those sequences — X, y, Q, L and K are never
-// written — so swapping alone is enough.
+// or happens to contain those sequences (X, y, Q, L and K are never
+// written), so swapping alone is enough.
 
 import 'chord.dart';
 import 'tune.dart';
@@ -32,7 +32,7 @@ import 'user_progression.dart';
 /// does not: a section played three or four times comes back as twice, a
 /// band with its instruments mixed by hand comes back playing the one feel,
 /// and chords are written in iReal Pro's spelling, so a Dm7 comes home as
-/// D-7 — the same chord, spelled its way.
+/// D-7: the same chord, spelled its way.
 String irealLinkFor(UserProgression progression) =>
     'irealb://${Uri.encodeComponent(_song(progression))}';
 
@@ -78,7 +78,7 @@ String _plain(String text) => text.replaceAll('=', ' ').trim();
 /// iReal Pro writes composers surname first ("Kern Jerome"), so a two-part
 /// name goes over the other way round. A longer name is left as it is,
 /// because there's no telling which part is the surname. Nobody in
-/// particular is "Unknown", which is iReal Pro's own way of saying so — and
+/// particular is "Unknown", which is iReal Pro's own way of saying so, and
 /// it has to be something, since an empty composer would leave "===" in the
 /// middle of the song, which is how songs are separated.
 String _composerField(String? composer) {
@@ -155,9 +155,9 @@ String _music(UserProgression progression) {
 
 /// Where a section's 1st and 2nd endings are, if it has a pair iReal Pro
 /// can write: a run of 1st-ending bars after some body, then as many
-/// 2nd-ending bars running to the end of the section. Anything else — an
+/// 2nd-ending bars running to the end of the section. Anything else (an
 /// odd ending on its own, endings of different lengths, an ending in the
-/// middle of a section — has no repeat sign that would play it back the
+/// middle of a section) has no repeat sign that would play it back the
 /// same way, so it's written out with no endings at all.
 ({int firstStart, int firstEnd, int secondStart})? _endingsOf(
   UserProgression progression,
@@ -204,7 +204,7 @@ String _sectionMark(String section) => switch (section) {
   _ => section.isEmpty ? 'A' : section[0].toUpperCase(),
 };
 
-/// One bar's chords. An empty bar — one still being written — becomes
+/// One bar's chords. An empty bar (one still being written) becomes
 /// iReal Pro's "no chord", which holds the chord before it.
 String _barOf(String bar) {
   final chords = [

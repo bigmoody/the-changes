@@ -1,7 +1,7 @@
 // Notes on a stave: a chord stacked as it's written, or a scale in a row.
 //
 // Which notes, and where each one sits, is worked out here. The drawing is
-// [StaveFigure]'s, next door — this says what to put on the stave and hands
+// [StaveFigure]'s, next door; this says what to put on the stave and hands
 // it over.
 
 import 'dart:math' as math;
@@ -23,7 +23,7 @@ const _accidentals = {
 
 /// One note on the stave: its [step] up from the bottom line (0 is the
 /// bottom line, 1 the first space, 8 the top line), its [accidental] (−2
-/// to 2), and whether it's [marked] — drawn in the accent colour.
+/// to 2), and whether it's [marked], drawn in the accent colour.
 typedef StaveNote = ({int step, int accidental, bool marked});
 
 /// The letter (0 = C … 6 = B) and accidental of a spelled note name such
@@ -133,7 +133,7 @@ List<StaveNote> scaleOnStave(
 /// written, in the order they're played.
 ///
 /// [scaleOnStave] climbs, a letter at a time, because a scale does. A line
-/// goes both ways, so each note is placed by the pitch it actually is —
+/// goes both ways, so each note is placed by the pitch it actually is,
 /// which is the only way an enclosure, which steps down to step up, lands
 /// where it should.
 List<StaveNote> lineOnStave(
@@ -205,7 +205,7 @@ StaveColumn _head(StaveNote note, {double gap = 1.1}) => StaveColumn.one(
 );
 
 /// The accidental in front of [note], if it has one. It gets a column of
-/// its own so the font's own width decides how much room it takes — a sharp
+/// its own so the font's own width decides how much room it takes: a sharp
 /// is nearly twice a flat.
 StaveColumn? _accidental(StaveNote note, {double gap = 0.3}) {
   final glyph = _accidentals[note.accidental];

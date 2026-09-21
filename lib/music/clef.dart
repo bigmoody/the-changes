@@ -1,7 +1,7 @@
 // Which pitches a stave's lines carry.
 //
 // A clef fixes one note to one line, and every other line and space follows
-// from it. Pitch is counted here in diatonic steps from C0 — seven to the
+// from it. Pitch is counted here in diatonic steps from C0: seven to the
 // octave, so the black-and-white difference between E and E♭ doesn't come
 // into it. A step of 0 is the bottom line, 1 the first space, 8 the top
 // line; below the bottom line the steps go negative.
@@ -27,7 +27,7 @@ enum Clef {
     tenor => 3 * 7 + 1,
   };
 
-  /// The step its symbol's origin sits on — the line the clef names, which
+  /// The step its symbol's origin sits on: the line the clef names, which
   /// is where SMuFL puts the origin of every clef glyph.
   int get originStep => switch (this) {
     treble => 2, // the G line, the one its curl wraps
@@ -90,7 +90,7 @@ const flatOrder = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
 
 /// Where a key signature's accidentals go, as steps from the bottom line.
 ///
-/// The positions are fixed by convention rather than worked out — a
+/// The positions are fixed by convention rather than worked out: a
 /// signature has to look the same every time or it stops being readable at
 /// a glance. Treble is the pattern everyone learns, and bass is the same
 /// shape a line lower. The C clefs rearrange theirs, and nothing the app

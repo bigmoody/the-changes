@@ -1,4 +1,4 @@
-// The piano diagram shows chords in root position, so G7 reads G B D F —
+// The piano diagram shows chords in root position, so G7 reads G B D F,
 // never D F G B, which looks like an inversion.
 
 import 'package:flutter/material.dart';

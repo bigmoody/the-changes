@@ -93,7 +93,7 @@ void main(List<String> args) {
           for (final slot in bar) slot.chord.display,
       };
       stdout.writeln(
-        '  ${tune.title} — ${tune.key}, ${tune.defaultTempo} bpm, '
+        '  ${tune.title}: ${tune.key}, ${tune.defaultTempo} bpm, '
         '${tune.form.isEmpty ? 'no sections' : tune.form}, '
         '${tune.barCount} bars, ${chords.length} different chords',
       );

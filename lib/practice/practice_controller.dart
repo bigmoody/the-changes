@@ -162,7 +162,7 @@ class PracticeController extends ChangeNotifier {
   int get tempo => _tempo;
   bool get countIn => _countIn;
 
-  /// True from Play until Stop — including while paused.
+  /// True from Play until Stop, including while paused.
   bool get isPlaying => _isPlaying;
 
   /// Holding its place: Play carries on from here rather than the top.
@@ -176,8 +176,8 @@ class PracticeController extends ChangeNotifier {
   /// or still counting in.
   int? get chorus => _chorus == null ? null : _chorus! + 1;
 
-  /// What the band is doing on this chorus — the melody, trading, who's
-  /// laid out — or null when nothing is playing.
+  /// What the band is doing on this chorus (the melody, trading, who's
+  /// laid out) or null when nothing is playing.
   ChorusPlan? get chorusPlan =>
       _chorus == null ? null : _arrangement.planFor(_chorus!);
 
@@ -209,7 +209,7 @@ class PracticeController extends ChangeNotifier {
   /// The chord being played, or the loop's first chord when stopped.
   ChordSlot get shownSlot => currentSlot ?? loop.slotsIn(chart).first;
 
-  /// The next *change* after [shownSlot] — skipping bars that just repeat
+  /// The next *change* after [shownSlot], skipping bars that just repeat
   /// the same chord, and coming round to the start of the loop at its end.
   /// It's what an improviser needs to be looking at next.
   ChordSlot get nextSlot {
@@ -501,7 +501,7 @@ class PracticeController extends ChangeNotifier {
   }
 
   /// Turns the checking on or off. It needs a note to aim for, so switching
-  /// it on without one picks the 3rd — the one that names the chord.
+  /// it on without one picks the 3rd, the one that names the chord.
   Future<void> setChecking(bool value) async {
     if (value == _checking) return;
     _checking = value;
@@ -520,7 +520,7 @@ class PracticeController extends ChangeNotifier {
   /// How loud the microphone is hearing you (RMS, 0–1).
   double get listenLevel => _madeListener?.level ?? 0;
 
-  /// True when there's barely any sound arriving — a different problem from
+  /// True when there's barely any sound arriving, a different problem from
   /// hearing plenty but not being able to name a note in it.
   bool get tooQuiet =>
       _listenState == Listening.listening &&
@@ -604,7 +604,7 @@ class PracticeController extends ChangeNotifier {
   Future<void> setRecording(bool value) async {
     if (value == _recording || takes == null) return;
     if (value && !await _tape.hasPermission()) {
-      _error = 'The microphone is blocked — allow it to record yourself.';
+      _error = 'The microphone is blocked. Allow it to record yourself.';
       notifyListeners();
       return;
     }
@@ -749,7 +749,7 @@ class PracticeController extends ChangeNotifier {
     // A take brings its own length: the band runs as long as you played and
     // no further. Without one, the arrangement has to say where to stop.
     if (take == null && _arrangement.choruses == null) {
-      _error = 'Set a number of choruses first — an export has to end.';
+      _error = 'Set a number of choruses first: an export has to end.';
       notifyListeners();
       return;
     }
@@ -764,7 +764,7 @@ class PracticeController extends ChangeNotifier {
         if (path != null) recorded = decodeWav(await File(path).readAsBytes());
       }
       final request = take == null ? _exportRequest() : _requestFor(take);
-      // The band stops where you did — rounded up to the end of the
+      // The band stops where you did, rounded up to the end of the
       // section you finished in, so it lands on a rehearsal letter rather
       // than in the middle of a phrase.
       int? endBeat;
@@ -917,7 +917,7 @@ class PracticeController extends ChangeNotifier {
     } catch (e) {
       _error = takePath == null
           ? "Couldn't start audio: $e"
-          : "Couldn't play that take — the recording wouldn't open.";
+          : "Couldn't play that take. The recording wouldn't open.";
       _isPlaying = false;
       _playingTake = null;
       _bandSilent = false;
@@ -965,7 +965,7 @@ class PracticeController extends ChangeNotifier {
   ///
   /// Reading is a crutch, so it goes a rung at a time while the band plays
   /// on. Giving in puts it back for the rest of the run, and stopping puts
-  /// it back for good — you have to be able to set up the next one.
+  /// it back for good: you have to be able to set up the next one.
   ChartShows get chartShows =>
       _gaveIn ? ChartShows.everything : settings.fadeChart.showsOn(chorus);
 
@@ -1010,7 +1010,7 @@ class PracticeController extends ChangeNotifier {
   /// Keeps what has just been played: the tempo, and how it was marked.
   ///
   /// A false start isn't practice. Stopping before a bar has gone by is
-  /// someone changing their mind, so it isn't written down — but anything
+  /// someone changing their mind, so it isn't written down; but anything
   /// longer is, marked or not, because the tempo alone is worth keeping.
   void _noteRun(PlayCheck? marking) {
     final ref = _ref;
@@ -1034,7 +1034,7 @@ class PracticeController extends ChangeNotifier {
   void _restartIfPlaying({required Duration delay}) {
     if (!_isPlaying) return;
     // A new tempo, key or loop means a new performance, which starts from
-    // the top of the loop — so a pause can't be carried on from. End it, and
+    // the top of the loop, so a pause can't be carried on from. End it, and
     // Play starts afresh with the change.
     if (_isPaused) {
       stop();

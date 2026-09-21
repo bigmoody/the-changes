@@ -2,7 +2,7 @@
 //
 // The app already knows which chord is sounding and which note it asked you
 // to land on, and it can already hear pitch (that's the tuner). Put the two
-// together and it can tell you whether you found the note — change by
+// together and it can tell you whether you found the note: change by
 // change, and as a score at the end.
 //
 // The microphone hears concert pitch, so the checking is done against the
@@ -14,7 +14,7 @@
 //  • Any octave counts. Landing on the 3rd is landing on the 3rd, whether
 //    you play it under the band or above it.
 //  • A note on the last beat of a chord also counts towards the next one.
-//    Anticipating the change is good playing, not a miss — and the pitch
+//    Anticipating the change is good playing, not a miss. And the pitch
 //    detector is a beat-fraction behind what you played anyway.
 
 import '../music/chord.dart';
@@ -41,7 +41,7 @@ class AimedChord {
   int endBeat;
   final int chorus;
 
-  /// The degrees asked for on this chord — "3", "b7" — as they're written.
+  /// The degrees asked for on this chord ("3", "b7") as they're written.
   final List<String> degrees;
 
   /// Notes heard while it sounded, as pitch classes (0 = C).
@@ -67,8 +67,8 @@ class AimedChord {
 
 /// Marks each change as it goes by: did you land on the note or not?
 ///
-/// It's driven from outside — the practice screen says where the band has
-/// got to, and the microphone says what it heard — so all of this is plain
+/// It's driven from outside (the practice screen says where the band has
+/// got to, and the microphone says what it heard), so all of this is plain
 /// maths that can be tested without either.
 class PlayCheck {
   PlayCheck({required this.tune, required this.target, this.anticipation = 1});

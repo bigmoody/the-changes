@@ -2,7 +2,7 @@
 //
 // Pick a chord and which of its notes to aim at, and each shape is written
 // out on the stave, shown under the fingers, and played. The point of doing
-// it this way round — the same target, five ways in — is that you stop
+// it this way round (the same target, five ways in) is that you stop
 // hearing five licks and start hearing one idea.
 
 import 'package:flutter/material.dart';
@@ -116,7 +116,7 @@ class _EnclosuresScreenState extends State<EnclosuresScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Text(
               'A bebop line rarely walks up to a chord tone and lands on '
-              'it. It goes round it first — a note above, a note below — '
+              'it. It goes round it first (a note above, a note below) '
               'so the note you meant all along arrives sounding '
               'inevitable. Five ways round the same note.',
               style: theme.textTheme.bodyMedium,

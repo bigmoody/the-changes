@@ -13,8 +13,8 @@ import 'chart_instrument_button.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 /// The Settings tab: everything that holds across the whole app, gathered
-/// in one place so the other screens can stay clear. (What to look up —
-/// chord symbols, tones, scales — lives in the Learn tab.)
+/// in one place so the other screens can stay clear. The Learn tab is
+/// where things are looked up: chord symbols, tones, scales.
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
     super.key,

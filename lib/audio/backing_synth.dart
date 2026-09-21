@@ -139,7 +139,7 @@ class BackingBatch {
 
   /// The count-in clicks, then silence for as long as the batch lasts. It's
   /// streamed alongside the band and never loops, so its playing position is
-  /// the clock the app keeps time by — which a tempo ramp would otherwise
+  /// the clock the app keeps time by, which a tempo ramp would otherwise
   /// leave behind.
   final Uint8List clicks;
 
@@ -198,7 +198,7 @@ class RenderedBacking {
 /// comper cannot land in different places. A tempo ramp moves it between
 /// passes rather than inside one, which is what keeps the band together
 /// while it speeds up. Each part still decides for itself whether it is
-/// swinging at all — this is only how far.
+/// swinging at all: this is only how far.
 double swingForPass(BackingRequest request, int firstChorus) =>
     swingAt(tempoForChorus(request, firstChorus));
 
@@ -264,7 +264,7 @@ RenderedBacking renderBacking(BackingRequest request) {
     peak = math.max(peak, sum.abs());
   }
   // The level for the whole performance is set here, from the first batch.
-  // When the choruses differ — a head in two before the solos walk — a later
+  // When the choruses differ (a head in two before the solos walk), a later
   // one can be fuller than this, so leave it a little more room.
   final headroom = request.arrangement.isPlain ? 0.85 : 0.78;
   final gain = peak > 0 ? headroom / peak : 1.0;
@@ -450,7 +450,7 @@ _Parts _renderParts(
         (within * samplesPerBeatOf[chorus]).round();
   }
 
-  // How long a beat lasts where this one falls — a ramp makes it shorter as
+  // How long a beat lasts where this one falls: a ramp makes it shorter as
   // the performance goes on.
   double secondsPerBeatAt(double beat) =>
       samplesPerBeatOf[chorusOf(beat)] / sampleRate;
@@ -480,7 +480,7 @@ _Parts _renderParts(
             .toInt(),
       ),
   ];
-  // Which pass through the form a beat falls in, and which bar of it — the
+  // Which pass through the form a beat falls in, and which bar of it; the
   // arrangement is written in those terms.
   bool sounds(LayOut part, double beat) {
     if (arrangement.isPlain) return true;
@@ -497,7 +497,7 @@ _Parts _renderParts(
     BassStyle.funk => funkBassLine,
     BassStyle.calypso => calypsoBassLine,
   };
-  // In two on the head, walking for the solos — but only where the bassist
+  // In two on the head, walking for the solos, but only where the bassist
   // would be walking to begin with.
   bool inTwo(int chorus) =>
       tune.style.bass == BassStyle.walking &&
@@ -629,8 +629,8 @@ _Parts _renderParts(
         0.5 * velocity * level,
         rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: (beatSeconds * lengthBeats * sampleRate).round(),
-        // A guitarist lets go quickly — the string is damped, not left to
-        // ring like a piano's sustain — but not so fast it clicks.
+        // A guitarist lets go quickly (the string is damped, not left to
+        // ring like a piano's sustain), but not so fast it clicks.
         releaseSamples: (0.1 * sampleRate).round(),
       );
     } else {
@@ -679,7 +679,7 @@ _Parts _renderParts(
           if (!sounds(LayOut.chords, chorusBeat + slotStart + hit.beat)) {
             continue;
           }
-          // A strum: the pick crosses the strings one after another — low to
+          // A strum: the pick crosses the strings one after another, low to
           // high going down, high to low (and quicker) coming up.
           final order = hit.strum == Strum.up
               ? hit.notes.reversed.toList()
@@ -881,7 +881,7 @@ _Parts _renderParts(
   }
 
   // Give the bass some presence. An upright's fundamental is 40–160 Hz,
-  // which a phone speaker or a pair of earbuds barely reproduce at all — so
+  // which a phone speaker or a pair of earbuds barely reproduce at all, so
   // a bass that measures *louder* than the piano can still be inaudible.
   // What you actually hear on a small speaker is the note's harmonics, so
   // that's the range this lifts. It leaves the bottom alone, so it doesn't
@@ -918,7 +918,7 @@ _Parts _renderParts(
 const _drumLevel = 1.7;
 
 /// A drum in a short example: [at] seconds in, how loud, and whether it
-/// is a hard stroke — which changes the tone rather than the level, as it
+/// is a hard stroke, which changes the tone rather than the level, as it
 /// does for the band.
 ///
 /// Off the recorded kit rather than a synthesised tone. Where the thing
@@ -942,7 +942,7 @@ DrumSamples drumIn(SampleBank bank, Drum drum) => switch (drum) {
 };
 
 /// One note of a short example: [pitch] (MIDI) from [start] for [length],
-/// both in seconds, on the piano — or the bass if [bass] is set.
+/// both in seconds, on the piano, or the bass if [bass] is set.
 typedef SnippetNote = ({
   int pitch,
   double start,
@@ -954,7 +954,7 @@ typedef SnippetNote = ({
 /// A few notes on the recorded piano and bass, as a WAV file: what the
 /// chord-tone drills play when you ask to hear a chord. With [guitar], the
 /// piano's notes are played on the guitar instead. With [brightBass], the
-/// bass is given some top end — the string's brightness and bite — for a
+/// bass is given some top end (the string's brightness and bite) for a
 /// bass line heard on its own, which would otherwise be mostly lows a phone
 /// speaker can't play.
 /// How the bass in a snippet is treated.
@@ -967,7 +967,7 @@ enum BassTone {
   /// notes, where the low end muddies them but the bass is not the point.
   tight,
 
-  /// Tightened and then driven, for a bass line heard on its own — which
+  /// Tightened and then driven, for a bass line heard on its own, which
   /// would otherwise be mostly lows a phone can't play. It is loud, so it
   /// is only right when the bass is the exercise.
   bright,
@@ -1050,7 +1050,7 @@ Uint8List renderSnippet(
   if (brightBass) {
     // Set by measurement. The low notes' boom is their 2nd and 3rd
     // overtones piling up between 100 and 250 Hz, so that's cut firmly for
-    // every note — the ear still hears the pitch from the overtones above —
+    // every note (the ear still hears the pitch from the overtones above),
     // leaving the low notes no heavier than the high ones. Saturation then
     // adds overtones for the treble lift to bring out (a plain treble boost
     // only made the pluck spike, turning the notes down), and a second cut
@@ -1116,7 +1116,7 @@ enum ClickOn {
 ///
 /// The click returns exactly where it would have been, so the gap marks
 /// itself: if it comes back where you expected, your time held. Easiest
-/// first — one bar missing in four is a stumble you can recover from; four
+/// first: one bar missing in four is a stumble you can recover from; four
 /// bars off and nothing is holding you up but you.
 enum Dropout {
   none('Off', on: 1, off: 0),
@@ -1145,7 +1145,7 @@ enum Dropout {
 /// on the beats [clickOn] asks for and only in the bars [dropout] leaves in.
 ///
 /// It is a whole number of samples long, so looping it keeps time exactly
-/// however long it runs — which is what makes the silent bars worth
+/// however long it runs, which is what makes the silent bars worth
 /// anything: the click comes back in the right place or not at all.
 Uint8List metronomeLoop({
   required int tempo,

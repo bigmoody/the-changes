@@ -257,7 +257,7 @@ class LibraryStore extends ChangeNotifier {
 
   /// Notes a run at [tune]: how fast it was and how it was marked.
   ///
-  /// A run nobody could learn anything from isn't kept — you start the
+  /// A run nobody could learn anything from isn't kept: you start the
   /// band, change your mind and stop, and that is not practice. With the
   /// microphone off there is nothing to judge that by, so the test is
   /// simply whether anything was marked or the tune was left running.
@@ -353,7 +353,7 @@ class LibraryStore extends ChangeNotifier {
     await _write();
   }
 
-  /// Everything, as it's saved — also what goes into a backup file.
+  /// Everything, as it's saved; also what goes into a backup file.
   /// How [ref] should be played, or null to play it as it was written.
   BandStyle? styleFor(TuneRef ref) => _styles[ref];
 
@@ -394,7 +394,7 @@ class LibraryStore extends ChangeNotifier {
     },
   };
 
-  /// Replaces the lot with what's in [json] — restoring a backup.
+  /// Replaces the lot with what's in [json], restoring a backup.
   Future<void> replaceWith(Map<String, dynamic> json) async {
     _favourites
       ..clear()
@@ -468,15 +468,15 @@ const _particles = {
 /// Credits that are a band rather than a person, and so have no surname to
 /// take: the New Orleans Rhythm Kings are filed under N, not under Kings.
 ///
-/// There's no telling a band from a person by looking — plenty of people
-/// are called King — so the few in the book are simply named here.
+/// There's no telling a band from a person by looking (plenty of people
+/// are called King), so the few in the book are simply named here.
 const _bands = {'new orleans rhythm kings'};
 
 /// The name a composer is filed under: their surname, as a book's index of
 /// composers would have it. Thelonious Monk goes under Monk, not Thelonious.
 ///
-/// Where two are credited, the first one names the entry — Dizzy Gillespie
-/// & Chano Pozo is under Gillespie — because that's the one anybody would
+/// Where two are credited, the first one names the entry (Dizzy Gillespie
+/// & Chano Pozo is under Gillespie) because that's the one anybody would
 /// look for.
 String filedUnder(String? composer) {
   final first = (composer ?? '').split(RegExp(r'\s*[&/]\s*')).first.trim();

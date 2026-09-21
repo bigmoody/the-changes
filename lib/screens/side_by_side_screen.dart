@@ -198,7 +198,7 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
 ///
 /// Every set here is in a key somebody chose for a reason, and "why F?"
 /// is the question the summary line provokes. Folded away by default so
-/// it costs one line rather than a paragraph — the table has been pushed
+/// it costs one line rather than a paragraph; the table has been pushed
 /// off the screen by explanation before now.
 class _WhyTheKey extends StatelessWidget {
   const _WhyTheKey({

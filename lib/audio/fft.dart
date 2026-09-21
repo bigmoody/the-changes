@@ -2,8 +2,8 @@
 // signal.
 //
 // The tuner finds one note by looking for the sound repeating (see
-// pitch_detector.dart). A chord doesn't repeat simply — six strings ringing
-// together have no single period — so naming one means looking at the
+// pitch_detector.dart). A chord doesn't repeat simply (six strings ringing
+// together have no single period), so naming one means looking at the
 // frequencies themselves instead.
 
 import 'dart:math' as math;

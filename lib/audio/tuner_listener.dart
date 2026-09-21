@@ -32,8 +32,8 @@ class TunerListener {
   /// Listening to one player while a band plays underneath them.
   ///
   /// The settings are measured rather than guessed. YIN doesn't care how
-  /// loud a note is — it looks for the sound repeating, which is a shape,
-  /// not a size — so the quiet limit is set by the room, not by the level:
+  /// loud a note is (it looks for the sound repeating, which is a shape,
+  /// not a size), so the quiet limit is set by the room, not by the level:
   /// noise alone never names a note (nought out of fifteen hundred windows
   /// of it), while a note at a hundredth of speaking level is named
   /// perfectly. So the loudness gate is left barely above nothing, and it's
@@ -46,7 +46,7 @@ class TunerListener {
     minClarity: 0.85,
     // From A below the stave up. Lower than that is the bass player's, and
     // through a speaker the microphone would report their walking line as
-    // yours — confidently, and wrongly.
+    // yours: confidently, and wrongly.
     lowestHz: 110,
     // Only a guard against a dead input: quiet playing must get through.
     silence: 0.0002,
@@ -98,7 +98,7 @@ class TunerListener {
   /// Starts listening; [onHeard] is called several times a second.
   ///
   /// With [alongsideMusic] the app keeps playing while it listens, which iOS
-  /// only allows when the session is set up for both at once — otherwise
+  /// only allows when the session is set up for both at once; otherwise
   /// starting the microphone silences the band.
   Future<void> start(
     void Function(Heard) onHeard, {

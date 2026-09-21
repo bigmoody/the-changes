@@ -25,7 +25,7 @@ void main() {
 
   // Everything a player can meet: every chord in every tune, in concert
   // pitch and for B♭ and E♭ instruments, and every chord type the drills
-  // use, in all twelve keys — both as written and without extensions.
+  // use, in all twelve keys, both as written and without extensions.
   final everyChord = <String, Chord>{
     for (final tune in [...standards, ...practiceProgressions])
       for (final semitones in [0, 2, 9])
@@ -62,7 +62,7 @@ void main() {
       if (frets.contains(0)) {
         expect(highest, lessThanOrEqualTo(3), reason: why);
       }
-      // Four fingers, one of which may barre the lowest fret — but a barre
+      // Four fingers, one of which may barre the lowest fret, but a barre
       // can't leave a string under it muted or open.
       if (fretted.length > 4) {
         expect(

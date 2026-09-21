@@ -51,7 +51,7 @@ void main() {
 
     test('a note that is held reads the same twice running', () {
       // Autumn Leaves' Cm7 F7: the 7th of Cm7 is B♭, which is the 3rd of
-      // F7 — the line stands still while the chord changes under it.
+      // F7; the line stands still while the chord changes under it.
       final tones = _lines(_standard('Autumn Leaves'), ChordAid.guideTones);
       final first = tones[0]!.split(' ');
       final second = tones[1]!.split(' ');

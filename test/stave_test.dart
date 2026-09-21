@@ -31,7 +31,7 @@ void main() {
 
     test('flats and sharps as the chord spells them', () {
       expect(accidentals(chordOnStave(Chord.parse('Ebm7'))), [-1, -1, -1, -1]);
-      // B°7: B D F A♭ — a flat on the A, not a sharp on G.
+      // B°7: B D F A♭; a flat on the A, not a sharp on G.
       final dim = chordOnStave(Chord.parse('Bo7'));
       expect(accidentals(dim), [0, 0, 0, -1]);
       // F♯7♯9's 9th is G𝄪: a double sharp.

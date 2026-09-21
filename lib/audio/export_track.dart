@@ -6,7 +6,7 @@
 // kept apart for the mixer.
 //
 // A take can be laid over the top, which gives you what you played with the
-// band around it as a single file — the thing you'd send someone.
+// band around it as a single file: the thing you'd send someone.
 
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -86,7 +86,7 @@ int samplesAtBeat(BackingRequest request, int beat, {bool withCountIn = true}) {
 /// The arrangement must say how many choruses; an export of something that
 /// keeps going for ever is not a file.
 ///
-/// With [take] — raw 16-bit samples from a recording — your playing is
+/// With [take] (raw 16-bit samples from a recording), your playing is
 /// mixed in [takeLeadIn] seconds from its own start, which is where the
 /// band came in when it was recorded.
 Uint8List exportTrack(

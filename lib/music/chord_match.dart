@@ -3,7 +3,7 @@
 // Two chords are often made of exactly the same notes: C6 and Am7 are both
 // C, E, G and A. What tells them apart is which note is underneath, so the
 // bass note counts for a lot here. Where it can't decide, the plainer
-// reading wins — somebody strumming C, E and G has played a C, not an
+// reading wins: somebody strumming C, E and G has played a C, not an
 // Am♭6 with notes missing.
 
 import 'chord.dart';
@@ -18,7 +18,7 @@ class ChordGuess {
   /// for, and how much of the chord was played.
   final double score;
 
-  /// The note underneath, when it isn't the root — the "E" of "C/E".
+  /// The note underneath, when it isn't the root: the "E" of "C/E".
   final String? bass;
 
   String get display => bass == null ? chord.display : '${chord.display}/$bass';
@@ -30,8 +30,8 @@ const _rootNames = [
   'F#', 'G', 'Ab', 'A', 'Bb', 'B',
 ];
 
-/// How ordinary each kind of chord is. This only breaks ties — it is far
-/// too small to name something as a triad when the 7th is plainly there —
+/// How ordinary each kind of chord is. This only breaks ties (it is far
+/// too small to name something as a triad when the 7th is plainly there),
 /// but it stops a plain major chord being reported as one of the dozen
 /// rarer chords that happen to contain those three notes.
 double _ordinary(ChordQuality quality) => switch (quality.symbols.first) {
@@ -45,7 +45,7 @@ double _ordinary(ChordQuality quality) => switch (quality.symbols.first) {
 /// Below this a note counts as not played at all.
 const _quiet = 0.04;
 
-/// What [chroma] might be — best first. [chroma] holds how much of each of
+/// What [chroma] might be, best first. [chroma] holds how much of each of
 /// the twelve notes was heard (index 0 is C); [bass] is the pitch class of
 /// the lowest note, which decides between chords made of the same notes.
 List<ChordGuess> namesFor(List<double> chroma, {int? bass, int most = 4}) {
@@ -70,7 +70,7 @@ List<ChordGuess> namesFor(List<double> chroma, {int? bass, int most = 4}) {
         }
       }
       // A chord with notes nobody played is a worse reading than a smaller
-      // one that fits — which is what keeps C from being read as C6.
+      // one that fits, which is what keeps C from being read as C6.
       final missing = template.where((pc) => chroma[pc] <= _quiet).length;
       var score = present - extra - 0.1 * missing;
 

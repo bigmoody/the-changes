@@ -7,7 +7,7 @@
 //
 // So it goes, a rung at a time, while the band carries on. First the
 // chords, which is the memory test. Then the bars as well, which is the
-// harder one — keeping your place in the form with nothing to look at is
+// harder one: keeping your place in the form with nothing to look at is
 // a separate skill from knowing the changes, and it is the one that comes
 // apart first when you are nervous.
 //
@@ -20,7 +20,7 @@ enum ChartShows {
   everything,
 
   /// The bars, their numbers and the rehearsal letters, with the bar being
-  /// played lit up — but no chords in them. You can see where you are; what
+  /// played lit up, but no chords in them. You can see where you are; what
   /// is there is yours to remember.
   whereYouAre,
 
@@ -65,7 +65,7 @@ enum FadeChart {
   /// What the chart shows on [chorus], counting choruses from 1.
   ///
   /// A null chorus is the band stopped or still counting in, and then the
-  /// chart is always there — you cannot start a run you cannot set up.
+  /// chart is always there: you cannot start a run you cannot set up.
   ChartShows showsOn(int? chorus) {
     if (!isOn || chorus == null) return ChartShows.everything;
     return switch ((chorus - 1) ~/ choruses) {

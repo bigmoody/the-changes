@@ -80,7 +80,7 @@ void main() {
     test('and they are swapped over, not merely equal', () {
       // If the pair were the same way up it would be the same chord. The
       // ♭7 of one is the 3rd of the other, and here the F is not even
-      // respelled — it is the same letter doing both jobs.
+      // respelled; it is the same letter doing both jobs.
       final g = guideTonesThrough([_c('G7')]).single;
       final sub = guideTonesThrough([_c('D♭7')]).single;
       expect(g.lower, 'F', reason: "G7's ♭7");

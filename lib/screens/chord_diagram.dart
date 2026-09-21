@@ -66,7 +66,7 @@ enum KeyRole {
 }
 
 /// The chord in root position, from the bottom up, as semitones from the C
-/// at or below the lowest note. G7 is G B D F — never D F G B, which reads
+/// at or below the lowest note. G7 is G B D F, never D F G B, which reads
 /// as an inversion. Extensions stack above the 7th; a slash bass that isn't
 /// the root goes underneath.
 List<({int semitone, KeyRole role})> keyboardNotes(Chord chord) {
@@ -123,7 +123,7 @@ List<int> _whiteKeysFor(List<({int semitone, KeyRole role})> notes) {
   return whites;
 }
 
-/// A stretch of keyboard with the chord marked in root position — as many
+/// A stretch of keyboard with the chord marked in root position: as many
 /// keys as the chord needs, at least an octave.
 class KeyboardDiagram extends StatelessWidget {
   const KeyboardDiagram({super.key, required this.chord});
@@ -155,8 +155,8 @@ class KeyboardDiagram extends StatelessWidget {
 }
 
 /// A scale on the keys, from its root up to the octave: every note marked,
-/// the roots with a hole through them, and its [colour] notes — the ones
-/// that give it its sound — as rings.
+/// the roots with a hole through them, and its [colour] notes (the ones
+/// that give it its sound) as rings.
 class ScaleKeyboard extends StatelessWidget {
   const ScaleKeyboard({
     super.key,
@@ -310,7 +310,7 @@ class GuitarDiagram extends StatelessWidget {
 
   final Chord chord;
 
-  /// A shape to draw instead of the app's own grip for the chord — one of
+  /// A shape to draw instead of the app's own grip for the chord, one of
   /// the many in the chord dictionary.
   final GuitarVoicing? voicing;
 
@@ -634,7 +634,7 @@ class _BassPainter extends CustomPainter {
 
 /// An arpeggio on the guitar or bass in one position: a chord box a few
 /// frets tall, a line per string, with
-/// every note of the [shape] marked by the degree it is — the roots filled
+/// every note of the [shape] marked by the degree it is, the roots filled
 /// in, so the shape can be found from them.
 class ArpeggioDiagram extends StatelessWidget {
   const ArpeggioDiagram({super.key, required this.shape});

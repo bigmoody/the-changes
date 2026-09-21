@@ -1,7 +1,7 @@
 // A figure for the reading guide: any music symbols, placed on a stave or
 // standing on their own, with a caption under each.
 //
-// [Stave] next door draws notes — chords and scales — and knows how to
+// [Stave] next door draws notes (chords and scales) and knows how to
 // space them. This draws *notation*: clefs, rests, time signatures, bar
 // lines, dynamics, a beamed pair of quavers. It takes the symbols already
 // placed, because a guide wants each one exactly where the page puts it.
@@ -88,9 +88,9 @@ abstract final class Smufl {
 ///
 /// [scale] is how big to draw it against the stave, where 1 is the font's
 /// own idea. Petaluma draws a few symbols for somewhere other than a single
-/// stave — a time signature digit is four spaces tall on its own — and this
+/// stave (a time signature digit is four spaces tall on its own) and this
 /// is what brings those back down.
-/// [dx] nudges it right of the column, in spaces — what an augmentation
+/// [dx] nudges it right of the column, in spaces: what an augmentation
 /// dot needs, sitting after its note but in the space above it.
 typedef Sym = ({
   String code,
@@ -117,8 +117,8 @@ Sym sym(
   dx: dx,
 );
 
-/// Symbols at the same place along the stave — a time signature's two
-/// digits, or a note with a dot beside it — with a caption underneath.
+/// Symbols at the same place along the stave (a time signature's two
+/// digits, or a note with a dot beside it) with a caption underneath.
 class StaveColumn {
   const StaveColumn(
     List<Sym> symbols, {
@@ -159,7 +159,7 @@ class StaveColumn {
   /// The room after this column, in spaces.
   final double gap;
 
-  /// Draw a stem up from the first symbol — for noteheads that a beam
+  /// Draw a stem up from the first symbol, for noteheads that a beam
   /// joins, which the font has no single symbol for.
   final bool stem;
 }
@@ -173,7 +173,7 @@ typedef Beam = ({int from, int to, int count});
 typedef Tie = ({int from, int to});
 
 /// The number over a group, saying how many are being played in the time of
-/// fewer — a 3 over three quavers makes them a triplet.
+/// fewer: a 3 over three quavers makes them a triplet.
 typedef Tuplet = ({int from, int to, String label});
 
 /// A short stave with [columns] of symbols on it.
@@ -194,14 +194,14 @@ class StaveFigure extends StatelessWidget {
 
   final List<StaveColumn> columns;
 
-  /// Drawn at the front, and it sets nothing else — the symbols are already
+  /// Drawn at the front, and it sets nothing else; the symbols are already
   /// placed. Null leaves the stave bare.
   final Clef? clef;
 
   /// The distance between two stave lines.
   final double space;
 
-  /// Whether to draw the five lines. Off, the symbols stand on their own —
+  /// Whether to draw the five lines. Off, the symbols stand on their own,
   /// which is how a note value or a dynamic is usually shown.
   final bool lines;
 
@@ -483,7 +483,7 @@ class _FigurePainter extends CustomPainter {
       final from = heads[group.from];
       final to = heads[group.to];
       if (from != null && to != null) {
-        // Over a beamed group the number stands on its own — engravers
+        // Over a beamed group the number stands on its own: engravers
         // leave the bracket off when the beam already shows the group.
         final number = _Glyph(
           [
@@ -567,7 +567,7 @@ class _FigurePainter extends CustomPainter {
       !listEquals(old.ties, ties) ||
       // What is actually written on the stave. This used to be left out,
       // on the assumption that changing it would change the figure's
-      // size — and it usually does, which is why it went unnoticed. But
+      // size, and it usually does, which is why it went unnoticed. But
       // marking a different note of the same run, or swapping a glyph
       // for one the same width, changes nothing about the layout and
       // everything about the picture, and the old one stayed on screen.

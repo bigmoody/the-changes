@@ -1,6 +1,6 @@
 // Guide-tone lines: the exercise.
 //
-// Two notes — each chord's 3rd and 7th — held through a progression while
+// Two notes (each chord's 3rd and 7th) held through a progression while
 // everything else changes underneath. The lesson is how little they move,
 // so the movement is what's written beside every chord: held, or a
 // semitone, or a tone. Play the two lines and you have played the changes.
@@ -137,7 +137,7 @@ class _GuideTonesScreenState extends State<GuideTonesScreen> {
         [
           for (final (i, at) in voiced.indexed) ...[
             // The root underneath, so the lines are heard against the
-            // change rather than on their own — and quiet, because it is
+            // change rather than on their own, and quiet, because it is
             // the thing they are heard against and not the exercise.
             (
               pitch: 40 + (at.tones.chord.root - 40) % 12,
@@ -186,7 +186,7 @@ class _GuideTonesScreenState extends State<GuideTonesScreen> {
               "A chord's 3rd says whether it is major or minor, and its 7th "
               'says what kind of 7th it is. Leave the root and the 5th to '
               'the bass player and those two notes are the chord. Hold them '
-              'through a progression and they barely move — which is the '
+              'through a progression and they barely move, which is the '
               'whole lesson.',
               style: theme.textTheme.bodyMedium,
             ),

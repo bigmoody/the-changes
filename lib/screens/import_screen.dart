@@ -1,5 +1,5 @@
-// Bringing charts in from iReal Pro: paste a link — one song or a whole
-// playlist — see what's in it, choose, and they're saved to My Changes,
+// Bringing charts in from iReal Pro: paste a link, one song or a whole
+// playlist, see what's in it, choose, and they're saved to My Changes,
 // to play and edit like any of your own.
 //
 // It reads only what the player pastes, on the phone: nothing is
@@ -114,7 +114,7 @@ class _ImportScreenState extends State<ImportScreen> {
           const SizedBox(height: 16),
           if (_text.text.trim().isNotEmpty && _songs.isEmpty)
             Text(
-              'No iReal Pro songs found in that. Paste the whole link — it '
+              'No iReal Pro songs found in that. Paste the whole link: it '
               'starts irealb://',
               style: muted,
             ),

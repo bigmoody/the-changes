@@ -1,22 +1,22 @@
 // Swing: how late the "and" is, and why that changes with the tempo.
 //
 // Everybody is told jazz eighths are long-short and most are then told
-// they are triplets — the first note taking two thirds of the beat and
+// they are triplets: the first note taking two thirds of the beat and
 // the second the last third. That is true at about one tempo. At a
 // ballad the long note is longer than that, closer to a dotted quaver,
 // and at a burning tempo the two are near enough even and what makes it
 // swing is the accent and the articulation rather than the clock.
 //
 // The reason is worth knowing because it explains the whole curve: the
-// short note stays about the same length whatever the tempo — roughly a
+// short note stays about the same length whatever the tempo, roughly a
 // tenth of a second, about as fast as a hand comfortably plays a note
 // and means it. The beat is what shrinks. So as the tempo climbs the
 // short note takes up more and more of the beat until there is nothing
 // left to swing, and the pair is straight.
 //
 // The band plays to this too. Every part that puts a note between the
-// beats — the ride, the bass's ghosts and pushes, the comper, the
-// arpeggios — asks [swingAt] rather than assuming two thirds, so what
+// beats (the ride, the bass's ghosts and pushes, the comper, the
+// arpeggios) asks [swingAt] rather than assuming two thirds, so what
 // the Swing screen teaches is what a tune at that tempo actually does.
 
 import 'dart:math' as math;
@@ -24,14 +24,14 @@ import 'dart:math' as math;
 /// The short half of a swung pair, in seconds.
 ///
 /// Near enough constant across tempos, which is the fact the whole of
-/// this rests on. It is not a rule anybody plays to — it is what falls
+/// this rests on. It is not a rule anybody plays to; it is what falls
 /// out of measuring people who swing.
 const shortEighth = 0.1;
 
 /// Even eighths: the "and" exactly halfway, which is no swing at all.
 const straight = 0.5;
 
-/// The "and" two thirds of the way through the beat — 2 : 1, the triplet
+/// The "and" two thirds of the way through the beat: 2 : 1, the triplet
 /// everybody is taught, and about right at a medium-up tempo.
 const tripletSwing = 2 / 3;
 
@@ -124,7 +124,7 @@ const swingTempos = <SwingTempo>[
     tempo: 200,
     name: 'Medium Up',
     about:
-        'Two to one, near enough — the triplet everybody is taught. It is '
+        'Two to one, near enough: the triplet everybody is taught. It is '
         'worth knowing that the rule you were given is a snapshot of one '
         'tempo rather than a description of swing.',
   ),
@@ -141,7 +141,7 @@ const swingTempos = <SwingTempo>[
     name: 'Burning',
     about:
         'Straight, and it still swings. At this tempo it is the accent '
-        'and the articulation carrying it — the weight on the offbeats, '
+        'and the articulation carrying it: the weight on the offbeats, '
         'and the notes joined rather than separated. Nothing to do with '
         'the clock at all.',
   ),

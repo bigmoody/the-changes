@@ -33,7 +33,7 @@ class StartingOrderScreen extends StatelessWidget {
                 'have never played any of it. This is an order to learn in '
                 'instead, and a line on each tune saying what it is there '
                 'to teach. Nothing is locked and nothing has to be '
-                'finished — it is a suggestion, and the whole book is '
+                'finished: it is a suggestion, and the whole book is '
                 'still where it was.',
                 style: theme.textTheme.bodyMedium,
               ),

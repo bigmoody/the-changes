@@ -1,6 +1,6 @@
 // A progression someone has written in the app, and how it's saved.
 //
-// It's kept as plain text — each bar's chords as the player typed them — so
+// It's kept as plain text (each bar's chords as the player typed them) so
 // it can be saved as JSON and edited again exactly as it was written. It
 // becomes a [Tune] only when it's played.
 
@@ -37,7 +37,7 @@ class UserProgression {
   );
 
   /// A tune written out as a progression, so one of the book's standards
-  /// can be handed to anything that works on the player's own charts — the
+  /// can be handed to anything that works on the player's own charts: the
   /// editor, or an export.
   ///
   /// A [Tune] holds its bars as they're played, with repeated sections
@@ -101,7 +101,7 @@ class UserProgression {
   final String id;
   String title;
 
-  /// Who wrote it, if anyone's named — an imported tune's composer.
+  /// Who wrote it, if anyone's named: an imported tune's composer.
   String? composer;
 
   /// Beats in a bar: 4 for 4/4, 3 for a waltz.
@@ -134,8 +134,8 @@ class UserProgression {
   Map<int, int> repeats;
 
   /// Bars that are a 1st or 2nd ending, keyed by bar: {6: 1, 7: 1, 8: 2,
-  /// 9: 2}. Written as on a lead sheet — the section, its 1st ending, then
-  /// its 2nd — and played twice: through the 1st ending, then the 2nd.
+  /// 9: 2}. Written as on a lead sheet (the section, its 1st ending, then
+  /// its 2nd) and played twice: through the 1st ending, then the 2nd.
   Map<int, int> endings;
 
   /// The letters a section can have.
@@ -180,7 +180,7 @@ class UserProgression {
   }
 
   /// Whether the section starting at bar [start] has both a 1st and a 2nd
-  /// ending — and so is played twice, one ending each time.
+  /// ending, and so is played twice, one ending each time.
   bool hasEndings(int start) {
     final marks = {for (final i in _barsOfSection(start)) endings[i]};
     return marks.contains(1) && marks.contains(2);
@@ -273,7 +273,7 @@ class UserProgression {
   };
 
   /// The chord symbols in one bar's text. Spaces around a slash are
-  /// allowed — "Fmaj7 / C" is one chord, Fmaj7 over C.
+  /// allowed: "Fmaj7 / C" is one chord, Fmaj7 over C.
   static List<String> symbolsIn(String bar) => bar
       .trim()
       .replaceAll(RegExp(r'\s*/\s*'), '/')
@@ -305,7 +305,7 @@ class UserProgression {
 
   String get displayTitle => title.trim().isEmpty ? 'Untitled' : title.trim();
 
-  /// Its genres — the groove's and any it's tagged with — without building
+  /// Its genres (the groove's and any it's tagged with), without building
   /// the whole tune, for filtering a long list quickly.
   Set<Genre> get genres => {Genre.ofFeel(style.drums), ...tags};
 
@@ -323,7 +323,7 @@ class UserProgression {
   );
 
   /// Every bar as the band plays it, repeated sections written out each
-  /// time and each time marked with its letter — which is how the chart
+  /// time and each time marked with its letter, which is how the chart
   /// knows to fold them back into one, marked ×2 or with its 1st and 2nd
   /// endings.
   List<String> _playedBars() {
@@ -366,7 +366,7 @@ class UserProgression {
 
   /// A sensible key for [bars]. Progressions come home towards the end, so
   /// the last home-type chord (Δ7, 6, m6 …) names the key: a ii–V–I on to
-  /// CΔ7 is in C, though it starts on Dm7 — even with a turnaround after
+  /// CΔ7 is in C, though it starts on Dm7, even with a turnaround after
   /// it. With no home chord at all (a blues, a vamp), the first chord does.
   static String guessKey(List<String> bars) {
     final chords = [

@@ -1,8 +1,8 @@
 // The stage: the chart and nothing else.
 //
 // A phone on a stand, read from a metre away, with an instrument in your
-// hands. Everything you'd tap while working on a tune — the mixer, the
-// arrangement, the loop, the transposition — is settled before you get
+// hands. Everything you'd tap while working on a tune (the mixer, the
+// arrangement, the loop, the transposition) is settled before you get
 // here, so none of it is on screen. What's left is the chart, as big as
 // the screen can draw it, and a way to start and stop.
 //
@@ -12,7 +12,7 @@
 // A tap anywhere on the chart starts or stops it, because reaching for a
 // small button with a horn in your mouth is the thing this view is for.
 // That's also why a tap here doesn't set a loop the way it does while
-// you're practising — nobody wants to change what the band is playing by
+// you're practising: nobody wants to change what the band is playing by
 // touching the screen to get it going.
 
 import 'package:flutter/material.dart';

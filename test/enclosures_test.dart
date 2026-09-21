@@ -169,7 +169,7 @@ void _screenTests() {
 
   testWidgets('it aims at a note the chord has actually got', (tester) async {
     // The complaint this guards against: it opened on a Dm7 aiming at "the
-    // 3", and wrote F♯ — a note that chord hasn't got.
+    // 3", and wrote F♯, a note that chord hasn't got.
     await open(tester);
     expect(find.textContaining('Dm7'), findsWidgets);
     expect(find.textContaining('F♯'), findsNothing);

@@ -95,7 +95,7 @@ class _BebopScalesScreenState extends State<BebopScalesScreen> {
               'A seven-note scale run in quavers takes a bar and an eighth '
               'to come round, so after one bar the beats stop landing on '
               'chord tones. Put one note in and a bar of quavers is exactly '
-              'an octave — and every beat lands on a chord tone for as long '
+              'an octave, and every beat lands on a chord tone for as long '
               'as you keep going. That is the whole trick.',
               style: theme.textTheme.bodyMedium,
             ),

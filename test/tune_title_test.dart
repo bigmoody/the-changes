@@ -20,7 +20,7 @@ import 'package:play_along/theme.dart';
 
 /// The real hand lettering, loaded so the title is measured in the font it
 /// is actually drawn in. A widget test otherwise draws every character as a
-/// full square, which is far wider than the letters are — wide enough to
+/// full square, which is far wider than the letters are, wide enough to
 /// make a title look as though it cannot possibly fit.
 Future<void> _loadLettering() async {
   var directory = File(Platform.resolvedExecutable).parent;

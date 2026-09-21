@@ -3,9 +3,9 @@
 //
 // The app was already working all of this out and throwing it away. It
 // knew the tempo, and when the microphone was on it marked every change
-// and produced a score — and then the screen closed and none of it was
-// kept. So the one question a practising musician actually asks — am I
-// getting anywhere, and what do I play next — the app couldn't answer,
+// and produced a score, and then the screen closed and none of it was
+// kept. So the one question a practising musician actually asks (am I
+// getting anywhere, and what do I play next), the app couldn't answer,
 // and the player was left keeping it on paper.
 //
 // The rules live here, away from the storage, because they are the part
@@ -15,7 +15,7 @@
 /// One run at a tune: when it was, how fast, and how it was marked.
 ///
 /// [asked] is nought when the microphone wasn't listening. That is still a
-/// run — it says you played the tune, and at what tempo — it just isn't a
+/// run: it says you played the tune, and at what tempo. It just isn't a
 /// verdict on how it went.
 typedef Run = ({DateTime at, int tempo, int asked, int hits});
 

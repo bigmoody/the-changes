@@ -1,8 +1,8 @@
 // Every sheet on the practice screen has to be closable.
 //
 // The Arrangement sheet grew long enough to fill the screen, which left no
-// barrier to tap and nothing to drag — dragging its contents only scrolled
-// them — so there was no way out of it. These check each sheet on a small
+// barrier to tap and nothing to drag (dragging its contents only scrolled
+// them), so there was no way out of it. These check each sheet on a small
 // phone with large text, where they are at their tallest.
 
 import 'package:flutter/material.dart';
@@ -36,7 +36,7 @@ Future<void> _open(
     MaterialApp(
       theme: appTheme(Brightness.light, fontFamily: 'Roboto'),
       // The text size has to go on in builder, not around home. A sheet is
-      // pushed onto the Navigator, which sits above home — so a MediaQuery
+      // pushed onto the Navigator, which sits above home, so a MediaQuery
       // in there never reaches it, and these were all quietly running at
       // the ordinary size however large a scale they asked for.
       //

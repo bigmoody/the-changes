@@ -1,12 +1,12 @@
-// Every way to play a chord on the guitar — the chord dictionary.
+// Every way to play a chord on the guitar: the chord dictionary.
 //
 // The fretboard is searched position by position rather than looked up in a
 // table, so any chord the app knows has shapes. What makes a shape real
 // rather than merely correct is the rules: a hand spans four frets, open
 // strings belong to shapes at the nut, four fingers (a barre counts as
 // one), the strings that sound run together, and the notes that give the
-// chord its name — the 3rd, the 7th, any altered 5th, and the extension
-// it's named after — are all there.
+// chord its name (the 3rd, the 7th, any altered 5th, and the extension
+// it's named after) are all there.
 
 import 'chord.dart';
 import 'guitar_voicing.dart';
@@ -161,7 +161,7 @@ int _fingers(GuitarVoicing voicing) {
 }
 
 /// The barre, if the first finger lies across the lowest fret. Strings
-/// under it must be either fretted there or higher up — a barre can't cover
+/// under it must be either fretted there or higher up: a barre can't cover
 /// a string that has to stay open or silent inside it.
 ({int fret, int from, int to})? _barreOf(List<int?> frets) {
   final fretted = [
@@ -193,7 +193,7 @@ String bassDegreeOf(Chord chord, GuitarVoicing voicing) {
   return prettyDegree('1');
 }
 
-/// The shape that best matches [pitches] — what somebody actually played,
+/// The shape that best matches [pitches]: what somebody actually played,
 /// rather than a way they might have. Shapes are compared by the notes they
 /// sound: the one sharing the most of them, and closest in size, wins.
 GuitarVoicing? shapeLike(Chord chord, List<int> pitches) {

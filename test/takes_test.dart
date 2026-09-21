@@ -238,7 +238,7 @@ void main() {
         await controller.setTakesWithBand(false);
         await controller.playTake(take);
 
-        // The band is still written — it's what the chart follows — but
+        // The band is still written (it's what the chart follows), but
         // nothing of it is heard.
         expect(player.request, isNotNull);
         expect(player.alongside, isNotNull);
@@ -383,7 +383,7 @@ void main() {
     });
 
     test('a take exports at its own length, not the arrangement\'s', () {
-      // Blue Bossa is sixteen bars of four — 64 beats — in two eight-bar
+      // Blue Bossa is sixteen bars of four (64 beats) in two eight-bar
       // sections. Somebody who played 20 seconds at 120 has got 40 beats
       // in, which is into the second half, so the band runs to the end of
       // it: 64 beats, 32 seconds.

@@ -2,8 +2,8 @@
 // called, how long each one lasts, the rests, and the rest of the marks on
 // the page.
 //
-// The app's own charts write none of this pitch — that's the point of a
-// chord chart — so this page is here for when you meet a written part, or
+// The app's own charts write none of this pitch (that's the point of a
+// chord chart) so this page is here for when you meet a written part, or
 // want to know what the dots under the chords in the head actually say.
 
 import 'package:flutter/material.dart';
@@ -128,7 +128,7 @@ class _ReadingMusicScreenState extends State<ReadingMusicScreen> {
 
 /// The directory at the top of the guide. It's a long page and most of the
 /// time you've come to look one thing up, so the whole of it is a tap away
-/// from here — and from the button in the bar, once you're past it.
+/// from here, and from the button in the bar, once you're past it.
 class _Contents extends StatelessWidget {
   const _Contents({required this.onGoTo});
 
@@ -187,7 +187,7 @@ class _TheStave extends StatelessWidget {
       children: [
         _Prose(
           'Five lines with four spaces between them. Up the page is up in '
-          'pitch, and a note sits either on a line or in a space — so going '
+          'pitch, and a note sits either on a line or in a space, so going '
           'up one note at a time alternates between them, line, space, '
           'line, space.',
         ),
@@ -345,7 +345,7 @@ class _LinesAndSpaces extends StatelessWidget {
       children: [
         const _Prose(
           'In the treble clef the lines going up are E G B D F, and the four '
-          'spaces between them spell F A C E — which is the one everybody '
+          'spaces between them spell F A C E, which is the one everybody '
           'remembers.',
         ),
         _Panel(
@@ -397,7 +397,7 @@ class _MiddleC extends StatelessWidget {
       children: [
         const _Prose(
           'When a note falls off the end of the stave it gets a short line '
-          'of its own to sit on — a ledger line — and they carry on one at '
+          'of its own to sit on (a ledger line) and they carry on one at '
           'a time as far as the music needs.',
         ),
         const _Prose(
@@ -538,7 +538,7 @@ class _NoteValues extends StatelessWidget {
         ),
         const _Prose(
           'The beats here are counted in 4/4, where the crotchet gets the '
-          'beat — which is nearly everything you’ll play.',
+          'beat, which is nearly everything you’ll play.',
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -580,7 +580,7 @@ class _NoteValues extends StatelessWidget {
         ),
         const _Prose(
           'A semibreve rest also means a whole bar’s rest whatever the '
-          'time signature — the one rest whose length depends on where it '
+          'time signature, the one rest whose length depends on where it '
           'is.',
         ),
         const _Prose(
@@ -681,7 +681,7 @@ class _BeamsDotsAndTies extends StatelessWidget {
         const _Prose(
           'Quavers and anything shorter are usually joined up with beams '
           'rather than drawn with flags. It is the same note either way, and '
-          'the number of beams is the number of flags — so two beams means '
+          'the number of beams is the number of flags, so two beams means '
           'semiquavers. Beams are drawn to show the beat, which is most of '
           'why they help.',
         ),
@@ -807,7 +807,7 @@ class _Accidentals extends StatelessWidget {
         ),
         _Prose(
           'The accidental goes before the note, and it holds for the rest of '
-          'that bar — on that line or space only, not on the same letter an '
+          'that bar, on that line or space only, not on the same letter an '
           'octave away. The next bar line clears it.',
         ),
       ],
@@ -852,7 +852,7 @@ class _KeySignatures extends StatelessWidget {
         ),
         const _Prose(
           'They are always added in the same order, and they are always '
-          'drawn in the same places — a signature has to be readable at a '
+          'drawn in the same places: a signature has to be readable at a '
           'glance, so it never gets rearranged.',
         ),
         _Panel(
@@ -872,7 +872,7 @@ class _KeySignatures extends StatelessWidget {
         const _Prose(
           'To read one: with sharps, the last one is a semitone below the '
           'key, so go up one letter from it. With flats, the second to last '
-          'flat names the key — and one flat on its own is F.',
+          'flat names the key, and one flat on its own is F.',
         ),
         _Panel(
           wraps: true,
@@ -893,7 +893,7 @@ class _KeySignatures extends StatelessWidget {
         const _Prose(
           'The bass clef uses the same shapes one line lower. Horn and sax '
           'parts are written in a different key from the one the band is '
-          'in — which is what the chart’s instrument setting is for.',
+          'in, which is what the chart’s instrument setting is for.',
         ),
       ],
     );
@@ -937,7 +937,7 @@ class _TimeSignatures extends StatelessWidget {
         ),
         const _Prose(
           'Two of them are written as letters instead. C is 4/4, and a C '
-          'with a line through it is 2/2 — cut time, counted in two. The '
+          'with a line through it is 2/2: cut time, counted in two. The '
           'notes are the same; it is telling you to feel it twice as fast.',
         ),
         _Panel(
@@ -961,7 +961,7 @@ class _TimeSignatures extends StatelessWidget {
         ),
         const _Prose(
           'Nearly every standard is in 4/4. A handful are waltzes in 3/4, '
-          'and a few are written in 12/8 — four beats with three quavers in '
+          'and a few are written in 12/8: four beats with three quavers in '
           'each, which is a swung feel written out.',
         ),
       ],
@@ -1077,7 +1077,7 @@ class _OtherMarks extends StatelessWidget {
       children: [
         _Prose(
           'How loud: p is quiet and f is loud, m in front of either softens '
-          'it, and doubling the letter goes further — pp is very quiet, ff '
+          'it, and doubling the letter goes further: pp is very quiet, ff '
           'very loud. A long wedge opening out means get louder, and closing '
           'means get quieter.',
         ),
@@ -1254,7 +1254,7 @@ class _Panel extends StatelessWidget {
 }
 
 /// A way of remembering a figure, with the letters that are the point of it
-/// picked out — in the colour of the notes they belong to on the stave, so
+/// picked out, in the colour of the notes they belong to on the stave, so
 /// it's plain which is which.
 class _Mnemonic extends StatelessWidget {
   const _Mnemonic({required this.phrase, this.label, this.accent = false});

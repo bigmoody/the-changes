@@ -13,7 +13,7 @@ import 'chord_tones_reference_screen.dart';
 import 'stave.dart';
 
 /// Every mode, in any key: its notes under their degrees, the chord it goes
-/// with, the notes that give it its sound, and where it sits on the keys —
+/// with, the notes that give it its sound, and where it sits on the keys,
 /// each one to hear, up and down.
 ///
 /// For a B♭, E♭ or F instrument the keys are the ones you read: each card
@@ -38,7 +38,7 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
   /// The family shown, or null for every mode.
   ScaleFamily? _family;
 
-  /// Which clef the modes are written in — bass players read their own.
+  /// Which clef the modes are written in: bass players read their own.
   late var _clef = widget.settings.diagram == ChordDiagram.bass
       ? Clef.bass
       : Clef.treble;
@@ -67,7 +67,7 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
     final bank = widget.player.samples;
     if (bank == null) return;
     final chord = mode.chordOn(_concert(_root));
-    // In bass clef it's played an octave down, roughly where it's written —
+    // In bass clef it's played an octave down, roughly where it's written,
     // but on the piano, not the bass. Down on the recorded bass it turned
     // into a rumble: two octaves below this the notes are under 70 Hz, and
     // a phone can't reproduce them, so all that's left is the thud of the

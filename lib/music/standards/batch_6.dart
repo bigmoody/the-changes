@@ -1,4 +1,4 @@
-// Bebop, batch 6: Parker, Gillespie and the bebop generation — the blues
+// Bebop, batch 6: Parker, Gillespie and the bebop generation, the blues
 // and rhythm-changes contrafacts that a bebop set is built from. See
 // tune_library.dart for what these charts contain (chord changes, form and
 // titles only) and why.

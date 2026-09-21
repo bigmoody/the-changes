@@ -1,5 +1,5 @@
 // The reading guide draws music symbols by their code points, and a wrong
-// one doesn't fail — it draws nothing at all, or a box. So as well as
+// one doesn't fail; it draws nothing at all, or a box. So as well as
 // checking the page holds together, this reads the font itself and makes
 // sure every symbol the guide asks for is actually in it.
 
@@ -312,7 +312,7 @@ void main() {
           expect(
             word[0],
             word[0].toUpperCase(),
-            reason: '"$heading" — "$word" is not capitalised',
+            reason: '"$heading": "$word" is not capitalised',
           );
         }
       }
@@ -381,7 +381,7 @@ List<String> _headingsIn(File source) {
 }
 
 /// The Unicode code points an OpenType font covers, read out of its `cmap`
-/// table. Only the two subtable formats a modern font uses are handled —
+/// table. Only the two subtable formats a modern font uses are handled,
 /// enough to answer "is this symbol in here".
 Set<int> _codePointsIn(File font) {
   final bytes = ByteData.sublistView(font.readAsBytesSync());

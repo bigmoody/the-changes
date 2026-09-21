@@ -43,7 +43,7 @@ void main() {
       expect(find.text(text), findsWidgets, reason: text);
     }
 
-    // In E♭, a minor 7th, properly spelled: E♭ G♭ B♭ D♭ — not F♯ or C♯.
+    // In E♭, a minor 7th, properly spelled: E♭ G♭ B♭ D♭, not F♯ or C♯.
     await tester.tap(find.byKey(const ValueKey('root-E♭')));
     await tester.enterText(find.byType(TextField), 'minor 7th');
     await tester.pumpAndSettle();

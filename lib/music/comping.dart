@@ -6,7 +6,7 @@
 // are deciding, bar after bar, is when to put them down and when to
 // shut up.
 //
-// Two things do most of the work. Comping is mostly holes — a good bar
+// Two things do most of the work. Comping is mostly holes: a good bar
 // is two chords and a lot of nothing, because the bass and the drums
 // already have the beats and a soloist needs somewhere to stand. And the
 // chord tends to arrive off the beat, or before its own bar starts,
@@ -36,7 +36,7 @@ enum CompFigure {
     'Pushed',
     weight: 3,
     about:
-        'The chord arrives before its bar does — on the last "and" of the '
+        'The chord arrives before its bar does: on the last "and" of the '
         'bar before. It is how a comper says the change is coming, and it '
         'is most of why comping can sound ahead of the beat without ever '
         'rushing. A push cannot open a tune: there has to be something '
@@ -46,7 +46,7 @@ enum CompFigure {
     'Off The Beats',
     weight: 3,
     about:
-        'Nothing on a downbeat at all — the "and" of 1 and the "and" of '
+        'Nothing on a downbeat at all: the "and" of 1 and the "and" of '
         '3. The bass and the drums have the beats covered, so a comper '
         'who stays off them is adding something instead of doubling what '
         'is already there.',
@@ -78,7 +78,7 @@ enum CompFigure {
     'On Every Beat',
     weight: 0,
     about:
-        'Four square chords — what everybody does before somebody tells '
+        'Four square chords: what everybody does before somebody tells '
         'them not to. The band in this app has never played it once. '
         'Hear it against the others: it doubles the bass, it flattens the '
         'time, and it leaves the soloist nowhere to stand.',
@@ -90,7 +90,7 @@ enum CompFigure {
   final String label;
 
   /// How often the band reaches for it, against the others. Nought means
-  /// never — it is here to be heard and avoided.
+  /// never; it is here to be heard and avoided.
   final int weight;
 
   /// What it is, and when you would want it.
@@ -103,7 +103,7 @@ enum CompFigure {
   bool get startsEarly => this == pushed;
 
   /// Where the chord lands, given where the "and" falls inside the beat
-  /// ([and] — a half in an even feel, more than that when it swings).
+  /// ([and]: a half in an even feel, more than that when it swings).
   ///
   /// A push lands on the "and" of the beat *before* the chord, so it is
   /// early by what is left of that beat rather than by the "and" itself.
@@ -147,7 +147,8 @@ String whereItLands(CompFigure figure, double and) {
     for (final (beat, _, _) in figure.strikes(and)) beatName(beat),
   ];
   if (names.length == 1) return 'on ${names.first}';
-  return 'on ${names.sublist(0, names.length - 1).join(', ')} and ${names.last}';
+  final last = names.removeLast();
+  return 'on ${names.join(', ')} and $last';
 }
 
 /// How many times the chord is struck in the bar.

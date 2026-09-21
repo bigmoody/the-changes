@@ -84,7 +84,7 @@ class ProgressionStore extends ChangeNotifier {
   UserProgression? byId(String id) =>
       _items.where((p) => p.id == id).firstOrNull;
 
-  /// A new id that isn't in use — unique even when several are made in the
+  /// A new id that isn't in use, unique even when several are made in the
   /// same instant, as an import does.
   String newId() => '${DateTime.now().microsecondsSinceEpoch}-${_made++}';
   var _made = 0;
@@ -103,7 +103,7 @@ class ProgressionStore extends ChangeNotifier {
   }
 
   /// Adds [progressions] as new ones, each with a fresh id, with a single
-  /// save — an imported playlist can hold hundreds.
+  /// save: an imported playlist can hold hundreds.
   Future<void> addAll(Iterable<UserProgression> progressions) async {
     for (final progression in progressions) {
       _items.add(
@@ -115,7 +115,7 @@ class ProgressionStore extends ChangeNotifier {
   }
 
   /// Throws away everything saved and puts [progressions] in its place,
-  /// keeping their ids — restoring a backup rather than adding to one.
+  /// keeping their ids, restoring a backup rather than adding to one.
   Future<void> replaceAllWith(Iterable<UserProgression> progressions) async {
     _items
       ..clear()

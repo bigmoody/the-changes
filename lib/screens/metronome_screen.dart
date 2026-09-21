@@ -7,7 +7,7 @@
 // are old exercises and neither needs anything the app hasn't got.
 //
 // The clicks play on a loop, always a whole number of samples long, so the
-// time never drifts — which is what makes a silent bar worth anything: the
+// time never drifts, which is what makes a silent bar worth anything: the
 // click comes back in exactly the right place, and you find out. The dots
 // follow the same clock as the sound: a stopwatch started with it. They go
 // dark through a silent bar too, or you would simply read the beat off the
@@ -112,7 +112,7 @@ class _MetronomeScreenState extends State<MetronomeScreen> {
   }
 
   /// Changes something about the click. If it's running, it starts again
-  /// from the top of the bar with the new setting — once the changes stop
+  /// from the top of the bar with the new setting, once the changes stop
   /// coming, so dragging the tempo doesn't stutter.
   void _change(VoidCallback change) {
     setState(() {
@@ -314,7 +314,7 @@ class _MetronomeScreenState extends State<MetronomeScreen> {
                     _Note(
                       'The click goes away and comes back exactly where it would '
                       'have been. If it lands where you expected, your time held '
-                      'through the gap. The dots sit out too — reading them would '
+                      'through the gap. The dots sit out too: reading them would '
                       'be the same as listening.',
                     ),
                 ],
@@ -383,7 +383,7 @@ class _Dot extends StatelessWidget {
 
   /// Whether this beat is clicked at all. A beat the click sits out is
   /// drawn faintly: it is still part of the bar, and you still have to
-  /// count it — it just doesn't make a sound.
+  /// count it; it just doesn't make a sound.
   final bool clicks;
   final Color colour;
 

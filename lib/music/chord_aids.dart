@@ -18,7 +18,7 @@ import 'tune.dart';
 /// same order as its chords, and an entry is null where there's nothing to
 /// say. Empty when the player has asked for nothing.
 ///
-/// [tune] must be the chart as it's shown — transposed, if it has been —
+/// [tune] must be the chart as it's shown (transposed, if it has been),
 /// so the numbers are read against the key the player is looking at.
 Map<int, List<String?>> aidsFor(Tune tune, ChordAid aid) {
   if (aid == ChordAid.off) return const {};

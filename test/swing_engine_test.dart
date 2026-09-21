@@ -1,5 +1,5 @@
 // Whether the band actually swings the way the Swing screen says it
-// does — every part that plays an off-beat eighth, asked at two tempos.
+// does: every part that plays an off-beat eighth, asked at two tempos.
 //
 // The screen teaching one thing while the band played another was the
 // state of it for a long time, so these are the tests that matter: not
@@ -21,7 +21,7 @@ import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
 
 /// The part of a beat each off-beat note sits at, with the ones on the
-/// beat left out — what "how much swing" means, measured.
+/// beat left out: what "how much swing" means, measured.
 Set<String> offbeatsOf(Iterable<double> beats) => {
   for (final beat in beats)
     if ((beat - beat.roundToDouble()).abs() > 1e-9)
@@ -63,7 +63,7 @@ void main() {
 
     test('a tempo ramp moves it between passes, not inside one', () {
       // Everybody in a pass has to land in the same place, so the answer
-      // is asked once per pass — and a ramp makes later passes straighter
+      // is asked once per pass, and a ramp makes later passes straighter
       // because they are faster.
       final ramping = _request(tempo: 120, ramp: const TempoRamp(step: 40));
       final first = swingForPass(ramping, 0);
@@ -177,7 +177,7 @@ void main() {
 
   group('what does not move', () {
     test('a shuffle keeps its triplet, whatever the tempo', () {
-      // A shuffle is a triplet feel by definition — it is the swing that
+      // A shuffle is a triplet feel by definition; it is the swing that
       // flexes, not the shuffle. Passing it a straight swing changes
       // nothing, because it never asked.
       final loose = drumBar(

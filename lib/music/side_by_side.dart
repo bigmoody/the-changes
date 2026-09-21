@@ -4,7 +4,7 @@
 // five and heading home from bar nine. What changes between one blues and
 // another is how much traffic fills the gaps. That is nearly invisible
 // reading one chart at a time and obvious the moment they are side by
-// side — which the app could not do at all, because it shows one tune.
+// side, which the app could not do at all, because it shows one tune.
 //
 // It only works if they are in the same key, so they are all moved into
 // one. Comparing an F blues with a B♭ one bar by bar tells you nothing
@@ -42,7 +42,7 @@ const comparisons = <Comparison>[
     key: 'F',
     about:
         'Three chords, then the jazz blues, then what bebop did to it. '
-        'Every version is on the IV at bar 5 — that is the wall. The rest '
+        'Every version is on the IV at bar 5: that is the wall. The rest '
         'is filling, and the third column uses a dozen chords to get there.',
     titles: ['Night Train', "Now's the Time", 'Blues for Alice'],
   ),
@@ -68,7 +68,7 @@ const comparisons = <Comparison>[
     key: 'C',
     about:
         'The same twelve bars in the same key, one major and one minor. '
-        'Almost everything moves — but look at bar 10, where they agree.',
+        'Almost everything moves, but look at bar 10, where they agree.',
     titles: ["Now's the Time", 'Mr. P.C.'],
   ),
 ];
@@ -76,8 +76,8 @@ const comparisons = <Comparison>[
 /// Why the blues sit in the key they do, where there is anything worth
 /// saying. Null where a key is just a key.
 ///
-/// It is the first thing anybody notices about a shelf of blues heads —
-/// they are nearly all in F or B♭ — and the answer has nothing to do with
+/// It is the first thing anybody notices about a shelf of blues heads:
+/// they are nearly all in F or B♭, and the answer has nothing to do with
 /// the music. It is what the people calling the tune were holding.
 String? whyThisKey(String key) => _keyNotes[key];
 
@@ -85,7 +85,7 @@ const _keyNotes = <String, String>{
   'F':
       'The horns. Jazz grew up on band instruments pitched in B♭ and E♭, '
       'and an F blues comes out as G for a tenor or a trumpet and '
-      'D for an alto — one sharp and two, sitting in the comfortable part '
+      'D for an alto: one sharp and two, sitting in the comfortable part '
       'of the horn. Guitar blues are in E and A for the same kind of '
       'reason: that is where the open strings are. F and B♭ stuck because '
       'the players who called the tune were reading off horn parts.',

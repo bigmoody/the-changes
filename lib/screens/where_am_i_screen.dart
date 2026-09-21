@@ -1,4 +1,4 @@
-// Where am I? — the exercise, one question at a time.
+// Where am I? The exercise, one question at a time.
 //
 // The band plays a standard from the top with nothing on screen, cuts out
 // somewhere, and you say which bar you were in by tapping it on a grid of
@@ -195,7 +195,7 @@ class _WhereAmIScreenState extends State<WhereAmIScreen> {
                       'you have somewhere to count from.',
                     ),
                     _Stage.playing => const _Waiting(
-                      'Listening. Keep count — it will stop.',
+                      'Listening. Keep count; it will stop.',
                       key: ValueKey('listening'),
                     ),
                     _Stage.asking || _Stage.answered => _Answering(
@@ -283,7 +283,7 @@ class _Answering extends StatelessWidget {
               ? 'Which bar did it stop in?'
               : '${marking.label}. It was bar ${stop!.bar + 1}'
                     '${stop.chorus > 0 ? ', chorus ${stop.chorus + 1}' : ''}'
-                    ' — ${tune.slotAtBeat(tune.barStartBeat(stop.bar)).chord.display}.',
+                    ': ${tune.slotAtBeat(tune.barStartBeat(stop.bar)).chord.display}.',
           key: const ValueKey('question'),
           style: theme.textTheme.titleMedium,
         ),
@@ -313,7 +313,7 @@ class _Answering extends StatelessWidget {
 
 /// The tune's bars as empty boxes, four to a row.
 ///
-/// Every bar gets its own box, which the chart itself does not do — it
+/// Every bar gets its own box, which the chart itself does not do: it
 /// folds a section played twice into one set of boxes with a repeat round
 /// it. That is right for reading and wrong for answering: the whole
 /// question is which time round you were, so bar 9 has to be tappable even

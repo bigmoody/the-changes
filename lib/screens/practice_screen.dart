@@ -280,7 +280,7 @@ class _BlankPaper extends StatelessWidget {
 
 /// The tune's name across the top, as large as it will go.
 ///
-/// It used to shrink to whatever fitted on one line, with no floor — and
+/// It used to shrink to whatever fitted on one line, with no floor, and
 /// with the back arrow, three buttons and a menu beside it there isn't much
 /// line to fit into. "On the Sunny Side of the Street" came out at under
 /// seven points, which is not a title, it's a smudge.
@@ -339,7 +339,7 @@ class _TuneTitle extends StatelessWidget {
         }
 
         // One line reads better than two, so a little of the size is worth
-        // giving up for it — but not much, and not all of it.
+        // giving up for it, but not much, and not all of it.
         for (final size in _sizes) {
           if (size < _onOneLine) break;
           if (fits(size, 1)) {
@@ -352,7 +352,7 @@ class _TuneTitle extends StatelessWidget {
         }
         // Then two lines, and for the few names long enough to need it,
         // three. The bar is the same height whichever it is, so the lines
-        // cost the chart nothing — and a name you can read all of beats a
+        // cost the chart nothing, and a name you can read all of beats a
         // bigger one with its end taken off.
         for (final lines in [2, 3]) {
           for (final size in _sizes) {
@@ -382,8 +382,8 @@ class _TuneTitle extends StatelessWidget {
 /// it.
 ///
 /// Stacked on a phone held upright. Turned sideways there is width to spare
-/// and hardly any height — stacking there would leave the chart a couple of
-/// centimetres tall — so the controls move to a column beside it and the
+/// and hardly any height (stacking there would leave the chart a couple of
+/// centimetres tall) so the controls move to a column beside it and the
 /// chart keeps the whole height of the screen. A tablet has room either
 /// way and reads better stacked, as a page does.
 class _Reading extends StatelessWidget {
@@ -431,7 +431,7 @@ class _Reading extends StatelessWidget {
           );
         }
         // Wider when Larger Text is turned up, because the transport is
-        // laid out in words and buttons that grow with it — but never more
+        // laid out in words and buttons that grow with it, but never more
         // than half the screen, so the chart is always the bigger half.
         final textScale = MediaQuery.textScalerOf(context)
             .scale(1)
@@ -471,7 +471,7 @@ class _Reading extends StatelessWidget {
 }
 
 /// The app bar's last button: the things you do with a tune rather than to
-/// the way it's played — star it, put it on a setlist, send the chart to
+/// the way it's played: star it, put it on a setlist, send the chart to
 /// someone.
 class _MoreMenu extends StatelessWidget {
   const _MoreMenu({

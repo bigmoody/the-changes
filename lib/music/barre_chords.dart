@@ -43,8 +43,8 @@ const _aShapes = <String, _Shape>{
 /// (diminished, half-diminished and augmented chords are played as
 /// smaller grips instead).
 ///
-/// Extensions and alterations come off first — a C13 is barred as a C7,
-/// a Cm9 as a Cm7 — since barre shapes are the plain chords.
+/// Extensions and alterations come off first (a C13 is barred as a C7,
+/// a Cm9 as a Cm7) since barre shapes are the plain chords.
 GuitarVoicing? barreVoicingFor(Chord chord) {
   final name = barreShapeChord(chord)?.quality.name;
   if (name == null) return null;

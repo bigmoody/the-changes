@@ -1,7 +1,7 @@
 // Swing: the ride cymbal, and the only thing changing is how late the
 // "and" is.
 //
-// A ride rather than a line of notes, because the ride *is* the swing —
+// A ride rather than a line of notes, because the ride *is* the swing:
 // it is the sound everybody learns the feel from, and its extra stroke
 // behind each backbeat is a swung "and" with nothing else attached. A
 // melody would only take the attention off the rhythm, and the rhythm is
@@ -50,7 +50,7 @@ List<SnippetDrum> ridePattern({
     if (backbeat) {
       // The "and": a swung eighth with nothing else attached to it.
       ride.add((at: pair.and, drum: Drum.ride, velocity: 0.4, hard: false));
-      // What the "and" is heard against — without a beat underneath there
+      // What the "and" is heard against: without a beat underneath there
       // is nothing for it to be late to.
       ride.add((
         at: pair.downbeat,
@@ -112,7 +112,7 @@ class _SwingScreenState extends State<SwingScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Text(
                       'Jazz eighths are long then short. How long is not '
-                      'fixed, and nobody is usually told that — it opens '
+                      'fixed, and nobody is usually told that; it opens '
                       'right out at a ballad and closes up to nothing at '
                       'a fast tempo.',
                       style: theme.textTheme.bodyMedium,
@@ -174,7 +174,7 @@ class _SwingScreenState extends State<SwingScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Text(
                       'The short note stays about the same length whatever '
-                      'the tempo — a tenth of a second, about as fast as a '
+                      'the tempo: a tenth of a second, about as fast as a '
                       'hand plays a note and means it. It is the beat that '
                       'shrinks around it, so the swing flattens on its own '
                       'as the tempo climbs.',
@@ -188,7 +188,7 @@ class _SwingScreenState extends State<SwingScreen> {
                     child: Text(
                       'Played on the ride, which is where you hear it. '
                       'The extra stroke behind each backbeat is the swung '
-                      '"and" — the only thing that moves.',
+                      '"and", the only thing that moves.',
                       key: const ValueKey('about-the-ride'),
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.tertiary,
@@ -286,7 +286,7 @@ class _Beat extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'One beat. The mark is halfway — the "and" lands to the right '
+            'One beat. The mark is halfway; the "and" lands to the right '
             'of it, which is all swing is.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,

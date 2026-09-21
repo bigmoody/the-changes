@@ -1,8 +1,8 @@
 // What the guitarist comps, when the band has a guitar instead of a piano.
 //
-// The guitarist hears the same harmony as the pianist — rootless four-note
+// The guitarist hears the same harmony as the pianist (rootless four-note
 // voicings of 3rd, 7th, 9th and 13th, altered when a dominant resolves to a
-// minor chord — but plays them the way a guitar lays them out: drop-2 shapes
+// minor chord), but plays them the way a guitar lays them out: drop-2 shapes
 // on the top four or middle four strings, drop-3 shapes with the bass note
 // on the 6th or 5th string, every one within a four-fret reach. Of those,
 // the shape nearest the last one is chosen, so the top voice moves by step
@@ -10,13 +10,13 @@
 //
 // The rhythm is the guitar's own in each style:
 //
-//  • Swing: the pianist's rhythmic sense — the Charleston, pushes into the
-//    next chord, off-beat stabs, and space when a chord is simply held —
+//  • Swing: the pianist's rhythmic sense (the Charleston, pushes into the
+//    next chord, off-beat stabs, and space when a chord is simply held),
 //    played as quick, clean downstrokes.
 //  • Bossa (and other straight-eighth Latin): the voicing plucked with the
 //    fingers on one of the bossa guitar's two-bar figures.
-//  • Calypso: the strum — down, down-up, up-down-up.
-//  • Funk: short, high chops on the sixteenths, on the top three strings —
+//  • Calypso: the strum (down, down-up, up-down-up).
+//  • Funk: short, high chops on the sixteenths, on the top three strings;
 //    one riff held for a four-bar phrase, the way a funk player locks in.
 //  • Soul (funk under 95 BPM, like Mercy, Mercy, Mercy): small chords on 2
 //    and 4, the backbeat, with a light pickup now and then.
@@ -43,7 +43,7 @@ typedef GuitarHit = ({
 typedef _Bar = List<(double, double, double, Strum)>;
 
 /// Where a guitarist's comping hand sits: the lowest note of the shape
-/// around A2–E3 — mid-neck, above the bass, below a soloist.
+/// around A2–E3, mid-neck, above the bass, below a soloist.
 const guitarCompHome = 53;
 
 /// The highest note a comping shape reaches: D5.
@@ -239,7 +239,7 @@ class GuitarComper {
           if (random.nextDouble() < 0.3) (3.5, 0.3, 0.5, Strum.up),
         ];
       case PianoStyle.straight when groove == Feel.funk:
-        // Chops on the sixteenths, heavier on 2 and 4 — the same riff for a
+        // Chops on the sixteenths, heavier on 2 and 4; the same riff for a
         // four-bar phrase, then perhaps another.
         const figures = [
           [0.0, 0.75, 1.0, 1.75, 2.5, 3.0, 3.75],

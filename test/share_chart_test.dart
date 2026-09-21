@@ -17,7 +17,7 @@ import 'package:play_along/music/tune.dart';
 Tune _tune(String title) => standards.firstWhere((tune) => tune.title == title);
 
 /// The bars as chords rather than as text. A link comes back spelled iReal
-/// Pro's way — C-7 for Cm7, C^7 for CΔ7 — which is the same chord written
+/// Pro's way (C-7 for Cm7, C^7 for CΔ7), which is the same chord written
 /// differently, so what's compared is the notes each bar asks for.
 List<String> _chords(UserProgression progression) => [
   for (final bar in progression.bars)

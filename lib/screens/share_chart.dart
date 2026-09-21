@@ -1,7 +1,7 @@
 // Sending a chart out of the app: one tune, or a whole setlist.
 //
 // Two ways out, because they're for two different things. As text, the
-// changes are laid out as they are on screen, to read anywhere — a message,
+// changes are laid out as they are on screen, to read anywhere: a message,
 // a note, a printout on the stand. As an iReal Pro link, they go into the
 // app most players already keep their charts in.
 //

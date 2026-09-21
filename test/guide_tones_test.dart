@@ -49,7 +49,7 @@ void main() {
     expect(lowerLine(lines), ['C', 'B', 'A']);
     expect(moves(lines).every((m) => m.abs() <= 2), isTrue, reason: '$lines');
 
-    // Cm6 has no 7th, so its 6th carries the line — which is why the chord is
+    // Cm6 has no 7th, so its 6th carries the line, which is why the chord is
     // written that way in the first place.
     expect(lines.last.lowerDegree, '6');
   });

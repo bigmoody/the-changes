@@ -5,7 +5,7 @@
 // from the same notes sounding like an exercise.
 //
 // Two habits do most of the work. Bebop phrases almost never begin on
-// beat one — they come in on an upbeat, most often the "and" of 4 leading
+// beat one; they come in on an upbeat, most often the "and" of 4 leading
 // over the barline, so the line is already moving when the bar turns
 // over. And in a run of quavers the weight goes on the upbeats, not the
 // downbeats, which is the opposite of what a beginner does and most of
@@ -38,7 +38,7 @@ const placements = <Placement>[
     name: 'On 1',
     about:
         'Square, and the one everybody does without meaning to. Useful to '
-        'hear so you know what you are avoiding — it lands at the same '
+        'hear so you know what you are avoiding: it lands at the same '
         'moment as the bass and the drums, so nothing sticks out.',
   ),
   (
@@ -60,7 +60,7 @@ const placements = <Placement>[
     name: 'The & Of 2',
     about:
         'Late into the bar and off the beat. It leaves room at the front, '
-        'which is worth more than it sounds — a phrase that starts later '
+        'which is worth more than it sounds: a phrase that starts later '
         'says more.',
   ),
   (
@@ -74,11 +74,11 @@ const placements = <Placement>[
 
 /// Which notes get the weight in a run of quavers.
 enum Accent {
-  /// One, two, three, four — what a beginner does, and what makes the
+  /// One, two, three, four: what a beginner does, and what makes the
   /// line sound like it is being counted rather than played.
   downbeats('On The Beats'),
 
-  /// The and of one, the and of two — where bebop puts it.
+  /// The and of one, the and of two: where bebop puts it.
   upbeats('Off The Beats'),
 
   /// Nothing pushed, which is worth hearing beside the other two.
@@ -120,7 +120,7 @@ List<int> positionsOf(int at, int length) => [
 
 /// How many quavers of rest go before the phrase within its own bar.
 ///
-/// A pick-up from the bar before has none of its own — it is drawn in the
+/// A pick-up from the bar before has none of its own; it is drawn in the
 /// bar it belongs to, and what sits in front of it is the bar line.
 int restsBefore(int at) => at < 0 ? 0 : at;
 
@@ -128,7 +128,7 @@ int restsBefore(int at) => at < 0 ? 0 : at;
 /// over a bar line, which most good ones do.
 ///
 /// Either end counts. A pick-up starts before the line and lands after
-/// it, which is the whole reason it is the one to learn first — saying
+/// it, which is the whole reason it is the one to learn first: saying
 /// it sits "inside the bar" because it happens to finish there would be
 /// the opposite of the point.
 bool crossesTheBar(int at, int length) => at < 0 || at + length > 8;

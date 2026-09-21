@@ -3,7 +3,7 @@
 //
 // Everything in the app lives on the one phone, which is fine until the
 // phone doesn't. A backup is a single piece of JSON the player can put
-// wherever they keep things — iCloud Drive, Files, an email to themselves —
+// wherever they keep things (iCloud Drive, Files, an email to themselves)
 // and read back into the app, on this phone or a new one.
 //
 // The standards aren't in it: they come with the app, so a backup only has
@@ -89,7 +89,7 @@ Backup readBackup(String text) {
   try {
     json = jsonDecode(text.trim());
   } on FormatException {
-    throw NotABackup("That isn't a backup file — paste the whole thing.");
+    throw NotABackup("That isn't a backup file. Paste the whole thing.");
   }
   if (json is! Map<String, dynamic> || json['app'] != _marker) {
     throw NotABackup("That isn't a backup from The Changes.");

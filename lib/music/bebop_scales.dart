@@ -3,8 +3,8 @@
 //
 // This is the most mechanical thing in bebop and the least mysterious. A
 // major scale has seven notes. Run it in quavers from the root and after
-// one bar you have played eight of them, so the next bar starts on the 2nd
-// — and from there the notes falling on the beats are whatever happens to
+// one bar you have played eight of them, so the next bar starts on the 2nd,
+// and from there the notes falling on the beats are whatever happens to
 // land there. Put one extra note in and the scale is eight long, a bar of
 // quavers is exactly one octave, and every beat of every bar lands on a
 // chord tone for as long as you care to keep going.
@@ -89,7 +89,7 @@ const bebopScales = <BebopScale>[
     tones: ['1', '3', '5', '6'],
     about:
         'The passing note sits between the 5th and the 6th, which lands '
-        'the 6th on a beat rather than the 7th — so this one belongs to '
+        'the 6th on a beat rather than the 7th, so this one belongs to '
         'the 6th chord, and that is why a major tune so often wants a 6 '
         'where you expected a Δ7. Written as a ♯5 going up and a ♭6 '
         'coming down.',
@@ -105,7 +105,7 @@ const bebopScales = <BebopScale>[
     tones: ['1', 'b3', '5', 'b7'],
     about:
         'Dorian with a natural 7th put in on top, the same place the '
-        'dominant scale takes it — which makes sense, since a ii and the V '
+        'dominant scale takes it, which makes sense, since a ii and the V '
         'after it are the same seven notes. You will also see a minor '
         'bebop scale with a ♮3 wedged above the ♭3: a good sound, but it '
         'does not keep the chord tones on the beat from the root, so it is '
@@ -120,7 +120,7 @@ typedef RunNote = ({String degree, bool onBeat, bool isTone});
 /// [scale] run as quavers from the root for [bars] bars of four.
 ///
 /// Eight quavers to a bar, so the notes on the beats are the even ones.
-/// Nothing here knows or cares how long the scale is — that is the point,
+/// Nothing here knows or cares how long the scale is: that is the point,
 /// and it is why an eight-note scale comes out differently from a seven.
 List<RunNote> runOf(List<String> degrees, Set<String> tones, {int bars = 2}) =>
     [
@@ -142,8 +142,8 @@ int tonesOnBeats(List<String> degrees, Set<String> tones, {int bars = 2}) =>
 
 /// The scale spelled from [root], one name per degree.
 ///
-/// The passing note shares a letter with the note it passes — B♭ then B♮,
-/// not B♭ then C♭ — which falls out of spelling each degree by its number.
+/// The passing note shares a letter with the note it passes (B♭ then B♮,
+/// not B♭ then C♭), which falls out of spelling each degree by its number.
 List<String> spell(List<String> degrees, String root, String quality) {
   final chord = Chord.parse('$root$quality');
   return [for (final degree in degrees) chord.noteFor(degree)];

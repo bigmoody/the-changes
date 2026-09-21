@@ -35,7 +35,7 @@ void main() {
       // Bar 2, G7: the 3rd is B, played two octaves higher.
       check.note(_midi(11, octave: 6));
       check.moveTo(8, 0);
-      // Bar 3, CΔ7: the 3rd is E — play a D instead.
+      // Bar 3, CΔ7: the 3rd is E; play a D instead.
       check.note(_midi(2));
       check.moveTo(12, 0);
       check.finish();
@@ -75,7 +75,7 @@ void main() {
       final check = _check();
       check.moveTo(0, 0); // Dm7, bar 1
       check.moveTo(3, 0); // still Dm7, its last beat
-      check.note(_midi(11)); // B — the 3rd of the G7 about to arrive
+      check.note(_midi(11)); // B, the 3rd of the G7 about to arrive
       check.moveTo(4, 0); // G7
       check.moveTo(8, 0);
       check.finish();
@@ -164,7 +164,7 @@ void main() {
       }
       check.finish();
       // Three changes the first time round (bars 3 and 4 are one chord),
-      // two the second — its last chord was still sounding at the end.
+      // two the second; its last chord was still sounding at the end.
       expect(check.asked, 5);
       expect(check.hits, 1);
       expect([for (final c in check.done) c.chorus], [0, 0, 0, 1, 1]);
@@ -173,7 +173,7 @@ void main() {
     test('a bar repeating the same chord is one change, not two', () {
       final check = _check();
       check.moveTo(8, 0); // CΔ7, bar 3
-      check.moveTo(12, 0); // CΔ7 again, bar 4 — the same chord
+      check.moveTo(12, 0); // CΔ7 again, bar 4, the same chord
       check.finish();
       expect(check.asked, 0, reason: 'nothing was played on it');
       expect(check.done, isEmpty);

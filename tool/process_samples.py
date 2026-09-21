@@ -130,7 +130,7 @@ process("toms", toms, headroom=0.3)
 # The pickup's highs are rolled off a little, as a jazz player turns the tone
 # knob down. Every minor third from E2 to G♭5, like the piano; two takes of
 # the gentler of the library's middle layers (layer 2). Its harder layer is
-# two to three times brighter — picked hard — and strums that switched to it
+# two to three times brighter (picked hard) and strums that switched to it
 # stood out, so loudness is left to the volume instead.
 def decode_filtered(path, filters):
     pcm = subprocess.run(
@@ -150,7 +150,7 @@ for name in sorted(os.listdir(f"{RAW}/guitar")):
     pickup = decode_filtered(f"{RAW}/guitar/{name}", "lowpass=f=4200")
     mic = decode_filtered(f"{RAW}/guitar_mic/{name[:-6]}_1.wav", "highpass=f=80,lowpass=f=6000")
     pairs.append((f"{OUT}/guitar/guitar_{midi}_rr{m[3]}.wav", pickup, mic))
-# Balance the two sources across the whole set — not note by note, which
+# Balance the two sources across the whole set, not note by note, which
 # would make the soft layer as loud as the hard one.
 pickup_gain = 0.55 / (sum(rms(p) for _, p, _ in pairs) / len(pairs))
 mic_gain = 0.45 / (sum(rms(q) for _, _, q in pairs) / len(pairs))

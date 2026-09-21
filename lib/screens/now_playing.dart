@@ -1,5 +1,5 @@
 // The readout that goes with the chart: the chord sounding now, what it's
-// called, and the note to aim for — under the chart on a phone held
+// called, and the note to aim for; under the chart on a phone held
 // upright, beside it when it's turned.
 
 import 'package:flutter/material.dart';
@@ -26,7 +26,7 @@ class NowPlaying extends StatelessWidget {
     final theme = Theme.of(context);
     final chord = controller.shownSlot.chord;
     final aimFor = controller.settings.aimFor;
-    // With arpeggios on, where this chord's one starts — so "from the 7th"
+    // With arpeggios on, where this chord's one starts, so "from the 7th"
     // on C6 is plainly the 6th, A.
     final arpeggioStart = controller.arpeggios
         ? arpeggioStartOf(chord, controller.settings.arpeggioStart)
@@ -105,7 +105,7 @@ class NowPlaying extends StatelessWidget {
                 // Each line already shrinks to fit across; this shrinks
                 // them together when there are more lines than the strip
                 // is tall, which happens when the strip is narrow enough
-                // for a line to wrap — beside the chart on a phone held
+                // for a line to wrap, beside the chart on a phone held
                 // sideways, say.
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
@@ -129,7 +129,7 @@ class NowPlaying extends StatelessWidget {
                         ),
                       ),
                       // Aiming for a chord tone: the note to land on now, and
-                      // the one after — at tempo you need to see it coming.
+                      // the one after: at tempo you need to see it coming.
                       if (aimFor != null) ...[
                         _line(
                           _aimText('Aim', chord, aimFor) + _marking(controller),
@@ -229,7 +229,7 @@ String _aimText(String lead, Chord chord, DrillTarget target) {
       if (degreeFor(chord, number) case final degree?)
         '${chord.noteFor(degree)} (${prettyDegree(degree)})',
   ];
-  return '$lead: ${notes.isEmpty ? '—' : notes.join(' · ')}';
+  return '$lead: ${notes.isEmpty ? '–' : notes.join(' · ')}';
 }
 
 /// The fingering diagram beside the chord, sized to the strip. A keyboard

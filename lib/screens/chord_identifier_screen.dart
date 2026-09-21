@@ -121,7 +121,7 @@ class _ChordIdentifierScreenState extends State<ChordIdentifierScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 48),
                 child: Text(
                   _mic == _Mic.denied
-                      ? "The microphone is blocked — allow it in the phone's "
+                      ? "The microphone is blocked: allow it in the phone's "
                             'settings and come back.'
                       : 'Play a chord.',
                   key: const ValueKey('prompt'),

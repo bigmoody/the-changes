@@ -64,8 +64,8 @@ void main() {
           reason: why,
         );
 
-        // The right notes: the chord as written, or — for a chord with no
-        // shape of its own, like C13 — its plain version (C7).
+        // The right notes: the chord as written, or (for a chord with no
+        // shape of its own, like C13), its plain version (C7).
         final shown = barreShapeChord(chord)!;
         final sounded = voicing.pitches.map((p) => p % 12).toList();
         expect(sounded.first, chord.root, reason: why);

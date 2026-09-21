@@ -1,6 +1,6 @@
-// Arrangements: a performance rather than a loop — a set number of
+// Arrangements: a performance rather than a loop (a set number of
 // choruses, the head in and out, trading with the drummer, and parts laying
-// out so you cover them.
+// out so you cover them).
 
 import 'dart:math' as math;
 import 'dart:typed_data';

@@ -1,8 +1,8 @@
 // Chord-tone drills for improvisers.
 //
 // Two kinds of question:
-//  • Spell it — name every note of a chord ("B♭m7?" → B♭ D♭ F A♭).
-//  • Aim for — name one degree ("the 3rd of B♭m7?" → D♭), or both guide
+//  • Spell it: name every note of a chord ("B♭m7?" → B♭ D♭ F A♭).
+//  • Aim for: name one degree ("the 3rd of B♭m7?" → D♭), or both guide
 //    tones (the 3rd and 7th), which are what make a line outline the
 //    changes.
 //
@@ -172,7 +172,7 @@ const _minorTwoFiveOne = ['Dh7', 'G7b9', 'Cm6'];
 /// Major keys by tonic, and minor keys, as they're usually written.
 const _majorKeys = 'C Db D Eb E F Gb G Ab A Bb B';
 // A♭ minor rather than G♯ minor: G♯ minor's V chord is D♯7, whose 3rd is
-// F𝄪 — a spelling that stops a player dead.
+// F𝄪, a spelling that stops a player dead.
 const _minorKeys = 'C C# D Eb E F F# G Ab A Bb B';
 
 /// Deals out questions for one drill setting, never the same chord twice in

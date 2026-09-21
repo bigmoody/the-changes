@@ -1,7 +1,7 @@
 // How the app looks: a lead sheet.
 //
-// Ink on warm paper, like a Real Book chart, with one accent — the red of a
-// pencil mark — kept for what the player marks themselves: the bar that's
+// Ink on warm paper, like a Real Book chart, with one accent (the red of a
+// pencil mark) kept for what the player marks themselves: the bar that's
 // playing, a loop, the note that gives a sound its colour. Everything else
 // is ink, paper and the greys between, so the accent means something when
 // it appears.
@@ -25,8 +25,8 @@ const pencilLight = Color(0xFFC23B22);
 const pencilDark = Color(0xFFFF8A6E);
 
 /// The hand-lettered face of a Real Book chart, for chord symbols, tune
-/// titles and rehearsal letters. Everything else — controls, lists,
-/// explanations — stays in the system font, so the lettering stands out as
+/// titles and rehearsal letters. Everything else (controls, lists,
+/// explanations) stays in the system font, so the lettering stands out as
 /// the music.
 const handFont = 'PetalumaScript';
 
@@ -284,7 +284,7 @@ ThemeData appTheme(Brightness brightness, {String? fontFamily}) {
     // Material's lighter grey. This carries a trap, so it's worth saying
     // plainly: a theme's icon button style applies to *every* kind of icon
     // button, filled ones included, and in this palette the primary colour
-    // and the text ink are the same near-black — so a filled icon button
+    // and the text ink are the same near-black, so a filled icon button
     // would come out dark on dark and disappear. Anything filled has to
     // say its own colours: see [filledIconButton].
     iconButtonTheme: IconButtonThemeData(

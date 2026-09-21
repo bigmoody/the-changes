@@ -13,7 +13,7 @@ import 'stave.dart';
 
 /// The notes in every kind of chord, in any key: each chord tone lined up
 /// under its degree (1 3 5 7), the extensions players add, and where they
-/// sit on the keys — each one to hear as an arpeggio.
+/// sit on the keys, each one to hear as an arpeggio.
 ///
 /// For a B♭, E♭ or F instrument the chords are the ones you read: each card
 /// says what it sounds as, and plays at that real pitch.
@@ -49,8 +49,8 @@ class _ChordTonesReferenceScreenState extends State<ChordTonesReferenceScreen> {
   String _root = 'C';
   String _query = '';
 
-  /// Guitarists and bassists — those who show guitar chord boxes or the bass
-  /// fretboard while playing — start on their own instrument.
+  /// Guitarists and bassists (those who show guitar chord boxes or the bass
+  /// fretboard while playing) start on their own instrument.
   late var _view = switch (widget.settings.diagram) {
     ChordDiagram.guitar || ChordDiagram.barre => ChordTonesView.guitar,
     ChordDiagram.bass => ChordTonesView.bass,
@@ -70,7 +70,7 @@ class _ChordTonesReferenceScreenState extends State<ChordTonesReferenceScreen> {
     );
   }
 
-  /// Plays [chord] — written for the player's instrument — as an arpeggio,
+  /// Plays [chord] (written for the player's instrument) as an arpeggio,
   /// at concert pitch.
   Future<void> _play(Chord chord) async {
     final bank = widget.player.samples;
@@ -380,8 +380,8 @@ class _ChordTonesCard extends StatelessWidget {
   }
 }
 
-/// One arpeggio shape: which string the root is on, and the fretboard —
-/// tap either to hear it.
+/// One arpeggio shape: which string the root is on, and the fretboard.
+/// Tap either to hear it.
 class _Shape extends StatelessWidget {
   const _Shape({
     required this.chord,

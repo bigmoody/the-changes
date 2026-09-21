@@ -2,12 +2,12 @@
 //
 // A mode is a scale played from one of its other notes: D to D on the white
 // keys is D Dorian, the 2nd mode of C major. Each family here is the seven
-// modes of one parent scale — major, melodic minor, harmonic minor — plus
+// modes of one parent scale (major, melodic minor, harmonic minor) plus
 // the symmetric scales jazz players use over dominant and diminished chords.
 //
 // Degrees are written against the major scale (♭3, ♯4 …), one letter per
 // degree, so every mode spells properly in any key: D Dorian is D E F G A B C,
-// and E♭ Dorian is E♭ F G♭ A♭ B♭ C D♭ — never F♯ or C♯.
+// and E♭ Dorian is E♭ F G♭ A♭ B♭ C D♭, never F♯ or C♯.
 
 import 'chord.dart';
 
@@ -53,8 +53,8 @@ class Mode {
   /// The quality symbol of the chord it's played over, e.g. `'m7'`.
   final String chord;
 
-  /// The degrees that give the mode its own sound — Dorian's ♮6, Lydian's
-  /// ♯4 — which set it apart from its neighbours.
+  /// The degrees that give the mode its own sound (Dorian's ♮6, Lydian's
+  /// ♯4), which set it apart from its neighbours.
   final List<String> colour;
   final String description;
 
@@ -68,10 +68,10 @@ class Mode {
 
   /// The mode's notes from [root], spelled one letter per degree. Where
   /// that would need a double flat or sharp (D♭ Locrian's E𝄫 and B𝄫), the
-  /// root is respelled instead (C♯ Locrian) — see [spelledRoot].
+  /// root is respelled instead (C♯ Locrian). See [spelledRoot].
   ///
-  /// Scales that aren't one note per letter — the altered scale's ♭9 and
-  /// ♯9, the eight-note diminished scales, the six-note whole tone — are
+  /// Scales that aren't one note per letter (the altered scale's ♭9 and
+  /// ♯9, the eight-note diminished scales, the six-note whole tone) are
   /// spelled as players write them instead: a double sharp or flat, or an
   /// E♯, B♯, F♭ or C♭, becomes the plain note (E altered is E F G G♯ A♯ C D,
   /// not E F F𝄪 …).
@@ -329,7 +329,7 @@ const modes = [
     chord: '7alt',
     colour: ['b2', '#2', '#4', 'b6'],
     description:
-        'Every tension a dominant can have — ♭9 ♯9 ♯11 ♭13 — over '
+        'Every tension a dominant can have (♭9 ♯9 ♯11 ♭13) over '
         'a 7alt resolving to the I. Played as the 7th mode of melodic minor '
         'a half step up.',
   ),
@@ -433,7 +433,7 @@ const modes = [
     chord: '7b9',
     colour: ['b2', '#2', '#4'],
     description:
-        'Half step, whole step, repeating: over a 7♭9 or 13♭9 — '
+        'Half step, whole step, repeating: over a 7♭9 or 13♭9, '
         '♭9 and ♯9 with a natural 5th and 13th.',
   ),
   Mode(

@@ -1,7 +1,7 @@
 // The guitar chord dictionary: pick a chord, see every way to play it up
 // the neck, and hear any of them.
 //
-// The shapes aren't a stored table — the fretboard is searched for them —
+// The shapes aren't a stored table (the fretboard is searched for them)
 // so every chord the app knows has its shapes, in every key.
 
 import 'package:flutter/material.dart';

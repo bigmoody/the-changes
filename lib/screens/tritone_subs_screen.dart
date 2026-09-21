@@ -3,7 +3,7 @@
 // The screen leads with the mechanism, because the mechanism is the whole
 // thing: the two chords are drawn side by side with their 3rds and ♭7ths
 // marked, and they are the same two notes swapped over. Once that has been
-// seen there is nothing left to memorise — everything below it is just
+// seen there is nothing left to memorise; everything below it is just
 // where you would use it.
 
 import 'package:flutter/material.dart';
@@ -159,7 +159,7 @@ class _TritoneSubsScreenState extends State<TritoneSubsScreen> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             child: Text(
               'The arrows are what the bass does. Fourths become semitones '
-              'going downhill, and that — not the chord symbol — is what '
+              'going downhill, and that (not the chord symbol) is what '
               'anyone listening actually hears change.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -213,12 +213,12 @@ class _TheSwap extends StatelessWidget {
                 shared
                     ? '${_names(from)} in ${from.display}, '
                           '${_names(to)} in ${to.display}. The same two '
-                          'notes with their jobs swapped — nothing the ear '
+                          'notes with their jobs swapped: nothing the ear '
                           'was listening to has moved.\n\n'
                           'Those two are six semitones apart: three whole '
                           'tones, which is what a tritone is. It is the '
-                          'one interval that is its own opposite — half an '
-                          'octave either way lands on the same note — so '
+                          'one interval that is its own opposite (half an '
+                          'octave either way lands on the same note) so '
                           'the swap goes both ways.'
                     : '${from.display} is not a dominant, so it has no '
                           'tritone to swap.',
@@ -232,7 +232,7 @@ class _TheSwap extends StatelessWidget {
     );
   }
 
-  /// "F the ♭7 and B the 3rd" — the degrees are the point, because it is
+  /// "F the ♭7 and B the 3rd": the degrees are the point, because it is
   /// the jobs they swap, not the notes.
   static String _names(Chord chord) {
     final tones = guideTonesThrough([chord]).single;
@@ -308,7 +308,7 @@ class _Line extends StatelessWidget {
   final String title;
   final List<Chord> chords;
 
-  /// Which chord was substituted, if any — drawn in pencil red.
+  /// Which chord was substituted, if any, drawn in pencil red.
   final int? changedAt;
   final VoidCallback onPlay;
 

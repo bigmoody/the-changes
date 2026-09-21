@@ -1,7 +1,7 @@
 // Enclosures: arriving at a note by going round it first.
 //
 // A bebop line rarely walks up to a chord tone and lands on it. It circles
-// it — a note above, a note below, then the target — so the note you meant
+// it (a note above, a note below, then the target) so the note you meant
 // all along arrives sounding inevitable. Every player learns a handful of
 // these shapes and then hears them everywhere.
 //
@@ -15,8 +15,8 @@ import 'scales.dart';
 /// One note on the way to the target.
 ///
 /// The chromatic ones are fixed distances. The scale ones depend on what
-/// the line is in — over a Dm7 the note above E is F, and over a D7 it's
-/// F♯ — which is most of why an enclosure sounds like the tune rather than
+/// the line is in (over a Dm7 the note above E is F, and over a D7 it's
+/// F♯), which is most of why an enclosure sounds like the tune rather than
 /// like an exercise.
 enum Approach {
   scaleAbove('the note above it in the scale'),
@@ -79,7 +79,7 @@ const enclosures = [
     description:
         'Down from the scale, up from underneath. The one above is in the '
         'key, so the shape leans towards the chord rather than sitting '
-        'outside it — this is the bebop default.',
+        'outside it; this is the bebop default.',
   ),
   Enclosure(
     name: 'Semitone Below, Scale Above',
@@ -109,7 +109,7 @@ typedef EnclosureNote = ({int pitch, String name, bool isTarget});
 
 /// [enclosure] arriving at [target] (a MIDI pitch), in the key of [scale].
 ///
-/// [scale] is the spelled notes of the scale the line is in, in any order —
+/// [scale] is the spelled notes of the scale the line is in, in any order:
 /// what the scale steps move through. The chromatic notes are spelled the
 /// way a player writes them: sharps going up to the target, flats coming
 /// down to it, because that is what the movement is.
@@ -164,7 +164,7 @@ List<String> scaleFor(Chord chord) {
   }
   // A chord the book has no mode of its own for, but which plainly
   // belongs to one: a 6 chord and a plain triad are in the major scale,
-  // and a minor 6 sits in Dorian — the ♮6 is what Dorian is for. Without
+  // and a minor 6 sits in Dorian: the ♮6 is what Dorian is for. Without
   // this they came back with no scale at all and every scale step
   // quietly became a semitone.
   final same = _sameScaleAs[want];

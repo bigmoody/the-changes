@@ -4,10 +4,10 @@
 // A shape starts on the root on the lowest string or the next one up (the
 // guitar's 6th or 5th, the bass's E or A) and climbs across the
 // strings through each chord tone in turn, without moving the hand: every
-// note under one finger per fret, four frets — or five, with a reach, when
-// that's the only way to get further. Of the positions around the root, the
+// note under one finger per fret, four frets (or five, with a reach, when
+// that's the only way to get further). Of the positions around the root, the
 // one that goes furthest towards two octaves without skipping a chord tone
-// wins — then the one with no reach, then the root under the 2nd finger, as
+// wins; then the one with no reach, then the root under the 2nd finger, as
 // in the standard shapes (CΔ7 from the 8th fret: C E G B C E G B C across
 // frets 7–10).
 //

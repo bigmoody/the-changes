@@ -1,6 +1,6 @@
 // Writing iReal Pro links: a progression written out and read straight
-// back in should be the same chart — bars, sections, repeats, endings, key,
-// tempo, time signature, title and composer.
+// back in should be the same chart (bars, sections, repeats, endings, key,
+// tempo, time signature, title and composer).
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/music/ireal_export.dart';

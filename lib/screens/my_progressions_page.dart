@@ -17,7 +17,7 @@ import 'star_button.dart';
 import 'tunes_page.dart' show TuneListControls;
 
 /// The My changes tab: progressions the player has written, to play, edit,
-/// filter by genre and delete — one at a time or several at once.
+/// filter by genre and delete: one at a time or several at once.
 class MyProgressionsPage extends StatefulWidget {
   const MyProgressionsPage({
     super.key,

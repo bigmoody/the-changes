@@ -3,14 +3,14 @@
 // The guiding idea is that a pianist reacts to the chart rather than rolling
 // dice every bar:
 //
-//  • A *new* chord gets an attack — on the beat, pushed an eighth early, or
+//  • A *new* chord gets an attack: on the beat, pushed an eighth early, or
 //    the classic Charleston (beat 1 and the "and" of 2).
 //  • A chord that is simply still sounding (bar 2 of "C6 | C6") is mostly
 //    left alone. If anything, it gets a quiet off-beat reminder. Re-striking
 //    a held chord on every downbeat is what made static tunes like "Take the
 //    'A' Train" sound like a machine.
 //  • The voicing only changes when the chord changes, and then it moves to
-//    whichever shape is nearest the previous one — that's what makes comping
+//    whichever shape is nearest the previous one; that's what makes comping
 //    sound joined-up rather than scattered.
 
 import 'dart:math' as math;
@@ -29,7 +29,7 @@ typedef CompHit = ({
 
 /// The lowest and highest note the comping uses (C3 to E5): the middle of
 /// the piano, above the bass. The bottom of a voicing normally sits around
-/// [compHome] — B♭3, just below middle C — which is where left-hand rootless
+/// [compHome] (B♭3, just below middle C), which is where left-hand rootless
 /// voicings live.
 const compLowest = 48;
 const compHighest = 76;
@@ -64,8 +64,8 @@ class Comper {
   /// [next] is the chord it leads to, which decides whether a dominant is
   /// played plain or altered.
   ///
-  /// With [held], each chord is simply struck and held for its whole length
-  /// — re-struck gently on each new bar if it lasts that long.
+  /// With [held], each chord is simply struck and held for its whole length,
+  /// re-struck gently on each new bar if it lasts that long.
   List<CompHit> comp(
     Chord chord,
     int beats,
@@ -105,7 +105,7 @@ class Comper {
   /// off-beats carry the accents; that's the lift.
   /// Strums across a bar, as (beat, length, velocity).
   ///
-  /// All three are the 3-3-2 — 1, the "and" of 2, 4 — because that is what
+  /// All three are the 3-3-2 (1, the "and" of 2, 4) because that is what
   /// the bass and the kick are playing, and a guitar answering with a
   /// different syncopation is what made this groove sound like a pile-up.
   /// What varies is how much is added around it, not where the weight
@@ -120,7 +120,7 @@ class Comper {
   ];
 
   /// The part of a bar's strum that falls in a chord [beats] long starting
-  /// [beatInBar] into the bar — so two chords sharing a bar share one strum.
+  /// [beatInBar] into the bar, so two chords sharing a bar share one strum.
   _Pattern _calypsoPattern(int beats, double beatInBar) {
     if (beatInBar == 0 || _strum == null) {
       final weights = [for (final (w, _) in _calypsoStrums) w.toDouble()];
@@ -156,7 +156,7 @@ class Comper {
     // The swung "and" of a beat lands late; in straight feels it's halfway,
     // and how late is the band's business rather than this one's.
     final and = feel == Feel.swing ? swing : 0.5;
-    // A push lands on the "and" of the beat *before* the chord — so it's
+    // A push lands on the "and" of the beat *before* the chord, so it's
     // early by what's left of that beat, not by the "and" itself. In swing
     // that's a third of a beat; pushing by two thirds put the chord on a
     // triplet partial nobody plays, a third of a beat ahead of the bass.
@@ -170,7 +170,7 @@ class Comper {
       if (beats >= 4) ...[
         if (isNew) ...[
           // The figures themselves live in music/comping.dart, where the
-          // screen that teaches them reads the same list — so what is
+          // screen that teaches them reads the same list, so what is
           // taught and what is played cannot drift apart.
           for (final (figure, weight) in bandFigures(canPush: canPush))
             (figure.name, weight, figure.strikes(and)),
@@ -312,7 +312,7 @@ List<List<int>> voicingsFor(Chord chord, {Chord? resolvingTo}) {
 
   final third = has(3) ? 3 : (has(4) ? 4 : 5); // minor, major or suspended
   final fifth = has(6) ? 6 : (has(8) ? 8 : 7); // flat, sharp or perfect
-  // A plain major or minor triad is played as a 6th chord — nobody comps a
+  // A plain major or minor triad is played as a 6th chord: nobody comps a
   // bare triad on a standard. Anything odder (sus, diminished, augmented) is
   // left alone, and doubles its root rather than having a 7th invented.
   final isPlainTriad = fifth == 7 && (third == 3 || third == 4);

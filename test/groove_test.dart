@@ -405,7 +405,7 @@ void main() {
     });
 
     test('pushes land on the "and" of 4, where the bass anticipates', () {
-      // In swing the "and" of 4 is beat 3⅔ of the bar before — a third of a
+      // In swing the "and" of 4 is beat 3⅔ of the bar before, a third of a
       // beat ahead of the chord. In straight feels it's half a beat.
       for (final (feel, expected) in [
         (Feel.swing, -1 / 3),

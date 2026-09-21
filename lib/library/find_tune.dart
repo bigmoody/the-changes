@@ -24,7 +24,7 @@ class FoundTune {
   bool get isMine => progression != null;
 }
 
-/// What [ref] points at, or null if it isn't there any more — a progression
+/// What [ref] points at, or null if it isn't there any more: a progression
 /// that's been deleted, or a standard from a backup made by a later version
 /// of the app.
 FoundTune? findTune(TuneRef ref, {ProgressionStore? progressions}) {

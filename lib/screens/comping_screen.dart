@@ -2,7 +2,7 @@
 //
 // The picture of the bar is the feature. Where a chord lands is the sort
 // of thing that takes a year to hear and a second to see, and the moment
-// it is drawn — two blocks and a lot of white — the point about leaving
+// it is drawn (two blocks and a lot of white) the point about leaving
 // space makes itself without a paragraph.
 //
 // It is drawn from the last beat of the bar before, rather than from
@@ -43,7 +43,7 @@ class CompingScreen extends StatefulWidget {
 class _CompingScreenState extends State<CompingScreen> {
   var _figure = CompFigure.charleston;
 
-  /// How late the "and" is at this tempo — the same answer the band gets.
+  /// How late the "and" is at this tempo, the same answer the band gets.
   static final _and = swingAt(_tempo);
 
   /// A ii–V, because a figure only means anything across a change.
@@ -109,7 +109,7 @@ class _CompingScreenState extends State<CompingScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                     child: Text(
                       'The chart gives you the chords. What it never tells '
-                      'you is when to put them down — and for a piano or a '
+                      'you is when to put them down, and for a piano or a '
                       'guitar that is most of the job. A good bar is two '
                       'chords and a lot of nothing.',
                       style: theme.textTheme.bodyMedium,
@@ -153,7 +153,7 @@ class _CompingScreenState extends State<CompingScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                     child: Text(
                       'Dm7 to G7, with the band. The figure is the only '
-                      'thing changing — same chords, same voicings, same '
+                      'thing changing: same chords, same voicings, same '
                       'tempo.',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -186,7 +186,7 @@ class _CompingScreenState extends State<CompingScreen> {
 /// One bar, with a block wherever the chord is sounding.
 ///
 /// The last beat of the bar before is drawn too, faintly, because a push
-/// lands in it — and seeing the chord arrive on the wrong side of the bar
+/// lands in it, and seeing the chord arrive on the wrong side of the bar
 /// line is the quickest way to understand what a push is.
 class _BarPicture extends StatelessWidget {
   const _BarPicture({required this.figure, required this.and});

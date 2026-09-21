@@ -430,7 +430,7 @@ class Chord {
 
   /// A chord root as players write it: C♭7 is theoretically right as the
   /// ♭VI7 of E♭ minor, but every chart calls it B7. (Inside a chord it's a
-  /// different matter — the 3rd of A♭m really is C♭ — so this is only
+  /// different matter, the 3rd of A♭m really is C♭, so this is only
   /// for roots and bass notes.)
   static Spelling _readable(Spelling note) => switch (note) {
     (letter: 0, accidental: -1) => (letter: 6, accidental: 0), // C♭ → B
@@ -476,8 +476,8 @@ class Chord {
     return _letters[letter] + _accidentalGlyph(accidental);
   }
 
-  /// The chord without its extensions — only the root, 3rd, 5th and 7th (or
-  /// 6th) — e.g. D7♯11 → D7, C13 → C7, Fm9 → Fm7, C6/9 → C6. The simpler
+  /// The chord without its extensions: only the root, 3rd, 5th and 7th (or
+  /// 6th), e.g. D7♯11 → D7, C13 → C7, Fm9 → Fm7, C6/9 → C6. The simpler
   /// shape to play when reading at tempo. Altered 5ths stay (C7♯5 is still
   /// C7♯5); a 7alt, which has no 5th, becomes a plain 7.
   Chord get withoutExtensions {

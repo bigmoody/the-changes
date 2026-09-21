@@ -1,4 +1,4 @@
-// Where am I? — keeping your place in the form.
+// Where am I? Keeping your place in the form.
 //
 // Knowing the changes and knowing where you are in them are two different
 // things, and only one of them is on the chart. Take the page away and
@@ -8,7 +8,7 @@
 //
 // So: the band plays from the top with nothing on screen, cuts out
 // somewhere, and you say which bar you were in. There is no trick to it
-// and no chart to check against — you either kept count or you didn't.
+// and no chart to check against: you either kept count or you didn't.
 //
 // The band has to start at the top for the question to have an answer. Come
 // in halfway and the first four bars of an AABA are the first four bars of
@@ -37,8 +37,8 @@ const mostChoruses = 3;
 /// Counted in bars rather than choruses because three choruses of a
 /// thirty-two bar tune is the best part of three minutes of listening for
 /// one question, and nobody will do that twice. Forty bars is a chorus and
-/// a bit of a standard — long enough to get past the top and find out
-/// whether you knew you had come round — and three of a blues.
+/// a bit of a standard (long enough to get past the top and find out
+/// whether you knew you had come round) and three of a blues.
 const mostBars = 40;
 
 /// A place for the band to stop on [tune], somewhere past [leastBars] and
@@ -93,7 +93,7 @@ enum Marking {
   spotOn('Spot on'),
 
   /// A bar out is still lost, but it is the kind of lost you come back
-  /// from — you had the form, you dropped a bar.
+  /// from: you had the form, you dropped a bar.
   nearly('A bar out'),
 
   lost('Lost');

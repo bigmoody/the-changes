@@ -1,7 +1,7 @@
 // Backing up and restoring, as a player would: paste a backup, see what's
 // in it, and either add it to what's here or put it in place of it.
 //
-// The share sheet isn't touched — it needs a platform channel — so nothing
+// The share sheet isn't touched (it needs a platform channel), so nothing
 // here taps "Save Backup…".
 
 import 'package:flutter/material.dart';
@@ -43,7 +43,7 @@ String _fileToPaste() => backupText(
   at: DateTime(2026, 9, 19, 14, 32),
 );
 
-/// Opens the screen the way the app opens it — pushed onto a route — and
+/// Opens the screen the way the app opens it (pushed onto a route) and
 /// hands back a way to read what it popped, which is how the app learns how
 /// many progressions came in.
 Future<int? Function()> _open(

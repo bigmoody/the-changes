@@ -145,7 +145,7 @@ void main() {
       await _openTunes(tester, library: LibraryStore.inMemory());
       await _sortBy(tester, 'Key');
       expect(find.text('By Key'), findsOneWidget);
-      // C comes before F, which comes before B♭ — not alphabetically.
+      // C comes before F, which comes before B♭, not alphabetically.
       expect(keyRank('C'), lessThan(keyRank('F')));
       expect(keyRank('F'), lessThan(keyRank('B♭')));
       expect(keyRank('B♭'), lessThan(keyRank('C minor')));

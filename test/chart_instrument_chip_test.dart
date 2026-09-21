@@ -73,7 +73,7 @@ void main() {
   ) async {
     await _open(tester, instrument: ChartInstrument.eFlat);
     // Just the letter on screen, in a row that hasn't the width to spell
-    // it out — but a screen reader is told the whole thing.
+    // it out, but a screen reader is told the whole thing.
     final chip = find.byKey(const ValueKey('chart-instrument'));
     expect(chip, findsOneWidget);
     expect(

@@ -1,5 +1,5 @@
 // The Learn tab: everything for learning the language rather than playing
-// a tune — a quiz to drill chords against the clock, and the pages to look
+// a tune: a quiz to drill chords against the clock, and the pages to look
 // things up in. Each opens full screen and starts fresh every time, so a
 // quiz is always a new round.
 
@@ -62,7 +62,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.av_timer,
             title: 'Metronome',
             subtitle:
-                'Any tempo and time signature — and it can click on 2 and '
+                'Any tempo and time signature, and it can click on 2 and '
                 '4, or drop out and leave the time to you',
             onTap: () =>
                 open(MetronomeScreen(player: player, settings: settings)),
@@ -72,7 +72,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.explore_outlined,
             title: 'Where Am I?',
             subtitle:
-                'The band plays from the top and cuts out — say which bar '
+                'The band plays from the top and cuts out: say which bar '
                 'it stopped in',
             onTap: () =>
                 open(WhereAmIScreen(player: player, settings: settings)),
@@ -82,7 +82,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.compare_arrows,
             title: 'Side By Side',
             subtitle:
-                'Two or three versions of the same form, bar against bar — '
+                'Two or three versions of the same form, bar against bar: '
                 'what bebop did to the blues, in one look',
             onTap: () =>
                 open(SideBySideScreen(player: player, settings: settings)),
@@ -102,7 +102,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.pin_outlined,
             title: 'Number Patterns',
             subtitle:
-                'One shape — 1-2-3-5 — run through the changes, so your '
+                'One shape (1-2-3-5) run through the changes, so your '
                 'hand stays still while the notes move',
             onTap: () =>
                 open(NumberPatternsScreen(player: player, settings: settings)),
@@ -112,7 +112,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.swap_horiz,
             title: 'Tritone Subs',
             subtitle:
-                'Why one dominant can stand in for another — they are the '
+                'Why one dominant can stand in for another: they are the '
                 'same two notes in the middle',
             onTap: () =>
                 open(TritoneSubsScreen(player: player, settings: settings)),
@@ -122,7 +122,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.graphic_eq,
             title: 'Where Phrases Start',
             subtitle:
-                'The same four notes moved around the bar — when a line '
+                'The same four notes moved around the bar: when a line '
                 'comes in, and which notes get the weight',
             onTap: () =>
                 open(PhrasingScreen(player: player, settings: settings)),
@@ -132,7 +132,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.waves,
             title: 'Swing',
             subtitle:
-                'How late the "and" really is — and why it is not the '
+                'How late the "and" really is, and why it is not the '
                 'triplet you were taught, except at one tempo',
             onTap: () => open(SwingScreen(player: player, settings: settings)),
           ),
@@ -142,7 +142,7 @@ class LearnPage extends StatelessWidget {
             title: 'Comping',
             subtitle:
                 'When to put the chord down, and when to leave the bar '
-                'alone — the other half of playing changes',
+                'alone: the other half of playing changes',
             onTap: () =>
                 open(CompingScreen(player: player, settings: settings)),
           ),
@@ -151,7 +151,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.all_inclusive,
             title: 'Enclosures',
             subtitle:
-                'Going round a note before landing on it — five shapes, on '
+                'Going round a note before landing on it: five shapes, on '
                 'the stave and under the fingers',
             onTap: () =>
                 open(EnclosuresScreen(player: player, settings: settings)),
@@ -205,7 +205,7 @@ class LearnPage extends StatelessWidget {
             icon: Icons.piano_outlined,
             title: 'Chord Tones',
             subtitle:
-                'The notes in every chord, in any key — on the keys, '
+                'The notes in every chord, in any key: on the keys, '
                 'guitar and bass',
             onTap: () => open(
               ChordTonesReferenceScreen(player: player, settings: settings),

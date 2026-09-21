@@ -1,6 +1,6 @@
 // Takes: recordings of you playing over the band.
 //
-// Only your playing is recorded. The band isn't mixed in and isn't saved —
+// Only your playing is recorded. The band isn't mixed in and isn't saved;
 // it's written again from scratch when you play the take back, from the
 // tempo, key, loop and seed kept here. Given those, the band plays exactly
 // what it played the first time, note for note, so the two line up without

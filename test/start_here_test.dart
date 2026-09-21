@@ -241,7 +241,7 @@ void main() {
       expect(whole.batch.clicks.length - from9.batch.clicks.length, 32 * beat);
     });
 
-    test('the count-in is left alone — you still get counted in', () {
+    test('the count-in is left alone; you still get counted in', () {
       final whole = render();
       final from9 = PracticePlayer.fromPickUp(whole, 32);
       final countIn = whole.countInBeats * whole.samplesPerBeat * 2;

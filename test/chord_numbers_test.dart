@@ -41,7 +41,7 @@ void main() {
 
   test('a minor key counts from the natural minor scale', () {
     // In C minor the E♭, A♭ and B♭ are the notes of the key, so they are
-    // the 3, 6 and 7 with nothing in front of them — the way a player says
+    // the 3, 6 and 7 with nothing in front of them, the way a player says
     // "the flat six" only when a chord is outside the key.
     expect(_roman('EbΔ7 Ab7 Bb7 Dm7', 'C minor'), [
       'IIIΔ7',
@@ -103,7 +103,7 @@ void main() {
   });
 
   test('the case of the numeral follows the chord, not the key', () {
-    // Lower case for the minor-sounding chords — anything with a ♭3 — and
+    // Lower case for the minor-sounding chords (anything with a ♭3) and
     // upper case for the rest, including a sus chord, which has no 3rd at
     // all but functions as a dominant.
     expect(_roman('C CΔ7 C7 C7sus4 Csus4 C+', 'C'), [
@@ -184,7 +184,7 @@ void main() {
 
   test('standards read the way a player would call the changes', () {
     // Autumn Leaves in G minor: the whole A section is diatonic, which is
-    // the point of playing it — iv–VII–III–VI–ii–V–i.
+    // the point of playing it: iv–VII–III–VI–ii–V–i.
     expect(_roman('Cm7 F7 BbΔ7 EbΔ7 Aø7 D7 Gm6', 'G minor'), [
       'iv7',
       'VII7',
@@ -263,7 +263,7 @@ void main() {
     // Usually the numeral is identical, but it can't be promised to be.
     // The numeral follows how the chord is spelled on the chart, and
     // moving a tune respells any root that changes between sharps and
-    // flats — about one chord in twenty-five, and ordinary dominants and
+    // flats: about one chord in twenty-five, and ordinary dominants and
     // major 7ths as often as passing diminished ones. A Foggy Day's is a
     // G♯°7 in F and an A♭°7 in A♭, reading ♯ii°7 and ♭iii°7. Same sound,
     // same job, and the numeral matches the chord printed right above it,
@@ -295,7 +295,7 @@ void main() {
   });
 }
 
-/// How far the chord's root is above the key's tonic in semitones — what
+/// How far the chord's root is above the key's tonic in semitones: what
 /// the chord sounds like, whatever it's spelled as.
 int _soundingDegree(Chord chord, String key) {
   final tonic = parseNoteName(

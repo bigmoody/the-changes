@@ -76,7 +76,7 @@ List<int> _closed(Chord chord, int root) {
   return out;
 }
 
-/// Whether [guess] is the same chord as [chord], however it's spelled —
+/// Whether [guess] is the same chord as [chord], however it's spelled:
 /// Eø7 and Em7♭5 are one chord with two symbols.
 bool _isSame(ChordGuess guess, Chord chord) {
   final wanted = chord.pitchClasses.toSet();

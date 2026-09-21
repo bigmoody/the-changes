@@ -14,7 +14,7 @@
 // last two), chords (C^7, F-7, Bb7b9/D) and a few layout marks to skip.
 //
 // Each song becomes a [UserProgression]: its bars as written, its sections,
-// a repeated section as ×2, and 1st and 2nd endings as endings — so it opens
+// a repeated section as ×2, and 1st and 2nd endings as endings, so it opens
 // in the editor looking like the chart it came from.
 
 import 'chord.dart';
@@ -40,7 +40,7 @@ class ImportedSong {
   final List<String> notes;
 }
 
-/// Every song in the iReal Pro links anywhere in [text] — a link on its
+/// Every song in the iReal Pro links anywhere in [text]: a link on its
 /// own, several, or the text of a page that has them in it.
 List<ImportedSong> parseIrealPro(String text) => [
   for (final match in RegExp(r'irealb(?:ook)?://[^\s"<>]+').allMatches(text))
@@ -53,7 +53,7 @@ List<ImportedSong> _parseLink(String link) {
   try {
     body = Uri.decodeComponent(body);
   } on ArgumentError {
-    // Already decoded, or a stray % — read it as it is.
+    // Already decoded, or a stray %: read it as it is.
   }
   final songs = <ImportedSong>[];
   for (final part in body.split('===')) {
@@ -187,7 +187,7 @@ class _Chart {
   String timeSignature = '4/4';
 
   /// The bars as a progression: sections, a section repeated as ×2, and
-  /// 1st and 2nd endings — or, where a repeat doesn't line up with a
+  /// 1st and 2nd endings; or, where a repeat doesn't line up with a
   /// section, written out in full so it still plays right.
   UserProgression toProgression() {
     final out = UserProgression.starter(id: 'import');

@@ -309,10 +309,10 @@ class _ChordTonesScreenState extends State<ChordTonesScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              right ? 'Right — $time s' : 'Not quite',
+              right ? 'Right: $time s' : 'Not quite',
               style: theme.textTheme.titleMedium,
             ),
-            // Now and then — not every time, or it'd be noise — a word
+            // Now and then (not every time, or it'd be noise) a word
             // from the bandstand.
             if (right && streakRemark(_streak) != null)
               Expanded(

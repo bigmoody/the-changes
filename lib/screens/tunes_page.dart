@@ -466,7 +466,7 @@ class SectionHeader extends StatelessWidget {
 }
 
 /// The way in to the path, shown at the top of a library nobody has played
-/// yet — the one moment when "which of these do I even start with?" is the
+/// yet, the one moment when "which of these do I even start with?" is the
 /// only question there is.
 class _StartHereCard extends StatelessWidget {
   const _StartHereCard({required this.deps});

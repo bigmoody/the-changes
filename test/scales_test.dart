@@ -99,7 +99,7 @@ void main() {
           if (mode.name != 'Ultralocrian') {
             expect(doubles, isEmpty, reason: '$spelled ${mode.name}: $notes');
           }
-          // Seven-note modes use each letter once — bar the altered scale,
+          // Seven-note modes use each letter once, bar the altered scale,
           // spelled as its tensions: ♭9 and ♯9 are both 9ths.
           if (mode.degrees.length == 7 && mode.name != 'Altered') {
             expect(
@@ -109,7 +109,7 @@ void main() {
             );
           }
           // The chord it goes with fits inside it (the plain chord, at
-          // least — a 7alt's tensions are the scale's own).
+          // least: a 7alt's tensions are the scale's own).
           final chordPcs = mode.chordOn(root).withoutExtensions.pitchClasses;
           final scalePcs = {for (final s in mode.semitones) (rootPc + s) % 12};
           expect(
@@ -142,7 +142,7 @@ void main() {
   test('the sound: just the scale, up an octave and back down', () {
     final mode = named('Dorian');
     final notes = modeSnippet(mode.semitones, mode.chordOn('D').root);
-    // D E F G A B C D, and back down — one note at a time, no bass or chord.
+    // D E F G A B C D, and back down; one note at a time, no bass or chord.
     expect(notes.map((n) => n.pitch).toList(), [
       62,
       64,

@@ -129,12 +129,12 @@ void main() {
       await _started();
       final check = controller.check!;
 
-      check.moveTo(0, 0); // Dm7 — the 3rd is F
+      check.moveTo(0, 0); // Dm7, the 3rd is F
       mic.hear(_hz(65)); // F4
       expect(check.current!.hit, isTrue);
-      check.moveTo(4, 0); // G7 — the 3rd is B
+      check.moveTo(4, 0); // G7, the 3rd is B
       mic.hear(_hz(71)); // B4
-      check.moveTo(8, 0); // CΔ7 — the 3rd is E
+      check.moveTo(8, 0); // CΔ7, the 3rd is E
       mic.hear(_hz(62)); // D4, not the 3rd
       check.moveTo(12, 0);
       await controller.stop();
@@ -206,7 +206,7 @@ void main() {
     // The meter comes up at once, so you can prove the microphone hears you
     // before committing to a chorus.
     expect(find.byKey(const ValueKey('mic-level')), findsOneWidget);
-    expect(find.text('Too quiet — play a note'), findsOneWidget);
+    expect(find.text('Too quiet: play a note'), findsOneWidget);
 
     mic.hear(midiToHz(65));
     await tester.pumpAndSettle();

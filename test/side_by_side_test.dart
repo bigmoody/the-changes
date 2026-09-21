@@ -121,7 +121,7 @@ void main() {
     test('once moved, every version is built on the same note', () {
       // The whole table rests on this: different keys make the columns a
       // lie, and a comparison nobody can read across is worse than none.
-      // Tonics, not labels — a major and a minor blues on C line up fine.
+      // Tonics, not labels: a major and a minor blues on C line up fine.
       for (final comparison in comparisons) {
         final tonics = {
           for (final tune in _inKey(comparison)) tonicOf(tune.key),
@@ -284,7 +284,7 @@ void main() {
       expect(find.byKey(const ValueKey('why-the-key-note')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('set-Monk And The Blues')));
       await tester.pumpAndSettle();
-      // Still an F set, so the question is still there — but the table
+      // Still an F set, so the question is still there, but the table
       // comes back first.
       expect(find.text('Why F?'), findsOneWidget);
       expect(find.byKey(const ValueKey('why-the-key-note')), findsNothing);

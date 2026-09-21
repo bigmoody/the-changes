@@ -14,7 +14,7 @@
 // little each one has to move, and which ones are simply held.
 //
 // Because the two lines are what matters, each chord's pair has to be put the
-// right way round — 3rd on top or 7th on top, whichever keeps the lines still.
+// right way round: 3rd on top or 7th on top, whichever keeps the lines still.
 // Get that wrong and a ii–V–I comes out as two zig-zags instead of two falling
 // lines, which teaches a learner the opposite of the lesson.
 //
@@ -44,7 +44,7 @@ class GuideTones {
 
   /// Which degree of the chord [upper] is, written as [ChordQuality.formula]
   /// writes it: usually "3" or "b7", but "6", "4", "#5" and "1" stand in when
-  /// the chord hasn't got a 3rd or a 7th — see [guideTonesThrough].
+  /// the chord hasn't got a 3rd or a 7th. See [guideTonesThrough].
   final String upperDegree;
   final String lowerDegree;
 
@@ -65,8 +65,8 @@ class GuideTones {
   /// number to sort or grade by.
   int get totalMove => upperMove.abs() + lowerMove.abs();
 
-  /// Reads like "G7 F held / B ↓1", which is what a failing test — or a
-  /// debug print — needs to show.
+  /// Reads like "G7 F held / B ↓1", which is what a failing test (or a
+  /// debug print) needs to show.
   @override
   String toString() =>
       '${chord.display} $upper ${_moveLabel(upperMove)} / '
@@ -89,7 +89,7 @@ String _moveLabel(int move) => switch (move) {
 /// (see [_thirdDegree] and [_seventhDegree] for exactly which).
 ///
 /// The two notes are then put round the way that keeps the lines still: of the
-/// two possible assignments — 3rd on top or 7th on top — the one whose total
+/// two possible assignments (3rd on top or 7th on top), the one whose total
 /// movement from the previous chord is smaller wins. That single decision is
 /// what turns a ii–V–I into two smooth falling lines. When the two are equally
 /// small the lines are left as they were, so they don't swap roles for
@@ -167,8 +167,8 @@ String? _degreeNumbered(Chord chord, int number) {
   return null;
 }
 
-/// The degree the upper guide tone is built on: the 3rd, or for a sus chord —
-/// which has deliberately replaced its 3rd with the 4th — the 4th, since that
+/// The degree the upper guide tone is built on: the 3rd, or for a sus chord
+/// (which has deliberately replaced its 3rd with the 4th), the 4th, since that
 /// suspended note is the one the ear is waiting on and the one that resolves.
 /// The root is a last resort for a chord with neither, so that nothing throws.
 String _thirdDegree(Chord chord) =>
@@ -181,7 +181,7 @@ String _thirdDegree(Chord chord) =>
 /// A plain triad has neither, and the line still has to land on a note the
 /// chord contains, so:
 ///  • An altered 5th is taken next, because on an augmented or diminished
-///    triad the ♯5 or ♭5 is the note carrying the quality — the guide tone in
+///    triad the ♯5 or ♭5 is the note carrying the quality: the guide tone in
 ///    all but name. Without it C+ would be indistinguishable from C.
 ///  • Otherwise the root, not the plain 5th. A plain 5th adds nothing the 3rd
 ///    hasn't already said, and it sits a tritone or a 4th away from where the

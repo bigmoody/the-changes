@@ -3,7 +3,7 @@
 // Everything in The Changes lives on the one phone, which is fine until the
 // phone isn't. This screen is the way off it: one file holding the
 // progressions they've written, their setlists and what they've starred,
-// saved wherever they keep things — and the way back in again, on this
+// saved wherever they keep things, and the way back in again, on this
 // phone or on the next one.
 //
 // Both halves sit on one page on purpose. Someone who has come here to put
@@ -47,7 +47,7 @@ class _BackupScreenState extends State<BackupScreen> {
   /// The pasted text, once it reads as a backup.
   Backup? _backup;
 
-  /// Why the pasted text isn't a backup, in the words [readBackup] used —
+  /// Why the pasted text isn't a backup, in the words [readBackup] used;
   /// they're already written for the player rather than for a log.
   String? _problem;
 
@@ -81,8 +81,8 @@ class _BackupScreenState extends State<BackupScreen> {
       final folder = await getTemporaryDirectory();
       final file = File('${folder.path}/$name');
       await file.writeAsString(_wholeBackup());
-      // The share sheet comes last, so everything that can fail quietly —
-      // gathering the text, writing the file — has already happened by the
+      // The share sheet comes last, so everything that can fail quietly
+      // (gathering the text, writing the file) has already happened by the
       // time the player is looking at somewhere to put it.
       await SharePlus.instance.share(
         ShareParams(
@@ -132,7 +132,7 @@ class _BackupScreenState extends State<BackupScreen> {
 
   /// The safe half: the progressions in the backup come in beside what's
   /// already here, each with a fresh id, so nothing on the phone is
-  /// touched. Setlists and stars are deliberately left out — merging two
+  /// touched. Setlists and stars are deliberately left out; merging two
   /// libraries would half-work without saying which half.
   Future<void> _add() async {
     final backup = _backup;
@@ -202,7 +202,7 @@ class _BackupScreenState extends State<BackupScreen> {
           const _Note(
             'A backup is one file holding what you\'ve made here: the '
             'progressions you\'ve written, your setlists and what you\'ve '
-            'starred. Keep it somewhere that outlives this phone — iCloud '
+            'starred. Keep it somewhere that outlives this phone: iCloud '
             'Drive, Files, or an email to yourself.',
           ),
           Padding(
@@ -248,7 +248,7 @@ class _BackupScreenState extends State<BackupScreen> {
           ),
           const SectionHeader('Restore'),
           const _Note(
-            'Paste a backup here — the whole thing. Nothing changes until '
+            'Paste a backup here: the whole thing. Nothing changes until '
             'you choose what to do with it.',
           ),
           Padding(
@@ -325,7 +325,7 @@ class _BackupScreenState extends State<BackupScreen> {
               ),
             ),
             const _Note(
-              'Puts the backup in place of what\'s on this phone — '
+              'Puts the backup in place of what\'s on this phone: '
               'progressions, setlists and stars. What\'s here now goes. '
               'This is the one for a phone you\'ve just set up.',
             ),
@@ -341,7 +341,7 @@ class _BackupScreenState extends State<BackupScreen> {
 String _count(int howMany, String thing) =>
     '$howMany $thing${howMany == 1 ? '' : 's'}';
 
-/// "19 Sep 2026 at 14:32" — enough for the player to tell one backup from
+/// "19 Sep 2026 at 14:32", enough for the player to tell one backup from
 /// another, which is all the date is for.
 String _when(DateTime at) {
   const months = [

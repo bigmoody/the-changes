@@ -144,7 +144,7 @@ void main() {
           isA<NotABackup>().having(
             (e) => e.message,
             'message',
-            contains('paste the whole thing'),
+            contains('Paste the whole thing'),
           ),
         ),
       );

@@ -70,7 +70,7 @@ void main() {
     listener.hear(cents(midiToHz(61), -20)); // a flat C♯
     await tester.pumpAndSettle();
     expect(find.text('C♯/D♭'), findsWidgets);
-    expect(advice(tester), 'Flat — go up');
+    expect(advice(tester), 'Flat, go up');
 
     listener.hear(null);
     await tester.pumpAndSettle();
@@ -95,8 +95,8 @@ void main() {
     // The wrong note: it says so.
     listener.hear(midiToHz(65)); // F
     await tester.pumpAndSettle();
-    expect(find.text("You're on F — aim for E"), findsOneWidget);
-    expect(advice(tester), 'Sharp — go down');
+    expect(find.text("You're on F, aim for E"), findsOneWidget);
+    expect(advice(tester), 'Sharp, go down');
 
     // Back to plain tuning.
     await tester.tap(find.text('Any note'));
