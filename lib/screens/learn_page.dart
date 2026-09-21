@@ -17,6 +17,7 @@ import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
+import 'rhythm_changes_screen.dart';
 import 'bebop_scales_screen.dart';
 import 'number_patterns_screen.dart';
 import 'phrasing_screen.dart';
@@ -135,6 +136,16 @@ class LearnPage extends StatelessWidget {
                 'How late the "and" really is, and why it is not the '
                 'triplet you were taught, except at one tempo',
             onTap: () => open(SwingScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-rhythm-changes'),
+            icon: Icons.repeat,
+            title: 'Rhythm Changes',
+            subtitle:
+                'The other form worth knowing by heart, and the eight '
+                'bars of it to learn first',
+            onTap: () =>
+                open(RhythmChangesScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-comping'),
