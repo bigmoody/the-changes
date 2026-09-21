@@ -11,6 +11,7 @@ import '../settings/progression_store.dart';
 import 'alphabet_index.dart';
 import 'genre_filter.dart';
 import 'setlists_screen.dart';
+import 'starting_order_screen.dart';
 import 'star_button.dart';
 import 'tuner_screen.dart';
 import 'tuning_fork_icon.dart';
@@ -97,6 +98,16 @@ class _TunesPageState extends State<TunesPage> {
       appBar: AppBar(
         title: const Text('The Changes'),
         actions: [
+          IconButton(
+            key: const ValueKey('where-to-start'),
+            icon: const Icon(Icons.signpost_outlined),
+            tooltip: 'Where To Start',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => StartingOrderScreen(deps: _deps),
+              ),
+            ),
+          ),
           IconButton(
             key: const ValueKey('setlists'),
             icon: const Icon(Icons.list_alt_outlined),
@@ -202,6 +213,14 @@ class _TunesPageState extends State<TunesPage> {
                         right: indexed ? AlphabetIndex.width : 0,
                       ),
                       children: [
+                        // Only for a library nobody has played yet: an
+                        // alphabetical list of three hundred tunes is no
+                        // use at all if you do not know which of them you
+                        // could get through tonight. Once anything has
+                        // been played it goes, and the signpost in the bar
+                        // is where it lives from then on.
+                        if (recent.isEmpty && _showRecent)
+                          _StartHereCard(deps: _deps),
                         if (recent.isNotEmpty) ...[
                           SectionHeader(
                             'Recently Played',
@@ -441,6 +460,70 @@ class SectionHeader extends StatelessWidget {
           ),
           ?action,
         ],
+      ),
+    );
+  }
+}
+
+/// The way in to the path, shown at the top of a library nobody has played
+/// yet — the one moment when "which of these do I even start with?" is the
+/// only question there is.
+class _StartHereCard extends StatelessWidget {
+  const _StartHereCard({required this.deps});
+
+  final LibraryContext deps;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Card(
+        color: scheme.tertiaryContainer,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('start-here-card'),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => StartingOrderScreen(deps: deps),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.signpost_outlined,
+                  color: scheme.onTertiaryContainer,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Where To Start',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: scheme.onTertiaryContainer,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Twenty-one of these in an order worth learning '
+                        'them in, and what each one teaches',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onTertiaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: scheme.onTertiaryContainer),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
