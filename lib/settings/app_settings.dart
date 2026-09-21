@@ -96,6 +96,33 @@ enum ChordAid {
   const ChordAid(this.label);
 
   final String label;
+
+  /// A word or two for the chip on the chart, where there is no room for
+  /// the full name.
+  String get short => switch (this) {
+    off => '',
+    roman => 'I–vi–ii–V',
+    nashville => '1-6-2-5',
+    guideTones => '3rd & 7th',
+  };
+
+  /// What the small red line under each chord actually is.
+  ///
+  /// Without this it is a row of letters nobody asked for: you turn the
+  /// setting on once, forget, and are left reading "C F" under a Dm7 with
+  /// nothing on screen to say what that is.
+  String get legend => switch (this) {
+    off => '',
+    roman =>
+      'The small red line under each chord says what it is in the key, '
+          'in roman numerals.',
+    nashville =>
+      'The small red line under each chord says what it is in the key, '
+          'as numbers.',
+    guideTones =>
+      'The small red notes under each chord are its guide tones: the 3rd '
+          'and the 7th, the two that move least between changes.',
+  };
 }
 
 /// App-wide preferences, saved on the device so they survive restarts.

@@ -118,6 +118,42 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('what the red letters are is said on the chart', (
+      tester,
+    ) async {
+      // The complaint this guards against: you turn it on once, forget,
+      // and are left reading "C F" under a Dm7 with nothing on screen
+      // saying what that is.
+      await open(tester, ChordAid.off);
+      expect(find.byKey(const ValueKey('chord-aid')), findsNothing);
+
+      await open(tester, ChordAid.guideTones);
+      final chip = find.byKey(const ValueKey('chord-aid'));
+      expect(chip, findsOneWidget);
+      expect(find.text('3rd & 7th'), findsOneWidget);
+      // And the whole of it is readable, not just the shorthand.
+      expect(
+        tester
+            .widget<Tooltip>(
+              find.ancestor(of: chip, matching: find.byType(Tooltip)),
+            )
+            .message,
+        contains('guide tones'),
+      );
+    });
+
+    testWidgets('the chip leads to where it is turned off', (tester) async {
+      await open(tester, ChordAid.guideTones);
+      await tester.tap(find.byKey(const ValueKey('chord-aid')));
+      await tester.pumpAndSettle();
+      expect(find.text('Under The Chords'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('aid-off')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('sheet-done')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('chord-aid')), findsNothing);
+    });
+
     testWidgets('off, the chart is only chords', (tester) async {
       await open(tester, ChordAid.off);
       expect(find.text('i6'), findsNothing);

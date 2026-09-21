@@ -109,6 +109,30 @@ Future<void> showViewOptions(
                   ),
               ],
             ),
+            heading('Under The Chords'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final aid in ChordAid.values)
+                  ChoiceChip(
+                    key: ValueKey('aid-${aid.name}'),
+                    label: Text(aid.label),
+                    selected: settings.chordAid == aid,
+                    onSelected: (_) => settings.setChordAid(aid),
+                  ),
+              ],
+            ),
+            if (settings.chordAid != ChordAid.off)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  settings.chordAid.legend,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             heading('Hide The Chart'),
             Wrap(
               spacing: 8,

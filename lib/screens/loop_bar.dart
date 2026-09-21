@@ -146,6 +146,32 @@ class LoopBar extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                           ],
+                          // What the small red line under each chord is.
+                          // It is set in a sheet and then forgotten, and
+                          // an unexplained row of letters under a chord is
+                          // worse than no help at all.
+                          if (controller.settings.chordAid != ChordAid.off) ...[
+                            Tooltip(
+                              message: controller.settings.chordAid.legend,
+                              child: ActionChip(
+                                key: const ValueKey('chord-aid'),
+                                visualDensity: VisualDensity.compact,
+                                avatar: Icon(
+                                  Icons.school_outlined,
+                                  size: 15,
+                                  color: theme.colorScheme.tertiary,
+                                ),
+                                onPressed: () =>
+                                    showViewOptions(context, controller),
+                                label: Text(
+                                  controller.settings.chordAid.short,
+                                  semanticsLabel:
+                                      controller.settings.chordAid.legend,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           if (controller.chorus != null ||
                               controller.isFinishing)
                             Text(
