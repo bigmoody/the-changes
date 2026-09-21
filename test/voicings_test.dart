@@ -292,6 +292,119 @@ void main() {
     });
   });
 
+  group('the names', () {
+    test('every one says where its name comes from', () {
+      for (final voicing in Voicing.values) {
+        expect(voicing.whyCalled.length, greaterThan(80), reason: voicing.name);
+        expect(
+          voicing.whyCalled,
+          isNot(voicing.about),
+          reason: '${voicing.name}: what it is called is not what it is for',
+        );
+      }
+    });
+
+    test('the drops explain that the counting starts at the top', () {
+      // The one thing that trips everybody up, so it has to be said and
+      // not implied.
+      for (final voicing in [Voicing.drop2, Voicing.drop3]) {
+        expect(
+          voicing.whyCalled.toLowerCase(),
+          contains('top'),
+          reason: voicing.name,
+        );
+      }
+    });
+  });
+
+  group('shells on the guitar', () {
+    test('the shape is the root, the 7th and the 3rd, in that order', () {
+      for (final symbol in ['G^7', 'Gm7', 'G7', 'C^7', 'Cm7', 'C7']) {
+        final chord = Chord.parse(symbol);
+        for (final string in [0, 1]) {
+          final shape = shellShape(chord, rootString: string)!;
+          final sounded = shape.pitches;
+          expect(sounded, hasLength(3), reason: '$symbol on $string');
+          expect(
+            sounded.first % 12,
+            chord.root % 12,
+            reason: '$symbol starts on its root',
+          );
+          // Climbing, and the middle note is the 7th rather than the 3rd.
+          expect(sounded[1], greaterThan(sounded[0]), reason: symbol);
+          expect(sounded[2], greaterThan(sounded[1]), reason: symbol);
+          final above = (sounded[1] - sounded[0]) % 12;
+          expect(above, anyOf(9, 10, 11), reason: '$symbol: a 7th or a 6th');
+        }
+      }
+    });
+
+    test('it skips a string in the middle, which is the whole shape', () {
+      for (final string in [0, 1]) {
+        final shape = shellShape(Chord.parse('C7'), rootString: string)!;
+        final played = [
+          for (final (i, fret) in shape.frets.indexed)
+            if (fret != null) i,
+        ];
+        expect(played, [string, string + 2, string + 3]);
+      }
+    });
+
+    test('a hand can reach it', () {
+      for (final symbol in ['G^7', 'Gm7', 'G7', 'C^7', 'Cm7', 'C7', 'F^7']) {
+        for (final string in [0, 1]) {
+          final shape = shellShape(Chord.parse(symbol), rootString: string);
+          if (shape == null) continue;
+          final fretted = shape.frets.whereType<int>().where((f) => f > 0);
+          if (fretted.isEmpty) continue;
+          expect(
+            fretted.reduce(GuitarVoicing.max) -
+                fretted.reduce(GuitarVoicing.min),
+            lessThan(5),
+            reason: '$symbol on $string',
+          );
+        }
+      }
+    });
+
+    test('the standard shapes really do come out', () {
+      // The ones in every guitar book, which is the check that this is
+      // the vocabulary and not merely something that works.
+      String written(GuitarVoicing v) =>
+          v.frets.map((f) => f?.toString() ?? 'x').join(' ');
+      expect(
+        written(shellShape(Chord.parse('G^7'), rootString: 0)!),
+        '3 x 4 4 x x',
+      );
+      expect(
+        written(shellShape(Chord.parse('Gm7'), rootString: 0)!),
+        '3 x 3 3 x x',
+      );
+      expect(
+        written(shellShape(Chord.parse('G7'), rootString: 0)!),
+        '3 x 3 4 x x',
+      );
+      expect(
+        written(shellShape(Chord.parse('C^7'), rootString: 1)!),
+        'x 3 x 4 5 x',
+      );
+      expect(
+        written(shellShape(Chord.parse('Cm7'), rootString: 1)!),
+        'x 3 x 3 4 x',
+      );
+      expect(
+        written(shellShape(Chord.parse('C7'), rootString: 1)!),
+        'x 3 x 3 5 x',
+      );
+    });
+
+    test('a chord with no 3rd or 7th has no shell', () {
+      expect(shellShape(Chord.parse('Csus4'), rootString: 0), isNull);
+      // And there is nowhere to put one off the top two strings.
+      expect(shellShape(Chord.parse('C7'), rootString: 4), isNull);
+    });
+  });
+
   group('the screen', () {
     Future<void> open(WidgetTester tester) async {
       tester.view
@@ -397,6 +510,34 @@ void main() {
       expect(find.textContaining('cannot reach them'), findsOneWidget);
       // The keys can still show it: it is the guitar that cannot.
       expect(find.byKey(const ValueKey('the-keys')), findsOneWidget);
+    });
+
+    testWidgets('it says where the name comes from', (tester) async {
+      await open(tester);
+      await pick(tester, 'drop2', 'close');
+      expect(find.byKey(const ValueKey('why-called')), findsOneWidget);
+      expect(find.textContaining('counts down from the top'), findsOneWidget);
+    });
+
+    testWidgets('the guitar shells turn up under the shell', (tester) async {
+      await open(tester);
+      expect(find.byKey(const ValueKey('the-shells')), findsNothing);
+      await pick(tester, 'shell', 'close');
+      final shells = find.byKey(const ValueKey('the-shells'));
+      await tester.scrollUntilVisible(
+        shells,
+        140,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const ValueKey('voicings-list')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(shells, findsOneWidget);
+      expect(find.text('Root on the 6th string'), findsOneWidget);
+      expect(find.text('Root on the 5th string'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('it opens from Learn', (tester) async {

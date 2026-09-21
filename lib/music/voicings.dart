@@ -116,6 +116,10 @@ typedef VoicedNote = ({int pitch, String note, String degree, bool moved});
 enum Voicing {
   close(
     'Close',
+    whyCalled:
+        'Close because the notes are as close together as they will go. '
+        'Stack the chord in thirds from the root and there is no room '
+        'left between any two of them.',
     about:
         'All four notes inside an octave, stacked in thirds: the chord as '
         'a textbook writes it. Useful as the thing everything else is a '
@@ -124,6 +128,11 @@ enum Voicing {
   ),
   drop2(
     'Drop 2',
+    whyCalled:
+        'The number counts down from the top, which is the only '
+        'confusing part of it and the part nobody says out loud. Write '
+        'the chord out with the highest note first. Take the second one '
+        'down. Drop it an octave. Second from the top, dropped: drop 2.',
     about:
         'Take the second voice down from the top and drop it an octave. '
         'That is the whole technique. It spreads the chord across a '
@@ -133,6 +142,11 @@ enum Voicing {
   ),
   drop3(
     'Drop 3',
+    whyCalled:
+        'The same counting, one further down: third voice from the top, '
+        'dropped an octave. Not the third note up from the bottom, which '
+        'is what everybody assumes the first time and which would give '
+        'you a different chord.',
     about:
         'The same move on the third voice down instead, which leaves a '
         'bigger hole under the top note. On a guitar it skips a string, '
@@ -140,6 +154,11 @@ enum Voicing {
   ),
   shell(
     'Shell',
+    whyCalled:
+        'A shell is what is left when the inside has been taken out. The '
+        'root, the 3rd and the 7th are the frame the chord hangs on, and '
+        'the 5th and everything above it has been scooped out from '
+        'between them.',
     about:
         'Root, 3rd and 7th, and nothing else. The 3rd and the 7th are '
         'what say major, minor or dominant, so three notes carry the '
@@ -148,6 +167,12 @@ enum Voicing {
   ),
   rootlessA(
     'Rootless A',
+    whyCalled:
+        'Rootless because the root is not in it. The bass is already '
+        'playing that note, so a pianist who plays it too is doubling '
+        'somebody for no reason. A and B are not shapes with meanings, '
+        'they are just the two of them, and what tells them apart is '
+        'which note is sitting at the bottom.',
     about:
         'The bass has the root, so the piano leaves it out and plays the '
         'notes that matter, with the 3rd at the bottom. Colour on top: a '
@@ -155,16 +180,30 @@ enum Voicing {
   ),
   rootlessB(
     'Rootless B',
+    whyCalled:
+        'The B form, which is the A form with its bottom two notes moved '
+        'up an octave. Two shapes, alternated, so the hand stays where it '
+        'is while the chords go past underneath it.',
     about:
         'The same notes with the 7th at the bottom instead. A pianist '
         'alternates between the two forms so the hand barely moves from '
         'chord to chord, which is what makes comping sound joined up.',
   );
 
-  const Voicing(this.label, {required this.about});
+  const Voicing(this.label, {required this.about, required this.whyCalled});
 
   final String label;
+
+  /// What it is and where you would use it.
   final String about;
+
+  /// Where the name comes from.
+  ///
+  /// Worth its own field rather than a sentence buried in [about],
+  /// because the names are the part that puts people off: "drop 2"
+  /// sounds like jargon until somebody tells you it means the second
+  /// voice from the top, dropped, and then it is just a description.
+  final String whyCalled;
 
   /// Whether this one is made by moving a voice out of [close] rather
   /// than by leaving notes out.

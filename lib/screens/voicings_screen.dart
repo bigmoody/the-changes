@@ -113,6 +113,16 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Text(
+              _voicing.whyCalled,
+              key: const ValueKey('why-called'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Text(
               _voicing.about,
               key: const ValueKey('about-voicing'),
               style: theme.textTheme.bodySmall?.copyWith(
@@ -146,6 +156,7 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
               ],
             ),
           ),
+          if (_voicing == Voicing.shell) _Shells(root: _chord),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
             child: Text('On', style: theme.textTheme.titleSmall),
@@ -168,6 +179,119 @@ class _VoicingsScreenState extends State<VoicingsScreen> {
                 color: scheme.onSurfaceVariant,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The shells on the guitar: three qualities, from each of the two
+/// strings a root is usually taken from.
+///
+/// The first six shapes a jazz guitarist learns, and between them most
+/// of what a rhythm player does all night. They are here rather than on
+/// a page of their own because a shell is what they are, and a guitarist
+/// reading about shells wants to see these.
+class _Shells extends StatelessWidget {
+  const _Shells({required this.root});
+
+  final Chord root;
+
+  static const _qualities = [('^7', 'maj 7'), ('m7', 'min 7'), ('7', 'dom 7')];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+      child: Column(
+        key: const ValueKey('the-shells'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Shells on the Guitar', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 2),
+          Text(
+            'The same three notes with the root on the sixth string, then '
+            'on the fifth. The gap in the middle is a string your hand '
+            'mutes, and it is what lets the shape stay put while the '
+            'chords go past.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          for (final (string, label) in const [
+            (0, 'Root on the 6th string'),
+            (1, 'Root on the 5th string'),
+          ]) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 12, bottom: 4),
+              child: Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: scheme.tertiary,
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                for (final (quality, written) in _qualities)
+                  Expanded(
+                    child: _Shell(
+                      chord: Chord.parse('${root.rootName}$quality'),
+                      rootString: string,
+                      label: written,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One shell shape, named.
+class _Shell extends StatelessWidget {
+  const _Shell({
+    required this.chord,
+    required this.rootString,
+    required this.label,
+  });
+
+  final Chord chord;
+  final int rootString;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final shape = shellShape(chord, rootString: rootString);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${handSymbol(chord.display)}  $label',
+            textScaler: TextScaler.noScaling,
+            style: TextStyle(
+              fontSize: 11,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 2),
+          AspectRatio(
+            aspectRatio: GuitarDiagram.aspect,
+            child: shape == null
+                ? const SizedBox.shrink()
+                : GuitarDiagram(
+                    key: ValueKey('shell-${chord.display}-$rootString'),
+                    chord: chord,
+                    voicing: shape,
+                  ),
           ),
         ],
       ),

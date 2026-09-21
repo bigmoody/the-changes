@@ -272,3 +272,75 @@ List<List<int>> _stringRuns(int length) {
   }
   return runs;
 }
+
+/// The shell of [chord] with its root on [rootString], counted from the
+/// low E as nought.
+///
+/// The first shapes a jazz guitarist learns, and the ones a rhythm
+/// player uses all night. Three notes: the root, then the 7th two
+/// strings up and the 3rd on the string above that, which skips a string
+/// in the middle and leaves the hand somewhere it can stay.
+///
+/// Null where the chord has no 3rd or 7th to speak of, or where the
+/// shape runs off the end of the neck.
+GuitarVoicing? shellShape(
+  Chord chord, {
+  required int rootString,
+  int highestFret = 15,
+}) {
+  // The 7th two strings up, the 3rd on the one above it: the gap in the
+  // middle is what a finger mutes and why the shape sits still.
+  final seventhString = rootString + 2;
+  final thirdString = rootString + 3;
+  if (thirdString >= guitarTuning.length) return null;
+
+  final intervals = chord.quality.intervals.map((i) => i % 12).toSet();
+  final third = intervals.contains(3)
+      ? 3
+      : intervals.contains(4)
+      ? 4
+      : null;
+  final seventh = intervals.contains(11)
+      ? 11
+      : intervals.contains(10)
+      ? 10
+      : intervals.contains(9)
+      ? 9 // a 6th chord: its 6th does the 7th's work
+      : null;
+  if (third == null || seventh == null) return null;
+
+  for (var fret = 0; fret <= highestFret; fret++) {
+    if ((guitarTuning[rootString] + fret) % 12 != chord.root % 12) continue;
+    final root = guitarTuning[rootString] + fret;
+    final frets = List<int?>.filled(guitarTuning.length, null);
+    frets[rootString] = fret;
+    var reachable = true;
+    for (final (string, degree) in [
+      (seventhString, seventh),
+      (thirdString, third),
+    ]) {
+      // The fret nearest the root's own, rather than the lowest one
+      // that happens to sound the note: an open string beside a tenth
+      // fret is the right note in a place no hand can go.
+      var at = (root + degree - guitarTuning[string]) % 12;
+      while (at < fret - 1) {
+        at += 12;
+      }
+      if (at > fret + 4 || at > highestFret) {
+        reachable = false;
+        break;
+      }
+      frets[string] = at;
+    }
+    if (!reachable) continue;
+    final voicing = GuitarVoicing(frets);
+    final fretted = voicing.frets.whereType<int>().where((f) => f > 0);
+    if (fretted.isNotEmpty &&
+        fretted.reduce(GuitarVoicing.max) - fretted.reduce(GuitarVoicing.min) >=
+            5) {
+      continue;
+    }
+    return voicing;
+  }
+  return null;
+}
