@@ -897,6 +897,15 @@ _Parts _renderParts(
 /// matching the stems to a typical trio balance).
 const _drumLevel = 1.7;
 
+/// A click in a short example: when it falls, and whether it is the one
+/// on the downbeat.
+///
+/// It is a rim click off the recorded kit rather than a tone, because a
+/// pitched metronome under a pitched exercise is one more note to listen
+/// to — and where the thing being taught is *placement*, the click has to
+/// be the one sound in the mix that is plainly not part of the music.
+typedef SnippetClick = ({double at, bool accent});
+
 /// One note of a short example: [pitch] (MIDI) from [start] for [length],
 /// both in seconds, on the piano — or the bass if [bass] is set.
 typedef SnippetNote = ({
@@ -935,11 +944,14 @@ Uint8List renderSnippet(
   int sampleRate = 44100,
   bool guitar = false,
   BassTone bassTone = BassTone.natural,
+  List<SnippetClick> clicks = const [],
 }) {
   final brightBass = bassTone != BassTone.natural;
-  final end = notes
-      .map((n) => n.start + n.length)
-      .fold(0.0, (a, b) => math.max(a, b));
+  final end = [
+    for (final note in notes) note.start + note.length,
+    // A click at the end still needs room to ring.
+    for (final click in clicks) click.at + 0.3,
+  ].fold(0.0, (a, b) => math.max(a, b));
   final release = 0.35;
   final mix = _Mix(
     sampleRate: sampleRate,
@@ -989,6 +1001,16 @@ Uint8List renderSnippet(
         releaseSamples: (release * sampleRate).round(),
       );
     }
+  }
+  // The clicks last, so they sit on top of whatever else is going on.
+  for (final click in clicks) {
+    final stick = bank.crossStick;
+    final layer = click.accent ? stick.length - 1 : 0;
+    mix.addRecording(
+      (click.at * sampleRate).round(),
+      stick.layers[layer].first,
+      (click.accent ? 0.5 : 0.34) * stick.levelling[layer],
+    );
   }
   if (brightBass) {
     // Set by measurement. The low notes' boom is their 2nd and 3rd

@@ -50,8 +50,10 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
     // has somewhere to do it.
     const bars = 2;
     final notes = <SnippetNote>[];
-    // The chord underneath, and a click on every beat: the placement is
-    // only audible against something keeping time.
+    // A click on every beat, so the line has something to be early or
+    // late against — a rim click rather than a note, because a pitched
+    // metronome under a pitched exercise is one more thing to listen to.
+    final clicks = <SnippetClick>[];
     for (var bar = 0; bar < bars; bar++) {
       notes.add((
         pitch: 38 + (_chord.root - 38) % 12,
@@ -61,13 +63,7 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
         bass: true,
       ));
       for (var beat = 0; beat < 4; beat++) {
-        notes.add((
-          pitch: 84,
-          start: (bar * 8 + beat * 2) * quaver,
-          length: quaver * 0.4,
-          velocity: beat == 0 ? 0.5 : 0.34,
-          bass: false,
-        ));
+        clicks.add((at: (bar * 8 + beat * 2) * quaver, accent: beat == 0));
       }
     }
     // The phrase, placed in the second bar so a pick-up has room.
@@ -81,7 +77,7 @@ class _PhrasingScreenState extends State<PhrasingScreen> {
         bass: false,
       ));
     }
-    await widget.player.playSnippet(renderSnippet(bank, notes));
+    await widget.player.playSnippet(renderSnippet(bank, notes, clicks: clicks));
   }
 
   @override
