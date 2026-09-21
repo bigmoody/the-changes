@@ -1,9 +1,9 @@
 // Swing: the ride cymbal, and the only thing changing is how late the
-// "a" is.
+// "and" is.
 //
 // A ride rather than a line of notes, because the ride *is* the swing —
-// ding, ding-a, ding, ding-a is the sound everybody learns the feel
-// from, and its "a" is a swung eighth with nothing else attached. A
+// it is the sound everybody learns the feel from, and its extra stroke
+// behind each backbeat is a swung "and" with nothing else attached. A
 // melody would only take the attention off the rhythm, and the rhythm is
 // the only thing this screen has to say.
 //
@@ -20,12 +20,12 @@ import '../music/swing.dart';
 import '../settings/app_settings.dart';
 
 /// The ride under the example: a ding on every beat, leaning on 2 and 4,
-/// with the swung "a" after each of those and the hi-hat closing
+/// with the swung "and" after each of those and the hi-hat closing
 /// underfoot with it.
 ///
 /// The same figure the band plays behind every swing tune in the app, so
 /// what is being demonstrated is the real thing rather than a diagram of
-/// it. The "a" is the only part that moves.
+/// it. The "and" is the only part that moves.
 List<SnippetDrum> ridePattern({
   required int tempo,
   required double at,
@@ -48,9 +48,9 @@ List<SnippetDrum> ridePattern({
       hard: backbeat,
     ));
     if (backbeat) {
-      // The "a": a swung eighth with nothing else attached to it.
+      // The "and": a swung eighth with nothing else attached to it.
       ride.add((at: pair.and, drum: Drum.ride, velocity: 0.4, hard: false));
-      // What the "a" is heard against — without a beat underneath there
+      // What the "and" is heard against — without a beat underneath there
       // is nothing for it to be late to.
       ride.add((
         at: pair.downbeat,
@@ -186,9 +186,9 @@ class _SwingScreenState extends State<SwingScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: Text(
-                      'Played on the ride, which is where you hear it: the '
-                      '"a" in ding, ding-a is the swung eighth, and it is '
-                      'the only thing that moves.',
+                      'Played on the ride, which is where you hear it. '
+                      'The extra stroke behind each backbeat is the swung '
+                      '"and" — the only thing that moves.',
                       key: const ValueKey('about-the-ride'),
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.colorScheme.tertiary,

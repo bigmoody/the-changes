@@ -141,7 +141,7 @@ void main() {
       expect({for (final hit in hits) hit.drum}, {Drum.ride, Drum.hiHatPedal});
     });
 
-    test('the "a" comes after 2 and 4, and only there', () {
+    test('the "and" comes after 2 and 4, and only there', () {
       final hits = ridePattern(tempo: 120, at: tripletSwing, bars: 2);
       final swung = [
         for (final hit in rideOnly(hits))
@@ -156,10 +156,10 @@ void main() {
       }
     });
 
-    test('swinging harder moves the "a" and nothing else', () {
+    test('swinging harder moves the "and" and nothing else', () {
       // The whole demonstration. If the beats moved too it would be a
-      // tempo change, and if the "a" did not move there would be nothing
-      // to hear.
+      // tempo change, and if the "and" did not move there would be
+      // nothing to hear.
       List<double> atSwing(double at) => [
         for (final hit in ridePattern(tempo: 120, at: at, bars: 2)) hit.at,
       ];
