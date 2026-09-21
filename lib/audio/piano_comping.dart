@@ -16,8 +16,13 @@
 import 'dart:math' as math;
 
 import '../music/chord.dart';
+import '../music/voicings.dart';
 import '../music/comping.dart';
 import '../music/tune.dart';
+
+// Where the voicings live now. Re-exported so the guitarist and the
+// tests that reach for them through this file keep working.
+export '../music/voicings.dart';
 
 /// One comped chord: when to play it, how long, how hard, and which notes.
 typedef CompHit = ({
@@ -26,14 +31,6 @@ typedef CompHit = ({
   double velocity,
   List<int> notes,
 });
-
-/// The lowest and highest note the comping uses (C3 to E5): the middle of
-/// the piano, above the bass. The bottom of a voicing normally sits around
-/// [compHome] (B♭3, just below middle C), which is where left-hand rootless
-/// voicings live.
-const compLowest = 48;
-const compHighest = 76;
-const compHome = 58;
 
 /// A rhythm: (beat, length in beats, how hard relative to the chord's level).
 typedef _Pattern = List<(double, double, double)>;
@@ -292,86 +289,4 @@ double _crowding(List<int> shape) {
     if (span <= 4) penalty += 5 - span;
   }
   return penalty;
-}
-
-/// The two standard rootless jazz voicings of [chord], low to high.
-///
-/// The bass has the root, so the piano plays the notes that give the chord
-/// its character: the 3rd and 7th (which say major/minor/dominant), plus the
-/// 5th, 6th, 9th or 13th for colour. The two shapes are the usual "A" form
-/// (3rd on the bottom) and "B" form (7th on the bottom); alternating between
-/// them is how pianists move smoothly from chord to chord.
-///
-/// The voicings are jazzier than the symbols on the page, as a real player's
-/// would be: a plain C becomes a C6/9, a plain Cm becomes a Cm6/9, and a
-/// dominant heading for a minor chord ([resolvingTo]) picks up the ♭9 and
-/// ♭13 that the ear expects there.
-List<List<int>> voicingsFor(Chord chord, {Chord? resolvingTo}) {
-  final intervals = chord.quality.intervals;
-  bool has(int semitones) => intervals.contains(semitones);
-
-  final third = has(3) ? 3 : (has(4) ? 4 : 5); // minor, major or suspended
-  final fifth = has(6) ? 6 : (has(8) ? 8 : 7); // flat, sharp or perfect
-  // A plain major or minor triad is played as a 6th chord: nobody comps a
-  // bare triad on a standard. Anything odder (sus, diminished, augmented) is
-  // left alone, and doubles its root rather than having a 7th invented.
-  final isPlainTriad = fifth == 7 && (third == 3 || third == 4);
-  final seventh = has(11)
-      ? 11
-      : has(10)
-      ? 10
-      : has(9) || isPlainTriad
-      ? 9 // a 6th chord: the 6th does the 7th's job
-      : 12;
-  final isDominant = third == 4 && seventh == 10;
-
-  // A V7 on its way to a minor chord a fifth below takes the tensions that
-  // belong there: E7 → Am is voiced as E7♭9♭13.
-  final plainDominant = isDominant && !has(13) && !has(15) && !has(20);
-  final altered =
-      plainDominant &&
-      resolvingTo != null &&
-      resolvingTo.quality.intervals.contains(3) &&
-      (chord.root + 5) % 12 == resolvingTo.root;
-
-  final ninth = has(13) || altered
-      ? 13
-      : has(15)
-      ? 15
-      : 14; // flat, sharp or natural 9th
-  final thirteenth = has(20) || altered ? 20 : 21; // flat or natural 13th
-
-  // Dominants sound better with the 13th (or the ♯11, if the chord has one)
-  // than the plain 5th.
-  final colour = has(18) ? 18 : (isDominant ? thirteenth : fifth);
-  final degrees = has(6) && has(10)
-      ? [third, fifth, seventh, 17] // half-diminished: ♭3 ♭5 ♭7 11
-      : [third, colour, seventh, ninth];
-
-  // A form: 3rd at the bottom. B form: 7th at the bottom.
-  return [
-    _stack(chord.root, [degrees[0], degrees[1], degrees[2], degrees[3]]),
-    _stack(chord.root, [degrees[2], degrees[3], degrees[0], degrees[1]]),
-  ];
-}
-
-/// Stacks [degrees] (semitones above [root]) upwards into a close voicing
-/// sitting in the comping range.
-List<int> _stack(int root, List<int> degrees) {
-  final notes = <int>[];
-  var previous = compLowest - 1;
-  for (final degree in degrees) {
-    final pitchClass = (root + degree) % 12;
-    var note = previous + (pitchClass - previous) % 12;
-    if (note <= previous) note += 12;
-    notes.add(note);
-    previous = note;
-  }
-  // Move the whole shape into the middle of the range.
-  while (notes.last > compHighest) {
-    for (var i = 0; i < notes.length; i++) {
-      notes[i] -= 12;
-    }
-  }
-  return notes;
 }

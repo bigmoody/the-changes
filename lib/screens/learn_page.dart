@@ -27,6 +27,7 @@ import 'phrasing_screen.dart';
 import 'trading_screen.dart';
 import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
+import 'voicings_screen.dart';
 import 'where_am_i_screen.dart';
 import 'scales_reference_screen.dart';
 import 'comping_screen.dart';
@@ -199,6 +200,16 @@ class LearnPage extends StatelessWidget {
                 'the stave and under the fingers',
             onTap: () =>
                 open(EnclosuresScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-voicings'),
+            icon: Icons.layers_outlined,
+            title: 'Voicings',
+            subtitle:
+                'The same chord arranged six ways: shells, the rootless '
+                'forms, and what drop 2 actually means',
+            onTap: () =>
+                open(VoicingsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-guide-tones'),

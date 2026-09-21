@@ -1,0 +1,328 @@
+// Voicings: whether each named arrangement is the arrangement it is
+// named after.
+//
+// These are not opinions. Drop 2 is the second voice from the top moved
+// down an octave, and a test can say so exactly; a shell is root, 3rd
+// and 7th and nothing else. So the tests check the definitions rather
+// than that something plausible came out.
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/practice_player.dart';
+import 'package:play_along/music/chord.dart';
+import 'package:play_along/music/voicings.dart';
+import 'package:play_along/screens/learn_page.dart';
+import 'package:play_along/screens/voicings_screen.dart';
+import 'package:play_along/settings/app_settings.dart';
+import 'package:play_along/theme.dart';
+
+class _FakePlayer extends PracticePlayer {
+  @override
+  Future<void> start(
+    BackingRequest request, {
+    String? alongside,
+    Duration leadIn = Duration.zero,
+    int pickUpBeats = 0,
+  }) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  void setVolume(Instrument instrument, double volume) {}
+}
+
+Chord get _cmaj7 => Chord.parse('C^7');
+List<String> _notesOf(List<VoicedNote> v) => [for (final n in v) n.note];
+
+void main() {
+  group('close position', () {
+    test('is the chord stacked in thirds inside an octave', () {
+      expect(_notesOf(Voicing.close.on(_cmaj7)), ['C', 'E', 'G', 'B']);
+      expect(spanOf(Voicing.close.on(_cmaj7)), lessThanOrEqualTo(12));
+    });
+
+    test('it never goes past an octave, whatever the chord', () {
+      // The claim the drops are measured against.
+      for (final symbol in ['C^7', 'Dm7', 'G7', 'Cm7', 'Cø7', 'C6']) {
+        final close = Voicing.close.on(Chord.parse(symbol));
+        expect(spanOf(close), lessThanOrEqualTo(12), reason: symbol);
+      }
+    });
+  });
+
+  group('the drops', () {
+    test('drop 2 moves the second voice from the top down an octave', () {
+      // The definition, checked against the definition: everything else
+      // stays where it was and one note is exactly twelve lower.
+      final close = Voicing.close.on(_cmaj7);
+      final dropped = Voicing.drop2.on(_cmaj7);
+      expect(_notesOf(dropped), ['G', 'C', 'E', 'B']);
+
+      final second = close[close.length - 2];
+      final moved = dropped.firstWhere((n) => n.moved);
+      expect(moved.note, second.note);
+      expect(moved.pitch, second.pitch - 12);
+    });
+
+    test('drop 3 moves the third voice instead', () {
+      final close = Voicing.close.on(_cmaj7);
+      final dropped = Voicing.drop3.on(_cmaj7);
+      expect(_notesOf(dropped), ['E', 'C', 'G', 'B']);
+      final third = close[close.length - 3];
+      expect(dropped.firstWhere((n) => n.moved).pitch, third.pitch - 12);
+    });
+
+    test('exactly one voice moves, and the rest are untouched', () {
+      for (final voicing in [Voicing.drop2, Voicing.drop3]) {
+        for (final symbol in ['C^7', 'Dm7', 'G7']) {
+          final chord = Chord.parse(symbol);
+          final close = Voicing.close.on(chord);
+          final dropped = voicing.on(chord);
+          expect(
+            dropped.where((n) => n.moved),
+            hasLength(1),
+            reason: '$voicing on $symbol',
+          );
+          // Same four notes, still: a drop rearranges, it does not
+          // change which notes are in the chord.
+          expect(
+            dropped.map((n) => n.note).toSet(),
+            close.map((n) => n.note).toSet(),
+            reason: '$voicing on $symbol',
+          );
+        }
+      }
+    });
+
+    test('a drop is wider than an octave, which is what it is for', () {
+      for (final voicing in [Voicing.drop2, Voicing.drop3]) {
+        for (final symbol in ['C^7', 'Dm7', 'G7']) {
+          expect(
+            spanOf(voicing.on(Chord.parse(symbol))),
+            greaterThan(12),
+            reason: '$voicing on $symbol',
+          );
+        }
+      }
+      // And drop 3 opens a bigger hole than drop 2.
+      expect(
+        spanOf(Voicing.drop3.on(_cmaj7)),
+        greaterThan(spanOf(Voicing.drop2.on(_cmaj7))),
+      );
+    });
+
+    test('the drops are the only ones that move anything', () {
+      for (final voicing in Voicing.values) {
+        final moved = voicing.on(_cmaj7).where((n) => n.moved);
+        expect(moved.isNotEmpty, voicing.isADrop, reason: voicing.name);
+      }
+    });
+  });
+
+  group('leaving notes out', () {
+    test('a shell is the root, the 3rd and the 7th', () {
+      final shell = Voicing.shell.on(_cmaj7);
+      expect(_notesOf(shell), ['C', 'E', 'B']);
+      expect(shell.map((n) => n.degree), [
+        'root',
+        '3rd',
+        '7th',
+      ], reason: 'no 5th, and never missed');
+    });
+
+    test('it keeps the notes that say what the chord is', () {
+      // A shell has to tell a minor 7th from a dominant, or it is not
+      // carrying the chord.
+      final minor = Voicing.shell.on(Chord.parse('Dm7'));
+      final dominant = Voicing.shell.on(Chord.parse('D7'));
+      expect(_notesOf(minor), isNot(_notesOf(dominant)));
+      for (final shell in [minor, dominant]) {
+        expect(shell, hasLength(3));
+        expect(shell.map((n) => n.degree), contains('root'));
+      }
+    });
+
+    test('the rootless forms leave the root to the bass', () {
+      for (final voicing in [Voicing.rootlessA, Voicing.rootlessB]) {
+        for (final symbol in ['C^7', 'Dm7', 'G7']) {
+          final chord = Chord.parse(symbol);
+          expect(
+            voicing.on(chord).map((n) => n.degree),
+            isNot(contains('root')),
+            reason: '$voicing on $symbol',
+          );
+        }
+      }
+    });
+
+    test('A has the 3rd at the bottom and B has the 7th', () {
+      expect(Voicing.rootlessA.on(_cmaj7).first.degree, '3rd');
+      expect(Voicing.rootlessB.on(_cmaj7).first.degree, '7th');
+      final dm7 = Chord.parse('Dm7');
+      expect(Voicing.rootlessA.on(dm7).first.degree, '♭3rd');
+      expect(Voicing.rootlessB.on(dm7).first.degree, '♭7th');
+    });
+
+    test('they are the band\'s own, not a second copy of them', () {
+      // The pianist plays voicingsFor; this reads the same function, so
+      // the screen cannot come to teach something the band does not do.
+      for (final symbol in ['C^7', 'Dm7', 'G7']) {
+        final chord = Chord.parse(symbol);
+        final band = voicingsFor(chord);
+        expect(
+          Voicing.rootlessA.on(chord).map((n) => n.pitch),
+          band.first,
+          reason: symbol,
+        );
+        expect(
+          Voicing.rootlessB.on(chord).map((n) => n.pitch),
+          band.last,
+          reason: symbol,
+        );
+      }
+    });
+  });
+
+  group('naming the notes', () {
+    test('a 6th over a chord with a 7th is called the 13th', () {
+      // What a player would say, and what the rootless forms use it as.
+      expect(degreeIn(Chord.parse('G7'), Chord.parse('G7').root + 9), '13th');
+      expect(degreeIn(Chord.parse('C6'), Chord.parse('C6').root + 9), '6th');
+    });
+
+    test('every note of every voicing knows what it is', () {
+      for (final voicing in Voicing.values) {
+        for (final symbol in ['C^7', 'Dm7', 'G7']) {
+          for (final note in voicing.on(Chord.parse(symbol))) {
+            expect(note.degree, isNotEmpty, reason: '$voicing on $symbol');
+            expect(note.note, isNotEmpty);
+          }
+        }
+      }
+    });
+
+    test('each one says what it is and where you would use it', () {
+      for (final voicing in Voicing.values) {
+        expect(voicing.label, isNotEmpty);
+        expect(voicing.about.length, greaterThan(80), reason: voicing.name);
+      }
+    });
+  });
+
+  group('the screen', () {
+    Future<void> open(WidgetTester tester) async {
+      tester.view
+        ..physicalSize = const Size(393, 852) * 3
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(Brightness.light),
+          home: VoicingsScreen(
+            player: _FakePlayer(),
+            settings: AppSettings.inMemory(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> pick(WidgetTester tester, String value, String near) async {
+      final chip = find.byKey(ValueKey('pick-$value'));
+      await tester.dragUntilVisible(
+        chip,
+        find.byKey(ValueKey('pick-$near')),
+        const Offset(-140, 0),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the stack is on screen when it opens', (tester) async {
+      await open(tester);
+      final stack = find.byKey(const ValueKey('the-voicing'));
+      expect(stack, findsOneWidget);
+      expect(tester.getRect(stack).bottom, lessThan(852));
+      for (final note in ['C', 'E', 'G', 'B']) {
+        expect(find.text(note), findsOneWidget, reason: note);
+      }
+    });
+
+    testWidgets('picking drop 2 marks the voice that moved', (tester) async {
+      await open(tester);
+      await pick(tester, 'drop2', 'close');
+      expect(find.text('5th, dropped'), findsOneWidget);
+      expect(
+        find.textContaining('second voice down from the top'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('it says the span, and that a drop breaks the octave', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(find.textContaining('sits inside an octave'), findsOneWidget);
+      await pick(tester, 'drop2', 'close');
+      expect(find.textContaining('never goes past twelve'), findsOneWidget);
+    });
+
+    testWidgets('close has nothing to compare, the others do', (tester) async {
+      await open(tester);
+      expect(find.byKey(const ValueKey('play-close')), findsNothing);
+      await pick(tester, 'drop2', 'close');
+      expect(find.byKey(const ValueKey('play-close')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('play-close')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('play-voicing')));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('changing the chord redraws it', (tester) async {
+      await open(tester);
+      final chip = find.byKey(const ValueKey('pick-G7'));
+      await tester.scrollUntilVisible(
+        chip,
+        120,
+        scrollable: find
+            .descendant(
+              of: find.byKey(const ValueKey('voicings-list')),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(find.text('F'), findsOneWidget, reason: 'the ♭7 of G7');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('it opens from Learn', (tester) async {
+      tester.view
+        ..physicalSize = const Size(393, 852) * 3
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(Brightness.light),
+          home: LearnPage(
+            player: _FakePlayer(),
+            settings: AppSettings.inMemory(),
+          ),
+        ),
+      );
+      final card = find.byKey(const ValueKey('learn-voicings'));
+      await tester.scrollUntilVisible(card, 100);
+      await tester.ensureVisible(card);
+      await tester.pumpAndSettle();
+      await tester.tap(card);
+      await tester.pumpAndSettle();
+      expect(find.byType(VoicingsScreen), findsOneWidget);
+    });
+  });
+}
