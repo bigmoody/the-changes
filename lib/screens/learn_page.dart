@@ -16,6 +16,7 @@ import 'guitar_chords_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'metronome_screen.dart';
+import 'modal_screen.dart';
 import 'reading_music_screen.dart';
 import 'rhythm_changes_screen.dart';
 import 'bebop_scales_screen.dart';
@@ -156,6 +157,15 @@ class LearnPage extends StatelessWidget {
                 'alone: the other half of playing changes',
             onTap: () =>
                 open(CompingScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-modal'),
+            icon: Icons.blur_on,
+            title: 'Modal',
+            subtitle:
+                'What to do when one chord lasts sixteen bars, and the '
+                'question the chart will not answer',
+            onTap: () => open(ModalScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
