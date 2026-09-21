@@ -19,6 +19,7 @@ import 'metronome_screen.dart';
 import 'reading_music_screen.dart';
 import 'bebop_scales_screen.dart';
 import 'number_patterns_screen.dart';
+import 'phrasing_screen.dart';
 import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
 import 'where_am_i_screen.dart';
@@ -113,6 +114,16 @@ class LearnPage extends StatelessWidget {
                 'same two notes in the middle',
             onTap: () =>
                 open(TritoneSubsScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-phrasing'),
+            icon: Icons.graphic_eq,
+            title: 'Where Phrases Start',
+            subtitle:
+                'The same four notes moved around the bar — when a line '
+                'comes in, and which notes get the weight',
+            onTap: () =>
+                open(PhrasingScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
