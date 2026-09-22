@@ -159,19 +159,25 @@ class Transport extends StatelessWidget {
                   alignment: Alignment.centerRight,
                   child: Row(
                     children: [
+                      // Every part gets a chip, including the arpeggios,
+                      // whose chip is how they are switched on in the
+                      // first place. An imported part only has one once
+                      // there is something imported.
                       for (final instrument in Instrument.values)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: instrument == Instrument.arpeggio
-                              ? _ArpeggioButton(controller: c)
-                              : _PartChip(
-                                  name: controller.partName(instrument),
-                                  on: controller.isAudible(instrument),
-                                  muted: controller.isMuted(instrument),
-                                  onPressed: () =>
-                                      controller.toggleMute(instrument),
-                                ),
-                        ),
+                        if (instrument != Instrument.imported ||
+                            controller.importedPart != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: instrument == Instrument.arpeggio
+                                ? _ArpeggioButton(controller: c)
+                                : _PartChip(
+                                    name: controller.partName(instrument),
+                                    on: controller.isAudible(instrument),
+                                    muted: controller.isMuted(instrument),
+                                    onPressed: () =>
+                                        controller.toggleMute(instrument),
+                                  ),
+                          ),
                     ],
                   ),
                 ),

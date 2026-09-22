@@ -14,6 +14,7 @@ import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
+import '../music/imported_part.dart';
 import '../practice/hiding_the_chart.dart';
 import '../practice/practice_controller.dart';
 import '../practice/practice_record.dart';
@@ -21,6 +22,7 @@ import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
+import 'import_part_sheet.dart';
 
 /// The practice screen's sheets, all opened the same way.
 ///
@@ -413,6 +415,46 @@ void showMixer(BuildContext context, PracticeController controller) {
                   ],
                 ),
               ),
+            ListTile(
+              key: const ValueKey('import-part'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.file_open_outlined),
+              title: const Text('Imported Part'),
+              subtitle: Text(
+                controller.importedPart == null
+                    ? 'Play a MIDI file alongside the band'
+                    : '${controller.importedPart!.name}, on the '
+                          '${controller.importedPart!.voice.label.toLowerCase()}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => showImportPart(context, controller),
+            ),
+            if (controller.importedPart case final part?)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text('Played On', style: theme.textTheme.titleSmall),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SegmentedButton<PartVoice>(
+                        key: const ValueKey('imported-voice'),
+                        showSelectedIcon: false,
+                        segments: [
+                          for (final voice in PartVoice.values)
+                            ButtonSegment(
+                              value: voice,
+                              label: Text(voice.label),
+                            ),
+                        ],
+                        selected: {part.voice},
+                        onSelectionChanged: (value) => controller
+                            .setImportedPart(part.withVoice(value.first)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             for (final instrument in controller.parts)
               _MixerChannel(controller: controller, instrument: instrument),
           ],
@@ -622,6 +664,7 @@ IconData _iconFor(Instrument instrument, Comping comping) =>
       Instrument.bass => Icons.music_note,
       Instrument.drums => Icons.album,
       Instrument.arpeggio => Icons.stairs_outlined,
+      Instrument.imported => Icons.file_open_outlined,
     };
 
 /// A bottom sheet for how the band plays the form: how many choruses, which

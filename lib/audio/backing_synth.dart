@@ -18,6 +18,7 @@ import '../music/arrangement.dart';
 import '../music/loop_range.dart';
 import '../music/swing.dart';
 import '../music/tune.dart';
+import '../music/imported_part.dart';
 import 'arpeggios.dart';
 import 'drum_patterns.dart';
 import 'guitar_comping.dart';
@@ -35,7 +36,11 @@ enum Instrument {
 
   /// Each chord as a broken chord, when [BackingRequest.arpeggios] asks
   /// for it. Only rendered then; the other parts are always there.
-  arpeggio('Arpeggios');
+  arpeggio('Arpeggios'),
+
+  /// A part read out of a MIDI file, when [BackingRequest.imported] has
+  /// one. Like the arpeggios, only rendered when it is asked for.
+  imported('Imported');
 
   const Instrument(this.label);
   final String label;
@@ -55,6 +60,7 @@ class BackingRequest {
     this.arpeggioSound = Comping.piano,
     this.arpeggioStart = ArpeggioStart.root,
     this.arrangement = Arrangement.keepGoing,
+    this.imported,
   });
 
   final Tune tune;
@@ -88,6 +94,10 @@ class BackingRequest {
   /// each of them.
   final Arrangement arrangement;
 
+  /// A part from a MIDI file playing alongside the band, already in the
+  /// key being played. Null when there isn't one, which is the usual case.
+  final ImportedPart? imported;
+
   BackingRequest withSamples(SampleBank? samples) => BackingRequest(
     tune: tune,
     loop: loop,
@@ -101,6 +111,7 @@ class BackingRequest {
     arpeggioSound: arpeggioSound,
     arpeggioStart: arpeggioStart,
     arrangement: arrangement,
+    imported: imported,
   );
 }
 
@@ -424,7 +435,12 @@ _Parts _renderParts(
   final clicks = newMix();
   final mixes = {
     for (final part in Instrument.values)
-      if (part != Instrument.arpeggio || request.arpeggios) part: newMix(),
+      if (switch (part) {
+        Instrument.arpeggio => request.arpeggios,
+        Instrument.imported => request.imported?.isEmpty == false,
+        _ => true,
+      })
+        part: newMix(),
   };
   final piano = mixes[Instrument.chords]!;
   final bass = mixes[Instrument.bass]!;
@@ -786,6 +802,76 @@ _Parts _renderParts(
           level: 1.6,
           beatSeconds: secondsPerBeatAt(note.beat),
         );
+      }
+    }
+  }
+
+  // ── An imported part ───────────────────────────────────────────────────
+  // Nothing is decided here. Somebody else wrote these notes and all this
+  // does is put them where the form says and play them on whichever of the
+  // three instruments was chosen.
+  //
+  // It keeps playing when the band lays out. Laying out drops the parts
+  // the app writes so a player can cover them; a part somebody imported is
+  // not one of those, and silencing it would be answering a question
+  // nobody asked.
+  final importedMix = mixes[Instrument.imported];
+  final importedPart = request.imported;
+  if (importedMix != null && importedPart != null) {
+    final laid = importedPart.laidOver(
+      choruses: choruses,
+      formBeats: loop.lengthBeats.toDouble(),
+    );
+    for (final note in laid) {
+      // Off the ends of a keyboard there is nothing recorded to play, and
+      // a file transposed a long way can ask for it.
+      final pitch = note.pitch.clamp(21, 108);
+      final start = at(note.beat);
+      final beatSeconds = secondsPerBeatAt(note.beat);
+      switch (importedPart.voice) {
+        case PartVoice.piano:
+          playPianoNote(
+            pitch,
+            start,
+            note.beats,
+            note.velocity,
+            into: importedMix,
+            level: 1.6,
+            beatSeconds: beatSeconds,
+          );
+        case PartVoice.guitar:
+          playGuitarNote(
+            pitch,
+            start,
+            note.beats,
+            note.velocity,
+            into: importedMix,
+            level: 1.3,
+            beatSeconds: beatSeconds,
+          );
+        case PartVoice.bass:
+          if (bank != null) {
+            final recordings = bank.bassNote(pitch);
+            importedMix.addRecording(
+              start,
+              recordings[takesRandom.nextInt(recordings.length)],
+              1.25 * note.velocity,
+              holdSamples: (beatSeconds * note.beats * sampleRate).round(),
+              releaseSamples: (0.06 * sampleRate).round(),
+            );
+          } else {
+            importedMix.addSamples(
+              start,
+              pluckedBass(
+                midiToFrequency(pitch),
+                beatSeconds * note.beats,
+                sampleRate,
+                takesRandom,
+                velocity: note.velocity,
+              ),
+              0.5,
+            );
+          }
       }
     }
   }

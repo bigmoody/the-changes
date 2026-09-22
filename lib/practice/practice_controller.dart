@@ -19,6 +19,7 @@ import '../audio/tuner_listener.dart';
 import '../library/library_store.dart';
 import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
+import '../music/imported_part.dart';
 import '../music/loop_range.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
@@ -370,11 +371,34 @@ class PracticeController extends ChangeNotifier {
       part == Instrument.chords ? settings.comping.label : part.label;
 
   /// The parts with a mixer channel: the band, plus the arpeggios when
-  /// they're on.
+  /// they're on and an imported part when there is one.
   List<Instrument> get parts => [
     for (final part in Instrument.values)
-      if (part != Instrument.arpeggio || arpeggios) part,
+      if (switch (part) {
+        Instrument.arpeggio => arpeggios,
+        Instrument.imported => _imported != null,
+        _ => true,
+      })
+        part,
   ];
+
+  /// A part read out of a MIDI file, playing alongside the band. Null
+  /// until one is imported, which is nearly always.
+  ImportedPart? get importedPart => _imported;
+  ImportedPart? _imported;
+
+  /// Puts an imported part in, takes it out (with null), or changes which
+  /// instrument plays it. The band is rebuilt, because the part is mixed
+  /// into it rather than played over the top.
+  void setImportedPart(ImportedPart? part) {
+    if (identical(part, _imported)) return;
+    _imported = part;
+    // Putting one in means wanting to hear it, the same as the arpeggios.
+    if (part != null) _muted.remove(Instrument.imported);
+    _applyMix();
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
 
   /// Whether the band adds each chord as a broken chord. Off whenever a tune
   /// is opened: a practice aid to switch on when you want it.
@@ -723,6 +747,7 @@ class PracticeController extends ChangeNotifier {
         arpeggioSound: settings.arpeggioSound,
         arpeggioStart: settings.arpeggioStart,
         arrangement: arrangement ?? take.arrangement,
+        imported: _imported?.transposedBy(take.semitones),
       );
 
   BackingRequest _exportRequest({Arrangement? arrangement}) => BackingRequest(
@@ -737,6 +762,7 @@ class PracticeController extends ChangeNotifier {
     arpeggioSound: settings.arpeggioSound,
     arpeggioStart: settings.arpeggioStart,
     arrangement: arrangement ?? _arrangement,
+    imported: _imported?.transposedBy(_semitones),
   );
 
   /// Writes the band out as a WAV and hands it to the share sheet. With
@@ -905,6 +931,7 @@ class PracticeController extends ChangeNotifier {
           arpeggioSound: settings.arpeggioSound,
           arpeggioStart: settings.arpeggioStart,
           arrangement: _arrangement,
+          imported: _imported?.transposedBy(_semitones),
         ),
         alongside: takePath,
         pickUpBeats: pickUpBeats,

@@ -42,6 +42,8 @@ void main() {
       Instrument.bass: 0,
       Instrument.drums: 1,
       Instrument.arpeggio: 0,
+      // Soloing silences an imported part too, whether or not one is in.
+      Instrument.imported: 0,
     });
     controller.resetMix();
     expect(player.volumes.values, everyElement(1.0));
