@@ -1282,6 +1282,14 @@ Uint8List metronomeLoop({
 /// A reference note at exactly [hz], as a WAV file: what the tuner plays to
 /// match. Built from harmonics rather than samples so the pitch is exact,
 /// which is the whole point of a reference note.
+///
+/// It is shaped to be sung or played against rather than listened to: it
+/// comes in over a moment instead of starting with a click, holds nearly
+/// steady so there is something there to match, and fades out at the end
+/// rather than stopping. The harmonics roll off steeply, which leaves the
+/// fundamental plainly the loudest thing in it. A tone with strong upper
+/// harmonics is easier to hear across a room and harder to tune to,
+/// because the ear starts comparing the wrong part of it.
 Uint8List referenceTone(
   double hz, {
   double seconds = 2.5,
@@ -1297,11 +1305,16 @@ Uint8List referenceTone(
     hz,
     seconds,
     1,
-    // A strong fundamental, so the pitch is clear, with enough harmonics
-    // to sound like an instrument rather than a test tone.
-    harmonics: const [1, 0.6, 0.35, 0.25, 0.15, 0.1, 0.06],
-    attack: 0.004,
-    decay: 1.2,
+    // Enough of the 2nd and 3rd to sound like something rather than a
+    // test tone, and little enough that the fundamental is never in
+    // question.
+    harmonics: const [1, 0.22, 0.09, 0.035],
+    // Slow enough that there is no click at the front.
+    attack: 0.04,
+    // A long time constant, so it holds rather than plinking: you are
+    // meant to play along with it, not listen to it.
+    decay: 6,
+    releaseSeconds: 0.3,
   );
   final peak = mix.buffer.fold(0.0, (a, b) => math.max(a, b.abs()));
   return _encodeWav(mix.buffer, sampleRate, peak > 0 ? 0.7 / peak : 1);
@@ -1377,9 +1390,10 @@ class _Mix {
     List<double> harmonics = const [1],
     double attack = 0.005,
     double decay = 0.5,
+    double releaseSeconds = 0.03,
   }) {
     final count = (seconds * sampleRate).round();
-    final release = math.min(count, (0.03 * sampleRate).round());
+    final release = math.min(count, (releaseSeconds * sampleRate).round());
     final nyquist = sampleRate / 2;
     for (var k = 0; k < count; k++) {
       final t = k / sampleRate;

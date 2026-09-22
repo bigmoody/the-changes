@@ -121,6 +121,61 @@ void main() {
     }
   });
 
+  test('the reference note is shaped to play along with', () {
+    // Not a matter of taste: a click at the front and a cut at the end are
+    // both audible faults, and a tone that dies away gives you nothing to
+    // hold a note against.
+    final samples = decodeWav(referenceTone(midiToHz(69)));
+    double loudest(int from, int to) {
+      var most = 0.0;
+      for (var i = from; i < to && i < samples.length; i++) {
+        final size = samples[i].abs().toDouble();
+        if (size > most) most = size;
+      }
+      return most;
+    }
+
+    final body = loudest(0, samples.length);
+    // It comes in rather than starting: a tenth of a millisecond in, there
+    // is next to nothing.
+    expect(loudest(0, 40), lessThan(body * 0.1));
+    // And it is up to full within a twentieth of a second.
+    expect(loudest(0, 44100 ~/ 20), greaterThan(body * 0.5));
+    // It is still nearly as loud at the end of the hold as at the start,
+    // so there is a steady note there to tune to.
+    expect(loudest(44100, 44100 * 2), greaterThan(body * 0.55));
+    // And it fades out instead of stopping.
+    expect(loudest(samples.length - 40, samples.length), lessThan(body * 0.1));
+  });
+
+  test('the fundamental is plainly the loudest part of it', () {
+    // Tuning against a tone whose 2nd harmonic is nearly as loud is how
+    // people end up an octave out.
+    final samples = decodeWav(referenceTone(220));
+    final window = [
+      for (var i = 20000; i < 20000 + 8192; i++) samples[i] / 32768,
+    ];
+    double strengthAt(double hz) {
+      var real = 0.0;
+      var imaginary = 0.0;
+      for (var i = 0; i < window.length; i++) {
+        final angle = 2 * math.pi * hz * i / 44100;
+        real += window[i] * math.cos(angle);
+        imaginary += window[i] * math.sin(angle);
+      }
+      return math.sqrt(real * real + imaginary * imaginary) / window.length;
+    }
+
+    final fundamental = strengthAt(220);
+    for (final harmonic in [2, 3, 4]) {
+      expect(
+        strengthAt(220.0 * harmonic),
+        lessThan(fundamental * 0.35),
+        reason: 'harmonic $harmonic is too strong to tune against',
+      );
+    }
+  });
+
   test('concert A is 440 Hz', () {
     expect(midiToHz(69), 440);
     expect(midiToHz(60), closeTo(261.63, 0.01)); // middle C
