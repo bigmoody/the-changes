@@ -100,22 +100,44 @@ class ImportedPart {
         transpose: transpose ?? this.transpose,
       );
 
-  /// The part laid over [choruses] passes of a form [formBeats] long, in
-  /// beats from the start of the run, transposed and ready to play.
+  /// The part laid over [choruses] passes of a stretch [formBeats] long
+  /// starting at [fromBeat] of the tune, in beats from the start of the
+  /// run, transposed and ready to play.
   ///
-  /// Starting again at the top of every chorus is the whole point: see the
-  /// note at the top of this file for why it is not allowed to run on its
-  /// own clock.
-  List<MidiNote> laidOver({required int choruses, required double formBeats}) {
+  /// The part belongs to the tune, not to the stretch being played. It is
+  /// measured from the tune's first beat and repeats every [lengthBeats]
+  /// along it, and what comes out is the window of that which the loop is
+  /// actually playing. So looping bars 7 and 8 gives the part's bars 7 and
+  /// 8, the same two bars the band is comping, rather than its first two
+  /// against the chart's seventh and eighth.
+  ///
+  /// It is never allowed to run on its own clock: see the note at the top
+  /// of this file for what that would cost.
+  List<MidiNote> laidOver({
+    required int choruses,
+    required double formBeats,
+    double fromBeat = 0,
+  }) {
     if (notes.isEmpty || lengthBeats <= 0 || formBeats <= 0) return const [];
     final out = <MidiNote>[];
+    // The repeats of the part that reach into the window at all.
+    final firstRound = (fromBeat / lengthBeats).floor();
     for (var chorus = 0; chorus < choruses; chorus++) {
       final top = chorus * formBeats;
       final end = top + formBeats;
-      for (var from = top; from < end; from += lengthBeats) {
+      for (
+        var round = firstRound;
+        round * lengthBeats < fromBeat + formBeats;
+        round++
+      ) {
         for (final note in notes) {
-          final beat = from + note.beat;
-          if (beat >= end) continue;
+          // Where this note falls along the tune, and then where that is
+          // in what is being played.
+          final alongTune = round * lengthBeats + note.beat;
+          if (alongTune < fromBeat || alongTune >= fromBeat + formBeats) {
+            continue;
+          }
+          final beat = top + (alongTune - fromBeat);
           out.add((
             pitch: note.pitch + transpose,
             beat: beat,
@@ -128,6 +150,7 @@ class ImportedPart {
         }
       }
     }
+    out.sort((a, b) => a.beat.compareTo(b.beat));
     return out;
   }
 

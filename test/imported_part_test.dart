@@ -116,6 +116,45 @@ void main() {
       expect(_twoBarRiff().laidOver(choruses: 0, formBeats: 48), isEmpty);
     });
 
+    test('looping a stretch takes that stretch of the part', () {
+      // The defect this is here for: the band comps bars 7 and 8, and the
+      // part restarted from its own bar 1 underneath them.
+      final twelveBars = ImportedPart(
+        name: 'Line',
+        notes: [
+          for (var beat = 0; beat < 48; beat++) _note(60 + beat, beat + 0),
+        ],
+        lengthBeats: 48,
+      );
+      // Bars 7 and 8 of a 4/4 tune: beats 24 to 31.
+      final laid = twelveBars.laidOver(choruses: 1, formBeats: 8, fromBeat: 24);
+      expect(
+        [for (final note in laid) note.pitch],
+        [for (var beat = 24; beat < 32; beat++) 60 + beat],
+      );
+      // And they are played from the top of the loop, not 24 beats in.
+      expect([for (final note in laid) note.beat], [0, 1, 2, 3, 4, 5, 6, 7]);
+    });
+
+    test('a loop that starts mid-repeat still lines up', () {
+      // A two-bar riff under a loop starting at bar 4: the loop's first
+      // beat is the riff's fifth, so the riff comes in on its second half.
+      final laid = _twoBarRiff().laidOver(
+        choruses: 1,
+        formBeats: 8,
+        fromBeat: 12,
+      );
+      expect([for (final note in laid) note.pitch], [64, 65, 60, 62]);
+      expect([for (final note in laid) note.beat], [0, 2, 4, 6]);
+    });
+
+    test('with no loop offset it is the same as before', () {
+      expect(
+        _twoBarRiff().laidOver(choruses: 2, formBeats: 8),
+        _twoBarRiff().laidOver(choruses: 2, formBeats: 8, fromBeat: 0),
+      );
+    });
+
     test('it says when the form will cut it short', () {
       final twelveBars = ImportedPart(
         name: 'Long',

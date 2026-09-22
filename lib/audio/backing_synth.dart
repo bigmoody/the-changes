@@ -821,6 +821,9 @@ _Parts _renderParts(
     final laid = importedPart.laidOver(
       choruses: choruses,
       formBeats: loop.lengthBeats.toDouble(),
+      // The part is measured along the tune, so a loop takes the window of
+      // it the band is playing rather than starting it again.
+      fromBeat: loop.startBeat.toDouble(),
     );
     for (final note in laid) {
       // Off the ends of a keyboard there is nothing recorded to play, and
