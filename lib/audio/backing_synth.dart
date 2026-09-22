@@ -27,13 +27,6 @@ import 'piano_comping.dart';
 import 'sample_bank.dart';
 import 'walking_bass.dart';
 
-/// Below this velocity the guitar is the gentle stroke alone, and
-/// [guitarCrossfade] higher it is the hard one alone. The range in
-/// between is where most comping lives, which is the point: it is where
-/// the tone moves rather than where it flips.
-const guitarSoftest = 0.3;
-const guitarCrossfade = 0.55;
-
 /// How much room to put around the guitar.
 ///
 /// More than anything else in the band gets, because it starts with less
@@ -62,14 +55,12 @@ const guitarVelocitySpread = 0.18;
 
 /// How loud a guitar note is played, before velocity and the mixer.
 ///
-/// Higher than it looks it should be because the recordings are quieter
-/// than they used to be. The whole guitar set is normalised together, and
-/// adding the hard stroke brought the loudest sample in the group up by
-/// half again, which scaled everything else down to match. This puts the
-/// gentle stroke back where it was, so the guitar sits in the band exactly
-/// as it did; the hard stroke is then louder than anything that came
-/// before it, which is the point of having recorded it.
-const guitarLevel = 0.8;
+/// Set by measurement rather than by taste: the whole guitar set is
+/// normalised together, so a new library lands at its own level and this
+/// is what puts it back where the band expects. The figure that decides it
+/// is the bass, which has to stay audible above the chords on a phone
+/// speaker, and there is a test that says so.
+const guitarLevel = 0.28;
 
 /// The instruments in the backing band, in mixer order.
 enum Instrument {
@@ -680,49 +671,22 @@ _Parts _renderParts(
     required double beatSeconds,
   }) {
     if (bank != null) {
-      // Two recordings of the note, a gentle stroke and a hard one, faded
-      // between by how hard it is being played. Playing one of them louder
-      // or quieter is what made the guitar sound like a sampler: the
-      // attack of a picked string grows with the stroke, it does not just
-      // get turned up.
-      //
-      // Faded rather than switched. An earlier attempt picked one layer or
-      // the other at a threshold, and the notes of a single strum could
-      // land on either side of it and stand out from each other. Crossing
-      // over has no edge for a note to fall off.
-      final (shift, layers) = bank.nearestGuitar(pitch);
-      final blend = ((velocity - guitarSoftest) / guitarCrossfade).clamp(
-        0.0,
-        1.0,
-      );
-      // Equal power, so the middle of the fade is no quieter than either
-      // end of it.
-      final gains = [
-        math.cos(blend * math.pi / 2),
-        math.sin(blend * math.pi / 2),
-      ];
+      final (shift, takes) = bank.nearestGuitar(pitch);
       // A couple of cents either way. Six strings are never exactly in
       // tune with each other, and without it two notes from the same
       // recording are bit for bit the same sound, which is what makes a
       // busy comp rattle like a machine gun.
       final detune = 1 + (takesRandom.nextDouble() - 0.5) * 0.003;
-      final rate = math.pow(2, shift / 12).toDouble() * detune;
-      final hold = (beatSeconds * lengthBeats * sampleRate).round();
-      for (final (layer, gain) in gains.indexed) {
-        // Below this it is inaudible and only costs time to mix in.
-        if (gain < 0.03) continue;
-        final takes = layers[layer];
-        (into ?? piano).addRecording(
-          start,
-          takes[takesRandom.nextInt(takes.length)],
-          guitarLevel * velocity * level * gain,
-          rate: rate,
-          holdSamples: hold,
-          // A guitarist lets go quickly (the string is damped, not left to
-          // ring like a piano's sustain), but not so fast it clicks.
-          releaseSamples: (0.1 * sampleRate).round(),
-        );
-      }
+      (into ?? piano).addRecording(
+        start,
+        takes[takesRandom.nextInt(takes.length)],
+        guitarLevel * velocity * level,
+        rate: math.pow(2, shift / 12).toDouble() * detune,
+        holdSamples: (beatSeconds * lengthBeats * sampleRate).round(),
+        // A guitarist lets go quickly (the string is damped, not left to
+        // ring like a piano's sustain), but not so fast it clicks.
+        releaseSamples: (0.1 * sampleRate).round(),
+      );
     } else {
       playPianoNote(
         pitch,
@@ -877,7 +841,10 @@ _Parts _renderParts(
           note.length,
           note.velocity,
           into: arpeggio,
-          level: 1.3,
+          // Its own level, not the comping's. The comper has to stay
+          // under the bass; an arpeggio is a practice aid and is meant to
+          // be followed, so it sits where the piano's does.
+          level: 1.4,
           beatSeconds: secondsPerBeatAt(note.beat),
         );
       } else {
@@ -1227,14 +1194,10 @@ Uint8List renderSnippet(
         releaseSamples: (0.08 * sampleRate).round(),
       );
     } else if (guitar) {
-      final (shift, layers) = bank.nearestGuitar(note.pitch);
-      // A snippet is one note on its own rather than a part being played,
-      // so it takes the layer its velocity asks for instead of fading
-      // between the two: there is nothing either side of it to match.
-      final layer = note.velocity < guitarSoftest + guitarCrossfade / 2 ? 0 : 1;
+      final (shift, takes) = bank.nearestGuitar(note.pitch);
       mix.addRecording(
         start,
-        layers[layer].first,
+        takes.first,
         guitarLevel * note.velocity,
         rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: hold,

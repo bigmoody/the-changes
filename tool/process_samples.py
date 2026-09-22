@@ -131,62 +131,52 @@ for tom, name in (("htom", "tom_high"), ("ltom", "tom_low")) if want("drums") el
                          f"{OUT}/drums/{name}_{layer}_{take}.wav", 0.9, 0.3))
 process("toms", toms, headroom=0.3)
 
-# Guitar: Shinyguitar, an archtop. The library recorded each note through
-# the magnetic pickup and a microphone at once, and is meant to be played as
-# a blend of the two: the pickup gives the round jazz tone, the microphone
-# the air and body of the wooden guitar. On its own the pickup sounds thin.
-# The pickup's highs are rolled off a little, as a jazz player turns the tone
-# knob down. Every minor third from E2 to G♭5, like the piano; two takes each
-# of the library's layers 2 and 4.
+# Guitar: Emilyguitar, an Epiphone strung with flatwounds and recorded
+# direct through both pickups. Flatwounds are the jazz string and direct
+# means no room microphone, which matters more than it sounds: the guitar
+# this replaces was a blend of a pickup and a microphone several feet away,
+# two recordings of one performance that were never going to agree.
 #
-# Both layers, because one was the reason the guitar sounded like a sampler:
-# with a single recording, playing harder only turns it up, and a real
-# archtop gets brighter under the pick. An earlier run took layer 2 alone
-# after finding that strums which switched to a harder layer stood out.
-# Switching was the mistake rather than the layer: the engine crossfades
-# between them now, so the attack comes up with the velocity instead of
-# jumping part way through a bar.
+# Every minor third from E2 to G♭5, the same pitches as before. Two of the
+# library's four dynamics and three takes of each, so there are six
+# recordings a note where there were four.
 #
-# Layers 2 and 4 rather than 2 and 3, because measuring them is what says
-# how far apart they are. Their sustain is much the same; what rises with
-# the layer is the attack, and at C4 the peak goes 0.36, 0.53, 0.85 across
-# layers 2, 3 and 4. Two and three are close enough that a listener would
-# be forgiven for hearing no dynamics at all.
+# One dynamic, the quietest. The library has four and two were tried, but
+# once the tone is rolled off to 3 kHz they measure 0 to 7 per cent apart
+# in brightness, in no consistent direction: after this much filtering a
+# firmer stroke is only a louder one, and velocity already does louder.
+# Carrying a second layer doubled the download to buy nothing.
 #
-# The filter stays the same for both. A guitar with the tone knob rolled
-# off still brightens when it is dug into: the pickup has not changed, the
-# playing has.
-def decode_filtered(path, filters):
-    pcm = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", str(SR),
-         "-af", filters, "-f", "f32le", "-"], check=True, capture_output=True).stdout
-    a = array.array("f"); a.frombytes(pcm); return a
+# The tone knob comes right down (3 kHz) and the attack is eased off over
+# 25 ms. Picked direct, the transient is a click before it is a note, and
+# taking the point off it is most of what separates a guitar you can leave
+# playing from one you switch off.
+GUITAR_TONE = 3000
+GUITAR_ATTACK_MS = 25
 
-def rms(samples):
-    return math.sqrt(sum(x * x for x in samples[:SR]) / min(len(samples), SR))
+def ease_attack(samples, ms):
+    """Take the point off the pick, without touching the note under it."""
+    n = int(SR * ms / 1000)
+    for i in range(min(n, len(samples))):
+        x = i / n
+        samples[i] *= x * x * (3 - 2 * x)   # smoothstep: no corner at either end
+    return samples
 
-# The library's layer 2 is the app's soft layer, its layer 4 the hard one.
-GUITAR_LAYERS = {"2": 1, "4": 2}
-pairs = []
-for name in sorted(os.listdir(f"{RAW}/guitar") if want("guitar") else []):
-    m = re.match(r"([a-g]b?)(\d)_vl([24])_rr([12])_2\.wav", name)
+guitar = []
+for name in sorted(os.listdir(f"{RAW}/emily") if want("guitar") else []):
+    m = re.match(r"([a-g]b?)(\d)_p_rr([123])\.wav", name)
     if not m:
         continue
     midi = (int(m[2]) + 1) * 12 + NAMES[m[1]]
-    pickup = decode_filtered(f"{RAW}/guitar/{name}", "lowpass=f=4200")
-    mic = decode_filtered(f"{RAW}/guitar_mic/{name[:-6]}_1.wav", "highpass=f=80,lowpass=f=6000")
-    layer = GUITAR_LAYERS[m[3]]
-    pairs.append((f"{OUT}/guitar/guitar_{midi}_v{layer}_rr{m[4]}.wav", pickup, mic))
-# Balance the two sources across the whole set, not note by note, which
-# would make the soft layer as loud as the hard one.
-pickup_gain = 0.55 / (sum(rms(p) for _, p, _ in pairs) / len(pairs)) if pairs else 1
-mic_gain = 0.45 / (sum(rms(q) for _, _, q in pairs) / len(pairs)) if pairs else 1
-guitar = [
-    (out, trim(array.array("f", (a * pickup_gain + b * mic_gain for a, b in zip(p, q))), 1.8, 0.45))
-    for out, p, q in pairs
-]
+    pcm = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", f"{RAW}/emily/{name}", "-ac", "1",
+         "-ar", str(SR), "-af", f"lowpass=f={GUITAR_TONE}", "-f", "f32le", "-"],
+        check=True, capture_output=True).stdout
+    a = array.array("f"); a.frombytes(pcm)
+    out = f"{OUT}/guitar/guitar_{midi}_rr{m[3]}.wav"
+    guitar.append((out, ease_attack(trim(a, 1.8, 0.45), GUITAR_ATTACK_MS)))
 if guitar:
     peak = max(max(abs(x) for x in s) for _, s in guitar)
     for out, samples in guitar:
         write(out, samples, 0.89 / peak)
-    print(f"guitar: {len(guitar)} files (pickup + microphone), group peak {peak:.3f}")
+    print(f"guitar: {len(guitar)} files, group peak {peak:.3f}")

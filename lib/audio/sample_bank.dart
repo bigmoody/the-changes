@@ -71,14 +71,15 @@ class SampleBank {
   /// each as [soft, medium, loud].
   final Map<int, List<Int16List>> piano;
 
-  /// Archtop guitar notes by MIDI pitch, sampled every 3 semitones from E2
-  /// to G♭5. Two velocity layers, the gentler stroke first, and two takes
-  /// of each: `guitar[60][layer][take]`.
+  /// Guitar notes by MIDI pitch, sampled every 3 semitones from E2 to
+  /// G♭5: three takes of one gentle stroke.
   ///
-  /// The two layers are what stop a loud chord being a quiet one turned
-  /// up. Their sustain is much alike; what changes is the attack, which is
-  /// two to three times bigger on the harder stroke.
-  final Map<int, List<List<Int16List>>> guitar;
+  /// One stroke on purpose. This is a guitar to comp under somebody for
+  /// twenty minutes rather than to solo with, and with the tone rolled
+  /// back as far as it is here a firmer stroke measured no brighter, only
+  /// louder, which velocity already does. Three takes rather than two, so
+  /// a busy comp repeats itself less.
+  final Map<int, List<Int16List>> guitar;
 
   /// Drum hits, softest layer first.
   final DrumSamples ride;
@@ -148,11 +149,8 @@ class SampleBank {
       guitar: {
         for (final pitch in guitarPitches)
           pitch: [
-            for (final layer in [1, 2])
-              [
-                for (final take in [1, 2])
-                  await wav('guitar/guitar_${pitch}_v${layer}_rr$take.wav'),
-              ],
+            for (final take in [1, 2, 3])
+              await wav('guitar/guitar_${pitch}_rr$take.wav'),
           ],
       },
       ride: await kit('ride'),
@@ -196,7 +194,7 @@ class SampleBank {
   /// The recorded guitar note nearest to [pitch], and how many semitones it
   /// must be shifted to reach it (at most 1, but for the very top and
   /// bottom of the range).
-  (int, List<List<Int16List>>) nearestGuitar(int pitch) {
+  (int, List<Int16List>) nearestGuitar(int pitch) {
     final nearest = guitarPitches.reduce(
       (a, b) => (a - pitch).abs() <= (b - pitch).abs() ? a : b,
     );
