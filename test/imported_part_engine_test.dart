@@ -84,13 +84,25 @@ void main() {
   test('it does not leak into the parts the band writes', () {
     // The bug this is here for: a new part rendered into the chords mix by
     // mistake would sound perfectly right and be impossible to mute.
+    //
+    // Leaking is a change of shape, not of level. Every stem is scaled by
+    // one gain taken from the whole band's peak, so adding a part makes
+    // all of them quieter together, and comparing absolute levels would
+    // call that leakage. What has to be true is that they all move by the
+    // same amount: a part leaking into the chords would push that one and
+    // not the others.
     final without = renderBacking(request());
     final with_ = renderBacking(request(part: _oneNote()));
-    for (final part in [Instrument.chords, Instrument.bass, Instrument.drums]) {
+    final ratios = {
+      for (final part in [Instrument.chords, Instrument.bass, Instrument.drums])
+        part: _rms(with_.stems[part]!) / _rms(without.stems[part]!),
+    };
+    final values = ratios.values.toList();
+    for (final ratio in values) {
       expect(
-        _rms(with_.stems[part]!),
-        closeTo(_rms(without.stems[part]!), 1),
-        reason: '${part.label} changed when a part was imported',
+        ratio,
+        closeTo(values.first, values.first * 0.01),
+        reason: 'the parts did not all scale together: $ratios',
       );
     }
   });

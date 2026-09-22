@@ -27,6 +27,22 @@ import 'piano_comping.dart';
 import 'sample_bank.dart';
 import 'walking_bass.dart';
 
+/// How long the bass takes to get going, in seconds.
+///
+/// An upright has a pluck and should keep one, but the recordings are
+/// sharper than the rest of the band: measured against the guitar they
+/// reach full three times faster and peak seven times their own average.
+/// Taking a little off the front puts the finger back on the string.
+const bassAttack = 0.015;
+
+/// How much of the bass's harmonics to lift, and where.
+///
+/// A phone speaker plays almost nothing below 300 Hz, so what is heard of
+/// an upright is its overtones, and without this the bass simply is not
+/// there on a phone. It is a big lift, though, and it lands on the part of
+/// the pluck that reads as attack, so it is easy to take too far.
+const bassPresence = 2.6;
+
 /// How much room to put around the guitar.
 ///
 /// More than anything else in the band gets, because it starts with less
@@ -605,6 +621,7 @@ _Parts _renderParts(
         holdSamples: (secondsPerBeatAt(note.beat) * note.length * sampleRate)
             .round(),
         releaseSamples: (0.06 * sampleRate).round(),
+        attackSamples: (bassAttack * sampleRate).round(),
       );
     } else {
       bass.addSamples(
@@ -915,9 +932,10 @@ _Parts _renderParts(
             importedMix.addRecording(
               start,
               recordings[takesRandom.nextInt(recordings.length)],
-              1.25 * note.velocity,
+              1.1 * note.velocity,
               holdSamples: (beatSeconds * note.beats * sampleRate).round(),
               releaseSamples: (0.06 * sampleRate).round(),
+              attackSamples: (bassAttack * sampleRate).round(),
             );
           } else {
             importedMix.addSamples(
@@ -1032,7 +1050,7 @@ _Parts _renderParts(
   // What you actually hear on a small speaker is the note's harmonics, so
   // that's the range this lifts. It leaves the bottom alone, so it doesn't
   // turn boomy on a real speaker.
-  addPresence(bass.buffer, sampleRate, hertz: 220, gain: 2.6);
+  addPresence(bass.buffer, sampleRate, hertz: 220, gain: bassPresence);
 
   // Put the band in a room. The recordings already have natural room sound,
   // so they need much less added. The reverb runs straight through the batch,
@@ -1192,6 +1210,7 @@ Uint8List renderSnippet(
         rate: math.pow(2, (note.pitch - recorded) / 12).toDouble(),
         holdSamples: hold,
         releaseSamples: (0.08 * sampleRate).round(),
+        attackSamples: (bassAttack * sampleRate).round(),
       );
     } else if (guitar) {
       final (shift, takes) = bank.nearestGuitar(note.pitch);
@@ -1442,6 +1461,7 @@ class _Mix {
     double rate = 1,
     int? holdSamples,
     int releaseSamples = 0,
+    int attackSamples = 0,
   }) {
     final scale = gain / 32768;
     var length = (sample.length / rate).floor() - 1;
@@ -1460,6 +1480,11 @@ class _Mix {
       }
       if (holdSamples != null && i > holdSamples) {
         value *= 1 - (i - holdSamples) / releaseSamples;
+      }
+      if (i < attackSamples) {
+        // Smoothstep, so the ramp has no corner at either end to click on.
+        final x = i / attackSamples;
+        value *= x * x * (3 - 2 * x);
       }
       add(start + i, value * scale);
     }
