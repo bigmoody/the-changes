@@ -34,6 +34,15 @@ import 'walking_bass.dart';
 const guitarSoftest = 0.3;
 const guitarCrossfade = 0.55;
 
+/// How much room to put around the guitar.
+///
+/// More than anything else in the band gets, because it starts with less
+/// than anything else has: the recordings are mostly the magnetic pickup,
+/// which hears the string and no room whatsoever. An archtop in a room is
+/// what the ear expects, and a note with nothing behind it is the sound of
+/// a sampler.
+const guitarRoom = 0.26;
+
 /// How far a strum strays from the beat, either way, in seconds.
 ///
 /// A comper is never exactly on the grid. Without this the guitar lands on
@@ -1061,7 +1070,39 @@ _Parts _renderParts(
   // Put the band in a room. The recordings already have natural room sound,
   // so they need much less added. The reverb runs straight through the batch,
   // so its tail carries into the next one.
-  addRoomReverb(piano.buffer, 0, sampleRate, wet: bank != null ? 0.12 : 0.35);
+  //
+  // The guitar is the exception, and it is why it sounded like a sampler
+  // playing in a cupboard. The piano was recorded with a microphone in a
+  // hall, so it arrives with a room already around it; the guitar is
+  // mostly its magnetic pickup, which hears the string and nothing else at
+  // all. Giving them the same small amount left the guitar bone dry, and
+  // nothing sounds more synthetic than a note with no space behind it.
+  addRoomReverb(
+    piano.buffer,
+    0,
+    sampleRate,
+    wet: bank == null
+        ? 0.35
+        : request.comping == Comping.guitar
+        ? guitarRoom
+        : 0.12,
+  );
+  if (mixes[Instrument.arpeggio] case final arpeggioMix?) {
+    addRoomReverb(
+      arpeggioMix.buffer,
+      0,
+      sampleRate,
+      wet: request.arpeggioSound == Comping.guitar ? guitarRoom : 0.12,
+    );
+  }
+  if (mixes[Instrument.imported] case final importedMix?) {
+    addRoomReverb(
+      importedMix.buffer,
+      0,
+      sampleRate,
+      wet: request.imported?.voice == PartVoice.guitar ? guitarRoom : 0.12,
+    );
+  }
   if (bank == null) {
     addRoomReverb(drums.buffer, 0, sampleRate, wet: 0.25);
     addRoomReverb(bass.buffer, 0, sampleRate, wet: 0.08);
@@ -1148,6 +1189,7 @@ Uint8List renderSnippet(
   List<SnippetNote> notes, {
   int sampleRate = 44100,
   bool guitar = false,
+  bool room = true,
   BassTone bassTone = BassTone.natural,
   List<SnippetDrum> drums = const [],
 }) {
@@ -1242,6 +1284,18 @@ Uint8List renderSnippet(
     for (var i = 0; i < mix.buffer.length; i++) {
       mix.buffer[i] += bassMix.buffer[i];
     }
+  }
+  // A snippet had no room at all, which is most of why chords played on
+  // the Learn screens sounded like a cheap sampler: a handful of dry
+  // samples struck together and stopping dead. A single chord with nothing
+  // around it needs more of a room than a whole band does, not less.
+  //
+  // [room] turns it off for a snippet that is going to be measured rather
+  // than listened to: a tail fills the silence a click test looks into,
+  // and smears the signal the chord detector is meant to read as an
+  // instrument played straight into a microphone.
+  if (room) {
+    addRoomReverb(mix.buffer, 0, sampleRate, wet: guitar ? guitarRoom : 0.16);
   }
   final peak = mix.buffer.fold(0.0, (a, b) => math.max(a, b.abs()));
   return _encodeWav(mix.buffer, sampleRate, peak > 0 ? 0.8 / peak : 1);

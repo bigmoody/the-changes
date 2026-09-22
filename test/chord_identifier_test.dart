@@ -27,7 +27,7 @@ Future<SampleBank> _bank() =>
 /// A strum of [shape] on the recorded guitar, as the microphone would hear
 /// it: a third of a second from just after the pick crosses the strings.
 Float32List _strum(SampleBank bank, GuitarVoicing shape) {
-  final wav = renderSnippet(bank, [
+  final wav = renderSnippet(room: false, bank, [
     for (final (i, pitch) in shape.pitches.indexed)
       (
         pitch: pitch,
@@ -48,7 +48,7 @@ Float32List _strum(SampleBank bank, GuitarVoicing shape) {
 
 /// The same chord played on the piano, notes struck together.
 Float32List _keys(SampleBank bank, List<int> pitches) {
-  final wav = renderSnippet(bank, [
+  final wav = renderSnippet(room: false, bank, [
     for (final pitch in pitches)
       (pitch: pitch, start: 0.0, length: 3.0, velocity: 0.8, bass: false),
   ]);

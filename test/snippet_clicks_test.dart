@@ -37,12 +37,13 @@ void main() {
   test('a snippet with no clicks has none', () async {
     final bank = await loadBank();
     final quiet = decodeWav(
-      renderSnippet(bank, [
+      renderSnippet(room: false, bank, [
         (pitch: 60, start: 0, length: 0.4, velocity: 0.7, bass: false),
       ]),
     );
     final clicked = decodeWav(
       renderSnippet(
+        room: false,
         bank,
         [(pitch: 60, start: 0, length: 0.4, velocity: 0.7, bass: false)],
         drums: [click(0.6)],
@@ -56,6 +57,7 @@ void main() {
     final bank = await loadBank();
     final samples = decodeWav(
       renderSnippet(
+        room: false,
         bank,
         const [],
         drums: [click(0, accent: true), click(0.5), click(1.0)],
@@ -72,6 +74,7 @@ void main() {
     final bank = await loadBank();
     final samples = decodeWav(
       renderSnippet(
+        room: false,
         bank,
         const [],
         drums: [click(0, accent: true), click(0.5)],
@@ -86,7 +89,12 @@ void main() {
     // would be one more note under an exercise about placement.
     final bank = await loadBank();
     final rim = decodeWav(
-      renderSnippet(bank, const [], drums: [click(0, accent: true)]),
+      renderSnippet(
+        room: false,
+        bank,
+        const [],
+        drums: [click(0, accent: true)],
+      ),
     );
     final tone = decodeWav(metronomeLoop(tempo: 120, beatsPerBar: 1));
     final inClick = loudestShare(rim);
