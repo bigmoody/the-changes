@@ -40,7 +40,13 @@ class _ImportPartState extends State<_ImportPart> {
 
   PracticeController get _controller => widget.controller;
   int get _beatsPerBar => _controller.tune.beatsPerBar;
-  double get _formBeats => _controller.loop.lengthBeats.toDouble();
+
+  /// The tune's whole form, not whatever is looped at the moment. A part
+  /// is laid along the tune, so "longer than the form" has to mean longer
+  /// than the tune: measured against a two-bar loop, every part ever
+  /// imported would be too long.
+  double get _formBeats =>
+      (_controller.tune.barCount * _beatsPerBar).toDouble();
 
   Future<void> _choose() async {
     setState(() {

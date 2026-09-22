@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/imported_part.dart';
+import 'package:play_along/music/midi_file.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/screens/import_part_sheet.dart';
@@ -20,6 +21,9 @@ class _FakePlayer extends PracticePlayer {
   @override
   void setVolume(Instrument instrument, double volume) {}
 }
+
+MidiNote _note(int pitch, double beat) =>
+    (pitch: pitch, beat: beat, beats: 1, velocity: 0.8);
 
 /// A two-bar riff, so the repeat and the offset both have something to do.
 ImportedPart _riff() => ImportedPart(
@@ -129,6 +133,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(controller.importedPart!.voice, PartVoice.bass);
     expect(controller.importedPart!.offsetBeats, -4, reason: 'still moved');
+  });
+
+  testWidgets('a long part is measured against the tune, not the loop', (
+    tester,
+  ) async {
+    // The blues is twelve bars, so a twelve-bar part fits exactly. Looping
+    // two bars of it must not turn that into a warning: the part is laid
+    // along the tune whatever is being looped.
+    await open(tester);
+    controller.loopBar(0);
+    await tester.pumpAndSettle();
+    expect(controller.loop.lengthBeats, 4);
+    final twelveBars = ImportedPart(
+      name: 'Twelve',
+      notes: [for (var beat = 0; beat < 48; beat += 4) _note(40, beat + 0.0)],
+      lengthBeats: 48,
+    );
+    expect(twelveBars.overrunsForm(48), isFalse);
+    controller.setImportedPart(twelveBars);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Longer than the form'), findsNothing);
   });
 
   testWidgets('removing it takes it out and closes the sheet', (tester) async {
