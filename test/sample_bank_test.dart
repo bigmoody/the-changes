@@ -456,8 +456,16 @@ void main() {
       '${(above(bright, 1000) * 100).toStringAsFixed(1)}%; on a phone '
       '${onAPhone(plain).round()} → ${onAPhone(bright).round()}',
     );
-    expect(above(bright, 1000), greaterThan(above(plain, 1000) * 1.8));
-    expect(onAPhone(bright), greaterThan(onAPhone(plain) * 1.3));
+    // The bright tone lifts the top so the bass carries on a phone
+    // speaker. It used to reach a good deal further, by saturating the
+    // signal twice and lifting 600 Hz fivefold, and that was thrown out
+    // for sounding like the bass was being hit rather than plucked. A
+    // shelf on its own cannot buy as much, and this is what it does buy.
+    //
+    // These are the floor of the shelf that was chosen, not a target to
+    // aim at. If they fall, the shelf has been weakened or lost.
+    expect(above(bright, 1000), greaterThan(above(plain, 1000) * 1.25));
+    expect(onAPhone(bright), greaterThan(onAPhone(plain) * 1.10));
   });
 
   test(
@@ -481,6 +489,22 @@ void main() {
         return low / all;
       }
 
+      /// The same, untouched, to measure the cut against.
+      double boomNatural(int pitch) {
+        final wav = renderSnippet(bank, [
+          (pitch: pitch, start: 0, length: 0.4, velocity: 0.8, bass: true),
+        ], bassTone: BassTone.natural);
+        final a = 1 - math.exp(-2 * math.pi * 250 / 44100);
+        var l1 = 0.0, l2 = 0.0, low = 0.0, all = 0.0;
+        for (final sample in decodeWav(wav)) {
+          l1 += a * (sample - l1);
+          l2 += a * (l1 - l2);
+          low += l2 * l2;
+          all += sample.toDouble() * sample;
+        }
+        return low / all;
+      }
+
       final low = [
         for (final p in [28, 31, 35, 38]) boom(p),
       ];
@@ -491,14 +515,25 @@ void main() {
         'boom, low notes: ${low.map((b) => (b * 100).round())}; '
         'high: ${high.map((b) => (b * 100).round())}',
       );
-      for (final b in low) {
-        expect(b, lessThan(0.55));
+      // This used to insist the low notes were no heavier than the high
+      // ones, which is only reachable by cutting the fundamental out of an
+      // E1. Doing that is what made the bass sound aggressive, so it has
+      // gone: a low note is allowed to be a low note now.
+      //
+      // What is still worth holding is that the cut happens at all, and
+      // that is measured against the untouched recording rather than
+      // against a figure only the old treatment could reach.
+      for (final pitch in [28, 31, 35, 38]) {
+        expect(
+          boom(pitch),
+          lessThan(boomNatural(pitch)),
+          reason: 'MIDI $pitch: the bright tone took nothing off the bottom',
+        );
       }
-      final average = high.reduce((a, b) => a + b) / high.length;
-      expect(
-        low.reduce((a, b) => a + b) / low.length,
-        lessThan(average + 0.15),
-      );
+      // And the low notes must not run away with it entirely.
+      for (final b in low) {
+        expect(b, lessThan(0.92));
+      }
     },
   );
 }

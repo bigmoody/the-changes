@@ -27,6 +27,22 @@ import 'piano_comping.dart';
 import 'sample_bank.dart';
 import 'walking_bass.dart';
 
+/// What comes off the bottom of the bass before the shelf goes on.
+///
+/// One pass, gently. An upright's low roots pile up below this and turn
+/// woolly, but the ear takes the pitch from the overtones above it, so a
+/// light hand here costs nothing and a heavy one made it thin.
+const bassCutBelow = 120.0;
+
+/// The high shelf that puts the bass on a phone speaker: everything above
+/// [bassLiftFrom] is lifted by [bassLift].
+///
+/// Chosen by listening to a ladder of them rather than by argument. Low
+/// enough a corner that it brings up the body of the note rather than
+/// finger noise, and gentle enough that it stays a bass.
+const bassLiftFrom = 1500.0;
+const bassLift = 4.0;
+
 /// How long the bass takes to get going, in seconds.
 ///
 /// An upright has a pluck and should keep one, but the recordings are
@@ -1246,22 +1262,24 @@ Uint8List renderSnippet(
     );
   }
   if (brightBass) {
-    // Set by measurement. The low notes' boom is their 2nd and 3rd
-    // overtones piling up between 100 and 250 Hz, so that's cut firmly for
-    // every note (the ear still hears the pitch from the overtones above),
-    // leaving the low notes no heavier than the high ones. Saturation then
-    // adds overtones for the treble lift to bring out (a plain treble boost
-    // only made the pluck spike, turning the notes down), and a second cut
-    // takes out the low end the saturation brings back.
     final bass = bassMix.buffer;
-    for (var pass = 0; pass < 3; pass++) {
-      cutLows(bass, sampleRate, hertz: 180);
-    }
-    if (bassTone == BassTone.bright) {
-      saturate(bass, drive: 2);
-      cutLows(bass, sampleRate, hertz: 120);
-      addPresence(bass, sampleRate, hertz: 600, gain: 5);
-      saturate(bass, drive: 2.5);
+    if (bassTone == BassTone.tight) {
+      // Under a line rather than out in front of one: the boom goes, and
+      // nothing is added.
+      for (var pass = 0; pass < 3; pass++) {
+        cutLows(bass, sampleRate, hertz: 180);
+      }
+    } else {
+      // Out in front: a light hand on the bottom so the low roots do not
+      // wallow, and the top lifted so it carries on a phone speaker.
+      //
+      // It used to be driven instead: the lows cut three times over, then
+      // saturated, then a fivefold lift at 600 Hz, then saturated again.
+      // That was two stages of distortion and a shout in the midrange, and
+      // it sounded like the bass was being hit rather than plucked. All of
+      // that is gone. One gentle cut and one shelf, both chosen by ear.
+      cutLows(bass, sampleRate, hertz: bassCutBelow);
+      addPresence(bass, sampleRate, hertz: bassLiftFrom, gain: bassLift);
     }
     for (var i = 0; i < mix.buffer.length; i++) {
       mix.buffer[i] += bassMix.buffer[i];
