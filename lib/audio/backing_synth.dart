@@ -34,6 +34,23 @@ import 'walking_bass.dart';
 const guitarSoftest = 0.3;
 const guitarCrossfade = 0.55;
 
+/// How far a strum strays from the beat, either way, in seconds.
+///
+/// A comper is never exactly on the grid. Without this the guitar lands on
+/// the same sample of every bar for a whole chorus, which is most of what
+/// makes it sound like a machine rather than a player. Small enough that
+/// it reads as feel rather than as a mistake: twelve milliseconds is about
+/// a fiftieth of a beat at a medium tempo.
+const guitarTimingSpread = 0.012;
+
+/// How much a strum's strength wanders from what was written, either way.
+///
+/// The rhythms are written with fixed velocities, so bar after bar was
+/// struck at exactly the same strength. This is per stroke rather than per
+/// string, because a hand is hard or soft for a whole chord; the strings
+/// within one vary far less, and that is the small figure below.
+const guitarVelocitySpread = 0.18;
+
 /// How loud a guitar note is played, before velocity and the mixer.
 ///
 /// Higher than it looks it should be because the recordings are quieter
@@ -675,7 +692,12 @@ _Parts _renderParts(
         math.cos(blend * math.pi / 2),
         math.sin(blend * math.pi / 2),
       ];
-      final rate = math.pow(2, shift / 12).toDouble();
+      // A couple of cents either way. Six strings are never exactly in
+      // tune with each other, and without it two notes from the same
+      // recording are bit for bit the same sound, which is what makes a
+      // busy comp rattle like a machine gun.
+      final detune = 1 + (takesRandom.nextDouble() - 0.5) * 0.003;
+      final rate = math.pow(2, shift / 12).toDouble() * detune;
       final hold = (beatSeconds * lengthBeats * sampleRate).round();
       for (final (layer, gain) in gains.indexed) {
         // Below this it is inaudible and only costs time to mix in.
@@ -748,17 +770,33 @@ _Parts _renderParts(
             Strum.up => 0.007,
             Strum.together => 0.002,
           };
+          // One stroke's worth of humanising, shared by every string in
+          // it: the hand is early or late, and hard or soft, for the whole
+          // chord rather than string by string.
+          final push =
+              ((human.nextDouble() + human.nextDouble()) / 2 * 2 - 1) *
+              guitarTimingSpread;
+          final strength =
+              1 +
+              ((human.nextDouble() + human.nextDouble()) / 2 * 2 - 1) *
+                  guitarVelocitySpread;
+          final nudge = (push * sampleRate).round();
           for (var v = 0; v < order.length; v++) {
             final offset =
                 (v * (gap + human.nextDouble() * gap * 0.4) * sampleRate)
                     .round();
             playGuitarNote(
               order[v],
-              at(chorusBeat + slotStart + hit.beat) + offset,
+              math.max(
+                0,
+                at(chorusBeat + slotStart + hit.beat) + nudge + offset,
+              ),
               hit.length,
               hit.velocity *
                   (hit.strum == Strum.up ? 0.75 : 1) *
-                  (0.92 + human.nextDouble() * 0.08),
+                  strength *
+                  // The pick does not cross every string alike.
+                  (0.95 + human.nextDouble() * 0.1),
               beatSeconds: secondsPerBeatAt(chorusBeat + slotStart + hit.beat),
             );
           }
