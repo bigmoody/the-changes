@@ -166,6 +166,77 @@ void main() {
     });
   });
 
+  group('moving it into place', () {
+    test('moving it later delays every note inside its cycle', () {
+      // The riff is 0 2 4 6 over eight beats. Two beats late it is 2 4 6,
+      // and the note that would have landed on the next cycle's downbeat
+      // is trimmed rather than colliding with it.
+      final laid = _twoBarRiff()
+          .movedTo(2)
+          .laidOver(choruses: 1, formBeats: 16);
+      expect([for (final note in laid) note.beat], [2, 4, 6, 10, 12, 14]);
+    });
+
+    test('a count-in taken off the front, and the length put right', () {
+      // Two bars of clicks, then four bars of music: exactly what comes out
+      // of a DAW when somebody records to a count-in.
+      final withCountIn = ImportedPart(
+        name: 'Recorded',
+        notes: [
+          _note(36, 0),
+          _note(36, 4),
+          for (var beat = 8; beat < 24; beat += 4) _note(60 + beat, beat + 0),
+        ],
+        lengthBeats: 24,
+      );
+      final fixed = withCountIn.movedTo(-8).repeatingEvery(16);
+      final laid = fixed.laidOver(choruses: 2, formBeats: 16);
+      // The clicks fell before the top of the form and are gone.
+      expect(laid.any((note) => note.pitch == 36), isFalse);
+      // The music starts at beat 0 and comes round exactly on the repeat.
+      expect(
+        [for (final note in laid) note.beat],
+        [
+          0, 4, 8, 12, //
+          16, 20, 24, 28,
+        ],
+      );
+      expect(laid[0].pitch, laid[4].pitch, reason: 'the same note round again');
+    });
+
+    test('a repeat length is never shorter than a bar', () {
+      expect(_twoBarRiff().repeatingEvery(0).lengthBeats, 4);
+      expect(_twoBarRiff().repeatingEvery(-8).lengthBeats, 4);
+    });
+
+    test('it counts the notes in each bar, for drawing it', () {
+      final counts = _twoBarRiff().notesByBar(bars: 4, beatsPerBar: 4);
+      expect(counts, [2, 2, 2, 2]);
+      // A bar late: the first bar of every two-bar cycle is now empty and
+      // its notes have shuffled into the second.
+      final moved = _twoBarRiff()
+          .movedTo(4)
+          .notesByBar(bars: 4, beatsPerBar: 4);
+      expect(moved, [0, 2, 0, 2]);
+    });
+
+    test('it says which bars it starts again on', () {
+      expect(_twoBarRiff().repeatsAt(bars: 6, beatsPerBar: 4), {0, 2, 4});
+      // Moving a part moves its notes within the cycle. The cycle itself
+      // stays anchored to the top of the tune.
+      expect(_twoBarRiff().movedTo(-4).repeatsAt(bars: 6, beatsPerBar: 4), {
+        0,
+        2,
+        4,
+      });
+    });
+
+    test('the offset survives being stored', () {
+      final part = _twoBarRiff().movedTo(-8);
+      expect(ImportedPart.fromJson(part.toJson())?.offsetBeats, -8);
+    });
+  });
+
   group('guessing which instrument it is for', () {
     test('a part that lives below the bass clef is a bass part', () {
       expect(

@@ -43,6 +43,7 @@ class ImportedPart {
     required this.lengthBeats,
     this.voice = PartVoice.piano,
     this.transpose = 0,
+    this.offsetBeats = 0,
   });
 
   /// Built from a track of a file, for a tune in [beatsPerBar].
@@ -82,6 +83,15 @@ class ImportedPart {
   /// key being played.
   final int transpose;
 
+  /// Where the part's first beat sits against the tune's, in beats.
+  ///
+  /// Nothing in a MIDI file says where the music starts, so a file with a
+  /// pick-up, a count-in or a bar of silence at the front lands in the
+  /// wrong place and the app cannot tell. This is how it gets moved:
+  /// negative pulls the part earlier, which is what takes a count-in off
+  /// the front.
+  final double offsetBeats;
+
   bool get isEmpty => notes.isEmpty;
 
   /// How many bars it is, given a tune in [beatsPerBar].
@@ -90,15 +100,50 @@ class ImportedPart {
   ImportedPart withVoice(PartVoice voice) => _copy(voice: voice);
   ImportedPart transposedBy(int semitones) => _copy(transpose: semitones);
   ImportedPart renamed(String name) => _copy(name: name);
+  ImportedPart movedTo(double offsetBeats) => _copy(offsetBeats: offsetBeats);
 
-  ImportedPart _copy({String? name, PartVoice? voice, int? transpose}) =>
-      ImportedPart(
-        name: name ?? this.name,
-        notes: notes,
-        lengthBeats: lengthBeats,
-        voice: voice ?? this.voice,
-        transpose: transpose ?? this.transpose,
-      );
+  /// A different repeat length, in beats, kept to at least one bar.
+  ///
+  /// Taking a count-in off the front with [movedTo] does not shorten the
+  /// part, so the two go together: a file of two bars of clicks and twelve
+  /// bars of music is moved back eight beats and set to twelve bars, or it
+  /// comes round two bars late every time after the first.
+  ImportedPart repeatingEvery(double beats, {int beatsPerBar = 4}) =>
+      _copy(lengthBeats: math.max(beatsPerBar.toDouble(), beats));
+
+  ImportedPart _copy({
+    String? name,
+    PartVoice? voice,
+    int? transpose,
+    double? offsetBeats,
+    double? lengthBeats,
+  }) => ImportedPart(
+    name: name ?? this.name,
+    notes: notes,
+    lengthBeats: lengthBeats ?? this.lengthBeats,
+    voice: voice ?? this.voice,
+    transpose: transpose ?? this.transpose,
+    offsetBeats: offsetBeats ?? this.offsetBeats,
+  );
+
+  /// The notes as they stand once [offsetBeats] has been applied: one
+  /// cycle of the part, measured from the top of its repeat.
+  ///
+  /// Moving the part trims it rather than only sliding it. Anything pushed
+  /// before the start of the cycle is dropped and does not come back on
+  /// the next time round, which is the whole point: a file of two bars of
+  /// clicks and twelve of music, moved back eight beats, has to lose the
+  /// clicks for good, not hear them again in bar three.
+  List<MidiNote> get placed => [
+    for (final note in notes)
+      if (note.beat + offsetBeats >= 0 && note.beat + offsetBeats < lengthBeats)
+        (
+          pitch: note.pitch,
+          beat: note.beat + offsetBeats,
+          beats: note.beats,
+          velocity: note.velocity,
+        ),
+  ];
 
   /// The part laid over [choruses] passes of a stretch [formBeats] long
   /// starting at [fromBeat] of the tune, in beats from the start of the
@@ -118,9 +163,9 @@ class ImportedPart {
     required double formBeats,
     double fromBeat = 0,
   }) {
-    if (notes.isEmpty || lengthBeats <= 0 || formBeats <= 0) return const [];
+    final cycle = placed;
+    if (cycle.isEmpty || lengthBeats <= 0 || formBeats <= 0) return const [];
     final out = <MidiNote>[];
-    // The repeats of the part that reach into the window at all.
     final firstRound = (fromBeat / lengthBeats).floor();
     for (var chorus = 0; chorus < choruses; chorus++) {
       final top = chorus * formBeats;
@@ -130,7 +175,7 @@ class ImportedPart {
         round * lengthBeats < fromBeat + formBeats;
         round++
       ) {
-        for (final note in notes) {
+        for (final note in cycle) {
           // Where this note falls along the tune, and then where that is
           // in what is being played.
           final alongTune = round * lengthBeats + note.beat;
@@ -154,6 +199,39 @@ class ImportedPart {
     return out;
   }
 
+  /// How many notes land in each bar of a form [bars] long.
+  ///
+  /// For drawing the part against the chart, which is the only way anyone
+  /// can see whether it starts where they think it does. Counting what
+  /// [laidOver] actually produces rather than working it out again, so the
+  /// picture cannot disagree with the playing.
+  List<int> notesByBar({required int bars, required int beatsPerBar}) {
+    final counts = List.filled(math.max(bars, 0), 0);
+    if (counts.isEmpty) return counts;
+    for (final note in laidOver(
+      choruses: 1,
+      formBeats: (bars * beatsPerBar).toDouble(),
+    )) {
+      final bar = note.beat ~/ beatsPerBar;
+      if (bar >= 0 && bar < bars) counts[bar]++;
+    }
+    return counts;
+  }
+
+  /// The bars of a form [bars] long where the part starts again, so the
+  /// picture can mark them.
+  ///
+  /// The repeat is measured from the tune's first bar whatever the offset
+  /// is: moving a part moves its notes inside the cycle, it does not move
+  /// the cycle.
+  Set<int> repeatsAt({required int bars, required int beatsPerBar}) {
+    if (lengthBeats <= 0 || bars <= 0) return const {};
+    return {
+      for (var beat = 0.0; beat < bars * beatsPerBar; beat += lengthBeats)
+        beat ~/ beatsPerBar,
+    };
+  }
+
   /// Whether laying this part over a form [formBeats] long loses notes off
   /// the end. Worth saying out loud when it is true.
   bool overrunsForm(double formBeats) => lengthBeats > formBeats;
@@ -161,6 +239,7 @@ class ImportedPart {
   Map<String, Object?> toJson() => {
     'name': name,
     'lengthBeats': lengthBeats,
+    'offsetBeats': offsetBeats,
     'voice': voice.name,
     // Flat rather than a list of objects: a busy part is a few thousand
     // numbers and the key names would be most of the file.
@@ -195,6 +274,7 @@ class ImportedPart {
       name: json['name'] as String? ?? 'Imported',
       notes: notes,
       lengthBeats: length.toDouble(),
+      offsetBeats: (json['offsetBeats'] as num?)?.toDouble() ?? 0,
       voice: PartVoice.values.firstWhere(
         (value) => value.name == json['voice'],
         orElse: () => PartVoice.piano,

@@ -14,7 +14,6 @@ import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
-import '../music/imported_part.dart';
 import '../practice/hiding_the_chart.dart';
 import '../practice/practice_controller.dart';
 import '../practice/practice_record.dart';
@@ -429,32 +428,6 @@ void showMixer(BuildContext context, PracticeController controller) {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => showImportPart(context, controller),
             ),
-            if (controller.importedPart case final part?)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Text('Played On', style: theme.textTheme.titleSmall),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SegmentedButton<PartVoice>(
-                        key: const ValueKey('imported-voice'),
-                        showSelectedIcon: false,
-                        segments: [
-                          for (final voice in PartVoice.values)
-                            ButtonSegment(
-                              value: voice,
-                              label: Text(voice.label),
-                            ),
-                        ],
-                        selected: {part.voice},
-                        onSelectionChanged: (value) => controller
-                            .setImportedPart(part.withVoice(value.first)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             for (final instrument in controller.parts)
               _MixerChannel(controller: controller, instrument: instrument),
           ],

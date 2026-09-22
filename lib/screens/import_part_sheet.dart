@@ -97,8 +97,16 @@ class _ImportPartState extends State<_ImportPart> {
     Navigator.of(context).pop();
   }
 
+  /// The part being shown lives on the controller, so the sheet has to
+  /// listen to it: without this, nudging the start changes what the band
+  /// plays and leaves the panel saying what it said before.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _controller,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final already = _controller.importedPart;
@@ -120,24 +128,15 @@ class _ImportPartState extends State<_ImportPart> {
         ),
         if (already != null) ...[
           const SizedBox(height: 14),
-          Card(
-            child: ListTile(
-              key: const ValueKey('current-part'),
-              title: Text(already.name),
-              subtitle: Text(
-                '${already.bars(_beatsPerBar)} bars, '
-                '${already.notes.length} notes, on the '
-                '${already.voice.label.toLowerCase()}',
-              ),
-              trailing: TextButton(
-                key: const ValueKey('remove-part'),
-                onPressed: () {
-                  _controller.setImportedPart(null);
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Remove'),
-              ),
-            ),
+          _PartPanel(
+            part: already,
+            bars: _controller.tune.barCount,
+            beatsPerBar: _beatsPerBar,
+            onChanged: _controller.setImportedPart,
+            onRemove: () {
+              _controller.setImportedPart(null);
+              Navigator.of(context).pop();
+            },
           ),
         ],
         const SizedBox(height: 14),
@@ -251,6 +250,249 @@ class _PartRow extends StatelessWidget {
         isThreeLine: overruns,
         trailing: const Icon(Icons.add),
         onTap: onTake,
+      ),
+    );
+  }
+}
+
+/// The part that is in, with the two things that decide where it lands.
+///
+/// Nothing in a MIDI file says where the music starts or how long it is
+/// before it comes round, so both are guesses until somebody looks. The
+/// strip underneath is that look: it draws the part against the bars of
+/// the tune, which is the only way to tell a count-in from a pick-up from
+/// a file that was simply written somewhere else.
+class _PartPanel extends StatelessWidget {
+  const _PartPanel({
+    required this.part,
+    required this.bars,
+    required this.beatsPerBar,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final ImportedPart part;
+  final int bars;
+  final int beatsPerBar;
+  final ValueChanged<ImportedPart> onChanged;
+  final VoidCallback onRemove;
+
+  /// "As written", "1 bar earlier", "2 beats later".
+  String get _whereItStarts {
+    final beats = part.offsetBeats;
+    if (beats == 0) return 'As written';
+    final away = beats.abs();
+    final word = beats < 0 ? 'earlier' : 'later';
+    if (away % beatsPerBar == 0) {
+      final inBars = (away / beatsPerBar).round();
+      return '$inBars ${inBars == 1 ? 'bar' : 'bars'} $word';
+    }
+    return '${_plain(away)} ${away == 1 ? 'beat' : 'beats'} $word';
+  }
+
+  static String _plain(double value) =>
+      value == value.roundToDouble() ? '${value.round()}' : '$value';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final repeatBars = part.bars(beatsPerBar);
+    Widget row(String label, String value, List<Widget> buttons) => Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 78,
+            child: Text(label, style: theme.textTheme.titleSmall),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          ...buttons,
+        ],
+      ),
+    );
+    Widget nudge(String tooltip, IconData icon, Key key, VoidCallback? go) =>
+        IconButton.outlined(
+          key: key,
+          icon: Icon(icon, size: 18),
+          tooltip: tooltip,
+          visualDensity: VisualDensity.compact,
+          onPressed: go,
+        );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(part.name, style: theme.textTheme.titleMedium),
+                ),
+                TextButton(
+                  key: const ValueKey('remove-part'),
+                  onPressed: onRemove,
+                  child: const Text('Remove'),
+                ),
+              ],
+            ),
+            Text(
+              '${part.notes.length} notes',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 10),
+            SegmentedButton<PartVoice>(
+              key: const ValueKey('imported-voice'),
+              showSelectedIcon: false,
+              segments: [
+                for (final voice in PartVoice.values)
+                  ButtonSegment(value: voice, label: Text(voice.label)),
+              ],
+              selected: {part.voice},
+              onSelectionChanged: (value) =>
+                  onChanged(part.withVoice(value.first)),
+            ),
+            row('Starts', _whereItStarts, [
+              nudge(
+                'A beat earlier',
+                Icons.chevron_left,
+                const ValueKey('start-earlier'),
+                () => onChanged(part.movedTo(part.offsetBeats - 1)),
+              ),
+              const SizedBox(width: 4),
+              nudge(
+                'A beat later',
+                Icons.chevron_right,
+                const ValueKey('start-later'),
+                () => onChanged(part.movedTo(part.offsetBeats + 1)),
+              ),
+            ]),
+            row('Repeats', '$repeatBars ${repeatBars == 1 ? 'bar' : 'bars'}', [
+              nudge(
+                'A bar shorter',
+                Icons.remove,
+                const ValueKey('repeat-shorter'),
+                repeatBars <= 1
+                    ? null
+                    : () => onChanged(
+                        part.repeatingEvery(
+                          part.lengthBeats - beatsPerBar,
+                          beatsPerBar: beatsPerBar,
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 4),
+              nudge(
+                'A bar longer',
+                Icons.add,
+                const ValueKey('repeat-longer'),
+                () => onChanged(
+                  part.repeatingEvery(
+                    part.lengthBeats + beatsPerBar,
+                    beatsPerBar: beatsPerBar,
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            Text(
+              'Against the chart',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: scheme.tertiary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            _OverTheForm(part: part, bars: bars, beatsPerBar: beatsPerBar),
+            const SizedBox(height: 4),
+            Text(
+              'A block is a bar the part plays in. The marked bars are where '
+              'it starts again.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The part drawn against the bars of the tune: one cell a bar, taller
+/// where more of the part falls in it, marked where it comes round.
+class _OverTheForm extends StatelessWidget {
+  const _OverTheForm({
+    required this.part,
+    required this.bars,
+    required this.beatsPerBar,
+  });
+
+  final ImportedPart part;
+  final int bars;
+  final int beatsPerBar;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final counts = part.notesByBar(bars: bars, beatsPerBar: beatsPerBar);
+    final repeats = part.repeatsAt(bars: bars, beatsPerBar: beatsPerBar);
+    final busiest = counts.fold(0, (most, n) => n > most ? n : most);
+    return SizedBox(
+      height: 34,
+      child: Row(
+        key: const ValueKey('over-the-form'),
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final (bar, count) in counts.indexed)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 0.5),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    SizedBox(
+                      height: busiest == 0
+                          ? 2
+                          : 2 + 26 * (count / busiest).clamp(0, 1),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: count == 0
+                              ? scheme.onSurface.withValues(alpha: 0.12)
+                              : scheme.onSurface.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                        child: const SizedBox(width: double.infinity),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    SizedBox(
+                      height: 3,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: repeats.contains(bar)
+                              ? scheme.tertiary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(1),
+                        ),
+                        child: const SizedBox(width: double.infinity),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
