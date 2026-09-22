@@ -72,9 +72,13 @@ class SampleBank {
   final Map<int, List<Int16List>> piano;
 
   /// Archtop guitar notes by MIDI pitch, sampled every 3 semitones from E2
-  /// to G♭5: two takes, all at one gentle stroke so every strum has the
-  /// same tone (the hard-picked recordings were far brighter).
-  final Map<int, List<Int16List>> guitar;
+  /// to G♭5. Two velocity layers, the gentler stroke first, and two takes
+  /// of each: `guitar[60][layer][take]`.
+  ///
+  /// The two layers are what stop a loud chord being a quiet one turned
+  /// up. Their sustain is much alike; what changes is the attack, which is
+  /// two to three times bigger on the harder stroke.
+  final Map<int, List<List<Int16List>>> guitar;
 
   /// Drum hits, softest layer first.
   final DrumSamples ride;
@@ -144,8 +148,11 @@ class SampleBank {
       guitar: {
         for (final pitch in guitarPitches)
           pitch: [
-            for (final take in [1, 2])
-              await wav('guitar/guitar_${pitch}_rr$take.wav'),
+            for (final layer in [1, 2])
+              [
+                for (final take in [1, 2])
+                  await wav('guitar/guitar_${pitch}_v${layer}_rr$take.wav'),
+              ],
           ],
       },
       ride: await kit('ride'),
@@ -189,7 +196,7 @@ class SampleBank {
   /// The recorded guitar note nearest to [pitch], and how many semitones it
   /// must be shifted to reach it (at most 1, but for the very top and
   /// bottom of the range).
-  (int, List<Int16List>) nearestGuitar(int pitch) {
+  (int, List<List<Int16List>>) nearestGuitar(int pitch) {
     final nearest = guitarPitches.reduce(
       (a, b) => (a - pitch).abs() <= (b - pitch).abs() ? a : b,
     );

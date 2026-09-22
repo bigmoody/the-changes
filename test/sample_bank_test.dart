@@ -232,7 +232,7 @@ void main() {
   );
 
   test(
-    'the guitar has one even tone: no take far brighter than the rest',
+    'the guitar\'s takes match within a layer, and its layers do not',
     () async {
       final bank = await loadBank();
       // How much of a take's attack is high-frequency: the energy of its
@@ -248,13 +248,31 @@ void main() {
         return math.sqrt(change / energy);
       }
 
-      // The two takes of each note sound alike.
-      for (final MapEntry(key: pitch, value: takes) in bank.guitar.entries) {
-        final a = brightness(takes[0]), b = brightness(takes[1]);
+      // Two takes of the same stroke are alternated at random, so one
+      // being brighter than the other would be heard as a wobble.
+      for (final MapEntry(key: pitch, value: layers) in bank.guitar.entries) {
+        for (final (layer, takes) in layers.indexed) {
+          final a = brightness(takes[0]), b = brightness(takes[1]);
+          expect(
+            math.max(a, b) / math.min(a, b),
+            lessThan(1.5),
+            reason: 'pitch $pitch, layer $layer',
+          );
+        }
+      }
+
+      // The two layers, on the other hand, have to differ, or there is no
+      // point carrying both: the harder stroke hits two to three times
+      // harder. This is the whole of the fix for a guitar that sounded
+      // like a sampler, so it is worth a test that would notice it being
+      // undone by a pipeline change.
+      for (final MapEntry(key: pitch, value: layers) in bank.guitar.entries) {
+        int peak(Int16List take) =>
+            take.fold(0, (most, x) => x.abs() > most ? x.abs() : most);
         expect(
-          math.max(a, b) / math.min(a, b),
-          lessThan(1.5),
-          reason: '$pitch',
+          peak(layers[1][0]) / peak(layers[0][0]),
+          greaterThan(1.4),
+          reason: 'pitch $pitch: the hard layer barely hits harder',
         );
       }
     },
