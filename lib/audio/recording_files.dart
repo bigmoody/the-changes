@@ -13,9 +13,16 @@ import 'package:path_provider/path_provider.dart';
 import '../practice/recording_store.dart';
 
 class DeviceRecordingFiles implements RecordingFiles {
+  /// [folder] is the name of the folder under the app's documents: the
+  /// imported sessions and the licks keep theirs apart, because they are
+  /// different sizes and deleting the wrong one is a different mistake.
+  DeviceRecordingFiles([this.folder = 'recordings']);
+
+  final String folder;
+
   Future<Directory> _folder() async {
     final documents = await getApplicationDocumentsDirectory();
-    final folder = Directory('${documents.path}/recordings');
+    final folder = Directory('${documents.path}/${this.folder}');
     if (!folder.existsSync()) await folder.create(recursive: true);
     return folder;
   }
