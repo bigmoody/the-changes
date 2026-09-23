@@ -25,6 +25,7 @@
 import 'dart:math' as math;
 
 import '../music/chord.dart';
+import '../music/comping.dart';
 import '../music/guitar_voicing.dart';
 import '../music/tune.dart';
 import 'piano_comping.dart';
@@ -139,6 +140,7 @@ class GuitarComper {
     required int bar,
     Chord? next,
     int tempo = 120,
+    CompFigure? figure,
     required double swing,
   }) {
     if (style == PianoStyle.swing) {
@@ -149,6 +151,7 @@ class GuitarComper {
           beats,
           Feel.swing,
           next: next,
+          figure: figure,
           swing: swing,
         ))
           (

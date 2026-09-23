@@ -129,6 +129,27 @@ List<(CompFigure, int)> bandFigures({required bool canPush}) => [
       (figure, figure.weight),
 ];
 
+/// [figure]'s strikes, with a push brought onto the downbeat when there
+/// is nothing before it to be early against.
+///
+/// A push is the one figure that starts before its own bar, so at the top
+/// of a tune it has nowhere to come from. The band's own answer is to
+/// pick something else that bar; when somebody has asked for this figure
+/// and no other, the answer instead is to play it in the only place it
+/// can go, which is on the beat, keeping its length so it still rings
+/// across the bar the way a push does.
+List<CompStrike> strikesAt(
+  CompFigure figure,
+  double and, {
+  required bool canPush,
+}) {
+  if (canPush || !figure.startsEarly) return figure.strikes(and);
+  return [
+    for (final (beat, length, weight) in figure.strikes(and))
+      (beat < 0 ? 0 : beat, length, weight),
+  ];
+}
+
 /// What to call the beat a chord lands on: "1", 'the "and" of 2', or,
 /// for a push, the last "and" of the bar before.
 String beatName(double beat) {

@@ -71,6 +71,7 @@ class Comper {
     bool held = false,
     bool calypso = false,
     double beatInBar = 0,
+    CompFigure? figure,
     required double swing,
   }) {
     final isNew = chord.display != _sounding;
@@ -81,7 +82,7 @@ class Comper {
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
         : calypso
         ? _calypsoPattern(beats, beatInBar)
-        : _pickPattern(beats, feel, swing, isNew: isNew);
+        : _pickPattern(beats, feel, swing, isNew: isNew, figure: figure);
     if (pattern.isEmpty) return const [];
     final notes = _pickVoicing(chord, next, reuse: !isNew);
     // A chord that's still ringing is touched more gently than a fresh one.
@@ -149,6 +150,7 @@ class Comper {
     Feel feel,
     double swing, {
     required bool isNew,
+    CompFigure? figure,
   }) {
     // The swung "and" of a beat lands late; in straight feels it's halfway,
     // and how late is the band's business rather than this one's.
@@ -162,6 +164,17 @@ class Comper {
     final canPush = _started;
     // Holding the same chord for a third bar or more: lean towards silence.
     final quiet = _held >= 2;
+
+    // Somebody has asked for one figure and no other, so it is played in
+    // every whole bar, new chord or not. That is not what a band does and
+    // is not meant to be: it is how you hear what one figure does across
+    // a whole chorus of real changes, which two bars of a ii-V on the
+    // Learn screen cannot show you. Bars too short for a figure are left
+    // to the comper, because a figure needs four beats to be itself.
+    if (figure != null && beats >= 4) {
+      _lastPattern = figure.name;
+      return strikesAt(figure, and, canPush: canPush);
+    }
 
     final patterns = <(String, int, _Pattern)>[
       if (beats >= 4) ...[

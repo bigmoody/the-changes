@@ -1,4 +1,5 @@
 import 'chord.dart';
+import 'comping.dart';
 
 /// One chord in a bar, with where it sits in time.
 class ChordSlot {
@@ -153,6 +154,19 @@ enum PianoStyle {
 }
 
 /// Who plays the chords: the pianist, or a guitarist in their place.
+/// Whether choosing a comping figure does anything, given who is comping
+/// and in what style.
+///
+/// Held chords and the calypso strum have rhythms of their own and never
+/// look at the figures. The guitar borrows the comper's figures in swing
+/// and nowhere else: in the Latin styles it plays the bossa guitar's own
+/// two-bar figures instead, which are a different thing entirely.
+bool figuresApply(PianoStyle style, Comping who) => switch (style) {
+  PianoStyle.held || PianoStyle.calypso => false,
+  PianoStyle.swing => true,
+  PianoStyle.straight => who == Comping.piano,
+};
+
 enum Comping {
   piano('Piano'),
   guitar('Guitar');
@@ -168,6 +182,7 @@ class BandStyle {
     required this.drums,
     required this.bass,
     required this.piano,
+    this.figure,
   });
 
   /// The whole band in one [feel], as the standards are played.
@@ -192,15 +207,33 @@ class BandStyle {
   final BassStyle bass;
   final PianoStyle piano;
 
+  /// The one comping figure to play in every bar, or null to let the
+  /// comper choose bar by bar as it always has.
+  ///
+  /// Null is what a band does: a comper who played the Charleston in
+  /// every bar of every tune would be unbearable. It is here because
+  /// hearing one figure held to for a whole chorus, against real changes
+  /// and at your own tempo, is how anybody learns what it does, and the
+  /// Learn screen can only offer it over two bars of a ii-V.
+  final CompFigure? figure;
+
+  BandStyle withFigure(CompFigure? figure) => BandStyle(
+    drums: drums,
+    bass: bass,
+    piano: piano,
+    figure: figure,
+  );
+
   @override
   bool operator ==(Object other) =>
       other is BandStyle &&
       other.drums == drums &&
       other.bass == bass &&
-      other.piano == piano;
+      other.piano == piano &&
+      other.figure == figure;
 
   @override
-  int get hashCode => Object.hash(drums, bass, piano);
+  int get hashCode => Object.hash(drums, bass, piano, figure);
 }
 
 /// A chord chart: a list of bars, each holding one or more chords.

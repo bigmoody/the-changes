@@ -264,6 +264,10 @@ void main() {
     await tester.tap(find.byTooltip('Mixer'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Mute arpeggios'), findsWidgets);
+    // The mixer is a list and keeps growing; a tap that assumes the row
+    // is on screen is a tap that quietly misses.
+    await tester.ensureVisible(find.byKey(const ValueKey('arpeggio-start')));
+    await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('arpeggio-start')),

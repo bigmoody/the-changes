@@ -16,6 +16,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../music/comping.dart';
 import '../music/tune.dart';
 import '../music/user_progression.dart';
 import '../practice/practice_record.dart';
@@ -153,10 +154,16 @@ class LibraryStore extends ChangeNotifier {
       final bass = BassStyle.values.where((b) => b.name == parts[1]);
       final piano = PianoStyle.values.where((p) => p.name == parts[2]);
       if (drums.isEmpty || bass.isEmpty || piano.isEmpty) continue;
+      // The figure came later, so anything written before it has three
+      // parts and no fourth to read.
+      final figure = parts.length > 3
+          ? CompFigure.values.where((f) => f.name == parts[3])
+          : const <CompFigure>[];
       styles[TuneRef(entry.key as String)] = BandStyle(
         drums: drums.first,
         bass: bass.first,
         piano: piano.first,
+        figure: figure.isEmpty ? null : figure.first,
       );
     }
     return styles;
@@ -390,6 +397,7 @@ class LibraryStore extends ChangeNotifier {
           entry.value.drums.name,
           entry.value.bass.name,
           entry.value.piano.name,
+          if (entry.value.figure case final figure?) figure.name,
         ],
     },
   };

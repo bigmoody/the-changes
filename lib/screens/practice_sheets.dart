@@ -12,6 +12,7 @@ import '../audio/arpeggios.dart';
 import '../audio/backing_synth.dart';
 import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
+import '../music/comping.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../practice/hiding_the_chart.dart';
@@ -517,8 +518,12 @@ class _TheBand extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 showCheckmark: false,
                 label: Text(feel.label),
-                selected: style == BandStyle.of(feel),
-                onSelected: (_) => controller.setStyle(BandStyle.of(feel)),
+                // The figure is set apart from the groove, so a band
+                // playing the Charleston in B flat bossa is still a bossa.
+                selected: style.withFigure(null) == BandStyle.of(feel),
+                onSelected: (_) => controller.setStyle(
+                  BandStyle.of(feel).withFigure(style.figure),
+                ),
               ),
           ],
         ),
@@ -529,7 +534,12 @@ class _TheBand extends StatelessWidget {
           options: Feel.values,
           name: (feel) => feel.label,
           onPick: (feel) => controller.setStyle(
-            BandStyle(drums: feel, bass: style.bass, piano: style.piano),
+            BandStyle(
+              drums: feel,
+              bass: style.bass,
+              piano: style.piano,
+              figure: style.figure,
+            ),
           ),
         ),
         _BandPart<BassStyle>(
@@ -538,7 +548,12 @@ class _TheBand extends StatelessWidget {
           options: BassStyle.values,
           name: (bass) => bass.label,
           onPick: (bass) => controller.setStyle(
-            BandStyle(drums: style.drums, bass: bass, piano: style.piano),
+            BandStyle(
+              drums: style.drums,
+              bass: bass,
+              piano: style.piano,
+              figure: style.figure,
+            ),
           ),
         ),
         _BandPart<PianoStyle>(
@@ -547,9 +562,41 @@ class _TheBand extends StatelessWidget {
           options: PianoStyle.values,
           name: (piano) => piano.label,
           onPick: (piano) => controller.setStyle(
-            BandStyle(drums: style.drums, bass: style.bass, piano: piano),
+            BandStyle(
+              drums: style.drums,
+              bass: style.bass,
+              piano: piano,
+              figure: style.figure,
+            ),
           ),
         ),
+        // Only where it would do anything. Held chords and the calypso
+        // strum have rhythms of their own, and the guitar borrows these
+        // figures in swing and nowhere else.
+        if (figuresApply(style.piano, controller.settings.comping))
+          _BandPart<CompFigure?>(
+            label: 'Figure',
+            value: style.figure,
+            options: const [null, ...CompFigure.values],
+            name: (figure) => figure?.label ?? 'As it comes',
+            onPick: (figure) => controller.setStyle(style.withFigure(figure)),
+          ),
+        if (figuresApply(style.piano, controller.settings.comping) &&
+            style.figure != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              '${strikeCount(style.figure!)} '
+              '${strikeCount(style.figure!) == 1 ? 'chord' : 'chords'}, '
+              '${whereItLands(style.figure!, 0.5)}, in every bar. A comper '
+              'would not: put it back to As it comes for a band that '
+              'chooses bar by bar. Learn has what each one is for.',
+              key: const ValueKey('about-band-figure'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -606,7 +653,10 @@ class _BandPart<T> extends StatelessWidget {
                   ),
               ],
               onChanged: (picked) {
-                if (picked != null) onPick(picked);
+                // Where the choice can be nothing, as the comping figure
+                // can, nothing is one of the answers rather than the menu
+                // being waved away.
+                if (picked != null || null is T) onPick(picked as T);
               },
             ),
           ),
