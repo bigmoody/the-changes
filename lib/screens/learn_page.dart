@@ -6,12 +6,14 @@
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
+import '../practice/lick_store.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chord_identifier_screen.dart';
 import 'chord_reference_screen.dart';
 import 'chord_tones_reference_screen.dart';
 import 'chord_tones_screen.dart';
+import 'licks_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
@@ -38,10 +40,19 @@ import 'through_the_changes_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 class LearnPage extends StatelessWidget {
-  const LearnPage({super.key, required this.player, required this.settings});
+  const LearnPage({
+    super.key,
+    required this.player,
+    required this.settings,
+    this.licks,
+  });
 
   final PracticePlayer player;
   final AppSettings settings;
+
+  /// Where somebody's own licks are kept. Without it there is nowhere to
+  /// put one, so the row is not offered.
+  final LickStore? licks;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +66,18 @@ class LearnPage extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           const SectionHeader('Practise'),
+          if (licks case final store?)
+            _LearnCard(
+              key: const ValueKey('learn-licks'),
+              icon: Icons.auto_awesome_motion_outlined,
+              title: 'Licks',
+              subtitle:
+                  'Play a line over some changes and the app writes it '
+                  'down, then take it round all twelve keys',
+              onTap: () => open(
+                LicksScreen(licks: store, player: player, settings: settings),
+              ),
+            ),
           _LearnCard(
             key: const ValueKey('learn-quiz'),
             icon: Icons.timer_outlined,

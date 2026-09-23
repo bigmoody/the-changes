@@ -18,6 +18,7 @@ import 'screens/home_screen.dart';
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
 import 'practice/part_store.dart';
+import 'practice/lick_store.dart';
 import 'practice/recording_store.dart';
 import 'settings/progression_store.dart';
 import 'theme.dart';
@@ -34,6 +35,7 @@ Future<void> main() async {
   final recordingStore = await RecordingStore.load(
     files: DeviceRecordingFiles(),
   );
+  final licks = await LickStore.load(files: DeviceRecordingFiles('licks'));
   final player = PracticePlayer();
   String? audioError;
   try {
@@ -51,6 +53,7 @@ Future<void> main() async {
       takes: takes,
       partStore: partStore,
       recordingStore: recordingStore,
+      licks: licks,
       audioError: audioError,
     ),
   );
@@ -81,6 +84,7 @@ class TheChangesApp extends StatelessWidget {
     required this.takes,
     required this.partStore,
     required this.recordingStore,
+    required this.licks,
     this.audioError,
   });
 
@@ -93,6 +97,7 @@ class TheChangesApp extends StatelessWidget {
 
   /// Where recordings of real players are kept.
   final RecordingStore recordingStore;
+  final LickStore licks;
   final String? audioError;
 
   @override
@@ -110,6 +115,7 @@ class TheChangesApp extends StatelessWidget {
         takes: takes,
         partStore: partStore,
         recordingStore: recordingStore,
+        licks: licks,
         audioError: audioError,
       ),
     );

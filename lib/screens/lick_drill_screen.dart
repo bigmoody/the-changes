@@ -1,0 +1,484 @@
+// Playing one lick in all twelve keys.
+//
+// A phrase you can only play in one key is a phrase you have memorised.
+// The way anybody turns one into something they own is to take it round
+// the keys with the changes underneath it, which is dull to set up by
+// hand and takes about four seconds here.
+//
+// The stave fills in as you play. That is better feedback than a mark at
+// the end, because the useful information is not how many you got but
+// exactly where you stopped: everyone can play the first four notes.
+//
+// The band plays the changes the lick was written over, moved to the same
+// key as the line, and both are worked out from one number so they cannot
+// come apart.
+//
+// Headphones are worth a word on screen. The microphone hears the band as
+// well as you, and while spotting one known note in that is a far smaller
+// job than writing the whole phrase down, it is still easier without a
+// speaker playing chords into it.
+
+import 'package:flutter/material.dart';
+
+import '../audio/practice_player.dart';
+import '../audio/tuner_listener.dart';
+import '../music/lick.dart';
+import '../music/midi_file.dart';
+import '../music/tuning.dart';
+import '../practice/practice_controller.dart';
+import '../settings/app_settings.dart';
+import '../theme.dart';
+import 'stave.dart';
+import 'stave_figure.dart';
+import 'transport.dart';
+
+class LickDrillScreen extends StatefulWidget {
+  const LickDrillScreen({
+    super.key,
+    required this.lick,
+    required this.player,
+    required this.settings,
+    this.listener,
+  });
+
+  final Lick lick;
+  final PracticePlayer player;
+  final AppSettings settings;
+
+  /// Stood in for by the tests, which have no microphone.
+  @visibleForTesting
+  final TunerListener? listener;
+
+  @override
+  State<LickDrillScreen> createState() => _LickDrillScreenState();
+}
+
+class _LickDrillScreenState extends State<LickDrillScreen> {
+  late final _controller = PracticeController(
+    tune: widget.lick.over.toTune(),
+    player: widget.player,
+    settings: widget.settings,
+  );
+  late final _listener = widget.listener ?? TunerListener();
+
+  var _order = KeyOrder.fourths;
+  late List<int> _moves = _order.moves();
+  var _at = 0;
+  late LickFollower _follower = _followerFor(0);
+
+  /// Which keys have been played all the way through.
+  final _done = <int>{};
+  var _listening = false;
+  String? _problem;
+
+  Lick get lick => widget.lick;
+
+  /// How far the line is from where it was played, for this key.
+  int get move => _moves[_at];
+
+  /// The line as the player reads it: moved to this key, and then again
+  /// for whatever instrument they are on, exactly as the chart is.
+  List<MidiNote> get _written =>
+      lick.notesUp(move + widget.settings.instrument.semitones);
+
+  /// The key the line is written in, which for a B flat instrument is not
+  /// the key the band is playing in.
+  int get _writtenKey =>
+      (lick.key + move + widget.settings.instrument.semitones) % 12;
+
+  LickFollower _followerFor(int index) =>
+      LickFollower(lick.notesUp(_moves[index]));
+
+  /// The chord over each note, as the player reads it.
+  ///
+  /// Taken from the transposed tune rather than spelled here, so the
+  /// symbols over the line are the ones the app would print anywhere
+  /// else: a B flat player in the key of D sees D, not C.
+  List<String?> get _chordNames {
+    final slots = lick
+        .tuneUp(move + widget.settings.instrument.semitones)
+        .slots;
+    return [
+      for (final note in lick.notes)
+        () {
+          String? found;
+          for (final slot in slots) {
+            if (slot.startBeat <= note.beat) found = slot.chord.display;
+          }
+          return found;
+        }(),
+    ];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.transpose(move);
+  }
+
+  @override
+  void dispose() {
+    _listener.stop();
+    if (widget.listener == null) _listener.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _listen() async {
+    if (_listening) return;
+    try {
+      if (!await _listener.hasPermission()) {
+        if (mounted) {
+          setState(
+            () => _problem =
+                'The app needs the microphone to follow '
+                'you through the lick. Playing works without it.',
+          );
+        }
+        return;
+      }
+      await _listener.start(_onHeard, alongsideMusic: true);
+      if (mounted) setState(() => _listening = true);
+    } catch (e) {
+      if (mounted) setState(() => _problem = 'Could not listen: $e');
+    }
+  }
+
+  void _onHeard(Heard heard) {
+    // The microphone hears concert pitch, and the lick is held at concert
+    // pitch too, so nothing is transposed here. The transposing happens
+    // where the line is written, and nowhere else.
+    final moved = _follower.heard(heard == null ? null : hzToMidi(heard.hz));
+    if (!moved) return;
+    setState(() {});
+    if (_follower.done) _done.add(move);
+  }
+
+  Future<void> _goTo(int index) async {
+    setState(() {
+      _at = index % _moves.length;
+      _follower = _followerFor(_at);
+      _problem = null;
+    });
+    _controller.transpose(move);
+  }
+
+  void _setOrder(KeyOrder order) {
+    setState(() {
+      _order = order;
+      _moves = order.moves(seed: DateTime.now().millisecond);
+      _at = 0;
+      _done.clear();
+      _follower = _followerFor(0);
+    });
+    _controller.transpose(move);
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: _controller,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(lick.name),
+        actions: [
+          PopupMenuButton<KeyOrder>(
+            key: const ValueKey('key-order'),
+            tooltip: 'The order the keys come in',
+            initialValue: _order,
+            onSelected: _setOrder,
+            itemBuilder: (context) => [
+              for (final order in KeyOrder.values)
+                PopupMenuItem(value: order, child: Text(order.label)),
+            ],
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                children: [
+                  _Heading(
+                    writtenKey: _writtenKey,
+                    at: _at,
+                    of: _moves.length,
+                    done: _done.length,
+                  ),
+                  const SizedBox(height: 12),
+                  _TheLine(
+                    notes: _written,
+                    got: _follower.got,
+                    chords: _chordNames,
+                    writtenKey: _writtenKey,
+                  ),
+                  const SizedBox(height: 10),
+                  _Progress(
+                    follower: _follower,
+                    listening: _listening,
+                    onListen: _listen,
+                  ),
+                  if (_problem case final problem?) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      problem,
+                      key: const ValueKey('drill-problem'),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 14),
+                  _Keys(
+                    moves: _moves,
+                    lickKey: lick.key,
+                    at: _at,
+                    done: _done,
+                    onPick: _goTo,
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: TextButton.icon(
+                      key: const ValueKey('previous-key'),
+                      icon: const Icon(Icons.chevron_left),
+                      label: const Text('Back'),
+                      onPressed: () => _goTo(_at - 1),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: FilledButton.tonalIcon(
+                      key: const ValueKey('next-key'),
+                      icon: const Icon(Icons.chevron_right),
+                      label: const Text('Next Key'),
+                      onPressed: () => _goTo(_at + 1),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Transport(controller: _controller),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Which key this is, and how far round the twelve.
+class _Heading extends StatelessWidget {
+  const _Heading({
+    required this.writtenKey,
+    required this.at,
+    required this.of,
+    required this.done,
+  });
+
+  final int writtenKey;
+  final int at;
+  final int of;
+  final int done;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: Text(
+            'Key of ${pitchClassName(writtenKey)}',
+            key: const ValueKey('drill-key'),
+            style: theme.textTheme.titleLarge,
+          ),
+        ),
+        Text(
+          '${at + 1} of $of · $done played',
+          key: const ValueKey('drill-progress'),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The line, with the changes over it, filling in as it is played.
+class _TheLine extends StatelessWidget {
+  const _TheLine({
+    required this.notes,
+    required this.got,
+    required this.chords,
+    required this.writtenKey,
+  });
+
+  final List<MidiNote> notes;
+  final List<bool> got;
+  final List<String?> chords;
+  final int writtenKey;
+
+  @override
+  Widget build(BuildContext context) {
+    if (notes.isEmpty) {
+      return const Text('This lick has no notes in it.');
+    }
+    final placed = lineOnStave([
+      for (final note in notes)
+        (pitch: note.pitch, name: nameInKey(note.pitch, key: writtenKey)),
+    ]);
+    const accidentals = {
+      -2: Smufl.doubleFlat,
+      -1: Smufl.flat,
+      1: Smufl.sharp,
+      2: Smufl.doubleSharp,
+    };
+    final columns = <StaveColumn>[];
+    String? lastChord;
+    for (final (i, head) in placed.indexed) {
+      if (accidentals[head.accidental] case final glyph?) {
+        columns.add(
+          StaveColumn.one(glyph, step: head.step.toDouble(), gap: 0.2),
+        );
+      }
+      final chord = i < chords.length ? chords[i] : null;
+      columns.add(
+        StaveColumn.one(
+          Smufl.noteheadBlack,
+          step: head.step.toDouble(),
+          ledgers: true,
+          // Filled in as you play it: the point is to see where you
+          // stopped, not to be told a number afterwards.
+          marked: i < got.length && got[i],
+          over: chord != null && chord != lastChord ? handSymbol(chord) : null,
+          gap: 1.6,
+        ),
+      );
+      if (chord != null) lastChord = chord;
+    }
+    return SizedBox(
+      height: 120,
+      child: StaveFigure(
+        key: const ValueKey('drill-line'),
+        columns: columns,
+        clef: Clef.treble,
+        space: 9,
+        semanticsLabel: 'The lick in this key',
+      ),
+    );
+  }
+}
+
+/// How far through the lick this run has got.
+class _Progress extends StatelessWidget {
+  const _Progress({
+    required this.follower,
+    required this.listening,
+    required this.onListen,
+  });
+
+  final LickFollower follower;
+  final bool listening;
+  final VoidCallback onListen;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    if (!listening) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              key: const ValueKey('follow-me'),
+              icon: const Icon(Icons.hearing),
+              label: const Text('Follow Me Through It'),
+              onPressed: onListen,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'The app listens and fills the line in as you play it. '
+            'Headphones help: the microphone hears the band too.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(
+          child: LinearProgressIndicator(
+            key: const ValueKey('drill-bar'),
+            value: follower.length == 0 ? 0 : follower.at / follower.length,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          follower.done ? 'All of it' : '${follower.at} of ${follower.length}',
+          key: const ValueKey('drill-got'),
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: follower.done ? scheme.tertiary : null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The twelve keys, in the order they are coming.
+class _Keys extends StatelessWidget {
+  const _Keys({
+    required this.moves,
+    required this.lickKey,
+    required this.at,
+    required this.done,
+    required this.onPick,
+  });
+
+  final List<int> moves;
+  final int lickKey;
+  final int at;
+  final Set<int> done;
+  final ValueChanged<int> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final (i, move) in moves.indexed)
+          ChoiceChip(
+            key: ValueKey('drill-key-$move'),
+            label: Text(pitchClassName((lickKey + move) % 12)),
+            selected: i == at,
+            avatar: done.contains(move)
+                ? Icon(Icons.check, size: 16, color: scheme.tertiary)
+                : null,
+            onSelected: (_) => onPick(i),
+          ),
+      ],
+    );
+  }
+}

@@ -11,6 +11,7 @@ import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/screens/home_screen.dart';
 import 'package:play_along/practice/take_store.dart';
 import 'package:play_along/practice/part_store.dart';
+import 'package:play_along/practice/lick_store.dart';
 import 'package:play_along/practice/recording_store.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/settings/progression_store.dart';
@@ -30,6 +31,7 @@ Future<ProgressionStore> _openHome(WidgetTester tester) async {
         takes: TakeStore.inMemory(),
         partStore: PartStore.inMemory(),
         recordingStore: RecordingStore.inMemory(),
+        licks: LickStore.inMemory(),
         progressions: store,
         library: LibraryStore.inMemory(),
         initialTab: HomeTab.mine,

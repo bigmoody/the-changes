@@ -191,6 +191,84 @@ class Lick {
   }
 }
 
+/// Following somebody through a lick as they play it.
+///
+/// The drill listens rather than transcribes, and the difference matters.
+/// Transcribing needs a clean recording of one line; the drill has a band
+/// coming out of the speaker at the same time, and reading a whole phrase
+/// out of that is a good deal to ask. Spotting whether the next note of a
+/// known lick has just been played is not: there is only one note it can
+/// be, and the order does most of the work.
+///
+/// It also gives better feedback than a mark at the end. The stave fills
+/// in as you play, so you can see where you are in the phrase and, more
+/// to the point, exactly where you stopped.
+class LickFollower {
+  LickFollower(this.notes, {this.anyOctave = false, this.cents = 45});
+
+  /// The lick, in the key being asked for.
+  final List<MidiNote> notes;
+
+  /// Whether playing it an octave away counts. Off by default: a lick
+  /// lives where it lives, and an octave is a different fingering.
+  final bool anyOctave;
+
+  /// How far off the note may be and still count. Nearly half a semitone,
+  /// because a horn player bending into a note is playing the note.
+  final double cents;
+
+  var _at = 0;
+
+  /// Whether the pitch has left the last note that counted. A note the
+  /// lick plays twice has to be heard twice, and a held note gives the
+  /// same reading over and over, so one has to end before the next can
+  /// begin.
+  var _settled = true;
+
+  int get at => _at;
+  int get length => notes.length;
+  bool get done => _at >= notes.length;
+
+  /// Which notes of the lick have been played, for drawing.
+  List<bool> get got => [for (var i = 0; i < notes.length; i++) i < _at];
+
+  /// Offers a pitch, or null for silence. True when it was the next note.
+  bool heard(double? midi) {
+    if (midi == null) {
+      _settled = true;
+      return false;
+    }
+    if (done) return false;
+    final want = notes[_at].pitch;
+    if (!_matches(midi, want)) {
+      // Anything that is not the note we are waiting for, including the
+      // note just played, counts as having moved off it.
+      if (_at == 0 || !_matches(midi, notes[_at - 1].pitch)) _settled = true;
+      return false;
+    }
+    // The same note again needs the sound to have left it first.
+    if (!_settled && _at > 0 && notes[_at - 1].pitch == want) return false;
+    _at++;
+    _settled = false;
+    return true;
+  }
+
+  void restart() {
+    _at = 0;
+    _settled = true;
+  }
+
+  bool _matches(double midi, int want) {
+    final apart = anyOctave
+        ? () {
+            final away = (midi - want) % 12;
+            return math.min(away, 12 - away);
+          }()
+        : (midi - want).abs();
+    return apart * 100 <= cents;
+  }
+}
+
 /// How an attempt at a lick went.
 class LickAttempt {
   const LickAttempt({required this.got, required this.extra});

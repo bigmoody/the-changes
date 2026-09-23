@@ -120,6 +120,96 @@ void main() {
     });
   });
 
+  group('following somebody through a lick', () {
+    List<MidiNote> line(List<int> pitches) => [
+      for (final (i, pitch) in pitches.indexed) note(pitch, i * 0.5),
+    ];
+
+    test('playing it through fills it in, note by note', () {
+      final follow = LickFollower(line(const [62, 64, 65, 67]));
+      expect(follow.done, isFalse);
+      expect(follow.got, [false, false, false, false]);
+      for (final pitch in [62.0, 64.0, 65.0, 67.0]) {
+        expect(follow.heard(pitch), isTrue, reason: '$pitch');
+      }
+      expect(follow.done, isTrue);
+      expect(follow.got, everyElement(isTrue));
+    });
+
+    test('a note held for a while does not run through the lick', () {
+      // The microphone reports the same pitch many times a second.
+      final follow = LickFollower(line(const [62, 64, 65]));
+      for (var i = 0; i < 20; i++) {
+        follow.heard(62);
+      }
+      expect(follow.at, 1, reason: 'one note played, not twenty');
+    });
+
+    test('a wrong note is simply not the next one', () {
+      final follow = LickFollower(line(const [62, 64, 65]));
+      expect(follow.heard(62), isTrue);
+      expect(follow.heard(70), isFalse, reason: 'not in the lick here');
+      expect(follow.at, 1, reason: 'still waiting for the 64');
+      expect(follow.heard(64), isTrue);
+    });
+
+    test('a note the lick plays twice has to be played twice', () {
+      final follow = LickFollower(line(const [67, 67, 65]));
+      expect(follow.heard(67), isTrue);
+      expect(follow.heard(67), isFalse, reason: 'still the same note held');
+      // Let it stop, then play it again.
+      follow.heard(null);
+      expect(follow.heard(67), isTrue);
+      expect(follow.at, 2);
+    });
+
+    test('and another note in between counts as letting go too', () {
+      final follow = LickFollower(line(const [67, 67]));
+      expect(follow.heard(67), isTrue);
+      follow.heard(60);
+      expect(follow.heard(67), isTrue);
+      expect(follow.done, isTrue);
+    });
+
+    test('being a little off pitch still counts', () {
+      final follow = LickFollower(line(const [62, 64]));
+      expect(follow.heard(62.3), isTrue, reason: 'thirty cents sharp');
+      expect(follow.heard(63.8), isTrue, reason: 'twenty cents flat');
+    });
+
+    test('being a long way off does not', () {
+      final follow = LickFollower(line(const [62]));
+      expect(follow.heard(62.7), isFalse);
+      expect(follow.at, 0);
+    });
+
+    test('silence is not a note', () {
+      final follow = LickFollower(line(const [62]));
+      expect(follow.heard(null), isFalse);
+      expect(follow.at, 0);
+    });
+
+    test('an octave out is wrong, unless the drill says otherwise', () {
+      expect(LickFollower(line(const [62])).heard(74), isFalse);
+      expect(LickFollower(line(const [62]), anyOctave: true).heard(74), isTrue);
+    });
+
+    test('nothing more is heard once it is done', () {
+      final follow = LickFollower(line(const [62]));
+      expect(follow.heard(62), isTrue);
+      expect(follow.heard(62), isFalse);
+      expect(follow.done, isTrue);
+    });
+
+    test('starting again starts again', () {
+      final follow = LickFollower(line(const [62, 64]));
+      follow.heard(62);
+      follow.restart();
+      expect(follow.at, 0);
+      expect(follow.heard(62), isTrue, reason: 'the same note is fine again');
+    });
+  });
+
   group('marking an attempt', () {
     List<MidiNote> line(List<int> pitches) => [
       for (final (i, pitch) in pitches.indexed) note(pitch, i * 0.5),
