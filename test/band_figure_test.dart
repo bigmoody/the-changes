@@ -19,6 +19,7 @@ import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/comping.dart';
 import 'package:play_along/library/library_store.dart';
 import 'package:play_along/music/tune.dart';
+import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/settings/progression_store.dart';
 
 final dm7 = Chord.parse('Dm7');
@@ -111,6 +112,176 @@ void main() {
         swing: 0.66,
       );
       expect(hits.length, lessThan(4));
+    });
+  });
+
+  group('bars with more than one chord in them, which is most of them', () {
+    // This is what the first version of this got wrong. It only applied a
+    // figure to chords lasting a whole bar, and rhythm changes is two
+    // chords a bar for forty-four of its fifty-four, so choosing a figure
+    // did almost nothing and every one of them sounded the same.
+
+    /// Two chords of two beats each, one bar, with a figure held to.
+    List<List<double>> halfBars(CompFigure figure) {
+      final comper = Comper(math.Random(3));
+      final out = <List<double>>[];
+      for (var bar = 0; bar < 4; bar++) {
+        for (final beatInBar in [0.0, 2.0]) {
+          out.add([
+            for (final hit in comper.comp(
+              beatInBar == 0 ? dm7 : g7,
+              2,
+              Feel.swing,
+              beatInBar: beatInBar,
+              figure: figure,
+              swing: 0.66,
+            ))
+              hit.beat,
+          ]);
+        }
+      }
+      return out;
+    }
+
+    test('each chord plays the strikes that fall while it is sounding', () {
+      // Twice a Bar is beat 1 and the "and" of 3, so on a bar of two
+      // chords it catches one of each.
+      final bars = halfBars(CompFigure.twice);
+      for (var i = 2; i < bars.length; i += 2) {
+        expect(bars[i], hasLength(1), reason: 'the first chord');
+        expect(bars[i][0], closeTo(0, 0.001), reason: 'beat 1');
+        expect(bars[i + 1], hasLength(1), reason: 'the second chord');
+        expect(
+          bars[i + 1][0],
+          closeTo(0.66, 0.001),
+          reason: 'the "and" of 3, counted from that chord',
+        );
+      }
+    });
+
+    test('a chord no strike lands on is not played, and that is the point', () {
+      // The Charleston is two chords at the front of the bar. On a bar of
+      // two chords it catches the first and leaves the second alone.
+      final bars = halfBars(CompFigure.charleston);
+      for (var i = 2; i < bars.length; i += 2) {
+        expect(bars[i], hasLength(2), reason: 'both strikes are up front');
+        expect(bars[i + 1], isEmpty, reason: 'nothing left for the second');
+      }
+    });
+
+    test('a figure that fills the bar reaches both chords', () {
+      final bars = halfBars(CompFigure.everyBeat);
+      for (var i = 2; i < bars.length; i += 2) {
+        expect(bars[i], hasLength(2));
+        expect(bars[i + 1], hasLength(2));
+      }
+    });
+
+    test('a chord over two bars gets the figure in each of them', () {
+      final comper = Comper(math.Random(3));
+      comper.comp(dm7, 4, Feel.swing, figure: CompFigure.twice, swing: 0.66);
+      final long = [
+        for (final hit in comper.comp(
+          g7,
+          8,
+          Feel.swing,
+          figure: CompFigure.twice,
+          swing: 0.66,
+        ))
+          hit.beat,
+      ];
+      expect(long, hasLength(4), reason: 'twice a bar, for two bars');
+      expect(long[0], closeTo(0, 0.001));
+      expect(long[1], closeTo(2.66, 0.001));
+      expect(long[2], closeTo(4, 0.001));
+      expect(long[3], closeTo(6.66, 0.001));
+    });
+
+    test('a chord in the middle of a bar is not given the bar push', () {
+      // A push belongs to the chord that starts the bar. Handing it to a
+      // chord arriving on beat 3 would put it before a chord that is
+      // already sounding.
+      final comper = Comper(math.Random(3));
+      comper.comp(dm7, 4, Feel.swing, figure: CompFigure.pushed, swing: 0.66);
+      final middle = comper.comp(
+        g7,
+        2,
+        Feel.swing,
+        beatInBar: 2,
+        figure: CompFigure.pushed,
+        swing: 0.66,
+      );
+      expect(middle, isEmpty);
+    });
+  });
+
+  group('over a real tune, which is where this went wrong', () {
+    /// Where the comper strikes across one chorus, as positions in the bar.
+    List<double> inTheBar(Tune tune, CompFigure? figure, {int seed = 3}) {
+      final comper = Comper(math.Random(seed));
+      final out = <double>[];
+      for (final slot in tune.slots) {
+        for (final hit in comper.comp(
+          slot.chord,
+          slot.beats,
+          Feel.swing,
+          beatInBar: (slot.startBeat % tune.beatsPerBar).toDouble(),
+          beatsPerBar: tune.beatsPerBar,
+          figure: figure,
+          swing: 0.66,
+        )) {
+          out.add((slot.startBeat + hit.beat) % tune.beatsPerBar);
+        }
+      }
+      return out;
+    }
+
+    final rhythm = practiceProgressions.firstWhere(
+      (tune) => tune.title == 'Rhythm changes in B♭',
+    );
+
+    test('rhythm changes really is mostly half bars', () {
+      // The fact that broke it, written down so it cannot quietly change.
+      final halves = rhythm.slots.where((slot) => slot.beats < 4).length;
+      expect(halves, greaterThan(rhythm.slots.length * 0.7));
+    });
+
+    test('every strike lands where the figure says, all chorus', () {
+      final where = inTheBar(rhythm, CompFigure.twice).toSet();
+      expect(
+        where.every(
+          (beat) => (beat - 0).abs() < 0.01 || (beat - 2.66).abs() < 0.01,
+        ),
+        isTrue,
+        reason: 'Twice a Bar and nothing else, but found $where',
+      );
+    });
+
+    test('and two figures do not sound the same, which was the bug', () {
+      final twice = inTheBar(rhythm, CompFigure.twice);
+      final offbeat = inTheBar(rhythm, CompFigure.offbeat);
+      final everyBeat = inTheBar(rhythm, CompFigure.everyBeat);
+      expect(twice, isNot(offbeat));
+      expect(twice, isNot(everyBeat));
+      expect(
+        everyBeat.length,
+        greaterThan(twice.length),
+        reason: 'four chords a bar against two',
+      );
+    });
+
+    test('a blues is half whole bars and half not, and still follows', () {
+      final blues = practiceProgressions.firstWhere(
+        (tune) => tune.title == 'Jazz blues in F',
+      );
+      final where = inTheBar(blues, CompFigure.offbeat).toSet();
+      expect(
+        where.every(
+          (beat) => (beat - 0.66).abs() < 0.01 || (beat - 2.66).abs() < 0.01,
+        ),
+        isTrue,
+        reason: 'Off the Beats and nothing else, but found $where',
+      );
     });
   });
 
@@ -216,6 +387,38 @@ void main() {
         expect(bar, hasLength(2), reason: 'Twice a Bar, on the guitar');
         expect(bar[0], closeTo(0, 0.001));
         expect(bar[1], closeTo(2.66, 0.001));
+      }
+    });
+  });
+
+  group('the guitarist on half bars too', () {
+    test('two chords in a bar each get their own part of the figure', () {
+      // The chords in the app default to the guitar, and rhythm changes
+      // is two a bar, so this is the case somebody actually hears.
+      final guitarist = GuitarComper(math.Random(2));
+      final bars = <List<double>>[];
+      for (var bar = 0; bar < 4; bar++) {
+        for (final beatInBar in [0.0, 2.0]) {
+          bars.add([
+            for (final hit in guitarist.comp(
+              beatInBar == 0 ? dm7 : g7,
+              2,
+              style: PianoStyle.swing,
+              groove: Feel.swing,
+              beatInBar: beatInBar,
+              bar: bar,
+              figure: CompFigure.twice,
+              swing: 0.66,
+            ))
+              hit.beat,
+          ]);
+        }
+      }
+      for (var i = 2; i < bars.length; i += 2) {
+        expect(bars[i], hasLength(1));
+        expect(bars[i][0], closeTo(0, 0.001));
+        expect(bars[i + 1], hasLength(1));
+        expect(bars[i + 1][0], closeTo(0.66, 0.001));
       }
     });
   });

@@ -72,6 +72,7 @@ class Comper {
     bool calypso = false,
     double beatInBar = 0,
     CompFigure? figure,
+    int beatsPerBar = 4,
     required double swing,
   }) {
     final isNew = chord.display != _sounding;
@@ -82,7 +83,15 @@ class Comper {
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
         : calypso
         ? _calypsoPattern(beats, beatInBar)
-        : _pickPattern(beats, feel, swing, isNew: isNew, figure: figure);
+        : _pickPattern(
+            beats,
+            feel,
+            swing,
+            isNew: isNew,
+            figure: figure,
+            beatInBar: beatInBar,
+            beatsPerBar: beatsPerBar,
+          );
     if (pattern.isEmpty) return const [];
     final notes = _pickVoicing(chord, next, reuse: !isNew);
     // A chord that's still ringing is touched more gently than a fresh one.
@@ -151,6 +160,8 @@ class Comper {
     double swing, {
     required bool isNew,
     CompFigure? figure,
+    double beatInBar = 0,
+    int beatsPerBar = 4,
   }) {
     // The swung "and" of a beat lands late; in straight feels it's halfway,
     // and how late is the band's business rather than this one's.
@@ -166,14 +177,20 @@ class Comper {
     final quiet = _held >= 2;
 
     // Somebody has asked for one figure and no other, so it is played in
-    // every whole bar, new chord or not. That is not what a band does and
-    // is not meant to be: it is how you hear what one figure does across
-    // a whole chorus of real changes, which two bars of a ii-V on the
-    // Learn screen cannot show you. Bars too short for a figure are left
-    // to the comper, because a figure needs four beats to be itself.
-    if (figure != null && beats >= 4) {
+    // every bar, new chord or not. That is not what a band does and is
+    // not meant to be: it is how you hear what one figure does across a
+    // whole chorus of real changes, which two bars of a ii-V on the Learn
+    // screen cannot show you.
+    if (figure != null && beats > 0) {
       _lastPattern = figure.name;
-      return strikesAt(figure, and, canPush: canPush);
+      return _figureAcross(
+        figure,
+        and,
+        canPush: canPush,
+        beats: beats,
+        beatInBar: beatInBar,
+        beatsPerBar: beatsPerBar,
+      );
     }
 
     final patterns = <(String, int, _Pattern)>[
@@ -222,6 +239,54 @@ class Comper {
     }
     _lastPattern = patterns[chosen].$1;
     return patterns[chosen].$3;
+  }
+
+  /// [figure] laid over the bars a chord covers, cut to that chord.
+  ///
+  /// A figure is a bar's worth of rhythm, and most tunes do not give a
+  /// comper whole bars: rhythm changes is two chords a bar for forty-four
+  /// of its fifty-four, and a blues in F is half and half. So the figure
+  /// belongs to the bar, and each chord in it plays whichever of its
+  /// strikes fall while that chord is the one sounding. A chord no strike
+  /// lands on is not played at all, which is not an oversight: it is what
+  /// the figure means. The Charleston is two chords at the front of the
+  /// bar, so on a bar of two chords it catches the first and leaves the
+  /// second alone, and hearing that is most of the point of asking for
+  /// it.
+  ///
+  /// A chord lasting more than a bar gets the figure again in each bar it
+  /// covers, rather than once at the front and silence after.
+  _Pattern _figureAcross(
+    CompFigure figure,
+    double and, {
+    required bool canPush,
+    required int beats,
+    required double beatInBar,
+    required int beatsPerBar,
+  }) {
+    final strikes = strikesAt(figure, and, canPush: canPush);
+    final end = beatInBar + beats;
+    final out = <CompStrike>[];
+    for (var bar = 0; bar * beatsPerBar < end; bar++) {
+      for (final (at, length, weight) in strikes) {
+        final where = bar * beatsPerBar + at;
+        // A push comes before its own bar, so at the very top of the bar
+        // it belongs to the chord that starts there rather than to the
+        // chord before, which may be a different one.
+        if (bar == 0 && at < 0) {
+          if (beatInBar != 0) continue;
+        } else if (where < beatInBar || where >= end) {
+          continue;
+        }
+        out.add((
+          where - beatInBar,
+          // Never ringing past the chord it belongs to.
+          math.min(length, end - where),
+          weight,
+        ));
+      }
+    }
+    return out;
   }
 
   /// Picks a voicing: the same one again while the chord hasn't changed,

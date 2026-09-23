@@ -746,6 +746,7 @@ _Parts _renderParts(
           next: compSlots[(index + 1) % compSlots.length].chord,
           tempo: tempoForChorus(request, firstChorus + chorus),
           figure: tune.style.figure,
+          beatsPerBar: beatsPerBar,
           swing: swing,
           beatInBar: (tuneBeat % beatsPerBar).toDouble(),
           // Counted from the start of the loop, as the drums count, so the
@@ -823,6 +824,7 @@ _Parts _renderParts(
           held: tune.style.piano == PianoStyle.held,
           calypso: tune.style.piano == PianoStyle.calypso,
           figure: tune.style.figure,
+          beatsPerBar: beatsPerBar,
           swing: swing,
           beatInBar: (math.max(slot.startBeat, loop.startBeat) % beatsPerBar)
               .toDouble(),
