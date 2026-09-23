@@ -28,6 +28,7 @@ import '../music/tuning.dart';
 import '../practice/practice_controller.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
+import 'key_round.dart';
 import 'stave.dart';
 import 'stave_figure.dart';
 import 'transport.dart';
@@ -186,18 +187,7 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(lick.name),
-        actions: [
-          PopupMenuButton<KeyOrder>(
-            key: const ValueKey('key-order'),
-            tooltip: 'The order the keys come in',
-            initialValue: _order,
-            onSelected: _setOrder,
-            itemBuilder: (context) => [
-              for (final order in KeyOrder.values)
-                PopupMenuItem(value: order, child: Text(order.label)),
-            ],
-          ),
-        ],
+        actions: [KeyOrderButton(order: _order, onPick: _setOrder)],
       ),
       body: SafeArea(
         child: Column(
@@ -236,9 +226,9 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
                     ),
                   ],
                   const SizedBox(height: 14),
-                  _Keys(
+                  KeyChips(
                     moves: _moves,
-                    lickKey: lick.key,
+                    from: lick.key,
                     at: _at,
                     done: _done,
                     onPick: _goTo,
@@ -246,32 +236,7 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
                 ],
               ),
             ),
-            Row(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: TextButton.icon(
-                      key: const ValueKey('previous-key'),
-                      icon: const Icon(Icons.chevron_left),
-                      label: const Text('Back'),
-                      onPressed: () => _goTo(_at - 1),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: FilledButton.tonalIcon(
-                      key: const ValueKey('next-key'),
-                      icon: const Icon(Icons.chevron_right),
-                      label: const Text('Next Key'),
-                      onPressed: () => _goTo(_at + 1),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            KeyStep(onBack: () => _goTo(_at - 1), onNext: () => _goTo(_at + 1)),
             Transport(controller: _controller),
           ],
         ),
@@ -440,44 +405,6 @@ class _Progress extends StatelessWidget {
             color: follower.done ? scheme.tertiary : null,
           ),
         ),
-      ],
-    );
-  }
-}
-
-/// The twelve keys, in the order they are coming.
-class _Keys extends StatelessWidget {
-  const _Keys({
-    required this.moves,
-    required this.lickKey,
-    required this.at,
-    required this.done,
-    required this.onPick,
-  });
-
-  final List<int> moves;
-  final int lickKey;
-  final int at;
-  final Set<int> done;
-  final ValueChanged<int> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (final (i, move) in moves.indexed)
-          ChoiceChip(
-            key: ValueKey('drill-key-$move'),
-            label: Text(pitchClassName((lickKey + move) % 12)),
-            selected: i == at,
-            avatar: done.contains(move)
-                ? Icon(Icons.check, size: 16, color: scheme.tertiary)
-                : null,
-            onSelected: (_) => onPick(i),
-          ),
       ],
     );
   }

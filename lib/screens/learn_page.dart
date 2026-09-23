@@ -12,6 +12,7 @@ import '../theme.dart';
 import 'chord_identifier_screen.dart';
 import 'chord_reference_screen.dart';
 import 'chord_tones_reference_screen.dart';
+import 'changes_in_keys_screen.dart';
 import 'chord_tones_screen.dart';
 import 'licks_screen.dart';
 import 'guitar_chords_screen.dart';
@@ -66,6 +67,16 @@ class LearnPage extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           const SectionHeader('Practise'),
+          _LearnCard(
+            key: const ValueKey('learn-changes-in-keys'),
+            icon: Icons.all_inclusive,
+            title: 'Changes in Twelve Keys',
+            subtitle:
+                'The band plays a ii-V-I, a turnaround or a minor ii-V '
+                'round every key, moving on by itself while you play',
+            onTap: () =>
+                open(ChangesInKeysScreen(player: player, settings: settings)),
+          ),
           if (licks case final store?)
             _LearnCard(
               key: const ValueKey('learn-licks'),

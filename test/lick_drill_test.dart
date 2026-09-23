@@ -107,7 +107,7 @@ void main() {
       await open(tester);
       for (var move = 0; move < 12; move++) {
         expect(
-          find.byKey(ValueKey('drill-key-$move')),
+          find.byKey(ValueKey('round-key-$move')),
           findsOneWidget,
           reason: 'move $move',
         );
@@ -140,7 +140,7 @@ void main() {
 
     testWidgets('a key can be jumped to', (tester) async {
       await open(tester);
-      await tester.tap(find.byKey(const ValueKey('drill-key-3')));
+      await tester.tap(find.byKey(const ValueKey('round-key-3')));
       await tester.pumpAndSettle();
       expect(textOf(const ValueKey('drill-key')), contains('E'));
     });
