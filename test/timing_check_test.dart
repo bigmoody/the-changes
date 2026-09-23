@@ -6,6 +6,7 @@
 // apart: a take trimmed two frames late must not read the same as a
 // rhythm section that cannot hold time.
 
+import 'dart:isolate';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
@@ -287,6 +288,23 @@ void main() {
       expect(check.worstBeat, 17);
       expect(check.worstBar, 5, reason: 'beat 17 is in the fifth bar');
       expect(check.worstMs, closeTo(90, 8));
+    });
+  });
+
+  group('running it off the thread that draws the screen', () {
+    test('everything it needs and gives back can cross an isolate', () async {
+      // The app measures in its own isolate, because a take is a hundred
+      // megabytes of samples and walking all of them where the screen is
+      // drawn would stop the screen. That only works if the recording
+      // going in and the answer coming back can both be sent, and
+      // nothing in a widget test can tell us whether they can: everything
+      // there is inside a zone, and a closure that captures one cannot be
+      // sent whatever it holds.
+      final audio = played(exactly(120));
+      final it = take();
+      final check = await Isolate.run(() => checkTiming(audio, take: it));
+      expect(check.verdict, TimingVerdict.locked);
+      expect(check.beatsMatched, 63);
     });
   });
 
