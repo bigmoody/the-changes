@@ -191,6 +191,140 @@ class Lick {
   }
 }
 
+/// How an attempt at a lick went.
+class LickAttempt {
+  const LickAttempt({required this.got, required this.extra});
+
+  /// One entry per note of the lick: whether it was played.
+  final List<bool> got;
+
+  /// How many notes were played that the lick does not have. Not counted
+  /// against you, but worth showing: a run at a lick that is half right
+  /// and twice as long is a different problem from one with notes
+  /// missing.
+  final int extra;
+
+  int get right => got.where((one) => one).length;
+  int get wanted => got.length;
+  double get score => wanted == 0 ? 0 : right / wanted;
+  bool get clean => wanted > 0 && right == wanted && extra == 0;
+
+  /// The first note of the lick that was not played, or null when it all
+  /// was. Where to look when it went wrong, which is more use than a
+  /// score.
+  int? get firstMissed {
+    for (final (i, one) in got.indexed) {
+      if (!one) return i;
+    }
+    return null;
+  }
+}
+
+/// How [played] measures up against [wanted], note for note.
+///
+/// Matched in order rather than as a bag of notes: playing the right
+/// seven notes in the wrong order is not playing the lick. So this is the
+/// longest run of the lick that turns up in the playing in the right
+/// sequence, which lets a wrong note or an extra one be a wrong note or
+/// an extra one rather than throwing everything after it out.
+///
+/// Timing is deliberately not judged. A lick you can play in twelve keys
+/// but not yet in time is a lick you are most of the way to owning, and
+/// marking it wrong for that would be marking the wrong thing.
+LickAttempt compareLick(
+  List<MidiNote> played,
+  List<MidiNote> wanted, {
+  bool anyOctave = false,
+}) {
+  int of(MidiNote note) => anyOctave ? note.pitch % 12 : note.pitch;
+  final rows = wanted.length;
+  final columns = played.length;
+  if (rows == 0) return LickAttempt(got: const [], extra: columns);
+
+  // Longest common subsequence, kept as a table so the run can be walked
+  // back afterwards and the actual notes marked.
+  final table = [for (var i = 0; i <= rows; i++) List.filled(columns + 1, 0)];
+  for (var i = 1; i <= rows; i++) {
+    for (var j = 1; j <= columns; j++) {
+      table[i][j] = of(wanted[i - 1]) == of(played[j - 1])
+          ? table[i - 1][j - 1] + 1
+          : math.max(table[i - 1][j], table[i][j - 1]);
+    }
+  }
+
+  final got = List.filled(rows, false);
+  var i = rows;
+  var j = columns;
+  var matched = 0;
+  while (i > 0 && j > 0) {
+    if (of(wanted[i - 1]) == of(played[j - 1]) &&
+        table[i][j] == table[i - 1][j - 1] + 1) {
+      got[i - 1] = true;
+      matched++;
+      i--;
+      j--;
+    } else if (table[i - 1][j] >= table[i][j - 1]) {
+      i--;
+    } else {
+      j--;
+    }
+  }
+  return LickAttempt(got: got, extra: columns - matched);
+}
+
+/// The keys written with flats, as pitch classes.
+///
+/// The flat side of the circle: F, B flat, E flat, A flat, D flat and G
+/// flat. Everything else takes sharps. C has neither and is put with the
+/// sharps, where its one black note is more often called F sharp than G
+/// flat in a line that is going up.
+const _flatKeys = {5, 10, 3, 8, 1, 6};
+
+/// [pitch] written the way it would be read in [key].
+///
+/// The same sound has two names and only one of them is readable: a line
+/// in E flat with a G flat in it is a line somebody has to stop and work
+/// out, and the same note called F sharp in D is the same problem the
+/// other way. Nothing about the sound changes; it is about whoever has to
+/// read it.
+///
+/// This spells by the key rather than by the chord underneath, which is
+/// what makes a line easy to read straight through. A chord-aware
+/// spelling would get a few passing notes more nearly right and would
+/// change how a note looks halfway through a phrase, which is worse.
+String nameInKey(int pitch, {required int key}) {
+  const sharps = [
+    'C',
+    'C♯',
+    'D',
+    'D♯',
+    'E',
+    'F',
+    'F♯',
+    'G',
+    'G♯',
+    'A',
+    'A♯',
+    'B',
+  ];
+  const flats = [
+    'C',
+    'D♭',
+    'D',
+    'E♭',
+    'E',
+    'F',
+    'G♭',
+    'G',
+    'A♭',
+    'A',
+    'B♭',
+    'B',
+  ];
+  final names = _flatKeys.contains(key % 12) ? flats : sharps;
+  return names[pitch % 12];
+}
+
 /// The order the keys come round in a drill.
 enum KeyOrder {
   fourths('Round the cycle'),

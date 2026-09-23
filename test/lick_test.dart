@@ -120,6 +120,102 @@ void main() {
     });
   });
 
+  group('marking an attempt', () {
+    List<MidiNote> line(List<int> pitches) => [
+      for (final (i, pitch) in pitches.indexed) note(pitch, i * 0.5),
+    ];
+    const want = [62, 64, 65, 67, 69];
+
+    test('playing it right is all of it right', () {
+      final attempt = compareLick(line(want), line(want));
+      expect(attempt.right, 5);
+      expect(attempt.wanted, 5);
+      expect(attempt.extra, 0);
+      expect(attempt.score, 1);
+      expect(attempt.clean, isTrue);
+      expect(attempt.firstMissed, isNull);
+    });
+
+    test('one note wrong is one note wrong, not everything after it', () {
+      final attempt = compareLick(line(const [62, 64, 66, 67, 69]), line(want));
+      expect(attempt.right, 4);
+      expect(attempt.got, [true, true, false, true, true]);
+      expect(attempt.firstMissed, 2);
+      expect(attempt.clean, isFalse);
+    });
+
+    test('a note left out is one missing and nothing else', () {
+      final attempt = compareLick(line(const [62, 64, 67, 69]), line(want));
+      expect(attempt.got, [true, true, false, true, true]);
+      expect(attempt.extra, 0);
+    });
+
+    test('notes put in are counted apart from notes missed', () {
+      final attempt = compareLick(
+        line(const [62, 64, 63, 65, 67, 69]),
+        line(want),
+      );
+      expect(attempt.right, 5, reason: 'the lick is all there');
+      expect(attempt.extra, 1, reason: 'and one note that is not in it');
+      expect(attempt.clean, isFalse, reason: 'right notes, plus a spare');
+    });
+
+    test('the right notes in the wrong order is not the lick', () {
+      final attempt = compareLick(line(want.reversed.toList()), line(want));
+      expect(attempt.right, lessThan(3));
+    });
+
+    test('playing nothing is nothing right', () {
+      final attempt = compareLick(const [], line(want));
+      expect(attempt.right, 0);
+      expect(attempt.score, 0);
+      expect(attempt.firstMissed, 0);
+    });
+
+    test('an octave out is wrong, unless the drill says otherwise', () {
+      final octaveUp = line([for (final p in want) p + 12]);
+      expect(compareLick(octaveUp, line(want)).right, 0);
+      expect(compareLick(octaveUp, line(want), anyOctave: true).right, 5);
+    });
+
+    test('a lick with no notes cannot be got wrong', () {
+      final attempt = compareLick(line(const [60]), const []);
+      expect(attempt.wanted, 0);
+      expect(attempt.clean, isFalse);
+      expect(attempt.extra, 1);
+    });
+  });
+
+  group('how the notes are spelled', () {
+    test('flat keys take flats and sharp keys take sharps', () {
+      // The same sound, twice, and only one of them is readable.
+      expect(nameInKey(63, key: 3), 'E♭', reason: 'in E flat');
+      expect(nameInKey(63, key: 2), 'D♯', reason: 'in D');
+      expect(nameInKey(66, key: 10), 'G♭', reason: 'in B flat');
+      expect(nameInKey(66, key: 7), 'F♯', reason: 'in G');
+    });
+
+    test('the flat side of the circle is the flat side', () {
+      for (final key in [5, 10, 3, 8, 1, 6]) {
+        expect(nameInKey(61, key: key), 'D♭', reason: 'key $key');
+      }
+      for (final key in [0, 7, 2, 9, 4, 11]) {
+        expect(nameInKey(61, key: key), 'C♯', reason: 'key $key');
+      }
+    });
+
+    test('a white note is a white note whatever the key', () {
+      for (var key = 0; key < 12; key++) {
+        expect(nameInKey(60, key: key), 'C');
+        expect(nameInKey(65, key: key), 'F');
+      }
+    });
+
+    test('octaves do not change the name', () {
+      expect(nameInKey(70, key: 3), nameInKey(58, key: 3));
+    });
+  });
+
   group('the order the keys come round in', () {
     test('the cycle is fourths, and hits all twelve', () {
       final moves = KeyOrder.fourths.moves();
