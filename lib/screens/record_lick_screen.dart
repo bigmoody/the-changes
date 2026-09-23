@@ -16,12 +16,14 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../audio/lick_sound.dart';
 import '../audio/practice_player.dart';
 import '../audio/transcribe.dart';
 import '../audio/wav_file.dart';
 import '../music/lick.dart';
 import '../music/lick_contexts.dart';
 import '../music/midi_file.dart';
+import '../music/tune.dart';
 import '../music/user_progression.dart';
 import '../practice/lick_store.dart';
 import '../practice/lick_tape.dart';
@@ -246,6 +248,34 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
     });
   }
 
+  /// Plays back what the app wrote down, which is how you find out
+  /// whether it heard you. Not the recording: the notes.
+  Future<void> _hearIt() async {
+    final wav = lickSnippet(
+      Lick(
+        id: 'preview',
+        name: '',
+        over: _over,
+        beatsPerBar: _beatsPerBar,
+        notes: _notes,
+        at: DateTime.now(),
+      ),
+      widget.player.samples,
+      tempo: _playingAt,
+      guitar: widget.settings.arpeggioSound == Comping.guitar,
+    );
+    if (wav == null) {
+      setState(
+        () => _problem =
+            'The instruments are still loading. Try again in '
+            'a moment.',
+      );
+      return;
+    }
+    setState(() => _problem = null);
+    await widget.player.playSnippet(wav);
+  }
+
   Future<void> _save() async {
     if (_notes.isEmpty) return;
     final id = widget.licks.newId();
@@ -360,6 +390,24 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
                     Text('What it heard', style: theme.textTheme.titleSmall),
                     const SizedBox(height: 6),
                     _Heard(notes: _notes, over: _over),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        key: const ValueKey('hear-it'),
+                        icon: const Icon(Icons.volume_up_outlined),
+                        label: const Text('Hear What It Wrote'),
+                        onPressed: _hearIt,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Listening to it is the quickest way to find a note '
+                      'the app got wrong.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     _Fixes(
                       grid: _grid,

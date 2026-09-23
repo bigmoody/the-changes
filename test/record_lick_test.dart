@@ -239,6 +239,25 @@ void main() {
     });
   });
 
+  group('hearing what it wrote', () {
+    testWidgets('it is offered as soon as there are notes', (tester) async {
+      await open(tester, recorded: playing(aLine, from: countIn));
+      expect(find.byKey(const ValueKey('hear-it')), findsNothing);
+      await record(tester);
+      expect(find.text('Hear What It Wrote'), findsOneWidget);
+    });
+
+    testWidgets('with no instruments loaded it says so, not silence', (
+      tester,
+    ) async {
+      await open(tester, recorded: playing(aLine, from: countIn));
+      await record(tester);
+      await tester.tap(find.byKey(const ValueKey('hear-it')));
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('lick-problem')), contains('still loading'));
+    });
+  });
+
   group('putting it right before it is kept', () {
     testWidgets('the start can be nudged when it sits over wrong chords', (
       tester,

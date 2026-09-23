@@ -20,10 +20,12 @@
 
 import 'package:flutter/material.dart';
 
+import '../audio/lick_sound.dart';
 import '../audio/practice_player.dart';
 import '../audio/tuner_listener.dart';
 import '../music/lick.dart';
 import '../music/midi_file.dart';
+import '../music/tune.dart';
 import '../audio/backing_synth.dart';
 import '../music/tuning.dart';
 import '../practice/practice_controller.dart';
@@ -156,6 +158,30 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
     super.dispose();
   }
 
+  /// Plays the lick as it stands in this key.
+  ///
+  /// At concert pitch, like everything the app sounds: the stave is
+  /// moved for whatever instrument you read, the speaker is not.
+  Future<void> _hearIt() async {
+    final wav = lickSnippet(
+      lick,
+      widget.player.samples,
+      semitones: move,
+      tempo: _controller?.tempo ?? _tempo,
+      guitar: widget.settings.arpeggioSound == Comping.guitar,
+    );
+    if (wav == null) {
+      setState(
+        () => _problem =
+            'The instruments are still loading. Try again in '
+            'a moment.',
+      );
+      return;
+    }
+    setState(() => _problem = null);
+    await widget.player.playSnippet(wav);
+  }
+
   Future<void> _toggleClick() async {
     if (_clicking) {
       await widget.player.stopLoop();
@@ -262,6 +288,16 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
                     got: _follower.got,
                     chords: _chordNames,
                     writtenKey: _writtenKey,
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      key: const ValueKey('hear-it'),
+                      icon: const Icon(Icons.volume_up_outlined),
+                      label: const Text('Hear It in This Key'),
+                      onPressed: _hearIt,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   _Progress(

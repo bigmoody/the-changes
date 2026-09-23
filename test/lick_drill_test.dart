@@ -229,6 +229,30 @@ void main() {
     });
   });
 
+  group('hearing it back', () {
+    testWidgets('it is offered in every key', (tester) async {
+      await open(tester);
+      expect(find.text('Hear It in This Key'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.pumpAndSettle();
+      expect(find.text('Hear It in This Key'), findsOneWidget);
+    });
+
+    testWidgets('with no instruments loaded it says so, not silence', (
+      tester,
+    ) async {
+      // A test has no recorded instruments, which is the same position
+      // the app is in for the first second after it opens.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('hear-it')));
+      await tester.pumpAndSettle();
+      expect(
+        textOf(const ValueKey('drill-problem')),
+        contains('still loading'),
+      );
+    });
+  });
+
   group('a lick with no changes under it', () {
     final justALine = Lick(
       id: 'l2',
