@@ -229,6 +229,11 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
           if (result.section == null) _draft.setEnding(added, result.ending);
           _followChords();
         });
+      } else if (result.text.isEmpty && !result.delete) {
+        // Emptied and closed: left exactly as it was. Clearing the chords
+        // is not how a bar is removed, Delete bar is, and saving nothing
+        // over it would leave the tune with a bar that cannot be played.
+        return;
       } else {
         _edit(() {
           if (result.delete) {
@@ -1244,7 +1249,11 @@ class _BarSheetState extends State<_BarSheet> {
                 const Spacer(),
                 FilledButton(
                   key: const ValueKey('bar-done'),
-                  onPressed: problem == null
+                  // An empty bar is not a bar, but it is always a way out:
+                  // Next Bar lands on one at the end of every tune, and a
+                  // greyed-out Done there is a dead end that looks like a
+                  // bug. Nothing is written for it; see _editBar.
+                  onPressed: problem == null || _field.text.trim().isEmpty
                       ? () => Navigator.of(context).pop<_BarEdit>((
                           text: _field.text.trim(),
                           delete: false,

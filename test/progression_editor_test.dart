@@ -201,6 +201,39 @@ void main() {
     await _tap(tester, find.text('Done'));
   });
 
+  testWidgets('an empty bar can always be closed', (tester) async {
+    // Next Bar lands on one at the end of every tune, so this is the way
+    // out of writing one. It used to be greyed out, which left the sheet
+    // with no button that worked.
+    await _openHome(tester);
+    await _tap(tester, find.text('New Progression'));
+    await _tap(tester, find.byKey(const ValueKey('add-bar')));
+    expect(
+      tester
+          .widget<ButtonStyleButton>(find.byKey(const ValueKey('bar-done')))
+          .onPressed,
+      isNotNull,
+      reason: 'no way out of an empty bar',
+    );
+    await _tap(tester, find.byKey(const ValueKey('bar-done')));
+    expect(find.byKey(const ValueKey('bar-chords')), findsNothing);
+    expect(find.byKey(const ValueKey('bar-0')), findsNothing);
+  });
+
+  testWidgets('clearing a bar and closing leaves it alone', (tester) async {
+    // Delete bar is how a bar is removed. Emptying the field and closing
+    // must not write a bar that cannot be played.
+    await _openHome(tester);
+    await _tap(tester, find.text('New Progression'));
+    await tester.enterText(find.byType(TextField).first, 'Keep it');
+    await _addBar(tester, 'Dm7');
+    await _tap(tester, find.byKey(const ValueKey('bar-0')));
+    await tester.enterText(find.byKey(const ValueKey('bar-chords')), '');
+    await tester.pump();
+    await _tap(tester, find.byKey(const ValueKey('bar-done')));
+    expect(find.text('Dm7'), findsOneWidget, reason: 'the bar was emptied');
+  });
+
   testWidgets('Next Bar is not offered for an empty bar', (tester) async {
     await _openHome(tester);
     await _tap(tester, find.text('New Progression'));
