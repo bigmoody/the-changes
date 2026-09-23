@@ -6,6 +6,7 @@ import '../library/library_store.dart';
 import '../music/tune.dart';
 import '../music/tune_library.dart';
 import '../practice/take_store.dart';
+import '../practice/part_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import 'alphabet_index.dart';
@@ -27,6 +28,7 @@ class TunesPage extends StatefulWidget {
     required this.library,
     required this.progressions,
     this.takes,
+    this.partStore,
     this.audioError,
   });
 
@@ -35,6 +37,7 @@ class TunesPage extends StatefulWidget {
   final LibraryStore library;
   final ProgressionStore progressions;
   final TakeStore? takes;
+  final PartStore? partStore;
 
   /// Set when the audio engine failed to start, so we can tell the user.
   final String? audioError;
@@ -57,6 +60,7 @@ class _TunesPageState extends State<TunesPage> {
     library: widget.library,
     progressions: widget.progressions,
     takes: widget.takes,
+    partStore: widget.partStore,
   );
 
   @override

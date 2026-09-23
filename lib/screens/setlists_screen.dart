@@ -12,6 +12,7 @@ import '../library/find_tune.dart';
 import '../library/library_store.dart';
 import '../music/tune_library.dart';
 import '../practice/take_store.dart';
+import '../practice/part_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import '../theme.dart';
@@ -27,6 +28,7 @@ class LibraryContext {
     required this.library,
     required this.progressions,
     this.takes,
+    this.partStore,
   });
 
   final PracticePlayer player;
@@ -34,6 +36,7 @@ class LibraryContext {
   final LibraryStore library;
   final ProgressionStore progressions;
   final TakeStore? takes;
+  final PartStore? partStore;
 
   /// Opens [found] full screen, as tapping it in any list does.
   void play(BuildContext context, FoundTune found) {
@@ -49,6 +52,7 @@ class LibraryContext {
           player: player,
           settings: settings,
           takes: takes,
+          partStore: partStore,
           library: library,
           progression: found.progression,
           progressions: found.progression == null ? null : progressions,

@@ -26,6 +26,7 @@ import '../music/tuning.dart';
 import '../settings/app_settings.dart';
 import 'hiding_the_chart.dart';
 import 'play_check.dart';
+import 'part_store.dart';
 import 'practice_record.dart';
 import 'take_store.dart';
 
@@ -39,6 +40,7 @@ class PracticeController extends ChangeNotifier {
     required this.player,
     required this.settings,
     this.takes,
+    this.partStore,
     this.library,
     TuneRef? ref,
     TakeRecorder? recorder,
@@ -65,6 +67,7 @@ class PracticeController extends ChangeNotifier {
                : tempoToOpenAt(library?.runsFor(ref) ?? const [])) ??
            tune.defaultTempo {
     settings.addListener(_updateChart);
+    _imported = partStore?.forTune(_ref);
     _applyMix();
   }
 
@@ -122,6 +125,10 @@ class PracticeController extends ChangeNotifier {
   /// Where recordings of you are kept. Null when there's nowhere to put
   /// them, and then there's no recording.
   final TakeStore? takes;
+
+  /// Where an imported part is kept between visits. Null where a
+  /// controller is built without one: the Learn pages, and tests.
+  final PartStore? partStore;
   TakeRecorder? _recorder;
   TakeRecorder get _tape => _recorder ??= TakeRecorder();
 
@@ -393,6 +400,12 @@ class PracticeController extends ChangeNotifier {
   void setImportedPart(ImportedPart? part) {
     if (identical(part, _imported)) return;
     _imported = part;
+    // Kept for next time. Choosing a file, picking a track out of it and
+    // nudging it into place is several minutes of work to throw away when
+    // the tune closes.
+    final store = partStore;
+    final ref = _ref;
+    if (store != null && ref != null) unawaited(store.set(ref, part));
     // Putting one in means wanting to hear it, the same as the arpeggios.
     if (part != null) _muted.remove(Instrument.imported);
     _applyMix();

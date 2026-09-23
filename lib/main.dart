@@ -16,6 +16,7 @@ import 'library/library_store.dart';
 import 'screens/home_screen.dart';
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
+import 'practice/part_store.dart';
 import 'settings/progression_store.dart';
 import 'theme.dart';
 
@@ -27,6 +28,7 @@ Future<void> main() async {
   final progressions = await ProgressionStore.load();
   final library = await LibraryStore.load();
   final takes = await TakeStore.load(files: DeviceTakeFiles());
+  final partStore = await PartStore.load();
   final player = PracticePlayer();
   String? audioError;
   try {
@@ -42,6 +44,7 @@ Future<void> main() async {
       progressions: progressions,
       library: library,
       takes: takes,
+      partStore: partStore,
       audioError: audioError,
     ),
   );
@@ -70,6 +73,7 @@ class TheChangesApp extends StatelessWidget {
     required this.progressions,
     required this.library,
     required this.takes,
+    required this.partStore,
     this.audioError,
   });
 
@@ -78,6 +82,7 @@ class TheChangesApp extends StatelessWidget {
   final ProgressionStore progressions;
   final LibraryStore library;
   final TakeStore takes;
+  final PartStore partStore;
   final String? audioError;
 
   @override
@@ -93,6 +98,7 @@ class TheChangesApp extends StatelessWidget {
         progressions: progressions,
         library: library,
         takes: takes,
+        partStore: partStore,
         audioError: audioError,
       ),
     );

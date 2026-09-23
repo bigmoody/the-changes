@@ -16,6 +16,7 @@ import '../audio/practice_player.dart';
 import '../library/library_store.dart';
 import '../settings/app_settings.dart';
 import '../practice/take_store.dart';
+import '../practice/part_store.dart';
 import '../settings/progression_store.dart';
 import 'learn_page.dart';
 import 'my_progressions_page.dart';
@@ -32,6 +33,7 @@ class HomeScreen extends StatefulWidget {
     required this.progressions,
     required this.library,
     required this.takes,
+    required this.partStore,
     this.audioError,
     this.initialTab = HomeTab.tunes,
   });
@@ -41,6 +43,7 @@ class HomeScreen extends StatefulWidget {
   final ProgressionStore progressions;
   final LibraryStore library;
   final TakeStore takes;
+  final PartStore partStore;
   final String? audioError;
   final HomeTab initialTab;
 
@@ -65,6 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
             progressions: widget.progressions,
             library: widget.library,
             takes: widget.takes,
+            partStore: widget.partStore,
             audioError: widget.audioError,
           ),
           MyProgressionsPage(
@@ -73,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
             progressions: widget.progressions,
             library: widget.library,
             takes: widget.takes,
+            partStore: widget.partStore,
           ),
           LearnPage(player: widget.player, settings: widget.settings),
           SettingsPage(

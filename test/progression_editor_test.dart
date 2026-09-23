@@ -10,6 +10,7 @@ import 'package:play_along/music/user_progression.dart';
 import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/screens/home_screen.dart';
 import 'package:play_along/practice/take_store.dart';
+import 'package:play_along/practice/part_store.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/settings/progression_store.dart';
 
@@ -26,6 +27,7 @@ Future<ProgressionStore> _openHome(WidgetTester tester) async {
         player: PracticePlayer(),
         settings: AppSettings.inMemory(),
         takes: TakeStore.inMemory(),
+        partStore: PartStore.inMemory(),
         progressions: store,
         library: LibraryStore.inMemory(),
         initialTab: HomeTab.mine,

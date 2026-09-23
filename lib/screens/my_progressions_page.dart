@@ -5,6 +5,7 @@ import '../library/library_store.dart';
 import '../music/tune.dart';
 import '../music/user_progression.dart';
 import '../practice/take_store.dart';
+import '../practice/part_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import '../theme.dart';
@@ -26,6 +27,7 @@ class MyProgressionsPage extends StatefulWidget {
     required this.progressions,
     required this.library,
     this.takes,
+    this.partStore,
   });
 
   final PracticePlayer player;
@@ -33,6 +35,7 @@ class MyProgressionsPage extends StatefulWidget {
   final ProgressionStore progressions;
   final LibraryStore library;
   final TakeStore? takes;
+  final PartStore? partStore;
 
   @override
   State<MyProgressionsPage> createState() => _MyProgressionsPageState();
@@ -318,6 +321,7 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
           MaterialPageRoute<void>(
             builder: (_) => PracticeScreen(
               takes: widget.takes,
+              partStore: widget.partStore,
               tune: tune,
               player: widget.player,
               settings: widget.settings,
