@@ -27,7 +27,9 @@ import '../practice/lick_store.dart';
 import '../practice/lick_tape.dart';
 import '../practice/practice_controller.dart';
 import '../settings/app_settings.dart';
+import '../audio/backing_synth.dart';
 import '../theme.dart';
+import 'click_bar.dart';
 import 'stave.dart';
 import 'stave_figure.dart';
 import 'transport.dart';
@@ -53,10 +55,17 @@ class RecordLickScreen extends StatefulWidget {
   State<RecordLickScreen> createState() => _RecordLickScreenState();
 }
 
+/// The dropdown's stand-in for no changes at all.
+const _noChanges = 'none';
+
 class _RecordLickScreenState extends State<RecordLickScreen> {
   late final _tape = widget.tape ?? DeviceLickTape();
-  late UserProgression _over = lickContexts.first;
-  late PracticeController _controller = _controllerFor(_over);
+
+  /// What it is being played over, or null for just a line with a click.
+  late UserProgression? _over = lickContexts.first;
+  late PracticeController? _controller = _controllerFor(_over);
+  var _tempo = 120;
+  var _clicking = false;
   final _name = TextEditingController();
 
   var _recording = false;
@@ -67,22 +76,34 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
   double _startSeconds = 0;
   double _nudge = 0;
 
-  PracticeController _controllerFor(UserProgression over) => PracticeController(
-    tune: over.toTune(),
-    player: widget.player,
-    settings: widget.settings,
-  );
+  PracticeController? _controllerFor(UserProgression? over) => over == null
+      ? null
+      : PracticeController(
+          tune: over.toTune(),
+          player: widget.player,
+          settings: widget.settings,
+        );
+
+  /// The tempo being played at, whether the band or the click is giving
+  /// it. Everything that turns playing into notes needs this one number.
+  int get _playingAt => _controller?.tempo ?? _tempo;
+
+  int get _beatsPerBar => _over?.beatsPerBar ?? 4;
+
+  /// Something for the builder to listen to when there is no band.
+  static final _still = ValueNotifier<int>(0);
 
   @override
   void dispose() {
     _name.dispose();
-    _controller.dispose();
+    if (_clicking) widget.player.stopLoop();
+    _controller?.dispose();
     super.dispose();
   }
 
-  void _setContext(UserProgression over) {
-    _controller.stop();
+  void _setContext(UserProgression? over) {
     final old = _controller;
+    old?.stop();
     setState(() {
       _over = over;
       _controller = _controllerFor(over);
@@ -90,7 +111,28 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
       _notes = const [];
       _nudge = 0;
     });
-    old.dispose();
+    old?.dispose();
+  }
+
+  Future<void> _setTempo(int by) async {
+    setState(() => _tempo = (_tempo + by).clamp(40, 320));
+    if (_clicking) {
+      await widget.player.playLoop(
+        metronomeLoop(tempo: _tempo, beatsPerBar: _beatsPerBar),
+      );
+    }
+  }
+
+  Future<void> _toggleClick() async {
+    if (_clicking) {
+      await widget.player.stopLoop();
+      if (mounted) setState(() => _clicking = false);
+      return;
+    }
+    await widget.player.playLoop(
+      metronomeLoop(tempo: _tempo, beatsPerBar: _beatsPerBar),
+    );
+    if (mounted) setState(() => _clicking = true);
   }
 
   /// Starts the microphone, then the band, and remembers how long the gap
@@ -117,11 +159,18 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
       await _tape.start();
       if (!mounted) return;
       setState(() => _recording = true);
-      await _controller.play();
-      final countIn = _controller.countIn
-          ? _over.beatsPerBar * 60 / _controller.tempo
-          : 0.0;
-      _startSeconds = waiting.elapsedMilliseconds / 1000 + countIn;
+      if (_controller case final controller?) {
+        await controller.play();
+        final countIn = controller.countIn
+            ? _beatsPerBar * 60 / controller.tempo
+            : 0.0;
+        _startSeconds = waiting.elapsedMilliseconds / 1000 + countIn;
+      } else {
+        // Just a click. There is no bar 1 to come in on, so where the
+        // line sits is decided afterwards, from where it actually began.
+        if (!_clicking) await _toggleClick();
+        _startSeconds = 0;
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -133,7 +182,7 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
   }
 
   Future<void> _stop() async {
-    await _controller.stop();
+    await _controller?.stop();
     Uint8List? bytes;
     try {
       bytes = await _tape.stop();
@@ -152,9 +201,13 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
   void _read(Uint8List bytes) {
     try {
       final heard = hearNotes(readWav(bytes));
+      // Without changes there is nothing to be late or early against, so
+      // the line simply starts where it starts: its first note is beat
+      // one and the rest is measured from there.
+      if (_over == null && heard.isNotEmpty) _startSeconds = heard.first.at;
       final grid = bestGrid(
         heard,
-        bpm: _controller.tempo.toDouble(),
+        bpm: _playingAt.toDouble(),
         startSeconds: _startSeconds,
       );
       setState(() {
@@ -186,9 +239,9 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
     setState(() {
       _notes = onTheGrid(
         _heard,
-        bpm: _controller.tempo.toDouble(),
+        bpm: _playingAt.toDouble(),
         grid: _grid,
-        startSeconds: _startSeconds - _nudge * 60 / _controller.tempo,
+        startSeconds: _startSeconds - _nudge * 60 / _playingAt,
       );
     });
   }
@@ -199,10 +252,14 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
     await widget.licks.add(
       Lick(
         id: id,
-        name: _name.text.trim().isEmpty ? _over.title : _name.text.trim(),
+        name: _name.text.trim().isEmpty
+            ? (_over?.title ?? 'Just a line')
+            : _name.text.trim(),
         // Its own copy, so editing the changes later does not change what
         // the lick is about.
-        over: UserProgression.fromJson(_over.toJson()),
+        over: _over == null ? null : UserProgression.fromJson(_over!.toJson()),
+        beatsPerBar: _beatsPerBar,
+        tempo: _playingAt,
         notes: _notes,
         at: DateTime.now(),
         grid: _grid,
@@ -213,7 +270,7 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: _controller,
+    listenable: _controller ?? _still,
     builder: (context, _) => _build(context),
   );
 
@@ -233,7 +290,7 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
                   const SizedBox(height: 4),
                   DropdownButtonFormField<String>(
                     key: const ValueKey('lick-context'),
-                    initialValue: _over.id,
+                    initialValue: _over?.id ?? _noChanges,
                     isExpanded: true,
                     decoration: const InputDecoration(
                       border: OutlineInputBorder(),
@@ -247,9 +304,15 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
                             '${one.title}  ·  ${one.bars.join(' | ')}',
                           ),
                         ),
+                      const DropdownMenuItem(
+                        value: _noChanges,
+                        child: Text('Nothing, just a click'),
+                      ),
                     ],
                     onChanged: (id) => _setContext(
-                      lickContexts.firstWhere((one) => one.id == id),
+                      id == _noChanges
+                          ? null
+                          : lickContexts.firstWhere((one) => one.id == id),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -269,11 +332,15 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
                   const SizedBox(height: 4),
                   Text(
                     _recording
-                        ? 'Play your line. The band is going round until '
-                              'you stop it.'
-                        : 'The band plays these changes and the app listens. '
-                              'One line at a time: it hears a melody, not '
-                              'chords.',
+                        ? 'Play your line. It is going round until you '
+                              'stop it.'
+                        : _over == null
+                        ? 'A click, and nothing else. Play a line and the '
+                              'app writes it down; without a band in the '
+                              'room it hears you more clearly.'
+                        : 'The band plays these changes and the app '
+                              'listens. One line at a time: it hears a '
+                              'melody, not chords.',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
                     ),
@@ -297,6 +364,7 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
                     _Fixes(
                       grid: _grid,
                       nudge: _nudge,
+                      movable: _over != null,
                       onGrid: (grid) {
                         setState(() => _grid = grid);
                         _place();
@@ -313,7 +381,7 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
                       textCapitalization: TextCapitalization.sentences,
                       decoration: InputDecoration(
                         labelText: 'Name',
-                        hintText: _over.title,
+                        hintText: _over?.title ?? 'Just a line',
                         isDense: true,
                         border: const OutlineInputBorder(),
                       ),
@@ -334,7 +402,15 @@ class _RecordLickScreenState extends State<RecordLickScreen> {
                 ],
               ),
             ),
-            Transport(controller: _controller),
+            if (_controller case final controller?)
+              Transport(controller: controller)
+            else
+              ClickBar(
+                tempo: _tempo,
+                clicking: _clicking,
+                onNudge: _setTempo,
+                onToggle: _toggleClick,
+              ),
           ],
         ),
       ),
@@ -347,12 +423,17 @@ class _Heard extends StatelessWidget {
   const _Heard({required this.notes, required this.over});
 
   final List<MidiNote> notes;
-  final UserProgression over;
+
+  /// The changes under it, if there are any.
+  final UserProgression? over;
 
   @override
   Widget build(BuildContext context) {
-    final tune = over.toTune();
-    final key = tune.keyPitchClass;
+    final tune = over?.toTune();
+    // With no changes there is no key to spell by, so the line is
+    // spelled by the note it starts on, which is what it is known by.
+    final key =
+        tune?.keyPitchClass ?? (notes.isEmpty ? 0 : notes.first.pitch % 12);
     final placed = lineOnStave([
       for (final note in notes)
         (pitch: note.pitch, name: nameInKey(note.pitch, key: key)),
@@ -364,6 +445,7 @@ class _Heard extends StatelessWidget {
       2: Smufl.doubleSharp,
     };
     String? chordAt(double beat) {
+      if (tune == null) return null;
       String? found;
       for (final slot in tune.slots) {
         if (slot.startBeat <= beat) found = slot.chord.display;
@@ -409,12 +491,18 @@ class _Fixes extends StatelessWidget {
   const _Fixes({
     required this.grid,
     required this.nudge,
+    required this.movable,
     required this.onGrid,
     required this.onNudge,
   });
 
   final NoteGrid grid;
   final double nudge;
+
+  /// Whether moving the line means anything. Without changes under it
+  /// there is nothing for it to sit wrongly against, so it starts where
+  /// it starts and there is nothing to decide.
+  final bool movable;
   final ValueChanged<NoteGrid> onGrid;
   final ValueChanged<double> onNudge;
 
@@ -442,51 +530,53 @@ class _Fixes extends StatelessWidget {
             onChanged: (value) => onGrid(value ?? grid),
           ),
         ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            SizedBox(
-              width: 96,
-              child: Text('The line', style: theme.textTheme.titleSmall),
-            ),
-            Expanded(
-              child: Text(
-                nudge == 0
-                    ? 'Where it was played'
-                    : '${nudge.abs() == 1 ? '1 beat' : '${_plain(nudge.abs())} beats'} '
-                          '${nudge < 0 ? 'earlier' : 'later'}',
-                key: const ValueKey('lick-nudge'),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+        if (!movable) const SizedBox.shrink() else const SizedBox(height: 8),
+        if (movable)
+          Row(
+            children: [
+              SizedBox(
+                width: 96,
+                child: Text('The line', style: theme.textTheme.titleSmall),
+              ),
+              Expanded(
+                child: Text(
+                  nudge == 0
+                      ? 'Where it was played'
+                      : '${nudge.abs() == 1 ? '1 beat' : '${_plain(nudge.abs())} beats'} '
+                            '${nudge < 0 ? 'earlier' : 'later'}',
+                  key: const ValueKey('lick-nudge'),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-            ),
-            IconButton.outlined(
-              key: const ValueKey('lick-earlier'),
-              icon: const Icon(Icons.chevron_left, size: 18),
-              tooltip: 'A beat earlier',
-              visualDensity: VisualDensity.compact,
-              onPressed: () => onNudge(-1),
-            ),
-            const SizedBox(width: 4),
-            IconButton.outlined(
-              key: const ValueKey('lick-later'),
-              icon: const Icon(Icons.chevron_right, size: 18),
-              tooltip: 'A beat later',
-              visualDensity: VisualDensity.compact,
-              onPressed: () => onNudge(1),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Move the line if the notes are sitting over the wrong chords. '
-          'The app times the gap between starting the microphone and the '
-          'band, but it can be a fraction out.',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+              IconButton.outlined(
+                key: const ValueKey('lick-earlier'),
+                icon: const Icon(Icons.chevron_left, size: 18),
+                tooltip: 'A beat earlier',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => onNudge(-1),
+              ),
+              const SizedBox(width: 4),
+              IconButton.outlined(
+                key: const ValueKey('lick-later'),
+                icon: const Icon(Icons.chevron_right, size: 18),
+                tooltip: 'A beat later',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => onNudge(1),
+              ),
+            ],
           ),
-        ),
+        if (movable) const SizedBox(height: 4),
+        if (movable)
+          Text(
+            'Move the line if the notes are sitting over the wrong chords. '
+            'The app times the gap between starting the microphone and the '
+            'band, but it can be a fraction out.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
       ],
     );
   }

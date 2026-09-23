@@ -131,6 +131,17 @@ class _Empty extends StatelessWidget {
   }
 }
 
+/// What a lick is over, or what it starts on when it is over nothing.
+String _what(Lick lick) {
+  final over = lick.over;
+  if (over == null) {
+    return 'Just a line, starting on '
+        '${nameInKey(lick.key, key: lick.key)}';
+  }
+  final called = over.title.isEmpty ? 'Your changes' : over.title;
+  return '$called in ${pitchClassName(lick.key)}';
+}
+
 /// One lick: what it is over, and how much of it there is.
 class _LickRow extends StatelessWidget {
   const _LickRow({
@@ -150,8 +161,7 @@ class _LickRow extends StatelessWidget {
       key: ValueKey('lick-${lick.id}'),
       title: Text(lick.name),
       subtitle: Text(
-        '${lick.over.title.isEmpty ? 'Your changes' : lick.over.title} '
-        'in ${pitchClassName(lick.key)} · '
+        '${_what(lick)} · '
         '${lick.notes.length} ${lick.notes.length == 1 ? 'note' : 'notes'}',
       ),
       trailing: IconButton(

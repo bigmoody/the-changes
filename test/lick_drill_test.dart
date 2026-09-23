@@ -229,6 +229,68 @@ void main() {
     });
   });
 
+  group('a lick with no changes under it', () {
+    final justALine = Lick(
+      id: 'l2',
+      name: 'A shape',
+      notes: [
+        for (final (i, pitch) in const [63, 65, 66, 68].indexed)
+          (pitch: pitch, beat: i * 1.0, beats: 0.5, velocity: 0.85),
+      ],
+      at: DateTime(2026, 9, 23),
+      tempo: 160,
+    );
+
+    testWidgets('gets a click where the band would be', (tester) async {
+      await open(tester, lick: justALine);
+      expect(find.byKey(const ValueKey('click-play')), findsOneWidget);
+      expect(find.text('Play'), findsNothing);
+      expect(
+        textOf(const ValueKey('click-tempo')),
+        '160 BPM',
+        reason: 'the tempo it was caught at',
+      );
+    });
+
+    testWidgets('is known by the note it starts on, not by a key', (
+      tester,
+    ) async {
+      await open(tester, lick: justALine);
+      expect(textOf(const ValueKey('drill-key')), 'Key of E♭');
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('drill-key')), 'Key of A♭');
+    });
+
+    testWidgets('and still goes round all twelve, and still listens', (
+      tester,
+    ) async {
+      await open(tester, lick: justALine);
+      for (var move = 0; move < 12; move++) {
+        expect(find.byKey(ValueKey('round-key-$move')), findsOneWidget);
+      }
+      await startListening(tester);
+      await play(tester, const [63, 65]);
+      expect(textOf(const ValueKey('drill-got')), '2 of 4');
+    });
+
+    testWidgets('the stave has no chord symbols over it', (tester) async {
+      await open(tester, lick: justALine);
+      expect(find.byKey(const ValueKey('drill-line')), findsOneWidget);
+      expect(find.text('Dm7'), findsNothing);
+    });
+
+    testWidgets('the tempo steps, and two quick taps both count', (
+      tester,
+    ) async {
+      await open(tester, lick: justALine);
+      await tester.tap(find.byKey(const ValueKey('click-faster')));
+      await tester.tap(find.byKey(const ValueKey('click-faster')));
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('click-tempo')), '170 BPM');
+    });
+  });
+
   group('what a transposing player sees', () {
     testWidgets('the line and the chords are both in their key', (
       tester,

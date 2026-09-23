@@ -30,9 +30,11 @@ class Lick {
   const Lick({
     required this.id,
     required this.name,
-    required this.over,
     required this.notes,
     required this.at,
+    this.over,
+    this.beatsPerBar = 4,
+    this.tempo = 120,
     this.grid = NoteGrid.swungEighths,
     this.recording,
   });
@@ -43,8 +45,26 @@ class Lick {
   /// changes", "Dexter thing".
   final String name;
 
-  /// The changes it was played over, its own copy.
-  final UserProgression over;
+  /// The changes it was played over, its own copy, or null when it is
+  /// just a line.
+  ///
+  /// A line is usually worth more with its changes: the same eight notes
+  /// are a ii-V lick or a blues lick or nonsense depending on what is
+  /// underneath. But not always. A shape, a pattern, something heard and
+  /// caught before there was time to work out what it was over, is still
+  /// worth keeping and still worth taking round the keys, and making
+  /// somebody pick changes they do not mean is how it does not get kept.
+  final UserProgression? over;
+
+  /// Beats in a bar. Taken from the changes when there are some, and
+  /// kept here because there may not be.
+  final int beatsPerBar;
+
+  /// What it was played at. The notes are held in beats, so this changes
+  /// nothing about the lick; it is where the drill starts, because the
+  /// tempo you caught something at is usually near the tempo you want to
+  /// work on it at.
+  final int tempo;
 
   /// The line, in beats from the first beat of the progression.
   final List<MidiNote> notes;
@@ -58,12 +78,24 @@ class Lick {
   /// The file the playing itself is in, if it was recorded.
   final String? recording;
 
-  int get beatsPerBar => over.beatsPerBar;
-  int get bars => over.bars.length;
+  /// How many bars of changes there are, or how many the line covers.
+  int get bars =>
+      over?.bars.length ?? math.max(1, (lengthBeats / beatsPerBar).ceil());
+
   bool get isEmpty => notes.isEmpty;
 
-  /// The key it was played in, as a pitch class, whatever it is spelled.
-  int get key => over.toTune().keyPitchClass;
+  /// Whether there are changes under it at all.
+  bool get hasChanges => over != null;
+
+  /// What the round of keys is measured from, as a pitch class.
+  ///
+  /// The key it was played in when there are changes. When there are
+  /// not, the note the line starts on, because that is what a line
+  /// without chords is known by: you do not say this one is in E flat,
+  /// you say it starts on E flat.
+  int get key =>
+      over?.toTune().keyPitchClass ??
+      (notes.isEmpty ? 0 : notes.first.pitch % 12);
 
   /// The lowest and highest notes in it, or null when there are none.
   (int, int)? get range {
@@ -104,12 +136,14 @@ class Lick {
       ),
   ];
 
-  /// The changes moved by [semitones], for the band to play.
-  Tune tuneUp(int semitones) => over.toTune().transposed(semitones);
+  /// The changes moved by [semitones], for the band to play, or null
+  /// when there are none to play.
+  Tune? tuneUp(int semitones) => over?.toTune().transposed(semitones);
 
-  /// The chord sounding at [beat] of the progression.
+  /// The chord sounding at [beat] of the progression, if there is one.
   Chord? chordAt(double beat) {
-    final slots = over.toTune().slots;
+    final slots = over?.toTune().slots;
+    if (slots == null) return null;
     Chord? found;
     for (final slot in slots) {
       if (slot.startBeat <= beat) found = slot.chord;
@@ -124,6 +158,8 @@ class Lick {
     id: id,
     name: name ?? this.name,
     over: over,
+    beatsPerBar: beatsPerBar,
+    tempo: tempo,
     notes: notes ?? this.notes,
     at: at,
     grid: grid,
@@ -135,8 +171,10 @@ class Lick {
     'name': name,
     'at': at.millisecondsSinceEpoch,
     'grid': grid.name,
+    'beatsPerBar': beatsPerBar,
+    'tempo': tempo,
     if (recording != null) 'recording': recording,
-    'over': over.toJson(),
+    if (over case final over?) 'over': over.toJson(),
     // Flat rather than a list of objects: the key names would be most of
     // the file, as with the imported parts.
     'notes': [
@@ -154,9 +192,11 @@ class Lick {
   static Lick? fromJson(Map<String, dynamic> json) {
     final flat = json['notes'];
     final over = json['over'];
+    // A lick with no changes writes none, so only a shape that is there
+    // and wrong is a reason to give up on it.
     if (flat is! List ||
         flat.length % 4 != 0 ||
-        over is! Map<String, dynamic>) {
+        (over != null && over is! Map<String, dynamic>)) {
       return null;
     }
     final notes = <MidiNote>[];
@@ -174,7 +214,11 @@ class Lick {
       return Lick(
         id: json['id'] as String? ?? '',
         name: json['name'] as String? ?? 'Lick',
-        over: UserProgression.fromJson(over),
+        over: over == null
+            ? null
+            : UserProgression.fromJson(over as Map<String, dynamic>),
+        beatsPerBar: (json['beatsPerBar'] as num?)?.round() ?? 4,
+        tempo: (json['tempo'] as num?)?.round() ?? 120,
         notes: notes,
         at: DateTime.fromMillisecondsSinceEpoch(
           (json['at'] as num?)?.toInt() ?? 0,

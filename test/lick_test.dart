@@ -106,7 +106,7 @@ void main() {
         final band = one.tuneUp(move);
         // The first note of this line is the root of the ii chord, so
         // the two agree only if both moved the same way.
-        final rootOfTheTwo = band.slots.first.chord.root;
+        final rootOfTheTwo = band!.slots.first.chord.root;
         expect(
           line.first.pitch % 12,
           rootOfTheTwo,
@@ -276,6 +276,89 @@ void main() {
     });
   });
 
+  group('a lick with no changes under it', () {
+    Lick justALine({List<int> pitches = const [63, 65, 66, 68]}) => Lick(
+      id: 'j1',
+      name: 'A shape',
+      notes: [for (final (i, pitch) in pitches.indexed) note(pitch, i * 0.5)],
+      at: DateTime(2026, 9, 23),
+      tempo: 160,
+    );
+
+    test('it knows it has none', () {
+      expect(justALine().hasChanges, isFalse);
+      expect(justALine().over, isNull);
+      expect(lick().hasChanges, isTrue);
+    });
+
+    test('it is known by the note it starts on', () {
+      expect(justALine().key, 3, reason: 'E flat');
+      expect(justALine(pitches: const [67, 69]).key, 7, reason: 'G');
+    });
+
+    test('there is no band and no chord at any beat', () {
+      expect(justALine().tuneUp(0), isNull);
+      expect(justALine().chordAt(0), isNull);
+      expect(justALine().chordAt(99), isNull);
+    });
+
+    test('but the line still moves, which is the point of keeping it', () {
+      expect(justALine().notesUp(2).first.pitch, 65);
+      expect(justALine().notesUp(-3).first.pitch, 60);
+    });
+
+    test('it still has a shape and a length', () {
+      expect(justALine().range, (63, 68));
+      expect(justALine().lengthBeats, closeTo(2, 0.001));
+      expect(justALine().bars, 1);
+      expect(justALine().beatsPerBar, 4);
+    });
+
+    test('and it keeps, with no changes written down', () async {
+      final storage = MemoryStorage();
+      final store = await LickStore.load(
+        storage: storage,
+        files: NoRecordingFiles(),
+      );
+      await store.add(justALine());
+      expect(jsonEncode(store.toJson()), isNot(contains('"over"')));
+
+      final back = (await LickStore.load(
+        storage: storage,
+        files: NoRecordingFiles(),
+      )).all.single;
+      expect(back.over, isNull);
+      expect(back.hasChanges, isFalse);
+      expect(back.tempo, 160);
+      expect(back.notes.length, 4);
+      expect(back.key, 3);
+    });
+
+    test('a lick saved before there was a tempo still reads', () {
+      // Only the notes and the changes were written down at first.
+      final back = Lick.fromJson({
+        'id': 'old',
+        'name': 'Older',
+        'notes': [60, 0, 0.5, 0.8],
+      })!;
+      expect(back.tempo, 120);
+      expect(back.beatsPerBar, 4);
+      expect(back.hasChanges, isFalse);
+    });
+
+    test('changes that are there but broken are still a broken lick', () {
+      expect(
+        Lick.fromJson({
+          'id': 'x',
+          'name': 'x',
+          'notes': <Object?>[],
+          'over': 'not a progression',
+        }),
+        isNull,
+      );
+    });
+  });
+
   group('how the notes are spelled', () {
     test('flat keys take flats and sharp keys take sharps', () {
       // The same sound, twice, and only one of them is readable.
@@ -350,7 +433,7 @@ void main() {
       expect(back.name, 'The usual');
       expect(back.notes.length, 8);
       expect(back.notes.first.pitch, 62);
-      expect(back.over.bars, ['Dm7 G7', 'CΔ7']);
+      expect(back.over!.bars, ['Dm7 G7', 'CΔ7']);
       expect(back.grid, NoteGrid.swungEighths);
       expect(back.key, 0, reason: 'the changes came back too');
     });

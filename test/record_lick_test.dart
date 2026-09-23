@@ -272,6 +272,76 @@ void main() {
     });
   });
 
+  group('a line with no changes under it', () {
+    Future<void> pickNoChanges(WidgetTester tester) async {
+      await tester.tap(find.byKey(const ValueKey('lick-context')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Nothing, just a click').last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('is offered, and swaps the band for a click', (tester) async {
+      await open(tester);
+      expect(find.text('Play'), findsOneWidget);
+      await pickNoChanges(tester);
+      expect(find.byKey(const ValueKey('click-play')), findsOneWidget);
+      expect(find.text('Play'), findsNothing);
+      expect(textOf(const ValueKey('click-tempo')), '120 BPM');
+    });
+
+    testWidgets('the tempo can be set before playing', (tester) async {
+      await open(tester);
+      await pickNoChanges(tester);
+      await tester.tap(find.byKey(const ValueKey('click-faster')));
+      await tester.tap(find.byKey(const ValueKey('click-faster')));
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('click-tempo')), '130 BPM');
+    });
+
+    testWidgets('the line starts where it starts, whenever that was', (
+      tester,
+    ) async {
+      // No bar 1 to come in on, so coming in late is not coming in late.
+      await open(tester, recorded: playing(aLine, bpm: 120, from: 3.7));
+      await pickNoChanges(tester);
+      await record(tester);
+      expect(find.byKey(const ValueKey('heard-line')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('lick-save')));
+      await tester.pumpAndSettle();
+      expect(licks.all.single.notes.first.beat, 0);
+    });
+
+    testWidgets('and there is nothing to move it against', (tester) async {
+      await open(tester, recorded: playing(aLine, bpm: 120, from: 3.7));
+      await pickNoChanges(tester);
+      await record(tester);
+      expect(find.byKey(const ValueKey('lick-nudge')), findsNothing);
+      expect(
+        find.byKey(const ValueKey('lick-grid')),
+        findsOneWidget,
+        reason: 'the rhythm is still worth getting right',
+      );
+    });
+
+    testWidgets('it saves with no changes and the tempo it was caught at', (
+      tester,
+    ) async {
+      await open(tester, recorded: playing(aLine, bpm: 120, from: 3.7));
+      await pickNoChanges(tester);
+      await record(tester);
+      await tester.tap(find.byKey(const ValueKey('lick-save')));
+      await tester.pumpAndSettle();
+
+      final lick = licks.all.single;
+      expect(lick.over, isNull);
+      expect(lick.hasChanges, isFalse);
+      expect(lick.tempo, 120);
+      expect(lick.notes.map((n) => n.pitch).toList(), aLine);
+      expect(lick.name, 'Just a line');
+      expect(lick.key, aLine.first % 12, reason: 'known by what it starts on');
+    });
+  });
+
   group('keeping it', () {
     testWidgets('the lick lands in the book with its changes', (tester) async {
       await open(tester, recorded: playing(aLine, from: countIn));
@@ -286,7 +356,7 @@ void main() {
       final lick = licks.all.single;
       expect(lick.name, 'The one off the record');
       expect(lick.notes.map((n) => n.pitch).toList(), aLine);
-      expect(lick.over.bars, lickContexts.first.bars);
+      expect(lick.over!.bars, lickContexts.first.bars);
       expect(lick.key, 0, reason: 'the contexts are in C');
       expect(lick.notes.first.beat, closeTo(0, 0.001));
     });
@@ -307,7 +377,7 @@ void main() {
       await record(tester);
       await tester.tap(find.byKey(const ValueKey('lick-save')));
       await tester.pumpAndSettle();
-      expect(identical(licks.all.single.over, lickContexts.first), isFalse);
+      expect(identical(licks.all.single.over!, lickContexts.first), isFalse);
     });
   });
 }

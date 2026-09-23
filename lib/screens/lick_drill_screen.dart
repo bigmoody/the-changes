@@ -24,10 +24,12 @@ import '../audio/practice_player.dart';
 import '../audio/tuner_listener.dart';
 import '../music/lick.dart';
 import '../music/midi_file.dart';
+import '../audio/backing_synth.dart';
 import '../music/tuning.dart';
 import '../practice/practice_controller.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
+import 'click_bar.dart';
 import 'key_round.dart';
 import 'stave.dart';
 import 'stave_figure.dart';
@@ -55,11 +57,15 @@ class LickDrillScreen extends StatefulWidget {
 }
 
 class _LickDrillScreenState extends State<LickDrillScreen> {
-  late final _controller = PracticeController(
-    tune: widget.lick.over.toTune(),
-    player: widget.player,
-    settings: widget.settings,
-  );
+  /// The band, when there are changes for it to play. A lick saved as
+  /// just a line has none, and gets a click instead.
+  late final PracticeController? _controller = widget.lick.over == null
+      ? null
+      : PracticeController(
+          tune: widget.lick.over!.toTune(),
+          player: widget.player,
+          settings: widget.settings,
+        );
   late final _listener = widget.listener ?? TunerListener();
 
   var _order = KeyOrder.fourths;
@@ -87,9 +93,19 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
   int get _writtenKey =>
       (lick.key + move + widget.settings.instrument.semitones) % 12;
 
-  /// What that key is called, spelled as the changes are spelled.
-  String _keyName(int by) =>
-      lick.over.toTune().keyLabelBy(by + widget.settings.instrument.semitones);
+  /// What this time round is called.
+  ///
+  /// With changes, the key, spelled as the changes are spelled. Without
+  /// them there is no key to name, so it is the note the line starts on,
+  /// which is what anybody would call it: not "in E flat" but "starting
+  /// on E flat".
+  String _keyName(int by) {
+    final moved = by + widget.settings.instrument.semitones;
+    final over = lick.over;
+    if (over != null) return over.toTune().keyLabelBy(moved);
+    final pitch = lick.key + moved;
+    return nameInKey(pitch, key: pitch);
+  }
 
   LickFollower _followerFor(int index) =>
       LickFollower(lick.notesUp(_moves[index]));
@@ -98,11 +114,13 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
   ///
   /// Taken from the transposed tune rather than spelled here, so the
   /// symbols over the line are the ones the app would print anywhere
-  /// else: a B flat player in the key of D sees D, not C.
+  /// else: a B flat player in the key of D sees D, not C. Empty when the
+  /// lick is just a line.
   List<String?> get _chordNames {
     final slots = lick
         .tuneUp(move + widget.settings.instrument.semitones)
-        .slots;
+        ?.slots;
+    if (slots == null) return [for (final _ in lick.notes) null];
     return [
       for (final note in lick.notes)
         () {
@@ -115,18 +133,48 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
     ];
   }
 
+  /// Something for the builder to listen to when there is no band.
+  static final _still = ValueNotifier<int>(0);
+
+  /// The click, for a lick with no changes under it.
+  var _clicking = false;
+
+  late int _tempo = widget.lick.tempo;
+
   @override
   void initState() {
     super.initState();
-    _controller.transpose(move);
+    _controller?.transpose(move);
   }
 
   @override
   void dispose() {
     _listener.stop();
     if (widget.listener == null) _listener.dispose();
-    _controller.dispose();
+    if (_clicking) widget.player.stopLoop();
+    _controller?.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleClick() async {
+    if (_clicking) {
+      await widget.player.stopLoop();
+      if (mounted) setState(() => _clicking = false);
+      return;
+    }
+    await widget.player.playLoop(
+      metronomeLoop(tempo: _tempo, beatsPerBar: lick.beatsPerBar),
+    );
+    if (mounted) setState(() => _clicking = true);
+  }
+
+  Future<void> _setTempo(int by) async {
+    setState(() => _tempo = (_tempo + by).clamp(40, 320));
+    if (_clicking) {
+      await widget.player.playLoop(
+        metronomeLoop(tempo: _tempo, beatsPerBar: lick.beatsPerBar),
+      );
+    }
   }
 
   Future<void> _listen() async {
@@ -165,7 +213,7 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
       _follower = _followerFor(_at);
       _problem = null;
     });
-    _controller.transpose(move);
+    _controller?.transpose(move);
   }
 
   void _setOrder(KeyOrder order) {
@@ -176,12 +224,14 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
       _done.clear();
       _follower = _followerFor(0);
     });
-    _controller.transpose(move);
+    _controller?.transpose(move);
   }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: _controller,
+    // A lick with no changes has no band to listen to, so the screen
+    // rebuilds on its own account instead.
+    listenable: _controller ?? _still,
     builder: (context, _) => _build(context),
   );
 
@@ -241,7 +291,15 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
               ),
             ),
             KeyStep(onBack: () => _goTo(_at - 1), onNext: () => _goTo(_at + 1)),
-            Transport(controller: _controller),
+            if (_controller case final controller?)
+              Transport(controller: controller)
+            else
+              ClickBar(
+                tempo: _tempo,
+                clicking: _clicking,
+                onNudge: _setTempo,
+                onToggle: _toggleClick,
+              ),
           ],
         ),
       ),
