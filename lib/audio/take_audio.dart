@@ -36,8 +36,15 @@ import 'wav_file.dart';
 /// enough not to swallow a beat at the top of a loop.
 const takeCrossfadeSeconds = 0.012;
 
-/// One stem cut to [choruses] passes of a loop, with the count-in on the
-/// front, ready to be handed to the engine.
+/// One stem cut to [choruses] passes of a loop, ready to be handed to the
+/// engine.
+///
+/// [fromChorus] is where in the run this piece starts. A run is laid out a
+/// few choruses at a time rather than all at once, because a recording is
+/// tens of megabytes and somebody playing for half an hour would otherwise
+/// need hundreds of them sitting in memory before the first note. Only the
+/// piece that begins the run carries the count-in; every other piece is
+/// joined to what came before it exactly as the choruses inside one are.
 ///
 /// Everything is measured in the recording's own time, at the tempo it was
 /// played at. The engine is what makes it the tempo you are playing at.
@@ -48,6 +55,7 @@ Float32List layStem(
   required int loopBeats,
   required int choruses,
   required int countInBeats,
+  int fromChorus = 0,
   double crossfadeSeconds = takeCrossfadeSeconds,
 }) {
   final channels = audio.channels;
@@ -58,7 +66,7 @@ Float32List layStem(
   final origin = take.startSeconds * audio.sampleRate;
   final formBeats = take.bars * take.beatsPerBar;
 
-  final lead = (countInBeats * framesPerBeat).round();
+  final lead = fromChorus > 0 ? 0 : (countInBeats * framesPerBeat).round();
   final segment = (loopBeats * framesPerBeat).round();
   final out = Float32List((lead + segment * choruses) * channels);
 
@@ -80,9 +88,10 @@ Float32List layStem(
 
   for (var chorus = 0; chorus < choruses; chorus++) {
     // Round the recording as many times as the run goes round the form.
-    final fromChorus = chorus % math.max(1, take.choruses);
+    final along = fromChorus + chorus;
+    final takeChorus = along % math.max(1, take.choruses);
     final source =
-        (origin + (fromChorus * formBeats + loopStartBeat) * framesPerBeat)
+        (origin + (takeChorus * formBeats + loopStartBeat) * framesPerBeat)
             .round();
     final into = lead + chorus * segment;
 
@@ -94,8 +103,8 @@ Float32List layStem(
 
     // Join it to what came before with what really follows there in the
     // recording, so the fade is across music rather than into a gap.
-    if (chorus == 0 || fade <= 0) continue;
-    final beforeChorus = (chorus - 1) % math.max(1, take.choruses);
+    if (along == 0 || fade <= 0) continue;
+    final beforeChorus = (along - 1) % math.max(1, take.choruses);
     final ran =
         (origin + (beforeChorus * formBeats + loopStartBeat) * framesPerBeat)
             .round() +

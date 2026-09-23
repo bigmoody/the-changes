@@ -22,6 +22,7 @@ class _FakePlayer extends PracticePlayer {
     String? alongside,
     Duration leadIn = Duration.zero,
     int pickUpBeats = 0,
+    PlayableRecording? recording,
   }) async {
     calls.add('start');
     _playing = true;

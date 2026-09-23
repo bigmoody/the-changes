@@ -35,23 +35,29 @@ abstract interface class RecordingFiles {
   /// The full path of a kept file, or null if it has gone.
   Future<String?> pathOf(String name);
 
+  /// What is in a kept file, or null if it has gone.
+  Future<Uint8List?> read(String name);
+
   Future<void> remove(String name);
 }
 
 /// Keeps nothing anywhere, for tests.
 class NoRecordingFiles implements RecordingFiles {
-  final saved = <String, int>{};
+  final saved = <String, Uint8List>{};
   final removed = <String>[];
 
   @override
   Future<String> save(String name, Uint8List bytes) async {
-    saved[name] = bytes.length;
+    saved[name] = bytes;
     return name;
   }
 
   @override
   Future<String?> pathOf(String name) async =>
       saved.containsKey(name) ? '/recordings/$name' : null;
+
+  @override
+  Future<Uint8List?> read(String name) async => saved[name];
 
   @override
   Future<void> remove(String name) async {
@@ -114,6 +120,8 @@ class RecordingStore extends ChangeNotifier {
       files.save('$id-${stem.name}.wav', bytes);
 
   Future<String?> pathOf(String name) => files.pathOf(name);
+
+  Future<Uint8List?> read(String name) => files.read(name);
 
   Future<void> add(TuneRef ref, RecordedTake take) =>
       _put(ref, forTune(ref).plus(take));

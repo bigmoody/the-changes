@@ -199,6 +199,112 @@ void main() {
     });
   });
 
+  group('what the length of the file says', () {
+    test('six choruses of a blues at 120 is read back as six', () {
+      final read = readTakeLength(seconds: 144, bpm: 120, bars: 12);
+      expect(read.choruses, 6);
+      expect(read.exactly, closeTo(6, 0.0001));
+      expect(read.driftBeats, closeTo(0, 0.0001));
+      expect(read.impliedBpm, closeTo(120, 0.0001));
+    });
+
+    test('a take labelled 120 that was really 124 is caught', () {
+      // Six choruses at 124 is 139.35 seconds, not 144.
+      final read = readTakeLength(seconds: 288 * 60 / 124, bpm: 120, bars: 12);
+      expect(read.choruses, 6, reason: 'still plainly six choruses');
+      expect(read.impliedBpm, closeTo(124, 0.001));
+      // By the end it is most of three bars out, which is why it matters.
+      expect(read.driftBeats, greaterThan(9));
+    });
+
+    test('a tempo a long way out lands on the wrong chorus count', () {
+      // Which is itself the signal: nobody records six and a half.
+      final read = readTakeLength(seconds: 144, bpm: 90, bars: 12);
+      expect(read.choruses, 5, reason: '4.5 rounds to 5');
+      expect(read.driftBeats, greaterThan(20));
+    });
+
+    test('never fewer than one chorus, however short the file', () {
+      expect(readTakeLength(seconds: 2, bpm: 120, bars: 12).choruses, 1);
+    });
+
+    test('nothing to go on gives nothing back', () {
+      for (final read in [
+        readTakeLength(seconds: 0, bpm: 120, bars: 12),
+        readTakeLength(seconds: 144, bpm: 0, bars: 12),
+        readTakeLength(seconds: 144, bpm: 120, bars: 0),
+      ]) {
+        expect(read.impliedBpm, 0);
+        expect(read.driftBeats, 0);
+      }
+    });
+
+    test('a waltz counts in three', () {
+      // 32 bars of three at 120 is 48 seconds a chorus.
+      final read = readTakeLength(
+        seconds: 96,
+        bpm: 120,
+        bars: 32,
+        beatsPerBar: 3,
+      );
+      expect(read.choruses, 2);
+      expect(read.driftBeats, closeTo(0, 0.0001));
+    });
+  });
+
+  group('reading the template file names', () {
+    test('the names the template actually asks for', () {
+      final read = readTakeName('blues-F-120-bass.wav');
+      expect(read.stem, TakeStem.bass);
+      expect(read.bpm, 120);
+      expect(read.key, f);
+      expect(readTakeName('blues-F-120-drums.wav').stem, TakeStem.drums);
+      expect(readTakeName('blues-F-120-comp.wav').stem, TakeStem.comp);
+    });
+
+    test('a flat key, however it is written', () {
+      for (final written in ['Bb', 'B♭', 'Bflat']) {
+        expect(
+          readTakeName('blues-$written-180-bass.wav').key,
+          bFlat,
+          reason: written,
+        );
+      }
+      expect(readTakeName('blues-F#-180-bass.wav').key, 6);
+    });
+
+    test('the whole path, not just the name', () {
+      final read = readTakeName('/var/mobile/Takes/blues-F-180-drums.wav');
+      expect(read.stem, TakeStem.drums);
+      expect(read.bpm, 180);
+    });
+
+    test('what people call the comp stem when they do not call it comp', () {
+      expect(readTakeName('blues-F-120-piano.wav').stem, TakeStem.comp);
+      expect(readTakeName('blues-F-120-guitar.wav').stem, TakeStem.comp);
+    });
+
+    test('a name that says nothing guesses nothing', () {
+      final read = readTakeName('Untitled 4.wav');
+      expect(read.stem, isNull);
+      expect(read.bpm, isNull);
+      expect(read.key, isNull);
+    });
+
+    test('a number that is not a tempo is not read as one', () {
+      // A sample rate or a date is not somebody's click.
+      expect(readTakeName('take-44100-bass.wav').bpm, isNull);
+      expect(readTakeName('take-12-bass.wav').bpm, isNull);
+    });
+
+    test('underscores and spaces part the words as well as dashes', () {
+      final read = readTakeName('blues_Eb_200_comp.wav');
+      expect(read.stem, TakeStem.comp);
+      expect(read.bpm, 200);
+      expect(read.key, 3);
+    });
+  });
+
   group('keeping it', () {
     test('what goes in comes back out', () {
       final it = take().startingAt(0.02).inKey(bFlat).atTempo(176.5);

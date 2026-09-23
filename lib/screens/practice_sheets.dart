@@ -22,6 +22,7 @@ import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
 import 'import_part_sheet.dart';
+import 'import_recording_sheet.dart';
 
 /// The practice screen's sheets, all opened the same way.
 ///
@@ -414,6 +415,25 @@ void showMixer(BuildContext context, PracticeController controller) {
                   ],
                 ),
               ),
+            if (controller.recordingStore != null && controller.ref != null)
+              ListTile(
+                key: const ValueKey('import-recording'),
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.groups_outlined),
+                title: const Text('Recorded Band'),
+                subtitle: Text(_recordedBandSays(controller)),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => showImportRecording(context, controller),
+              ),
+            if (!controller.recordedTakes.isEmpty)
+              SwitchListTile(
+                key: const ValueKey('use-recording'),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Play the Recording'),
+                subtitle: const Text('Off plays the generated band instead'),
+                value: controller.useRecording,
+                onChanged: controller.setUseRecording,
+              ),
             ListTile(
               key: const ValueKey('import-part'),
               contentPadding: EdgeInsets.zero,
@@ -435,6 +455,23 @@ void showMixer(BuildContext context, PracticeController controller) {
       },
     ),
   );
+}
+
+/// What the Recorded Band row says underneath itself.
+///
+/// The take in use and how hard it is being pushed to get here, because
+/// that is the thing somebody wants to know when the band sounds odd and
+/// they have come to the mixer to find out why.
+String _recordedBandSays(PracticeController controller) {
+  final takes = controller.recordedTakes;
+  if (takes.isEmpty) return 'Play a recording of real players instead';
+  final take = controller.recordingInUse;
+  final shift = controller.recordingShift;
+  if (take == null || shift == null) {
+    return '${takes.length} ${takes.length == 1 ? 'take' : 'takes'}, '
+        'not being played';
+  }
+  return '${take.name}. ${shift.strain.label}, ${shift.cents.round()} cents';
 }
 
 /// How this tune is played: the groove, and what the bass and the chords

@@ -18,8 +18,43 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
 import '../music/loop_range.dart';
+import '../music/recorded_take.dart';
 import 'backing_synth.dart';
 import 'sample_bank.dart';
+import 'take_audio.dart';
+import 'wav_file.dart';
+
+/// Which of the mixer's channels a recorded stem plays on.
+///
+/// The stems go on the band's own channels rather than getting three of
+/// their own, so every screen that already knows how to pull the piano
+/// down keeps working without being told that this band is made of people.
+Instrument instrumentFor(TakeStem stem) => switch (stem) {
+  TakeStem.bass => Instrument.bass,
+  TakeStem.drums => Instrument.drums,
+  TakeStem.comp => Instrument.chords,
+};
+
+/// A recording, decoded and ready to be laid against the band's clock.
+class PlayableRecording {
+  const PlayableRecording({
+    required this.take,
+    required this.stems,
+    required this.shift,
+  });
+
+  final RecordedTake take;
+
+  /// The audio of each stem that was imported, already read.
+  final Map<TakeStem, WavAudio> stems;
+
+  /// What the engine has to do to it to land on the tempo and key being
+  /// played. Worked out in recorded_take.dart, applied here and nowhere
+  /// else.
+  final TakeShift shift;
+
+  bool get isEmpty => stems.isEmpty;
+}
 
 class PracticePlayer {
   SoLoud get _soloud => SoLoud.instance;
@@ -46,6 +81,13 @@ class PracticePlayer {
     final handle = _takeHandle;
     if (handle != null) _soloud.setVolume(handle, _takeVolume);
   }
+
+  /// The stems of an imported recording, playing as the band.
+  final _recordingHandles = <TakeStem, SoundHandle>{};
+  _RecordingStream? _recording;
+
+  /// Whether real players are playing rather than the generated band.
+  bool get isPlayingRecording => _recording != null;
 
   /// The clicks stem. Its position (how much of it the engine has taken)
   /// is what the app keeps time by: it runs straight through, counts the
@@ -107,6 +149,7 @@ class PracticePlayer {
     String? alongside,
     Duration leadIn = Duration.zero,
     int pickUpBeats = 0,
+    PlayableRecording? recording,
   }) async {
     final generation = ++_generation;
     final rendered = await _renderInBackground(request.withSamples(samples));
@@ -159,6 +202,57 @@ class PracticePlayer {
     sources.add(clickStream);
     _soloud.addAudioDataStream(clickStream, backing.batch.clicks);
 
+    // A recording plays as the band rather than beside it. Its stems go on
+    // the band's own mixer channels and the generated instruments are
+    // turned down to nothing. They are still written and still streamed,
+    // because the clicks stem that everything is timed by is written with
+    // them, and unpicking that to save the work would put the clock at
+    // risk to save a little processing.
+    final playing = recording != null && !recording.isEmpty ? recording : null;
+    final recordingStreams = <TakeStem, AudioSource>{};
+    _RecordingStream? recordingStream;
+    if (playing != null) {
+      final countInBeats = request.countInBars * request.tune.beatsPerBar;
+      final perBatch = _chorusesPerBatch(request);
+      final laid = _layRecording(
+        playing,
+        loop: request.loop,
+        countInBeats: countInBeats,
+        fromChorus: 0,
+        choruses: perBatch,
+      );
+      for (final entry in playing.stems.entries) {
+        final source = _soloud.setBufferStream(
+          maxBufferSizeBytes: 0x7fffffff,
+          bufferingType: BufferingType.released,
+          bufferingTimeNeeds: 0.5,
+          sampleRate: entry.value.sampleRate,
+          channels: entry.value.channels >= 2 ? Channels.stereo : Channels.mono,
+          format: BufferType.s16le,
+        );
+        // The filter has to be switched on before the voice is played: a
+        // voice started without it goes on without it for good.
+        source.filters.pitchShiftFilter.activate();
+        sources.add(source);
+        recordingStreams[entry.key] = source;
+        _soloud.addAudioDataStream(source, laid[entry.key]!);
+      }
+      recordingStream = _RecordingStream(
+        recording: playing,
+        sources: recordingStreams,
+        loop: request.loop,
+        countInBeats: countInBeats,
+        perBatch: perBatch,
+        nextChorus: perBatch,
+        secondsAdded: _recordingSeconds(
+          playing,
+          request.loop,
+          perBatch,
+          countInBeats,
+        ),
+      );
+    }
+
     AudioSource? take;
     if (alongside != null) {
       // If this fails there's nothing to say over the band, and playing the
@@ -185,8 +279,18 @@ class PracticePlayer {
       _handles[entry.key] = _soloud.play(
         entry.value,
         paused: true,
-        volume: _volumes[entry.key]!,
+        // Silent, not skipped: see where the streams are built.
+        volume: playing == null ? _volumes[entry.key]! : 0,
       );
+    }
+    for (final entry in recordingStreams.entries) {
+      final handle = _soloud.play(
+        entry.value,
+        paused: true,
+        volume: _volumes[instrumentFor(entry.key)]!,
+      );
+      _recordingHandles[entry.key] = handle;
+      _applyShift(entry.value, handle, playing!.shift);
     }
     if (take != null) {
       _takeHandle = _soloud.play(take, paused: true, volume: _takeVolume);
@@ -199,11 +303,13 @@ class PracticePlayer {
       _countInHandle!,
       ?_takeHandle,
       ..._handles.values,
+      ..._recordingHandles.values,
     ]);
     _soloud.setPause(group, false);
     _soloud.destroyVoiceGroup(group);
 
     _sources.addAll(sources);
+    _recording = recordingStream;
     _clock = PlaybackClock(
       backing: backing,
       loop: request.loop,
@@ -221,10 +327,12 @@ class PracticePlayer {
       state: backing.batch.state,
     );
     _stream = stream;
-    _streamTimer = Timer.periodic(
-      const Duration(seconds: 2),
-      (_) => _topUp(stream, generation),
-    );
+    _streamTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _topUp(stream, generation);
+      if (recordingStream != null) {
+        _topUpRecording(recordingStream, generation);
+      }
+    });
   }
 
   /// [backing] with [pickUpBeats] of its first time through the form taken
@@ -325,6 +433,106 @@ class PracticePlayer {
       ..nextBatch += 1;
   }
 
+  /// How many choruses of a recording to lay out at a time: about a
+  /// minute's worth, and never fewer than two.
+  ///
+  /// A recording is tens of megabytes, so a run has to be fed to the
+  /// engine in pieces rather than written out whole before the first note.
+  static int _chorusesPerBatch(BackingRequest request) {
+    final beats = request.loop.lengthBeats;
+    if (beats <= 0 || request.tempo <= 0) return 2;
+    final seconds = beats * 60 / request.tempo;
+    return math.max(2, (60 / seconds).ceil());
+  }
+
+  /// How long [choruses] of the recording run to, in the recording's own
+  /// time, which is what its stream's clock counts in.
+  static double _recordingSeconds(
+    PlayableRecording recording,
+    LoopRange loop,
+    int choruses,
+    int countInBeats,
+  ) {
+    final bpm = recording.take.bpm;
+    if (bpm <= 0) return 0;
+    return (loop.lengthBeats * choruses + countInBeats) * 60 / bpm;
+  }
+
+  /// Each stem cut to [choruses] of the run, ready for the engine.
+  static Map<TakeStem, Uint8List> _layRecording(
+    PlayableRecording recording, {
+    required LoopRange loop,
+    required int countInBeats,
+    required int fromChorus,
+    required int choruses,
+  }) => {
+    for (final entry in recording.stems.entries)
+      entry.key: pcm16(
+        layStem(
+          entry.value,
+          take: recording.take,
+          loopStartBeat: loop.startBeat,
+          loopBeats: loop.lengthBeats,
+          choruses: choruses,
+          countInBeats: countInBeats,
+          fromChorus: fromChorus,
+        ),
+      ),
+  };
+
+  /// Puts the tempo and the key on a stem.
+  ///
+  /// The speed resamples, which is exact; the filter puts back whatever
+  /// pitch that dragged along with it. The clamp is the filter's own
+  /// limit, and a shift outside it is far past anything worth listening
+  /// to anyway.
+  void _applyShift(AudioSource source, SoundHandle handle, TakeShift shift) {
+    _soloud.setRelativePlaySpeed(handle, shift.speed.clamp(0.05, 8.0));
+    source.filters.pitchShiftFilter.shift(soundHandle: handle).value = shift
+        .shift
+        .clamp(0.05, 3.0);
+  }
+
+  /// Keeps the recording queued as far ahead as the band is.
+  ///
+  /// The comparison is in the recording's own time, because that is what
+  /// the stream's own clock counts in: the play speed is the engine's
+  /// business and cancels on both sides of it.
+  void _topUpRecording(_RecordingStream stream, int generation) {
+    if (stream.laying || generation != _generation) return;
+    final first = stream.sources.values.firstOrNull;
+    if (first == null) return;
+    final played = _soloud.getStreamTimeConsumed(first).inMilliseconds / 1000;
+    if (stream.secondsAdded - played > 45) return;
+
+    stream.laying = true;
+    try {
+      final laid = _layRecording(
+        stream.recording,
+        loop: stream.loop,
+        countInBeats: stream.countInBeats,
+        fromChorus: stream.nextChorus,
+        choruses: stream.perBatch,
+      );
+      for (final entry in stream.sources.entries) {
+        if (laid[entry.key] case final pcm?) {
+          _soloud.addAudioDataStream(entry.value, pcm);
+        }
+      }
+      stream
+        ..nextChorus += stream.perBatch
+        ..secondsAdded += _recordingSeconds(
+          stream.recording,
+          stream.loop,
+          stream.perBatch,
+          0,
+        );
+    } catch (e) {
+      debugPrint('Could not lay out more of the recording: $e');
+    }
+    stream.laying = false;
+  }
+
   /// Rendering is heavy maths, so it runs on a background isolate.
   ///
   /// These are `static` on purpose: a closure created inside an instance
@@ -411,7 +619,12 @@ class PracticePlayer {
   void resume() => _setPaused(false);
 
   void _setPaused(bool paused) {
-    final handles = [?_countInHandle, ?_takeHandle, ..._handles.values];
+    final handles = [
+      ?_countInHandle,
+      ?_takeHandle,
+      ..._handles.values,
+      ..._recordingHandles.values,
+    ];
     if (handles.isEmpty || paused == _paused) return;
     final group = _soloud.createVoiceGroup();
     _soloud.addVoicesToGroup(group, handles);
@@ -421,10 +634,23 @@ class PracticePlayer {
   }
 
   /// Sets one instrument's volume (0 = silent, 1 = full) immediately.
+  ///
+  /// When real players are playing, the channel is theirs: the generated
+  /// instrument behind it stays silent whatever the mixer says. That is
+  /// what lets somebody drop the comp and sit in the chair while the real
+  /// bass and drums keep going.
   void setVolume(Instrument instrument, double volume) {
     _volumes[instrument] = volume;
+    final playingRecording = _recording != null;
     final handle = _handles[instrument];
-    if (handle != null) _soloud.setVolume(handle, volume);
+    if (handle != null) {
+      _soloud.setVolume(handle, playingRecording ? 0 : volume);
+    }
+    for (final entry in _recordingHandles.entries) {
+      if (instrumentFor(entry.key) == instrument) {
+        _soloud.setVolume(entry.value, volume);
+      }
+    }
   }
 
   Future<void> stop() async {
@@ -437,11 +663,18 @@ class PracticePlayer {
     _streamTimer?.cancel();
     _streamTimer = null;
     _stream = null;
-    final handles = [?_countInHandle, ?_takeHandle, ..._handles.values];
+    final handles = [
+      ?_countInHandle,
+      ?_takeHandle,
+      ..._handles.values,
+      ..._recordingHandles.values,
+    ];
     final sources = [..._sources];
     _countInHandle = null;
     _takeHandle = null;
     _clickSource = null;
+    _recording = null;
+    _recordingHandles.clear();
     _handles.clear();
     _sources.clear();
     _clock = null;
@@ -541,6 +774,34 @@ class PlaybackPosition {
 
   /// Which time round the form this is (0-based); null during the count-in.
   final int? chorus;
+}
+
+/// Bookkeeping for an imported recording as it is fed to the engine.
+class _RecordingStream {
+  _RecordingStream({
+    required this.recording,
+    required this.sources,
+    required this.loop,
+    required this.countInBeats,
+    required this.perBatch,
+    required this.nextChorus,
+    required this.secondsAdded,
+  });
+
+  final PlayableRecording recording;
+  final Map<TakeStem, AudioSource> sources;
+  final LoopRange loop;
+  final int countInBeats;
+
+  /// How many choruses go in at a time.
+  final int perBatch;
+
+  /// The chorus of the run the next piece starts at.
+  int nextChorus;
+
+  /// How much has been handed over, in the recording's own time.
+  double secondsAdded;
+  bool laying = false;
 }
 
 /// Bookkeeping for the streamed instruments.

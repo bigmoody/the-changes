@@ -6,6 +6,7 @@ import '../music/tune.dart';
 import '../music/user_progression.dart';
 import '../practice/take_store.dart';
 import '../practice/part_store.dart';
+import '../practice/recording_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import '../theme.dart';
@@ -28,6 +29,7 @@ class MyProgressionsPage extends StatefulWidget {
     required this.library,
     this.takes,
     this.partStore,
+    this.recordingStore,
   });
 
   final PracticePlayer player;
@@ -36,6 +38,9 @@ class MyProgressionsPage extends StatefulWidget {
   final LibraryStore library;
   final TakeStore? takes;
   final PartStore? partStore;
+
+  /// Where recordings of real players are kept.
+  final RecordingStore? recordingStore;
 
   @override
   State<MyProgressionsPage> createState() => _MyProgressionsPageState();
@@ -322,6 +327,7 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
             builder: (_) => PracticeScreen(
               takes: widget.takes,
               partStore: widget.partStore,
+              recordingStore: widget.recordingStore,
               tune: tune,
               player: widget.player,
               settings: widget.settings,

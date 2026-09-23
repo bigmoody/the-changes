@@ -13,6 +13,7 @@ import '../library/library_store.dart';
 import '../music/tune_library.dart';
 import '../practice/take_store.dart';
 import '../practice/part_store.dart';
+import '../practice/recording_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import '../theme.dart';
@@ -29,6 +30,7 @@ class LibraryContext {
     required this.progressions,
     this.takes,
     this.partStore,
+    this.recordingStore,
   });
 
   final PracticePlayer player;
@@ -37,6 +39,9 @@ class LibraryContext {
   final ProgressionStore progressions;
   final TakeStore? takes;
   final PartStore? partStore;
+
+  /// Where recordings of real players are kept.
+  final RecordingStore? recordingStore;
 
   /// Opens [found] full screen, as tapping it in any list does.
   void play(BuildContext context, FoundTune found) {
@@ -53,6 +58,7 @@ class LibraryContext {
           settings: settings,
           takes: takes,
           partStore: partStore,
+          recordingStore: recordingStore,
           library: library,
           progression: found.progression,
           progressions: found.progression == null ? null : progressions,

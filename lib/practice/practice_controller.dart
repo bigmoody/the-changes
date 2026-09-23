@@ -20,7 +20,9 @@ import '../library/library_store.dart';
 import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
 import '../music/imported_part.dart';
+import '../audio/wav_file.dart';
 import '../music/loop_range.dart';
+import '../music/recorded_take.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../settings/app_settings.dart';
@@ -28,6 +30,7 @@ import 'hiding_the_chart.dart';
 import 'play_check.dart';
 import 'part_store.dart';
 import 'practice_record.dart';
+import 'recording_store.dart';
 import 'take_store.dart';
 
 /// Holds everything the practice screen shows and reacts to taps.
@@ -41,6 +44,7 @@ class PracticeController extends ChangeNotifier {
     required this.settings,
     this.takes,
     this.partStore,
+    this.recordingStore,
     this.library,
     TuneRef? ref,
     TakeRecorder? recorder,
@@ -67,6 +71,7 @@ class PracticeController extends ChangeNotifier {
                : tempoToOpenAt(library?.runsFor(ref) ?? const [])) ??
            tune.defaultTempo {
     settings.addListener(_updateChart);
+    recordingStore?.addListener(_recordingsChanged);
     _imported = partStore?.forTune(_ref);
     _applyMix();
   }
@@ -81,6 +86,11 @@ class PracticeController extends ChangeNotifier {
   /// screen was given one.
   final LibraryStore? library;
   final TuneRef? _ref;
+
+  /// How this tune is named in the library, when it is one the app keeps
+  /// anything about. Null for the Learn screens, which build a controller
+  /// for a chart that is not in the library at all.
+  TuneRef? get ref => _ref;
 
   /// The way the player has chosen to have it played, over the way it was
   /// written. Null means as written.
@@ -129,6 +139,9 @@ class PracticeController extends ChangeNotifier {
   /// Where an imported part is kept between visits. Null where a
   /// controller is built without one: the Learn pages, and tests.
   final PartStore? partStore;
+
+  /// Where recordings of real players imported for this tune are kept.
+  final RecordingStore? recordingStore;
   TakeRecorder? _recorder;
   TakeRecorder get _tape => _recorder ??= TakeRecorder();
 
@@ -733,6 +746,79 @@ class PracticeController extends ChangeNotifier {
   /// before it can play, and the microphone is running all the while.
   Duration get takeLeadIn => _leadIn;
 
+  // ── Real players instead of the generated band ─────────────────────────
+
+  /// The recordings imported for this tune, which is usually none.
+  TakeSet get recordedTakes => recordingStore?.forTune(_ref) ?? TakeSet.empty;
+
+  /// Whether the band should be real players when there are some.
+  bool get useRecording => _useRecording && !recordedTakes.isEmpty;
+  var _useRecording = true;
+
+  void setUseRecording(bool value) {
+    if (value == _useRecording) return;
+    _useRecording = value;
+    _restartIfPlaying(delay: Duration.zero);
+    notifyListeners();
+  }
+
+  /// The take that lands closest to the tempo and key being played.
+  ///
+  /// Whichever needs the least from the pitch shifter, because that is
+  /// where every artefact comes from. It is worked out rather than chosen
+  /// by hand so it cannot disagree with what is actually playing.
+  RecordedTake? get recordingInUse => !useRecording
+      ? null
+      : recordedTakes.bestFor(tempo: _tempo, soundingKey: soundingKey);
+
+  /// The key being played, as a pitch class, whatever it is spelled as.
+  int get soundingKey => _tune.keyPitchClass;
+
+  /// How hard that take is being pushed to get here.
+  TakeShift? get recordingShift =>
+      recordingInUse?.shiftTo(tempo: _tempo, soundingKey: soundingKey);
+
+  /// The audio of the take being used, once it has been read.
+  ///
+  /// Only one take's worth is held. Three stems of six choruses is a
+  /// hundred megabytes or so decoded, and a set of four would be most of
+  /// what a phone will give you.
+  final _decoded = <String, Map<TakeStem, WavAudio>>{};
+
+  void _recordingsChanged() {
+    _decoded.clear();
+    notifyListeners();
+  }
+
+  Future<PlayableRecording?> _playableRecording() async {
+    final take = recordingInUse;
+    final store = recordingStore;
+    if (take == null || store == null) return null;
+    var stems = _decoded[take.name];
+    if (stems == null) {
+      stems = {};
+      for (final entry in take.files.entries) {
+        try {
+          final bytes = await store.read(entry.value);
+          if (bytes != null) stems[entry.key] = readWav(bytes);
+        } catch (e) {
+          // One stem that will not read loses that stem, not the take.
+          // A bass and drums with no comp is still a rhythm section.
+          debugPrint('Could not read ${entry.value}: $e');
+        }
+      }
+      if (stems.isEmpty) return null;
+      _decoded
+        ..clear()
+        ..[take.name] = stems;
+    }
+    return PlayableRecording(
+      take: take,
+      stems: stems,
+      shift: take.shiftTo(tempo: _tempo, soundingKey: soundingKey),
+    );
+  }
+
   // ── Writing it out as a file ───────────────────────────────────────────
 
   /// True while an export is being written.
@@ -931,6 +1017,10 @@ class PracticeController extends ChangeNotifier {
     // The same seed plays the same performance again, which is what lets a
     // take be recorded without the band in it.
     _lastSeed = take?.seed ?? _random.nextInt(1 << 31);
+    // Real players, when there are some and they have not been turned
+    // off. Reading them takes a moment, so it happens before the band is
+    // written rather than after, while nothing is being heard anyway.
+    final recording = take == null ? await _playableRecording() : null;
     try {
       await player.start(
         BackingRequest(
@@ -947,6 +1037,7 @@ class PracticeController extends ChangeNotifier {
           imported: _imported?.transposedBy(_semitones),
         ),
         alongside: takePath,
+        recording: recording,
         pickUpBeats: pickUpBeats,
         leadIn: take == null
             ? Duration.zero
@@ -1126,6 +1217,7 @@ class PracticeController extends ChangeNotifier {
     _madeListener?.dispose();
     _recorder?.dispose();
     settings.removeListener(_updateChart);
+    recordingStore?.removeListener(_recordingsChanged);
     player.stop();
     super.dispose();
   }

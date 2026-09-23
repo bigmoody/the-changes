@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'audio/practice_player.dart';
+import 'audio/recording_files.dart';
 import 'audio/take_recorder.dart';
 import 'audio/sample_bank.dart';
 import 'library/library_store.dart';
@@ -17,6 +18,7 @@ import 'screens/home_screen.dart';
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
 import 'practice/part_store.dart';
+import 'practice/recording_store.dart';
 import 'settings/progression_store.dart';
 import 'theme.dart';
 
@@ -29,6 +31,9 @@ Future<void> main() async {
   final library = await LibraryStore.load();
   final takes = await TakeStore.load(files: DeviceTakeFiles());
   final partStore = await PartStore.load();
+  final recordingStore = await RecordingStore.load(
+    files: DeviceRecordingFiles(),
+  );
   final player = PracticePlayer();
   String? audioError;
   try {
@@ -45,6 +50,7 @@ Future<void> main() async {
       library: library,
       takes: takes,
       partStore: partStore,
+      recordingStore: recordingStore,
       audioError: audioError,
     ),
   );
@@ -74,6 +80,7 @@ class TheChangesApp extends StatelessWidget {
     required this.library,
     required this.takes,
     required this.partStore,
+    required this.recordingStore,
     this.audioError,
   });
 
@@ -83,6 +90,9 @@ class TheChangesApp extends StatelessWidget {
   final LibraryStore library;
   final TakeStore takes;
   final PartStore partStore;
+
+  /// Where recordings of real players are kept.
+  final RecordingStore recordingStore;
   final String? audioError;
 
   @override
@@ -99,6 +109,7 @@ class TheChangesApp extends StatelessWidget {
         library: library,
         takes: takes,
         partStore: partStore,
+        recordingStore: recordingStore,
         audioError: audioError,
       ),
     );

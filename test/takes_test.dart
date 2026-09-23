@@ -29,6 +29,7 @@ class _FakePlayer extends PracticePlayer {
     String? alongside,
     Duration leadIn = Duration.zero,
     int pickUpBeats = 0,
+    PlayableRecording? recording,
   }) async {
     if (alongside != null && failOnTake) {
       throw StateError('could not open the recording');

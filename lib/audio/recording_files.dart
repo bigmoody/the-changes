@@ -35,6 +35,13 @@ class DeviceRecordingFiles implements RecordingFiles {
   }
 
   @override
+  Future<Uint8List?> read(String name) async {
+    final folder = await _folder();
+    final file = File('${folder.path}/$name');
+    return file.existsSync() ? await file.readAsBytes() : null;
+  }
+
+  @override
   Future<void> remove(String name) async {
     final folder = await _folder();
     final file = File('${folder.path}/$name');

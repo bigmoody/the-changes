@@ -344,6 +344,12 @@ class Tune {
   Spelling get _tonic =>
       parseNoteName(RegExp(r'^[A-G][♭♯b#]?').stringMatch(key) ?? 'C')!;
 
+  /// The key as a pitch class, C being 0, however it is spelled.
+  ///
+  /// For matching a chart against a recording, where G flat and F sharp
+  /// are the same thing and the spelling is nobody's business.
+  int get keyPitchClass => pitchClassOf(_tonic);
+
   /// The letter-aware move from this key to the key [semitones] above it.
   Transposition _transpositionBy(int semitones) {
     final tonic = _tonic;

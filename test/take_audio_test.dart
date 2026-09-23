@@ -212,6 +212,54 @@ void main() {
     });
   });
 
+  group('laid out a few choruses at a time', () {
+    // A recording is tens of megabytes, so a long run is fed to the
+    // engine in pieces. The pieces have to add up to exactly what one
+    // long piece would have been, or the seams are audible and the chart
+    // drifts by however much the arithmetic is out.
+    Float32List whole(int choruses, {int from = 0}) => layStem(
+      counted(2400),
+      take: take(),
+      loopStartBeat: 0,
+      loopBeats: 8,
+      choruses: choruses,
+      countInBeats: 4,
+      fromChorus: from,
+    );
+
+    test('two pieces of two are the same as one of four', () {
+      final atOnce = whole(4);
+      final first = whole(2);
+      final second = whole(2, from: 2);
+      expect(first.length + second.length, atOnce.length);
+      for (var frame = 0; frame < first.length; frame++) {
+        expect(
+          first[frame],
+          atOnce[frame],
+          reason: 'frame $frame of the first',
+        );
+      }
+      for (var frame = 0; frame < second.length; frame++) {
+        expect(
+          second[frame],
+          atOnce[first.length + frame],
+          reason: 'frame $frame of the second',
+        );
+      }
+    });
+
+    test('only the piece that starts the run carries the count-in', () {
+      expect(whole(1).length, 400 + 800);
+      expect(whole(1, from: 1).length, 800, reason: 'no silence a second time');
+    });
+
+    test('a later piece still takes the right chorus of the recording', () {
+      final later = whole(1, from: 4);
+      // Chorus 4 of the run, from a recording of three, is its second.
+      expect(sourceAt(later, 700), 800 + 700);
+    });
+  });
+
   group('stereo', () {
     test('the channels stay where they belong', () {
       final out = layStem(

@@ -234,6 +234,83 @@ class RecordedTake {
   }
 }
 
+/// What the length of a file says about the take on it.
+///
+/// Nothing in a recording says how many times round the form it goes, but
+/// its length and its tempo between them do. If that does not come out as
+/// a whole number of choruses then the stated tempo is wrong, and the
+/// same two numbers say what it must really have been.
+///
+/// Worth checking rather than taking on trust. A take labelled 120 that
+/// was really played at 124 puts the chart half a bar out by the last
+/// chorus, and nothing on screen would ever say why.
+({int choruses, double exactly, double driftBeats, double impliedBpm})
+readTakeLength({
+  required double seconds,
+  required double bpm,
+  required int bars,
+  int beatsPerBar = 4,
+}) {
+  final formBeats = bars * beatsPerBar;
+  if (seconds <= 0 || bpm <= 0 || formBeats <= 0) {
+    return (choruses: 1, exactly: 0, driftBeats: 0, impliedBpm: 0);
+  }
+  final exactly = seconds * bpm / 60 / formBeats;
+  final choruses = math.max(1, exactly.round());
+  return (
+    choruses: choruses,
+    exactly: exactly,
+    // How far out it has got by the end of the take, which is where it
+    // shows: a fraction of a beat per chorus is a bar and a half by the
+    // last one.
+    driftBeats: ((exactly - choruses) * formBeats).abs(),
+    impliedBpm: choruses * formBeats * 60 / seconds,
+  );
+}
+
+/// What a file's name says about it, where it says anything.
+///
+/// The template asks for blues-F-120-bass.wav and the same pattern for
+/// the rest, so the name usually carries the stem, the tempo and the key.
+/// Reading them off it saves typing three things twelve times, and every
+/// one of them can be corrected before the take goes in: this is a guess
+/// that saves work, never one that is trusted.
+({TakeStem? stem, double? bpm, int? key}) readTakeName(String fileName) {
+  final bare = fileName.split('/').last.replaceAll(RegExp(r'\.[^.]*$'), '');
+  TakeStem? stem;
+  double? bpm;
+  int? key;
+  for (final word in bare.split(RegExp(r'[-_ .]+'))) {
+    if (word.isEmpty) continue;
+    final lower = word.toLowerCase();
+    stem ??= TakeStem.values.where((value) => value.name == lower).firstOrNull;
+    // Piano and guitar are what people actually call the comp stem.
+    if (stem == null && (lower == 'piano' || lower == 'guitar')) {
+      stem = TakeStem.comp;
+    }
+    final number = double.tryParse(word);
+    if (bpm == null && number != null && number >= 30 && number <= 400) {
+      bpm = number;
+    }
+    key ??= _keyNamed(word);
+  }
+  return (stem: stem, bpm: bpm, key: key);
+}
+
+const _letters = {'c': 0, 'd': 2, 'e': 4, 'f': 5, 'g': 7, 'a': 9, 'b': 11};
+
+/// The pitch class [word] names, if it names one at all.
+int? _keyNamed(String word) {
+  final match = RegExp(r'^([A-Ga-g])(b|#|♭|♯|flat|sharp)?$').firstMatch(word);
+  if (match == null) return null;
+  final letter = _letters[match.group(1)!.toLowerCase()]!;
+  return switch (match.group(2)?.toLowerCase()) {
+    'b' || '♭' || 'flat' => (letter + 11) % 12,
+    '#' || '♯' || 'sharp' => (letter + 1) % 12,
+    _ => letter,
+  };
+}
+
 /// The takes imported for one tune.
 ///
 /// A set rather than one recording because that is what the template

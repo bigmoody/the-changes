@@ -17,6 +17,7 @@ import '../library/library_store.dart';
 import '../settings/app_settings.dart';
 import '../practice/take_store.dart';
 import '../practice/part_store.dart';
+import '../practice/recording_store.dart';
 import '../settings/progression_store.dart';
 import 'learn_page.dart';
 import 'my_progressions_page.dart';
@@ -34,6 +35,7 @@ class HomeScreen extends StatefulWidget {
     required this.library,
     required this.takes,
     required this.partStore,
+    required this.recordingStore,
     this.audioError,
     this.initialTab = HomeTab.tunes,
   });
@@ -44,6 +46,9 @@ class HomeScreen extends StatefulWidget {
   final LibraryStore library;
   final TakeStore takes;
   final PartStore partStore;
+
+  /// Where recordings of real players are kept.
+  final RecordingStore recordingStore;
   final String? audioError;
   final HomeTab initialTab;
 
@@ -69,6 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
             library: widget.library,
             takes: widget.takes,
             partStore: widget.partStore,
+            recordingStore: widget.recordingStore,
             audioError: widget.audioError,
           ),
           MyProgressionsPage(
@@ -78,6 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
             library: widget.library,
             takes: widget.takes,
             partStore: widget.partStore,
+            recordingStore: widget.recordingStore,
           ),
           LearnPage(player: widget.player, settings: widget.settings),
           SettingsPage(

@@ -17,6 +17,7 @@ import '../practice/practice_controller.dart';
 import '../practice/practice_record.dart';
 import '../practice/take_store.dart';
 import '../practice/part_store.dart';
+import '../practice/recording_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import 'chord_chart.dart';
@@ -41,6 +42,7 @@ class PracticeScreen extends StatefulWidget {
     this.progressions,
     this.takes,
     this.partStore,
+    this.recordingStore,
     this.library,
     this.listener,
   });
@@ -67,6 +69,9 @@ class PracticeScreen extends StatefulWidget {
   final TakeStore? takes;
   final PartStore? partStore;
 
+  /// Where recordings of real players are kept.
+  final RecordingStore? recordingStore;
+
   @override
   State<PracticeScreen> createState() => _PracticeScreenState();
 }
@@ -78,6 +83,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     settings: widget.settings,
     takes: widget.takes,
     partStore: widget.partStore,
+    recordingStore: widget.recordingStore,
     library: widget.library,
     ref: _ref,
     listener: widget.listener,

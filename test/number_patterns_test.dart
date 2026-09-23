@@ -19,6 +19,7 @@ class _FakePlayer extends PracticePlayer {
     String? alongside,
     Duration leadIn = Duration.zero,
     int pickUpBeats = 0,
+    PlayableRecording? recording,
   }) async {}
 
   @override
