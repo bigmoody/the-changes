@@ -195,30 +195,61 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
     ),
   );
 
+  /// Opens the sheet on [index] and keeps it open, bar after bar, for as
+  /// long as it is asked to carry on. Past the last bar it adds one, so
+  /// writing a tune out is a chord and Next Bar the whole way down rather
+  /// than closing and reopening the sheet thirty-two times.
   Future<void> _editBar(int index) async {
-    final result = await _openBar(
-      index + 1,
-      _draft.bars[index],
-      isNew: false,
-      section: _draft.sections[index],
-      repeats: _draft.repeatsOf(index),
-      ending: _draft.endings[index],
-      hasEndings:
-          _draft.sections.containsKey(index) && _draft.hasEndings(index),
-    );
-    if (result == null) return;
-    _edit(() {
-      if (result.delete) {
-        _draft.removeBar(index);
+    var at = index;
+    while (at <= _draft.bars.length) {
+      // Past the end is a bar that does not exist yet.
+      final isNew = at == _draft.bars.length;
+      final result = await _openBar(
+        at + 1,
+        isNew ? '' : _draft.bars[at],
+        isNew: isNew,
+        section: isNew ? null : _draft.sections[at],
+        repeats: isNew ? 1 : _draft.repeatsOf(at),
+        ending: isNew ? null : _draft.endings[at],
+        hasEndings:
+            !isNew && _draft.sections.containsKey(at) && _draft.hasEndings(at),
+      );
+      if (result == null) return;
+
+      if (isNew) {
+        // A new bar is only kept once it has a chord in it, so backing out
+        // of one leaves nothing behind.
+        if (result.delete || result.text.isEmpty) return;
+        _edit(() {
+          _draft.bars.add(result.text);
+          final added = _draft.bars.length - 1;
+          _draft
+            ..setSection(added, result.section)
+            ..setRepeats(added, result.repeats);
+          if (result.section == null) _draft.setEnding(added, result.ending);
+          _followChords();
+        });
       } else {
-        _draft.bars[index] = result.text;
-        _draft
-          ..setSection(index, result.section)
-          ..setRepeats(index, result.repeats);
-        if (result.section == null) _draft.setEnding(index, result.ending);
+        _edit(() {
+          if (result.delete) {
+            _draft.removeBar(at);
+          } else {
+            _draft.bars[at] = result.text;
+            _draft
+              ..setSection(at, result.section)
+              ..setRepeats(at, result.repeats);
+            if (result.section == null) _draft.setEnding(at, result.ending);
+          }
+          _followChords();
+        });
+        // Deleting moves every bar after this one up, so carrying on would
+        // land somewhere the player did not ask for.
+        if (result.delete) return;
       }
-      _followChords();
-    });
+
+      if (!result.next) return;
+      at++;
+    }
   }
 
   /// A new bar starts empty and opens straight away. It's only added once
@@ -241,6 +272,8 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
       if (result.section == null) _draft.setEnding(index, result.ending);
       _followChords();
     });
+    // Asked to carry on, so keep going from the bar after the new one.
+    if (result.next) await _editBar(_draft.bars.length);
   }
 
   @override
@@ -836,6 +869,11 @@ typedef _BarEdit = ({
   String? section,
   int repeats,
   int? ending,
+
+  /// Whether to carry straight on into the next bar rather than closing.
+  /// Writing a tune out is one bar after another, and shutting the sheet
+  /// between each of them is most of the work.
+  bool next,
 });
 
 /// Edits one bar: type chords, or build them from a root and a chord type.
@@ -1163,6 +1201,31 @@ class _BarSheetState extends State<_BarSheet> {
               ),
             ],
             const SizedBox(height: 20),
+            // Writing a tune out is one bar after another, and closing the
+            // sheet between each of them is most of the work. This keeps
+            // it open and moves on, adding a bar when there is no next one
+            // yet. Full width and on its own line because it is pressed
+            // far more often than either button under it, and because
+            // three buttons in a row did not fit a phone.
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonalIcon(
+                key: const ValueKey('next-bar'),
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text('Next Bar'),
+                onPressed: problem == null && _field.text.trim().isNotEmpty
+                    ? () => Navigator.of(context).pop<_BarEdit>((
+                        text: _field.text.trim(),
+                        delete: false,
+                        section: _section,
+                        repeats: _section == null ? 1 : _repeats,
+                        ending: _section == null ? _ending : null,
+                        next: true,
+                      ))
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 if (widget.canDelete)
@@ -1175,10 +1238,12 @@ class _BarSheetState extends State<_BarSheet> {
                       section: null,
                       repeats: 1,
                       ending: null,
+                      next: false,
                     )),
                   ),
                 const Spacer(),
                 FilledButton(
+                  key: const ValueKey('bar-done'),
                   onPressed: problem == null
                       ? () => Navigator.of(context).pop<_BarEdit>((
                           text: _field.text.trim(),
@@ -1186,6 +1251,7 @@ class _BarSheetState extends State<_BarSheet> {
                           section: _section,
                           repeats: _section == null ? 1 : _repeats,
                           ending: _section == null ? _ending : null,
+                          next: false,
                         ))
                       : null,
                   child: const Text('Done'),

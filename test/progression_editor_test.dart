@@ -146,6 +146,74 @@ void main() {
     expect(find.text('Turnaround in C'), findsNothing);
   });
 
+  testWidgets('Next Bar writes a tune out without closing the sheet', (
+    tester,
+  ) async {
+    // The point of it: a tune is bar after bar, and shutting the sheet
+    // between each one was most of the work.
+    await _openHome(tester);
+    await _tap(tester, find.text('New Progression'));
+    await tester.enterText(find.byType(TextField).first, 'Straight through');
+
+    await _tap(tester, find.byKey(const ValueKey('add-bar')));
+    for (final chords in ['Dm7', 'G7', 'C^7']) {
+      await tester.enterText(find.byKey(const ValueKey('bar-chords')), chords);
+      await tester.pump();
+      // The sheet stays up and moves on, adding a bar when there is no
+      // next one yet.
+      await _tap(tester, find.byKey(const ValueKey('next-bar')));
+      expect(
+        find.byKey(const ValueKey('bar-chords')),
+        findsOneWidget,
+        reason: 'the sheet closed instead of carrying on',
+      );
+    }
+    // The fourth is empty, so backing out of it leaves nothing behind.
+    await _tap(tester, find.text('Done'));
+
+    expect(find.text('Dm7'), findsOneWidget);
+    expect(find.text('G7'), findsOneWidget);
+    expect(find.text('CΔ7'), findsOneWidget);
+    expect(find.byKey(const ValueKey('bar-3')), findsNothing);
+  });
+
+  testWidgets('Next Bar goes on to a bar that is already there', (
+    tester,
+  ) async {
+    await _openHome(tester);
+    await _tap(tester, find.text('New Progression'));
+    await tester.enterText(find.byType(TextField).first, 'Edit along');
+    await _addBar(tester, 'Dm7');
+    await _addBar(tester, 'G7');
+
+    // Opening the first and carrying on lands on the second, with what is
+    // already written in it rather than an empty field.
+    await _tap(tester, find.byKey(const ValueKey('bar-0')));
+    await _tap(tester, find.byKey(const ValueKey('next-bar')));
+    expect(find.text('Bar 2'), findsOneWidget);
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('bar-chords')))
+          .controller
+          ?.text,
+      'G7',
+    );
+    await _tap(tester, find.text('Done'));
+  });
+
+  testWidgets('Next Bar is not offered for an empty bar', (tester) async {
+    await _openHome(tester);
+    await _tap(tester, find.text('New Progression'));
+    await _tap(tester, find.byKey(const ValueKey('add-bar')));
+    expect(
+      tester
+          .widget<ButtonStyleButton>(find.byKey(const ValueKey('next-bar')))
+          .onPressed,
+      isNull,
+      reason: 'there is nothing to carry on from',
+    );
+  });
+
   testWidgets('tag a progression with genres', (tester) async {
     final store = await _openHome(tester);
     await _tap(tester, find.text('New Progression'));
