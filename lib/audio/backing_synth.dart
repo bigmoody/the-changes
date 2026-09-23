@@ -43,14 +43,6 @@ const bassCutBelow = 120.0;
 const bassLiftFrom = 1500.0;
 const bassLift = 4.0;
 
-/// How long the bass takes to get going, in seconds.
-///
-/// An upright has a pluck and should keep one, but the recordings are
-/// sharper than the rest of the band: measured against the guitar they
-/// reach full three times faster and peak seven times their own average.
-/// Taking a little off the front puts the finger back on the string.
-const bassAttack = 0.015;
-
 /// How much of the bass's harmonics to lift, and where.
 ///
 /// A phone speaker plays almost nothing below 300 Hz, so what is heard of
@@ -637,7 +629,6 @@ _Parts _renderParts(
         holdSamples: (secondsPerBeatAt(note.beat) * note.length * sampleRate)
             .round(),
         releaseSamples: (0.06 * sampleRate).round(),
-        attackSamples: (bassAttack * sampleRate).round(),
       );
     } else {
       bass.addSamples(
@@ -951,7 +942,6 @@ _Parts _renderParts(
               1.1 * note.velocity,
               holdSamples: (beatSeconds * note.beats * sampleRate).round(),
               releaseSamples: (0.06 * sampleRate).round(),
-              attackSamples: (bassAttack * sampleRate).round(),
             );
           } else {
             importedMix.addSamples(
@@ -1226,7 +1216,6 @@ Uint8List renderSnippet(
         rate: math.pow(2, (note.pitch - recorded) / 12).toDouble(),
         holdSamples: hold,
         releaseSamples: (0.08 * sampleRate).round(),
-        attackSamples: (bassAttack * sampleRate).round(),
       );
     } else if (guitar) {
       final (shift, takes) = bank.nearestGuitar(note.pitch);
@@ -1479,7 +1468,6 @@ class _Mix {
     double rate = 1,
     int? holdSamples,
     int releaseSamples = 0,
-    int attackSamples = 0,
   }) {
     final scale = gain / 32768;
     var length = (sample.length / rate).floor() - 1;
@@ -1498,11 +1486,6 @@ class _Mix {
       }
       if (holdSamples != null && i > holdSamples) {
         value *= 1 - (i - holdSamples) / releaseSamples;
-      }
-      if (i < attackSamples) {
-        // Smoothstep, so the ramp has no corner at either end to click on.
-        final x = i / attackSamples;
-        value *= x * x * (3 - 2 * x);
       }
       add(start + i, value * scale);
     }
