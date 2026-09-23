@@ -81,7 +81,7 @@ class TimingCheck {
   final int beatsExpected;
 
   /// How many of them had a hit near enough to measure. A drummer does
-  /// not strike every beat, so this is never all of them and is not
+  /// not strike every beat, so this is rarely all of them and is not
   /// supposed to be.
   final int beatsMatched;
 

@@ -28,6 +28,10 @@ import 'wav_file.dart';
 
 /// How far apart two hits must be to count as two, in seconds. Below this
 /// they are the same stroke: a snare and the room answering it.
+///
+/// Right for a kit, where strokes come thick and the point is to miss
+/// none of them. A melodic line wants a good deal more, and asks for it:
+/// see [findOnsets].
 const _closest = 0.04;
 
 /// Where the hits are in [audio], in seconds from its start.
@@ -35,23 +39,33 @@ const _closest = 0.04;
 /// [sensitivity] is how far above the local average a rise must be. Lower
 /// finds more, including things that are not hits.
 ///
-/// A hit in the first few milliseconds of the file is not found, because
-/// a rise is measured against what came before it and there is nothing
-/// before it. That is exactly where the template puts bar 1 beat 1, so
-/// the first beat of a take is routinely missing. It does not matter:
-/// what uses this has two hundred and eighty-seven others to go on.
+/// A hit right at the start of the file is found like any other. A rise
+/// is measured against what came before it, and at sample zero there is
+/// nothing before it, so a window of silence is put on the front and
+/// taken off the times again. That matters more than it sounds: the
+/// recording template puts bar 1 beat 1 at sample zero, and a lick
+/// usually begins with its first note.
 List<double> findOnsets(
   WavAudio audio, {
   int window = 512,
   int hop = 64,
   double sensitivity = 1.6,
+  double closest = _closest,
+  int grain = _grain,
   int targetRate = 11025,
 }) {
   final full = _mono(audio);
   final step = math.max(1, audio.sampleRate ~/ targetRate);
-  final samples = _smallerBy(full, step);
+  final heard = _smallerBy(full, step);
   final rate = audio.sampleRate ~/ step;
-  if (samples.length < window * 2) return const [];
+  if (heard.length < window * 2) return const [];
+
+  // A window of silence on the front, so a note that begins at sample
+  // zero has something to have begun against. Taken off the times below.
+  final lead = window;
+  final samples = Float32List(lead + heard.length)
+    ..setRange(lead, lead + heard.length, heard);
+  final leadSeconds = lead / rate;
 
   // The rise in energy at each step down the recording.
   final frames = (samples.length - window) ~/ hop;
@@ -78,7 +92,7 @@ List<double> findOnsets(
   // A tenth of a second either way, which is long enough to sit out a
   // fill and short enough to follow a change of dynamic.
   final span = math.max(3, (0.1 * rate / hop).round());
-  final gap = math.max(1, (_closest * rate / hop).round());
+  final gap = math.max(1, (closest * rate / hop).round());
   final onsets = <double>[];
   var last = -gap * 2;
   for (var frame = 1; frame < frames - 1; frame++) {
@@ -96,8 +110,19 @@ List<double> findOnsets(
     final right = flux[frame + 1];
     final bend = 2 * here - left - right;
     final nudge = bend == 0 ? 0.0 : (left - right) / (2 * bend);
-    final about = _timeOf(frame + nudge.clamp(-0.5, 0.5), hop, window, rate);
-    onsets.add(_attackNear(full, audio.sampleRate, about));
+    final about =
+        _timeOf(frame + nudge.clamp(-0.5, 0.5), hop, window, rate) -
+        leadSeconds;
+    onsets.add(
+      _attackNear(
+        full,
+        audio.sampleRate,
+        math.max(0.0, about),
+        // Never back past where the hit before was allowed to be.
+        math.min(window / rate, closest * 0.9),
+        grain,
+      ),
+    );
     last = frame;
   }
   return onsets;
@@ -114,14 +139,32 @@ List<double> findOnsets(
 double _timeOf(double frame, int hop, int window, int rate) =>
     (frame * hop + window / 2) / rate;
 
-/// How much of the recording either side of a rough onset is searched for
-/// the real attack: twenty milliseconds, which is several steps of the
-/// coarse pass and far less than the gap between two hits.
-const _searchSeconds = 0.02;
+/// How far forward of a rough onset the real attack is looked for.
+///
+/// The coarse pass is never early by much: a rise cannot be reported
+/// before it has happened. So this stays small.
+const _searchForward = 0.02;
+
+/// How far back the real attack is looked for, at most.
+///
+/// The coarse pass can be late by as much as its own window, because a
+/// note beginning while the one before it is still dying away only
+/// dominates the window once it is well under way. A kit is safe with
+/// less, and gets less: looking back further than hits are allowed to be
+/// apart would find the hit before.
 
 /// How finely the attack is found, in samples. At 44.1 kHz this is about
 /// a third of a millisecond, which is well under anything a person could
 /// play or hear.
+///
+/// Right for a kit, where a hit is a broadband thump and the energy in
+/// any short stretch rises with it. Wrong for a held note: sixteen
+/// samples is a fraction of one cycle of a middle G, so the energy in a
+/// block follows the waveform up and down rather than the note's
+/// envelope, and the steepest rise lands somewhere inside the first cycle
+/// or two rather than at the attack. A line asks for a longer block:
+/// three milliseconds averages over several cycles and is still far finer
+/// than anything that matters musically.
 const _grain = 16;
 
 /// Where the hit at about [about] really begins, from the full rate audio.
@@ -135,17 +178,25 @@ const _grain = 16;
 ///
 /// So the moment itself is taken from the original samples: the loudest
 /// rise in energy in the neighbourhood, at the grain above.
-double _attackNear(Float32List mono, int rate, double about) {
-  final blocks = mono.length ~/ _grain;
-  final reach = (_searchSeconds * rate).round() ~/ _grain;
-  final middle = (about * rate).round() ~/ _grain;
-  final from = math.max(1, middle - reach);
-  final to = math.min(blocks, middle + reach + 1);
+double _attackNear(
+  Float32List mono,
+  int rate,
+  double about,
+  double back,
+  int grain,
+) {
+  final blocks = mono.length ~/ grain;
+  final middle = (about * rate).round() ~/ grain;
+  final from = math.max(1, middle - (back * rate).round() ~/ grain);
+  final to = math.min(
+    blocks,
+    middle + ((_searchForward * rate).round() ~/ grain) + 1,
+  );
   if (to - from < 2) return about;
 
   double energyAt(int block) {
     var total = 0.0;
-    for (var i = block * _grain; i < (block + 1) * _grain; i++) {
+    for (var i = block * grain; i < (block + 1) * grain; i++) {
       total += mono[i] * mono[i];
     }
     return total;
@@ -163,7 +214,7 @@ double _attackNear(Float32List mono, int rate, double about) {
     before = here;
   }
   // The attack starts at the top of the block that rose, not at its end.
-  return best < 0 ? about : best * _grain / rate;
+  return best < 0 ? about : best * grain / rate;
 }
 
 /// The average of [flux] within [span] frames of [at], which is what the

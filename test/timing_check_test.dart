@@ -76,14 +76,13 @@ void main() {
       expect(check.impliedBpm, closeTo(120, 0.05));
     });
 
-    test('every beat was found but the one at the very start', () {
-      // A rise is measured against what came before it, and before the
-      // first sample there is nothing. The template puts bar 1 beat 1 at
-      // sample zero, so that beat is routinely missing and sixty-three
-      // others are not, which is plenty to fit a line to.
+    test('every beat was found, including the one at sample zero', () {
+      // The template puts bar 1 beat 1 at the very first sample, where
+      // there is nothing before it for a rise to be measured against.
+      // A window of silence is put on the front for exactly this.
       expect(check.beatsExpected, 64);
-      expect(check.beatsMatched, 63);
-      expect(check.coverage, closeTo(0.98, 0.01));
+      expect(check.beatsMatched, 64);
+      expect(check.coverage, 1);
     });
   });
 
@@ -239,8 +238,8 @@ void main() {
         played(exactly(120), on: (beat) => beat.isEven),
         take: take(),
       );
-      expect(check.beatsMatched, 31, reason: 'the one at sample zero aside');
-      expect(check.coverage, closeTo(0.48, 0.02));
+      expect(check.beatsMatched, 32);
+      expect(check.coverage, closeTo(0.5, 0.01));
       expect(check.verdict, TimingVerdict.locked);
     });
 
@@ -304,7 +303,7 @@ void main() {
       final it = take();
       final check = await Isolate.run(() => checkTiming(audio, take: it));
       expect(check.verdict, TimingVerdict.locked);
-      expect(check.beatsMatched, 63);
+      expect(check.beatsMatched, 64);
     });
   });
 

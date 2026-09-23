@@ -122,6 +122,16 @@ void main() {
       expect(findOnsets(hitsAt(everyHalfSecond, channels: 2)), hasLength(16));
     });
 
+    test('a hit at the very first sample is found like any other', () {
+      // There is nothing before sample zero for a rise to be measured
+      // against, so a window of silence is put on the front. The template
+      // puts bar 1 beat 1 exactly there, and a lick usually begins with
+      // its first note, so this is the common case and not a corner.
+      final found = findOnsets(hitsAt(const [0, 0.5, 1.0], seconds: 3));
+      expect(found, hasLength(3));
+      expect(found.first, closeTo(0, 0.005));
+    });
+
     test('silence has nothing in it', () {
       expect(findOnsets(hitsAt(const [])), isEmpty);
     });
