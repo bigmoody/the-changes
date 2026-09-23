@@ -588,9 +588,10 @@ class _TheBand extends StatelessWidget {
             child: Text(
               '${strikeCount(style.figure!)} '
               '${strikeCount(style.figure!) == 1 ? 'chord' : 'chords'}, '
-              '${whereItLands(style.figure!, 0.5)}, in every bar. A comper '
-              'would not: put it back to As it comes for a band that '
-              'chooses bar by bar. Learn has what each one is for.',
+              '${whereItLands(style.figure!, 0.5)}, in every bar, with any '
+              'change it misses caught on its own beat. A comper would '
+              'not: put it back to As it comes for a band that chooses bar '
+              'by bar. Learn has what each one is for.',
               key: const ValueKey('about-band-figure'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,

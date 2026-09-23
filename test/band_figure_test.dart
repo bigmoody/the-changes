@@ -53,6 +53,16 @@ List<List<double>> barsOf(
   ];
 }
 
+/// What chord was sounding before [slot], as the comper sees it.
+String? _before(Tune tune, ChordSlot slot) {
+  String? last;
+  for (final one in tune.slots) {
+    if (one.startBeat >= slot.startBeat) break;
+    last = one.chord.display;
+  }
+  return last;
+}
+
 void main() {
   group('asking for one figure', () {
     test('every bar is that figure, and no other', () {
@@ -159,14 +169,61 @@ void main() {
       }
     });
 
-    test('a chord no strike lands on is not played, and that is the point', () {
-      // The Charleston is two chords at the front of the bar. On a bar of
-      // two chords it catches the first and leaves the second alone.
+    test('a change the figure misses is caught on its own beat', () {
+      // The Charleston is two chords at the front of the bar, so on a bar
+      // of two chords it has nothing left for the second one. Leaving it
+      // out loses the change, and a chorus of rhythm changes with every
+      // other chord missing stops being the tune.
       final bars = halfBars(CompFigure.charleston);
       for (var i = 2; i < bars.length; i += 2) {
         expect(bars[i], hasLength(2), reason: 'both strikes are up front');
-        expect(bars[i + 1], isEmpty, reason: 'nothing left for the second');
+        expect(bars[i + 1], hasLength(1), reason: 'the change is caught');
+        expect(bars[i + 1][0], closeTo(0, 0.001), reason: 'on its own beat');
       }
+    });
+
+    test('and it is struck a little lighter than the figure itself', () {
+      // A change being caught, not an accent being chosen.
+      final comper = Comper(math.Random(3));
+      comper.comp(
+        dm7,
+        2,
+        Feel.swing,
+        figure: CompFigure.charleston,
+        swing: 0.66,
+      );
+      final caught = comper.comp(
+        g7,
+        2,
+        Feel.swing,
+        beatInBar: 2,
+        figure: CompFigure.charleston,
+        swing: 0.66,
+      );
+      final chosen = Comper(math.Random(3))
+          .comp(dm7, 4, Feel.swing, figure: CompFigure.charleston, swing: 0.66);
+      expect(caught.single.velocity, lessThan(chosen.first.velocity));
+    });
+
+    test('a chord that is only the one before carrying on is left alone', () {
+      // Nothing to catch: the harmony is already sounding.
+      final comper = Comper(math.Random(3));
+      comper.comp(
+        dm7,
+        2,
+        Feel.swing,
+        figure: CompFigure.charleston,
+        swing: 0.66,
+      );
+      final same = comper.comp(
+        dm7, // the same chord, in the second half of the bar
+        2,
+        Feel.swing,
+        beatInBar: 2,
+        figure: CompFigure.charleston,
+        swing: 0.66,
+      );
+      expect(same, isEmpty);
     });
 
     test('a figure that fills the bar reaches both chords', () {
@@ -211,7 +268,13 @@ void main() {
         figure: CompFigure.pushed,
         swing: 0.66,
       );
-      expect(middle, isEmpty);
+      expect(
+        middle.every((hit) => hit.beat >= 0),
+        isTrue,
+        reason: 'no strike before a chord that is already sounding',
+      );
+      // It is still caught on its own beat, as any missed change is.
+      expect(middle.single.beat, closeTo(0, 0.001));
     });
   });
 
@@ -255,6 +318,31 @@ void main() {
         isTrue,
         reason: 'Twice a Bar and nothing else, but found $where',
       );
+    });
+
+    test('no chord of the tune goes unheard, whatever the figure', () {
+      // The figure decides the rhythm; it does not get to delete the
+      // changes. Every slot sounds at least once, every time round.
+      for (final figure in CompFigure.values) {
+        final comper = Comper(math.Random(3));
+        final silent = <String>[];
+        for (final slot in rhythm.slots) {
+          final hits = comper.comp(
+            slot.chord,
+            slot.beats,
+            Feel.swing,
+            beatInBar: (slot.startBeat % rhythm.beatsPerBar).toDouble(),
+            beatsPerBar: rhythm.beatsPerBar,
+            figure: figure,
+            swing: 0.66,
+          );
+          // A slot repeating the chord before it has nothing to catch.
+          if (hits.isEmpty && slot.chord.display != _before(rhythm, slot)) {
+            silent.add('bar ${slot.startBeat ~/ rhythm.beatsPerBar + 1}');
+          }
+        }
+        expect(silent, isEmpty, reason: '${figure.label} lost $silent');
+      }
     });
 
     test('and two figures do not sound the same, which was the bug', () {

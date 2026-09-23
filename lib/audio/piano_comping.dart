@@ -190,6 +190,7 @@ class Comper {
         beats: beats,
         beatInBar: beatInBar,
         beatsPerBar: beatsPerBar,
+        isNew: isNew,
       );
     }
 
@@ -256,6 +257,16 @@ class Comper {
   ///
   /// A chord lasting more than a bar gets the figure again in each bar it
   /// covers, rather than once at the front and silence after.
+  ///
+  /// A change that no strike lands on is played on its own beat anyway.
+  /// The Charleston is two chords at the front of the bar, so on a bar of
+  /// two chords it has nothing left for the second one, and a chorus of
+  /// rhythm changes with every other chord missing stops being the tune.
+  /// It is struck a little lighter than the figure's own chords, because
+  /// it is a change being caught rather than an accent being chosen,
+  /// which is what a comper does when a figure and the changes disagree.
+  /// A chord that is only the one before it carrying on is left alone:
+  /// there is nothing to catch.
   _Pattern _figureAcross(
     CompFigure figure,
     double and, {
@@ -263,6 +274,7 @@ class Comper {
     required int beats,
     required double beatInBar,
     required int beatsPerBar,
+    required bool isNew,
   }) {
     final strikes = strikesAt(figure, and, canPush: canPush);
     final end = beatInBar + beats;
@@ -285,6 +297,10 @@ class Comper {
           weight,
         ));
       }
+    }
+    if (out.isEmpty && isNew && strikes.isNotEmpty) {
+      final (_, length, weight) = strikes.first;
+      out.add((0, math.min(length, beats - 0.05), weight * 0.9));
     }
     return out;
   }
