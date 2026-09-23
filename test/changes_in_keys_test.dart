@@ -84,12 +84,69 @@ void main() {
       await open(tester);
       await tester.tap(find.byKey(const ValueKey('changes-pick')));
       await tester.pumpAndSettle();
-      for (final one in lickContexts) {
+      for (final one in changesToRun) {
         expect(find.text(one.title), findsWidgets, reason: one.title);
       }
       await tester.tap(find.text('Minor ii V i').last);
       await tester.pumpAndSettle();
       expect(textOf(const ValueKey('round-bar-0')), contains('m7♭5'));
+    });
+  });
+
+  group('the whole forms are there too', () {
+    testWidgets('a blues, all twelve bars of it, starting in F', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('changes-pick')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Blues').last);
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('round-key')), 'Key of F');
+      expect(textOf(const ValueKey('round-bar-0')), 'F7');
+      expect(find.byKey(const ValueKey('round-bar-11')), findsOneWidget);
+      expect(find.byKey(const ValueKey('round-bar-12')), findsNothing);
+    });
+
+    testWidgets('and rhythm changes, starting in B flat', (tester) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('changes-pick')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Rhythm changes').last);
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('round-key')), contains('B'));
+      expect(textOf(const ValueKey('round-bar-0')), contains('B♭'));
+      expect(
+        find.byKey(const ValueKey('round-bar-31')),
+        findsOneWidget,
+        reason: 'thirty-two bars, written out as they are played',
+      );
+    });
+
+    testWidgets('a whole form moves round the keys like anything else', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('changes-pick')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Blues').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('round-key')), contains('B'));
+      expect(textOf(const ValueKey('round-bar-0')), contains('B♭7'));
+    });
+
+    testWidgets('but they are not offered for saving a lick over', (
+      tester,
+    ) async {
+      // Thirty-two bars is the best part of a minute to wait for the two
+      // you wanted to keep.
+      expect(
+        lickContexts.map((one) => one.title),
+        isNot(contains('Rhythm changes')),
+      );
+      expect(changesToRun.length, lickContexts.length + 2);
     });
   });
 
@@ -103,6 +160,20 @@ void main() {
       expect(textOf(const ValueKey('round-key')), 'Key of F');
       expect(textOf(const ValueKey('round-bar-0')), 'Gm7');
       expect(textOf(const ValueKey('round-bar-1')), 'C7');
+    });
+
+    testWidgets('a key is spelled, not named both ways', (tester) async {
+      // A key is B flat or A sharp depending on where it came from.
+      // Naming both on a heading and on twelve chips helps nobody.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.pumpAndSettle();
+      expect(textOf(const ValueKey('round-key')), 'Key of B♭');
+      final chip = tester.widget<ChoiceChip>(
+        find.byKey(const ValueKey('round-key-10')),
+      );
+      expect((chip.label as Text).data, 'B♭');
     });
 
     testWidgets('a key can be jumped to', (tester) async {

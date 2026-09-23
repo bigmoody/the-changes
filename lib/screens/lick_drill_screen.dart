@@ -82,10 +82,14 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
   List<MidiNote> get _written =>
       lick.notesUp(move + widget.settings.instrument.semitones);
 
-  /// The key the line is written in, which for a B flat instrument is not
-  /// the key the band is playing in.
+  /// The key the line is written in, which for a B flat instrument is
+  /// not the key the band is playing in.
   int get _writtenKey =>
       (lick.key + move + widget.settings.instrument.semitones) % 12;
+
+  /// What that key is called, spelled as the changes are spelled.
+  String _keyName(int by) =>
+      lick.over.toTune().keyLabelBy(by + widget.settings.instrument.semitones);
 
   LickFollower _followerFor(int index) =>
       LickFollower(lick.notesUp(_moves[index]));
@@ -197,7 +201,7 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 children: [
                   _Heading(
-                    writtenKey: _writtenKey,
+                    keyName: _keyName(move),
                     at: _at,
                     of: _moves.length,
                     done: _done.length,
@@ -228,7 +232,7 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
                   const SizedBox(height: 14),
                   KeyChips(
                     moves: _moves,
-                    from: lick.key,
+                    label: _keyName,
                     at: _at,
                     done: _done,
                     onPick: _goTo,
@@ -248,13 +252,13 @@ class _LickDrillScreenState extends State<LickDrillScreen> {
 /// Which key this is, and how far round the twelve.
 class _Heading extends StatelessWidget {
   const _Heading({
-    required this.writtenKey,
+    required this.keyName,
     required this.at,
     required this.of,
     required this.done,
   });
 
-  final int writtenKey;
+  final String keyName;
   final int at;
   final int of;
   final int done;
@@ -267,7 +271,7 @@ class _Heading extends StatelessWidget {
       children: [
         Expanded(
           child: Text(
-            'Key of ${pitchClassName(writtenKey)}',
+            'Key of $keyName',
             key: const ValueKey('drill-key'),
             style: theme.textTheme.titleLarge,
           ),

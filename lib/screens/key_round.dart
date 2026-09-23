@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 
 import '../music/lick.dart';
-import '../music/tuning.dart';
 
 /// The twelve keys, in the order they are coming, with the ones already
 /// played marked.
@@ -16,7 +15,7 @@ class KeyChips extends StatelessWidget {
   const KeyChips({
     super.key,
     required this.moves,
-    required this.from,
+    required this.label,
     required this.at,
     required this.done,
     required this.onPick,
@@ -25,8 +24,10 @@ class KeyChips extends StatelessWidget {
   /// How far each key is from [from], in the order they come.
   final List<int> moves;
 
-  /// The key the round starts in, as a pitch class.
-  final int from;
+  /// What to call the key [move] semitones along. Spelled rather than
+  /// named by pitch class: a key is B flat or A sharp depending on where
+  /// it came from, and "A♯/B♭" on a chip helps nobody.
+  final String Function(int move) label;
 
   /// Which of [moves] is the one now.
   final int at;
@@ -46,7 +47,7 @@ class KeyChips extends StatelessWidget {
         for (final (i, move) in moves.indexed)
           ChoiceChip(
             key: ValueKey('round-key-$move'),
-            label: Text(pitchClassName((from + move) % 12)),
+            label: Text(label(move)),
             selected: i == at,
             avatar: done.contains(move)
                 ? Icon(Icons.check, size: 16, color: scheme.tertiary)

@@ -19,7 +19,6 @@ import '../audio/practice_player.dart';
 import '../music/lick.dart';
 import '../music/lick_contexts.dart';
 import '../music/tune.dart';
-import '../music/tuning.dart';
 import '../music/user_progression.dart';
 import '../practice/practice_controller.dart';
 import '../settings/app_settings.dart';
@@ -42,7 +41,7 @@ class ChangesInKeysScreen extends StatefulWidget {
 }
 
 class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
-  late UserProgression _over = lickContexts.first;
+  late UserProgression _over = changesToRun.first;
   late PracticeController _controller = _controllerFor(_over);
 
   var _order = KeyOrder.fourths;
@@ -57,12 +56,10 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
 
   int get move => _moves[_at];
 
-  /// The key the changes are written in, as the player reads them.
-  int get _writtenKey =>
-      (_over.toTune().keyPitchClass +
-          move +
-          widget.settings.instrument.semitones) %
-      12;
+  /// What the key is called [by] semitones along, spelled as the app
+  /// spells it everywhere else and as the player reads it.
+  String _keyName(int by) =>
+      _over.toTune().keyLabelBy(by + widget.settings.instrument.semitones);
 
   PracticeController _controllerFor(UserProgression over) => PracticeController(
     tune: over.toTune(),
@@ -176,11 +173,11 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
                       isDense: true,
                     ),
                     items: [
-                      for (final one in lickContexts)
+                      for (final one in changesToRun)
                         DropdownMenuItem(value: one.id, child: Text(one.title)),
                     ],
                     onChanged: (id) => _setContext(
-                      lickContexts.firstWhere((one) => one.id == id),
+                      changesToRun.firstWhere((one) => one.id == id),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -189,7 +186,7 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          'Key of ${pitchClassName(_writtenKey)}',
+                          'Key of ${_keyName(move)}',
                           key: const ValueKey('round-key'),
                           style: theme.textTheme.titleLarge,
                         ),
@@ -260,9 +257,7 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
                   const SizedBox(height: 16),
                   KeyChips(
                     moves: _moves,
-                    from:
-                        _over.toTune().keyPitchClass +
-                        widget.settings.instrument.semitones,
+                    label: _keyName,
                     at: _at,
                     done: _done,
                     onPick: _goTo,

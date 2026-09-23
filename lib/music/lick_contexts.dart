@@ -11,6 +11,7 @@
 // in is not worth preserving: what matters is the shape.
 
 import 'tune.dart';
+import 'tune_library.dart';
 import 'user_progression.dart';
 
 /// One of the ready-made contexts, as a progression.
@@ -67,3 +68,36 @@ List<UserProgression> get lickContexts => [
     bars: const ['C7', 'F7', 'C7', 'C7'],
   ),
 ];
+
+/// The changes offered for running round the twelve keys.
+///
+/// Everything a lick can be saved over, and then the two whole forms:
+/// the blues and rhythm changes. Those are not in [lickContexts] because
+/// they are the wrong size for catching a lick. A chorus of rhythm
+/// changes is thirty-two bars, which is the best part of a minute to
+/// wait for the two bars you wanted to keep.
+///
+/// Taken from the app's own charts rather than written out again here,
+/// so there is one blues in the app and not two of them drifting apart.
+/// They arrive in the key they are written in, so the round starts in F
+/// for the blues and B flat for rhythm changes, which is where anybody
+/// would start them.
+List<UserProgression> get changesToRun => [
+  ...lickContexts,
+  _wholeForm('Jazz blues in F', id: 'ctx-blues-12', called: 'Blues'),
+  _wholeForm(
+    'Rhythm changes in B♭',
+    id: 'ctx-rhythm',
+    called: 'Rhythm changes',
+  ),
+];
+
+/// One of the app's own charts, as a progression to run round the keys.
+UserProgression _wholeForm(
+  String title, {
+  required String id,
+  required String called,
+}) => UserProgression.fromTune(
+  practiceProgressions.firstWhere((tune) => tune.title == title),
+  id: id,
+)..title = called;
