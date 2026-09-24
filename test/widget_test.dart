@@ -262,6 +262,14 @@ void main() {
         .single;
 
     Future<void> openQuiz() async {
+      // The Learn list is lazy and keeps growing, so the card has to be
+      // scrolled to before it exists to tap.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('learn-quiz')),
+        120,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('learn-quiz')));
       await tester.pumpAndSettle();
     }

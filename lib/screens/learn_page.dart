@@ -14,6 +14,7 @@ import 'chord_reference_screen.dart';
 import 'chord_tones_reference_screen.dart';
 import 'changes_in_keys_screen.dart';
 import 'chord_tones_screen.dart';
+import 'ear_training_screen.dart';
 import 'scale_patterns_screen.dart';
 import 'licks_screen.dart';
 import 'guitar_chords_screen.dart';
@@ -68,6 +69,16 @@ class LearnPage extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           const SectionHeader('Practise'),
+          _LearnCard(
+            key: const ValueKey('learn-ear'),
+            icon: Icons.hearing,
+            title: 'Name What You Hear',
+            subtitle:
+                'The app plays a chord or a cadence in a key at random '
+                'and you say what it was, with why it sounds like that',
+            onTap: () =>
+                open(EarTrainingScreen(player: player, settings: settings)),
+          ),
           _LearnCard(
             key: const ValueKey('learn-scale-patterns'),
             icon: Icons.stairs_outlined,

@@ -9,10 +9,13 @@
 // Everything sounds at concert pitch: a trumpet player's written D7 comes out
 // as a concert C7, the same as the band would play under them.
 
+import 'dart:math' as math;
+
 import '../music/chord.dart';
 import '../music/chord_drill.dart';
 import '../music/fretboard_arpeggio.dart';
 import 'backing_synth.dart';
+import 'piano_comping.dart';
 
 /// The notes for hearing [question]. [concertShift] is how far concert pitch
 /// is from what's written (−2 for a B♭ instrument).
@@ -119,6 +122,55 @@ List<SnippetNote> chordArpeggioSnippet(Chord chord) {
 /// A mode (its [semitones] above [root], at concert pitch) as the Scales &
 /// modes page plays it: just the scale, up an octave and back down, the
 /// last note left to ring.
+/// A few chords in time, each voiced with a root under it: what the ear
+/// training plays.
+///
+/// Voiced by the band's own comper, so what is heard is what the band
+/// would play rather than a stack of thirds nobody uses. It hands each
+/// chord the next one, which is what makes the top voice move by step
+/// instead of jumping: a ii-V-I has to sound like a ii-V-I and not like
+/// three chords that happen to be next to each other.
+///
+/// The last chord rings on, because a progression that stops dead sounds
+/// like a mistake and the ear spends its time on that instead of on the
+/// harmony.
+List<SnippetNote> progressionSnippet(
+  List<Chord> chords, {
+  int tempo = 100,
+  double beatsEach = 2,
+  int seed = 1,
+}) {
+  if (chords.isEmpty || tempo <= 0) return const [];
+  final comper = Comper(math.Random(seed));
+  final step = beatsEach * 60 / tempo;
+  final notes = <SnippetNote>[];
+  for (final (i, chord) in chords.indexed) {
+    final last = i == chords.length - 1;
+    final voicing = comper.voice(chord, last ? null : chords[i + 1]);
+    final length = last ? step + 1.4 : step * 0.98;
+    for (final pitch in voicing) {
+      notes.add((
+        pitch: pitch,
+        start: i * step,
+        length: length,
+        velocity: 0.7,
+        bass: false,
+      ));
+    }
+    // The root underneath, so the movement is audible in the bass as
+    // well as in the voicing. Half of hearing a tritone sub is hearing
+    // the bass slide down by one.
+    notes.add((
+      pitch: 36 + chord.root % 12,
+      start: i * step,
+      length: length,
+      velocity: 0.8,
+      bass: true,
+    ));
+  }
+  return notes;
+}
+
 /// A run of [pitches], evenly spaced, as a snippet.
 ///
 /// For a scale played in a shape rather than straight up, where the line

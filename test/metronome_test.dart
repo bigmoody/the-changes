@@ -227,6 +227,13 @@ void main() {
         home: LearnPage(player: PracticePlayer(), settings: settings),
       ),
     );
+    // The Learn list is lazy and keeps growing: scroll to the card
+    // rather than assuming it is on screen.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('learn-metronome')),
+      120,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('learn-metronome')));
     await tester.pumpAndSettle();
     expect(find.byType(MetronomeScreen), findsOneWidget);
