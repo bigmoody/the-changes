@@ -119,6 +119,23 @@ List<SnippetNote> chordArpeggioSnippet(Chord chord) {
 /// A mode (its [semitones] above [root], at concert pitch) as the Scales &
 /// modes page plays it: just the scale, up an octave and back down, the
 /// last note left to ring.
+/// A run of [pitches], evenly spaced, as a snippet.
+///
+/// For a scale played in a shape rather than straight up, where the line
+/// is worked out elsewhere and this only has to sound it. The last note
+/// is held, because a pattern that stops dead sounds like a mistake
+/// rather than an ending.
+List<SnippetNote> runSnippet(List<int> pitches, {double step = 0.2}) => [
+  for (final (i, pitch) in pitches.indexed)
+    (
+      pitch: pitch,
+      start: i * step,
+      length: i == pitches.length - 1 ? 1.2 : step * 1.5,
+      velocity: 0.75,
+      bass: false,
+    ),
+];
+
 List<SnippetNote> modeSnippet(List<int> semitones, int root) {
   // The root between C4 and B4, so the line sits around middle C.
   final tonic = 60 + root % 12;

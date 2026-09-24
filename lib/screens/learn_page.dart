@@ -14,6 +14,7 @@ import 'chord_reference_screen.dart';
 import 'chord_tones_reference_screen.dart';
 import 'changes_in_keys_screen.dart';
 import 'chord_tones_screen.dart';
+import 'scale_patterns_screen.dart';
 import 'licks_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'enclosures_screen.dart';
@@ -67,6 +68,16 @@ class LearnPage extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           const SectionHeader('Practise'),
+          _LearnCard(
+            key: const ValueKey('learn-scale-patterns'),
+            icon: Icons.stairs_outlined,
+            title: 'Scale Patterns',
+            subtitle:
+                'A scale in 3rds, 4ths, triads or fours, round all twelve '
+                'keys: what lines are made of, rather than up and down',
+            onTap: () =>
+                open(ScalePatternsScreen(player: player, settings: settings)),
+          ),
           _LearnCard(
             key: const ValueKey('learn-changes-in-keys'),
             icon: Icons.all_inclusive,
