@@ -20,9 +20,13 @@ on:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # Pinned for the same reason the Flutter version is: ubuntu-latest
+    # moves to a new image on its own, and a runner changing underneath
+    # us is how a green check turns red on a morning nobody touched
+    # anything. Moving it is a decision to make on purpose.
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
@@ -53,10 +57,10 @@ jobs:
   # of nothing. On a pull request it would only slow the useful checks
   # down, and it will run on the merge anyway.
   sweep:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:
