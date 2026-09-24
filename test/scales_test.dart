@@ -194,7 +194,8 @@ void main() {
     expect(find.byType(ScalesReferenceScreen), findsOneWidget);
 
     // In D, the major modes: D Dorian is the white keys, over Dm7.
-    await tester.tap(find.byKey(const ValueKey('root-D')));
+    // The keys are a round now, so D is two semitones along from C.
+    await tester.tap(find.byKey(const ValueKey('round-key-2')));
     await tester.tap(find.byKey(const ValueKey('family-major')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -239,5 +240,87 @@ void main() {
     expect(find.text('D Whole tone'), findsOneWidget);
     expect(find.text('D Dorian'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  group('the twelve keys round', () {
+    Future<void> open(WidgetTester tester) async {
+      tester.view
+        ..physicalSize = const Size(393, 1400) * 3
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(Brightness.light, fontFamily: 'Roboto'),
+          home: ScalesReferenceScreen(
+            player: PracticePlayer(),
+            settings: AppSettings.inMemory(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('all twelve keys are there, chromatic to begin with', (
+      tester,
+    ) async {
+      // Chromatic here and not the cycle, because this is somewhere you
+      // look a key up as well as somewhere you work.
+      await open(tester);
+      for (var move = 0; move < 12; move++) {
+        expect(find.byKey(ValueKey('round-key-$move')), findsOneWidget);
+      }
+      expect(find.text('C'), findsWidgets);
+      expect(find.text('D♭'), findsWidgets);
+    });
+
+    testWidgets('next key steps up a semitone and the modes follow', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('family-major')));
+      await tester.pumpAndSettle();
+      expect(find.text('C Ionian'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.pumpAndSettle();
+      expect(find.text('D♭ Ionian'), findsOneWidget);
+    });
+
+    testWidgets('back from the first key wraps to the last', (tester) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('family-major')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('previous-key')));
+      await tester.pumpAndSettle();
+      expect(find.text('B Ionian'), findsOneWidget);
+    });
+
+    testWidgets('the order can be changed to the cycle', (tester) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('key-order')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Round the cycle').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('family-major')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('F Ionian'),
+        findsOneWidget,
+        reason: 'a fourth up, not a semitone',
+      );
+    });
+
+    testWidgets('a key left behind is marked as been through', (tester) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('next-key')));
+      await tester.pumpAndSettle();
+      final chip = tester.widget<ChoiceChip>(
+        find.byKey(const ValueKey('round-key-0')),
+      );
+      expect(chip.avatar, isNotNull);
+    });
   });
 }

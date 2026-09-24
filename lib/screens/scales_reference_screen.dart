@@ -4,12 +4,14 @@ import '../audio/backing_synth.dart';
 import '../audio/drill_sounds.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
+import '../music/lick.dart' show KeyOrder;
 import '../music/scales.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
 import 'chord_diagram.dart';
 import 'chord_tones_reference_screen.dart';
+import 'key_round.dart';
 import 'stave.dart';
 
 /// Every mode, in any key: its notes under their degrees, the chord it goes
@@ -33,7 +35,38 @@ class ScalesReferenceScreen extends StatefulWidget {
 }
 
 class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
-  String _root = 'C';
+  /// The round of keys: which order they come in, where in it we are,
+  /// and which have been through.
+  ///
+  /// Chromatic to begin with, unlike the drills, because this is
+  /// somewhere you come to look something up as well as somewhere you
+  /// work: going up in semitones is how somebody finds the key they
+  /// wanted. The cycle is a menu away when it is a round you want.
+  var _order = KeyOrder.chromatic;
+  late List<int> _moves = _order.moves();
+  var _at = 0;
+  final _done = <int>{};
+
+  /// The key showing, spelled as the reference has always spelled them.
+  String get _root => ChordTonesReferenceScreen.roots[_moves[_at] % 12];
+
+  String _keyName(int by) => ChordTonesReferenceScreen.roots[by % 12];
+
+  void _goTo(int index) {
+    setState(() {
+      _done.add(_moves[_at]);
+      _at = index % _moves.length;
+    });
+  }
+
+  void _setOrder(KeyOrder order) {
+    setState(() {
+      _order = order;
+      _moves = order.moves(seed: DateTime.now().millisecond);
+      _at = 0;
+      _done.clear();
+    });
+  }
 
   /// The family shown, or null for every mode.
   ScaleFamily? _family;
@@ -129,7 +162,10 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Scales & Modes')),
+      appBar: AppBar(
+        title: const Text('Scales & Modes'),
+        actions: [KeyOrderButton(order: _order, onPick: _setOrder)],
+      ),
       body: Column(
         children: [
           Padding(
@@ -157,12 +193,15 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
               if (_list.hasClients) _list.jumpTo(0);
             },
           ),
-          chips<String>(
-            ChordTonesReferenceScreen.roots,
-            (root) => root,
-            (root) => 'root-$root',
-            (root) => root == _root,
-            (root) => setState(() => _root = root),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: KeyChips(
+              moves: _moves,
+              label: _keyName,
+              at: _at,
+              done: _done,
+              onPick: _goTo,
+            ),
           ),
           Expanded(
             child: ListView.builder(
@@ -183,6 +222,7 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
               },
             ),
           ),
+          KeyStep(onBack: () => _goTo(_at - 1), onNext: () => _goTo(_at + 1)),
         ],
       ),
     );
