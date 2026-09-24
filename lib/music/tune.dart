@@ -217,12 +217,8 @@ class BandStyle {
   /// Learn screen can only offer it over two bars of a ii-V.
   final CompFigure? figure;
 
-  BandStyle withFigure(CompFigure? figure) => BandStyle(
-    drums: drums,
-    bass: bass,
-    piano: piano,
-    figure: figure,
-  );
+  BandStyle withFigure(CompFigure? figure) =>
+      BandStyle(drums: drums, bass: bass, piano: piano, figure: figure);
 
   @override
   bool operator ==(Object other) =>
