@@ -140,6 +140,42 @@ void main() {
       }
     });
 
+    testWidgets('the chords shown are spelled, not typed', (tester) async {
+      // C^7 and Dh7 are how they are written down in the source, not how
+      // anybody reads them.
+      await open(tester);
+      await answer(tester, choicesOn(tester).first);
+      for (final name in choicesOn(tester)) {
+        final tile = tester.widget<ListTile>(
+          find.byKey(ValueKey('ear-choice-$name')),
+        );
+        final shown = (tile.subtitle! as Text).data!;
+        expect(shown, isNot(contains('^')), reason: name);
+        expect(shown, isNot(contains('h7')), reason: name);
+        expect(shown, isNot(contains('b9')), reason: name);
+      }
+    });
+
+    testWidgets('right and wrong are told apart by a mark, not a colour', (
+      tester,
+    ) async {
+      // The app's accent is a red pencil mark and the error colour is
+      // red too, so the two states looked the same. A tick and a cross
+      // say which is which whatever the palette does.
+      await open(tester);
+      for (var go = 0; go < 12; go++) {
+        await answer(tester, choicesOn(tester).first);
+        final wrong = textOf(const ValueKey('ear-verdict'))
+            .startsWith('It was ');
+        expect(find.byIcon(Icons.check), findsOneWidget);
+        expect(find.byIcon(Icons.close), wrong ? findsOneWidget : findsNothing);
+        if (wrong) return;
+        await tester.tap(find.byKey(const ValueKey('ear-next')));
+        await tester.pumpAndSettle();
+      }
+      fail('never got one wrong in twelve tries');
+    });
+
     testWidgets('answering twice does not score twice', (tester) async {
       await open(tester);
       final names = choicesOn(tester);

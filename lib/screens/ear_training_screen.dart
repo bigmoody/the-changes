@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import '../audio/backing_synth.dart';
 import '../audio/drill_sounds.dart';
 import '../audio/practice_player.dart';
+import '../music/chord.dart';
 import '../music/ear_training.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
@@ -162,6 +163,10 @@ class _EarTrainingScreenState extends State<EarTrainingScreen> {
                 answered: _answered,
                 isAnswer: choice.name == rightOne.name,
                 wasPicked: picked != null && choice.name == picked.name,
+                // What that answer would have been in the key this one
+                // was played in, so the alternatives can be compared
+                // against what was actually heard.
+                chords: inKey(choice, _ask.key),
                 onPick: () => _answer(choice),
                 onHear: () => _play(choice),
               ),
@@ -198,6 +203,7 @@ class _Choice extends StatelessWidget {
     required this.answered,
     required this.isAnswer,
     required this.wasPicked,
+    required this.chords,
     required this.onPick,
     required this.onHear,
   });
@@ -206,6 +212,10 @@ class _Choice extends StatelessWidget {
   final bool answered;
   final bool isAnswer;
   final bool wasPicked;
+
+  /// This answer's chords in the key the question was asked in.
+  final List<Chord> chords;
+
   final VoidCallback onPick;
   final VoidCallback onHear;
 
@@ -213,28 +223,52 @@ class _Choice extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    // Nothing is coloured until an answer is in, or the right one would
-    // be the one that looks different before it has been chosen.
-    final colour = !answered
+    // A tick and a cross rather than two colours. The app's accent is a
+    // red pencil mark and the error colour is red as well, so right and
+    // wrong came out looking the same; a mark says which is which
+    // whatever the palette does, and reads for anybody who cannot tell
+    // the two reds apart in the first place.
+    //
+    // Nothing is marked until an answer is in, or the right one would
+    // stand out before it had been chosen.
+    final mark = !answered
         ? null
         : isAnswer
-        ? scheme.tertiary
+        ? (Icons.check, scheme.tertiary)
         : wasPicked
-        ? scheme.error
+        ? (Icons.close, scheme.onSurfaceVariant)
         : null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Card(
         clipBehavior: Clip.antiAlias,
-        color: colour?.withValues(alpha: 0.10),
+        // Only the right one is tinted, so it is the single coloured
+        // thing on the screen once the answer is in.
+        color: answered && isAnswer
+            ? scheme.tertiary.withValues(alpha: 0.10)
+            : null,
         child: ListTile(
           key: ValueKey('ear-choice-${question.name}'),
+          leading: !answered
+              ? null
+              : SizedBox.square(
+                  dimension: 24,
+                  child: mark == null
+                      ? null
+                      : Icon(mark.$1, color: mark.$2, size: 22),
+                ),
           title: Text(
             question.name,
-            style: theme.textTheme.titleMedium?.copyWith(color: colour),
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: answered && isAnswer ? scheme.tertiary : null,
+            ),
           ),
           subtitle: answered
-              ? Text(handSymbol(question.chords.join('  ')))
+              ? Text(
+                  handSymbol(
+                    [for (final chord in chords) chord.display].join('  '),
+                  ),
+                )
               : null,
           trailing: answered
               ? IconButton(
