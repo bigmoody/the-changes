@@ -5,6 +5,8 @@
 // anybody who plays can say whether that is right.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/chord.dart';
+import 'package:play_along/music/enclosures.dart' show scaleFor;
 import 'package:play_along/music/scale_patterns.dart';
 import 'package:play_along/music/scales.dart';
 
@@ -166,6 +168,29 @@ void main() {
             reason: '${mode.name} in ${pattern.name} left its range',
           );
         }
+      }
+    });
+  });
+
+  group('a pentatonic is a scale to choose, not one to be handed', () {
+    test('a 6 chord still gets the major scale, not the pentatonic', () {
+      // What asks for a scale by chord counts in degrees up to the 7th,
+      // and five notes cannot answer that. Adding the pentatonics broke
+      // this and the number patterns caught it.
+      expect(scaleFor(Chord.parse('C6')), hasLength(7));
+      expect(scaleFor(Chord.parse('C6')).first, 'C');
+      expect(scaleFor(Chord.parse('C7')), hasLength(7));
+      expect(scaleFor(Chord.parse('Cm7')), hasLength(7));
+    });
+
+    test('and every chord anywhere gets seven notes or none', () {
+      for (final symbol in ['C6', 'C', 'Cm', 'Cm6', 'CΔ7', 'G7alt', 'Co7']) {
+        final scale = scaleFor(Chord.parse(symbol));
+        expect(
+          scale.length == 7 || scale.length == 8 || scale.isEmpty,
+          isTrue,
+          reason: '$symbol got ${scale.length} notes',
+        );
       }
     });
   });

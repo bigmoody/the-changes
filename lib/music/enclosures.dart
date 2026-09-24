@@ -159,7 +159,12 @@ List<EnclosureNote> enclosureOn(
 /// empty list when nothing in the book fits the chord.
 List<String> scaleFor(Chord chord) {
   final want = chord.quality.symbols.first;
-  for (final mode in modes) {
+  // Seven notes only. What asks for this counts in scale degrees up to
+  // the 7th, and a pentatonic has five notes, so handing one back turns
+  // every degree past the 5th into the wrong note. The pentatonics are
+  // scales to choose on purpose, not scales to be given by default.
+  final sevens = modes.where((mode) => mode.degrees.length >= 7);
+  for (final mode in sevens) {
     if (mode.chord == want) return mode.notesFrom(chord.rootName);
   }
   // A chord the book has no mode of its own for, but which plainly
@@ -169,7 +174,7 @@ List<String> scaleFor(Chord chord) {
   // quietly became a semitone.
   final same = _sameScaleAs[want];
   if (same != null) {
-    for (final mode in modes) {
+    for (final mode in sevens) {
       if (mode.chord == same) return mode.notesFrom(chord.rootName);
     }
   }
