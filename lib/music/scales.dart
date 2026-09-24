@@ -16,7 +16,8 @@ enum ScaleFamily {
   major('Major', 'major'),
   melodicMinor('Melodic minor', 'melodic minor'),
   harmonicMinor('Harmonic minor', 'harmonic minor'),
-  symmetric('Symmetric', '');
+  symmetric('Symmetric', ''),
+  pentatonic('Pentatonic', '');
 
   const ScaleFamily(this.label, this.parentName);
 
@@ -160,6 +161,7 @@ const _major = ScaleFamily.major;
 const _melodic = ScaleFamily.melodicMinor;
 const _harmonic = ScaleFamily.harmonicMinor;
 const _symmetric = ScaleFamily.symmetric;
+const _pentatonic = ScaleFamily.pentatonic;
 
 const modes = [
   // The major scale.
@@ -447,5 +449,62 @@ const modes = [
     description:
         'Whole step, half step, repeating: over a °7 chord, adding '
         'a note a whole step above each chord tone.',
+  ),
+
+  // The pentatonics, and the blues scale that comes out of one of them.
+  // Five notes rather than seven, and the two notes left out are the
+  // ones that most need handling: the 4th and the 7th of a major scale
+  // are where a beginner lands and wishes they had not. Take them away
+  // and everything left sounds right, which is why these are the first
+  // scales anybody plays and the last ones anybody stops using.
+  Mode(
+    name: 'Major pentatonic',
+    family: _pentatonic,
+    number: 1,
+    degrees: ['1', '2', '3', '5', '6'],
+    // A 6 chord and not a Δ7: the 7th is one of the notes taken out.
+    chord: '6',
+    colour: ['6'],
+    description:
+        'The major scale with the 4th and the 7th taken out, which '
+        'are the two notes that can sound wrong over a major chord. '
+        'What is left cannot. It is a 6 chord with the 9th added.',
+  ),
+  Mode(
+    name: 'Minor pentatonic',
+    family: _pentatonic,
+    number: 5,
+    parentDegree: 'b3',
+    degrees: ['1', 'b3', '4', '5', 'b7'],
+    chord: 'm7',
+    colour: ['b3', 'b7'],
+    description:
+        'The same five notes as the major pentatonic a minor 3rd '
+        'below, started in a different place: A minor pentatonic and '
+        'C major pentatonic are one scale. Over a m7 or a blues.',
+  ),
+  Mode(
+    name: 'Blues scale',
+    family: _pentatonic,
+    number: 1,
+    degrees: ['1', 'b3', '4', 'b5', '5', 'b7'],
+    chord: '7',
+    colour: ['b5'],
+    description:
+        'The minor pentatonic with the ♭5 put back in, and that one '
+        'note is the whole sound. It is a note to pass through on the '
+        'way somewhere, not a note to sit on.',
+  ),
+  Mode(
+    name: 'Dominant pentatonic',
+    family: _pentatonic,
+    number: 1,
+    degrees: ['1', '2', '3', '5', 'b7'],
+    chord: '7',
+    colour: ['b7'],
+    description:
+        'The major pentatonic with the 6th dropped to the ♭7: every '
+        'note of a dominant chord and nothing that fights it. Over a '
+        'V7 that is going somewhere.',
   ),
 ];

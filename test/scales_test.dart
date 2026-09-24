@@ -108,6 +108,11 @@ void main() {
               reason: '$root ${mode.name}: $notes',
             );
           }
+          // The blues scale is the exception, and is the exception on
+          // purpose: it has the ♭3 in it and is played over a dominant
+          // chord with a natural 3rd. That rub is the entire idiom, and
+          // a rule that made it go away would be the wrong rule.
+          if (mode.name == 'Blues scale') continue;
           // The chord it goes with fits inside it (the plain chord, at
           // least: a 7alt's tensions are the scale's own).
           final chordPcs = mode.chordOn(root).withoutExtensions.pitchClasses;
