@@ -14,6 +14,7 @@ import 'chord_reference_screen.dart';
 import 'chord_tones_reference_screen.dart';
 import 'changes_in_keys_screen.dart';
 import 'chord_tones_screen.dart';
+import 'walking_bass_screen.dart';
 import 'ear_training_screen.dart';
 import 'scale_patterns_screen.dart';
 import 'licks_screen.dart';
@@ -69,6 +70,16 @@ class LearnPage extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           const SectionHeader('Practise'),
+          _LearnCard(
+            key: const ValueKey('learn-walking-bass'),
+            icon: Icons.linear_scale,
+            title: 'Walking Bass',
+            subtitle:
+                'How a line gets through a bar and onto the next chord: '
+                'the shapes the band\'s own bassist plays',
+            onTap: () =>
+                open(WalkingBassScreen(player: player, settings: settings)),
+          ),
           _LearnCard(
             key: const ValueKey('learn-ear'),
             icon: Icons.hearing,

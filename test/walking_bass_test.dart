@@ -19,6 +19,25 @@ void main() {
     swing: tripletSwing,
   );
 
+  // The line itself, note for note, for two seeds. Not a property but a
+  // photograph: the bassist is a pile of small decisions and any change
+  // to any of them shows up here first. It exists so that the shapes can
+  // be named and moved about without the playing quietly changing, and
+  // if it fails after a deliberate change, look at what came out before
+  // deciding the new line is fine.
+  test('the line is exactly what it was', () {
+    expect(line(1, choruses: 1).take(32).map((n) => n.pitch).toList(), [
+      36, 34, 33, 28, 29, 37, 36, 35, 35, 38, 33, 31, 31, 38, 39, 41, //
+      43, 43, 46, 45, 51, 48, 51, 50, 40, 40, 41, 42, 43, 40, 40, 42,
+    ]);
+    expect(line(1, choruses: 1), hasLength(138));
+    expect(line(7, choruses: 1).take(32).map((n) => n.pitch).toList(), [
+      36, 38, 39, 40, 41, 45, 48, 51, 46, 48, 49, 50, 50, 39, 39, 46, //
+      44, 45, 48, 50, 49, 38, 50, 48, 42, 42, 43, 46, 45, 44, 46, 46,
+    ]);
+    expect(line(7, choruses: 1), hasLength(136));
+  });
+
   test('chord changes land on chord tones, mostly the root', () {
     var changes = 0, roots = 0;
     for (var seed = 0; seed < 20; seed++) {

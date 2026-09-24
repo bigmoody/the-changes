@@ -177,14 +177,21 @@ List<SnippetNote> progressionSnippet(
 /// is worked out elsewhere and this only has to sound it. The last note
 /// is held, because a pattern that stops dead sounds like a mistake
 /// rather than an ending.
-List<SnippetNote> runSnippet(List<int> pitches, {double step = 0.2}) => [
+List<SnippetNote> runSnippet(
+  List<int> pitches, {
+  double step = 0.2,
+  bool bass = false,
+}) => [
   for (final (i, pitch) in pitches.indexed)
     (
       pitch: pitch,
       start: i * step,
-      length: i == pitches.length - 1 ? 1.2 : step * 1.5,
+      // A walking line is four even notes, not three and a held one, so
+      // the last note rings only when it is not the bass: a bass player
+      // stops when the next chord comes.
+      length: i == pitches.length - 1 && !bass ? 1.2 : step * 1.5,
       velocity: 0.75,
-      bass: false,
+      bass: bass,
     ),
 ];
 

@@ -183,8 +183,10 @@ void main() {
         home: LearnPage(player: PracticePlayer(), settings: settings),
       ),
     );
-    // The Learn page has grown; scroll it into view before tapping.
-    await tester.scrollUntilVisible(find.text('Scales & Modes'), 100);
+    // The Learn page keeps growing, and this card is near the bottom of
+    // it: a hundred pixels at a time ran out of iterations once the page
+    // passed five thousand pixels long.
+    await tester.scrollUntilVisible(find.text('Scales & Modes'), 400);
     // Built is not the same as on screen: it can stop with the card still
     // under the bottom edge, and a tap there lands on nothing.
     await tester.ensureVisible(find.text('Scales & Modes'));

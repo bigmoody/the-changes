@@ -18,6 +18,7 @@
 
 import 'dart:math' as math;
 
+import '../music/bass_moves.dart';
 import '../music/chord.dart';
 
 /// One bass note. [beat] counts from the start of the line.
@@ -256,6 +257,78 @@ class _Bassist {
     skipNextDownbeat = false;
 
     return _smoothLine(_embellish(notes, next, beats, canAnticipate));
+  }
+
+  /// The shapes for a chord of three beats or more, in [BassMove] order.
+  ///
+  /// Kept in that order and not merely alongside it: the Walking Bass
+  /// screen shows what the bassist actually plays by asking for these by
+  /// name, so a shape added here without a name beside it, or in the
+  /// wrong place, teaches the wrong thing.
+  List<List<int> Function()> _shapesFor(
+    int first,
+    int root,
+    _ChordTones t,
+    Chord next,
+    int beats,
+  ) {
+    final middle = beats - 2;
+    int target(int from) => _nearest(next.bass, from);
+    int approach(int from) => _approachNote(target(from), from);
+
+    List<int> walk(List<int> steps) {
+      final line = [first, for (final s in steps.take(middle)) root + s];
+      while (line.length < beats - 1) {
+        line.add(root + [t.third, t.fifth, t.seventh][line.length % 3]);
+      }
+      return line..add(approach(line.last));
+    }
+
+    List<int> intoTarget(List<int> offsets) {
+      final to = target(first);
+      final line = [first, for (final o in offsets) to + o];
+      return line.take(beats).toList();
+    }
+
+    final shapes = [
+      () => walk([t.third, t.fifth]),
+      () => walk([t.second, t.third]),
+      () => walk([t.seventh - 12, t.sixth - 12]),
+      () => walk([t.fifth - 12, t.third - 12]),
+      () => walk([t.fifth, t.sixth]),
+      () => walk([12, t.seventh]),
+      () => walk([0, t.fifth]),
+      () => walk([t.fifth, t.third]),
+      () => walk([t.fifth - 12, 0]),
+      () => walk([t.third, t.fourth]),
+      () => intoTarget([3, 2, 1]),
+      () => intoTarget([-3, -2, -1]),
+      () => intoTarget([2, 1, -1]),
+      () => intoTarget([-2, -1, 1]),
+      () => [
+        first,
+        root + t.third,
+        root + t.fifth,
+        root + t.seventh,
+      ].take(beats).toList(),
+    ];
+    assert(
+      shapes.length == BassMove.values.length,
+      'every shape the bassist plays needs a name beside it',
+    );
+    return shapes;
+  }
+
+  /// [move] played through [chord] into [next], for showing what it is.
+  List<int> exampleOf(BassMove move, Chord chord, Chord next, int beats) {
+    final root = _nearest(chord.bass, previous);
+    return _shapesFor(
+      root,
+      root,
+      _ChordTones(chord),
+      next,
+      beats,
+    )[move.index]();
   }
 
   /// Safety net: keeps every note within an octave of the one before.
@@ -552,43 +625,7 @@ class _Bassist {
         () => [first, target(first) + (random.nextBool() ? 2 : -2)],
       ];
     } else {
-      final middle = beats - 2;
-      List<int> walk(List<int> steps) {
-        final line = [first, for (final s in steps.take(middle)) root + s];
-        while (line.length < beats - 1) {
-          line.add(root + [t.third, t.fifth, t.seventh][line.length % 3]);
-        }
-        return line..add(approach(line.last));
-      }
-
-      List<int> intoTarget(List<int> offsets) {
-        final to = target(first);
-        final line = [first, for (final o in offsets) to + o];
-        return line.take(beats).toList();
-      }
-
-      shapes = [
-        () => walk([t.third, t.fifth]), // arpeggio up
-        () => walk([t.second, t.third]), // scale up
-        () => walk([t.seventh - 12, t.sixth - 12]), // scale down
-        () => walk([t.fifth - 12, t.third - 12]), // arpeggio down
-        () => walk([t.fifth, t.sixth]), // 5th and 6th
-        () => walk([12, t.seventh]), // octave leap, back down
-        () => walk([0, t.fifth]), // repeated root
-        () => walk([t.fifth, t.third]), // up and back
-        () => walk([t.fifth - 12, 0]), // 5th below and back
-        () => walk([t.third, t.fourth]), // 3rd to 4th
-        () => intoTarget([3, 2, 1]), // chromatic run down into the next chord
-        () => intoTarget([-3, -2, -1]), // chromatic run up into it
-        () => intoTarget([2, 1, -1]), // enclosure: above, then below
-        () => intoTarget([-2, -1, 1]), // enclosure: below, then above
-        () => [
-          first,
-          root + t.third,
-          root + t.fifth,
-          root + t.seventh,
-        ].take(beats).toList(), // straight up the chord to the 7th
-      ];
+      shapes = _shapesFor(first, root, t, next, beats);
     }
 
     // Try shapes in random order; skip the one used last time on this chord
@@ -800,3 +837,23 @@ int _nearest(int pitchClass, int near) {
   }
   return best;
 }
+
+/// One [move] through [chord] and into [next], as pitches.
+///
+/// The shapes the bassist really plays, asked for by name rather than
+/// described again: what the Walking Bass screen draws is what the band
+/// would play, and it cannot come to disagree with it.
+///
+/// [around] is roughly where on the instrument to put it, so a line can
+/// be shown where a bass player would actually finger it.
+List<int> bassMoveLine(
+  BassMove move, {
+  required Chord chord,
+  required Chord next,
+  int beats = 4,
+  int around = 38,
+}) => _Bassist(
+  math.Random(1),
+  around,
+  swing: 0.5,
+).exampleOf(move, chord, next, beats);
