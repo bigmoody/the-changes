@@ -29,17 +29,77 @@ double rms(Uint8List wav) {
   return math.sqrt(sum / samples.length);
 }
 
+SampledInstrument madeUp(List<int> pitches) => SampledInstrument(
+  name: 'Made up',
+  takesAre: Takes.roundRobin,
+  notes: {
+    for (final pitch in pitches) pitch: [Int16List(4)],
+  },
+);
+
 void main() {
+  group('a sampled instrument', () {
+    test('reaches an unrecorded note from the nearest one recorded', () {
+      final instrument = madeUp([60, 63, 66]);
+      // Dead on: no shift, so no resampling and no artefacts.
+      expect(instrument.nearest(63).$1, 0);
+      // Either side of it, and the sign says which way to push it.
+      expect(instrument.nearest(64).$1, 1);
+      expect(instrument.nearest(62).$1, -1);
+    });
+
+    test('keeps stretching past the end of the range', () {
+      // What a bass arpeggio climbing out of the register needs: the
+      // highest recording pitched up, rather than the highest note over
+      // and over.
+      final instrument = madeUp([60, 63, 66]);
+      expect(instrument.nearest(72).$1, 6);
+      expect(instrument.nearest(48).$1, -12);
+    });
+
+    test('at() clamps instead, and never pitches anything', () {
+      final instrument = madeUp([60, 61, 62]);
+      expect(identical(instrument.at(59), instrument.notes[60]), isTrue);
+      expect(identical(instrument.at(99), instrument.notes[62]), isTrue);
+    });
+
+    test('at() still answers when the recording it wants is missing', () {
+      // An instrument recorded from somewhere else need not have every
+      // semitone. Falling back beats throwing in the middle of a render.
+      final instrument = madeUp([60, 63]);
+      expect(identical(instrument.at(61), instrument.notes[60]), isTrue);
+    });
+  });
+
+  test('the band\'s instruments say what their takes are for', () async {
+    final bank = await loadBank();
+    // The piano's three are soft, medium and loud, so a quiet note is a
+    // gentler recording rather than the same one turned down.
+    expect(bank.piano.takesAre, Takes.velocity);
+    // The guitar's and the bass's are the same stroke again, to be picked
+    // between at random so a busy part does not rattle.
+    expect(bank.guitar.takesAre, Takes.roundRobin);
+    expect(bank.bass.takesAre, Takes.roundRobin);
+  });
+
+  test('the bass is recorded at every semitone it plays', () async {
+    // Which is what lets the band's bass line use at() and never resample.
+    final bank = await loadBank();
+    for (var pitch = bank.bass.lowest; pitch <= bank.bass.highest; pitch++) {
+      expect(bank.bass.nearest(pitch).$1, 0, reason: 'pitch $pitch is shifted');
+    }
+  });
+
   test('every sample the band needs is bundled and decodes', () async {
     final bank = await loadBank();
-    expect(bank.bass.keys, SampleBank.bassPitches);
-    for (final takes in bank.bass.values) {
+    expect(bank.bass.notes.keys, SampleBank.bassPitches);
+    for (final takes in bank.bass.notes.values) {
       expect(takes, hasLength(2));
       expect(takes.every((t) => t.length > SampleBank.sampleRate), isTrue);
     }
-    expect(bank.piano.keys, SampleBank.pianoPitches);
-    expect(bank.guitar.keys, SampleBank.guitarPitches);
-    for (final takes in bank.guitar.values) {
+    expect(bank.piano.notes.keys, SampleBank.pianoPitches);
+    expect(bank.guitar.notes.keys, SampleBank.guitarPitches);
+    for (final takes in bank.guitar.notes.values) {
       expect(takes, hasLength(3));
     }
     expect(bank.ride.length, 2);
@@ -163,7 +223,7 @@ void main() {
     () async {
       final bank = await loadBank();
       for (var pitch = 49; pitch <= 71; pitch++) {
-        final (shift, _) = bank.nearestPiano(pitch);
+        final (shift, _) = bank.piano.nearest(pitch);
         expect(shift.abs(), lessThanOrEqualTo(1), reason: 'pitch $pitch');
       }
     },
@@ -200,7 +260,7 @@ void main() {
     final bank = await loadBank();
     // From the low E to the top of the neck.
     for (var pitch = 40; pitch <= 79; pitch++) {
-      final (shift, _) = bank.nearestGuitar(pitch);
+      final (shift, _) = bank.guitar.nearest(pitch);
       expect(shift.abs(), lessThanOrEqualTo(1), reason: 'pitch $pitch');
     }
   });
@@ -250,7 +310,8 @@ void main() {
 
       // The takes of a note are alternated at random, so one being
       // brighter than the others would be heard as a wobble.
-      for (final MapEntry(key: pitch, value: takes) in bank.guitar.entries) {
+      for (final MapEntry(key: pitch, value: takes)
+          in bank.guitar.notes.entries) {
         final all = [for (final take in takes) brightness(take)];
         expect(
           all.reduce(math.max) / all.reduce(math.min),

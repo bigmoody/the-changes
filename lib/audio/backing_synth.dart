@@ -621,7 +621,7 @@ _Parts _renderParts(
   for (final note in bassLine) {
     if (!sounds(LayOut.bass, note.beat)) continue;
     if (bank != null) {
-      final recordings = bank.bassNote(note.pitch);
+      final recordings = bank.bass.at(note.pitch);
       bass.addRecording(
         at(note.beat),
         recordings[takesRandom.nextInt(recordings.length)],
@@ -657,7 +657,7 @@ _Parts _renderParts(
   }) {
     final target = into ?? piano;
     if (bank != null) {
-      final (shift, layers) = bank.nearestPiano(pitch);
+      final (shift, layers) = bank.piano.nearest(pitch);
       // Softer hits use the softer recording, not just a quieter one.
       final layer = velocity < 0.72 ? 0 : (velocity < 0.86 ? 1 : 2);
       target.addRecording(
@@ -695,7 +695,7 @@ _Parts _renderParts(
     required double beatSeconds,
   }) {
     if (bank != null) {
-      final (shift, takes) = bank.nearestGuitar(pitch);
+      final (shift, takes) = bank.guitar.nearest(pitch);
       // A couple of cents either way. Six strings are never exactly in
       // tune with each other, and without it two notes from the same
       // recording are bit for bit the same sound, which is what makes a
@@ -939,7 +939,7 @@ _Parts _renderParts(
           );
         case PartVoice.bass:
           if (bank != null) {
-            final recordings = bank.bassNote(pitch);
+            final recordings = bank.bass.at(pitch);
             importedMix.addRecording(
               start,
               recordings[takesRandom.nextInt(recordings.length)],
@@ -1209,20 +1209,17 @@ Uint8List renderSnippet(
     if (note.bass) {
       // Past the recorded range (a bass arpeggio climbs higher than a bass
       // line), the nearest recording pitched to it.
-      final recorded = note.pitch.clamp(
-        SampleBank.bassPitches.first,
-        SampleBank.bassPitches.last,
-      );
+      final (shift, takes) = bank.bass.nearest(note.pitch);
       bassMix.addRecording(
         start,
-        bank.bassNote(recorded).first,
+        takes.first,
         1.1 * note.velocity,
-        rate: math.pow(2, (note.pitch - recorded) / 12).toDouble(),
+        rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: hold,
         releaseSamples: (0.08 * sampleRate).round(),
       );
     } else if (guitar) {
-      final (shift, takes) = bank.nearestGuitar(note.pitch);
+      final (shift, takes) = bank.guitar.nearest(note.pitch);
       mix.addRecording(
         start,
         takes.first,
@@ -1232,7 +1229,7 @@ Uint8List renderSnippet(
         releaseSamples: (0.1 * sampleRate).round(),
       );
     } else {
-      final (shift, layers) = bank.nearestPiano(note.pitch);
+      final (shift, layers) = bank.piano.nearest(note.pitch);
       final layer = note.velocity < 0.72 ? 0 : (note.velocity < 0.86 ? 1 : 2);
       mix.addRecording(
         start,

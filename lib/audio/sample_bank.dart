@@ -46,6 +46,74 @@ class DrumSamples {
   }
 }
 
+/// How an instrument's recordings of one note differ from each other.
+enum Takes {
+  /// The same stroke played again: pick one at random, so a busy part does
+  /// not play the same sound twice running.
+  roundRobin,
+
+  /// Softest first: pick by how hard the note is being played, so a quiet
+  /// note is a gentler recording rather than the same one turned down.
+  velocity,
+}
+
+/// A recorded melodic instrument: the notes somebody played into a
+/// microphone, and how to reach the ones they did not.
+///
+/// Almost no instrument is recorded at every pitch. The piano here is
+/// sampled every three semitones and the guitar likewise, so most notes the
+/// band plays are a neighbouring recording pushed up or down a little. That
+/// is a property of the recording, not of the piano, which is why it lives
+/// with the samples and not in the synth.
+///
+/// It exists as a type rather than as three fields on [SampleBank] so that
+/// something recorded elsewhere can stand where the piano stands.
+class SampledInstrument {
+  SampledInstrument({
+    required this.name,
+    required this.notes,
+    required this.takesAre,
+  }) : pitches = notes.keys.toList()..sort() {
+    assert(notes.isNotEmpty, '$name has no recordings');
+  }
+
+  /// What to call it on screen.
+  final String name;
+
+  /// The recordings, by the MIDI pitch they were played at.
+  final Map<int, List<Int16List>> notes;
+
+  /// Those pitches in order, so [nearest] is a walk rather than a search.
+  final List<int> pitches;
+
+  final Takes takesAre;
+
+  int get lowest => pitches.first;
+  int get highest => pitches.last;
+
+  /// The recording nearest to [pitch], and how many semitones it must be
+  /// shifted to get there. Past either end of the range that shift grows,
+  /// which is right for a line that climbs deliberately out of the
+  /// instrument's register.
+  (int, List<Int16List>) nearest(int pitch) {
+    final nearest = pitches.reduce(
+      (a, b) => (a - pitch).abs() <= (b - pitch).abs() ? a : b,
+    );
+    return (pitch - nearest, notes[nearest]!);
+  }
+
+  /// The recording at [pitch], unshifted, clamped to the range.
+  ///
+  /// For an instrument recorded at every semitone, which the bass is. A
+  /// walking line that dips under the bottom of an upright should play the
+  /// bottom note, the way a bass player would, rather than a pitched-down
+  /// one; use [nearest] where the line is meant to leave the register.
+  List<Int16List> at(int pitch) {
+    final wanted = pitch.clamp(lowest, highest);
+    return notes[wanted] ?? nearest(wanted).$2;
+  }
+}
+
 /// Every recorded sound the band uses.
 class SampleBank {
   SampleBank({
@@ -64,12 +132,13 @@ class SampleBank {
     required this.tomLow,
   });
 
-  /// Bass notes by MIDI pitch (E1–E3), two recorded takes each.
-  final Map<int, List<Int16List>> bass;
+  /// Bass notes by MIDI pitch (E1–E3), two recorded takes each: every
+  /// semitone of the range, so nothing in it is ever shifted.
+  final SampledInstrument bass;
 
   /// Piano notes by MIDI pitch, sampled every 3 semitones from C3 to C5,
   /// each as [soft, medium, loud].
-  final Map<int, List<Int16List>> piano;
+  final SampledInstrument piano;
 
   /// Guitar notes by MIDI pitch, sampled every 3 semitones from E2 to
   /// G♭5: three takes of one gentle stroke.
@@ -79,7 +148,7 @@ class SampleBank {
   /// back as far as it is here a firmer stroke measured no brighter, only
   /// louder, which velocity already does. Three takes rather than two, so
   /// a busy comp repeats itself less.
-  final Map<int, List<Int16List>> guitar;
+  final SampledInstrument guitar;
 
   /// Drum hits, softest layer first.
   final DrumSamples ride;
@@ -132,27 +201,39 @@ class SampleBank {
     ]);
 
     return SampleBank(
-      bass: {
-        for (final pitch in bassPitches)
-          pitch: [
-            await wav('bass/bass_${pitch}_rr1.wav'),
-            await wav('bass/bass_${pitch}_rr2.wav'),
-          ],
-      },
-      piano: {
-        for (final pitch in pianoPitches)
-          pitch: [
-            for (final layer in [1, 2, 3])
-              await wav('piano/piano_${pitch}_v$layer.wav'),
-          ],
-      },
-      guitar: {
-        for (final pitch in guitarPitches)
-          pitch: [
-            for (final take in [1, 2, 3])
-              await wav('guitar/guitar_${pitch}_rr$take.wav'),
-          ],
-      },
+      bass: SampledInstrument(
+        name: 'Upright bass',
+        takesAre: Takes.roundRobin,
+        notes: {
+          for (final pitch in bassPitches)
+            pitch: [
+              await wav('bass/bass_${pitch}_rr1.wav'),
+              await wav('bass/bass_${pitch}_rr2.wav'),
+            ],
+        },
+      ),
+      piano: SampledInstrument(
+        name: 'Piano',
+        takesAre: Takes.velocity,
+        notes: {
+          for (final pitch in pianoPitches)
+            pitch: [
+              for (final layer in [1, 2, 3])
+                await wav('piano/piano_${pitch}_v$layer.wav'),
+            ],
+        },
+      ),
+      guitar: SampledInstrument(
+        name: 'Guitar',
+        takesAre: Takes.roundRobin,
+        notes: {
+          for (final pitch in guitarPitches)
+            pitch: [
+              for (final take in [1, 2, 3])
+                await wav('guitar/guitar_${pitch}_rr$take.wav'),
+            ],
+        },
+      ),
       ride: await kit('ride'),
       hiHatPedal: await kit('hihat_pedal'),
       hiHatClosed: await kit('hihat_closed'),
@@ -181,29 +262,6 @@ class SampleBank {
       tomLow: await toms('tom_low'),
     );
   }
-
-  /// The recorded piano note nearest to [pitch], and how many semitones it
-  /// must be shifted to reach it (at most 1, since they're 3 apart).
-  (int, List<Int16List>) nearestPiano(int pitch) {
-    final nearest = pianoPitches.reduce(
-      (a, b) => (a - pitch).abs() <= (b - pitch).abs() ? a : b,
-    );
-    return (pitch - nearest, piano[nearest]!);
-  }
-
-  /// The recorded guitar note nearest to [pitch], and how many semitones it
-  /// must be shifted to reach it (at most 1, but for the very top and
-  /// bottom of the range).
-  (int, List<Int16List>) nearestGuitar(int pitch) {
-    final nearest = guitarPitches.reduce(
-      (a, b) => (a - pitch).abs() <= (b - pitch).abs() ? a : b,
-    );
-    return (pitch - nearest, guitar[nearest]!);
-  }
-
-  /// A bass note, clamped to the recorded range.
-  List<Int16List> bassNote(int pitch) =>
-      bass[pitch.clamp(bassPitches.first, bassPitches.last)]!;
 }
 
 /// Reads 16-bit PCM from a WAV file (mono assumed).

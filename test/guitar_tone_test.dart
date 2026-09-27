@@ -53,8 +53,8 @@ void main() {
   });
 
   test('three takes of every note, and all of them there', () {
-    expect(bank.guitar.length, SampleBank.guitarPitches.length);
-    for (final takes in bank.guitar.values) {
+    expect(bank.guitar.notes.length, SampleBank.guitarPitches.length);
+    for (final takes in bank.guitar.notes.values) {
       expect(takes.length, 3);
       expect(takes.every((take) => take.isNotEmpty), isTrue);
     }
@@ -63,7 +63,8 @@ void main() {
   test('the takes of a note match each other', () {
     // They are alternated at random, so one brighter than the rest would
     // be heard as a wobble through a comp.
-    for (final MapEntry(key: pitch, value: takes) in bank.guitar.entries) {
+    for (final MapEntry(key: pitch, value: takes)
+        in bank.guitar.notes.entries) {
       final bright = [
         for (final take in takes)
           _brightness([for (final s in take) s / 32768]),
