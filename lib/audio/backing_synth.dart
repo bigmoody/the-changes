@@ -116,6 +116,7 @@ class BackingRequest {
     this.samples,
     this.comping = Comping.piano,
     this.bassSound = BassSound.upright,
+    this.drumSound = DrumSound.kit,
     this.arpeggios = false,
     this.arpeggioSound = Comping.piano,
     this.arpeggioStart = ArpeggioStart.root,
@@ -144,6 +145,9 @@ class BackingRequest {
   /// Who plays the bass.
   final BassSound bassSound;
 
+  /// Who plays the drums.
+  final DrumSound drumSound;
+
   /// Whether to add a part playing each chord as a broken chord.
   final bool arpeggios;
 
@@ -171,6 +175,7 @@ class BackingRequest {
     samples: samples,
     comping: comping,
     bassSound: bassSound,
+    drumSound: drumSound,
     arpeggios: arpeggios,
     arpeggioSound: arpeggioSound,
     arpeggioStart: arpeggioStart,
@@ -989,7 +994,7 @@ _Parts _renderParts(
   // ── Drums ──────────────────────────────────────────────────────────────
   // Avoid the same recorded take twice in a row (the "machine-gun" effect).
   final lastTake = <Object, int>{};
-  Int16List pickTake(List<Int16List> takes) {
+  SampledNote pickTake(List<SampledNote> takes) {
     var take = takesRandom.nextInt(takes.length);
     if (takes.length > 1 && take == lastTake[takes]) {
       take = (take + 1) % takes.length;
@@ -998,18 +1003,13 @@ _Parts _renderParts(
     return takes[take];
   }
 
-  DrumSamples? recordedDrum(Drum drum) => switch (drum) {
-    Drum.ride => bank?.ride,
-    Drum.hiHatPedal => bank?.hiHatPedal,
-    Drum.hiHatClosed => bank?.hiHatClosed,
-    Drum.hiHatOpen => bank?.hiHatOpen,
-    Drum.kick => bank?.kick,
-    Drum.snare => bank?.snare,
-    Drum.crossStick => bank?.crossStick,
-    Drum.cowbell => bank?.cowbell,
-    Drum.tomHigh => bank?.tomHigh,
-    Drum.tomLow => bank?.tomLow,
-  };
+  /// Which recordings to hit for [drum]: the band's own, or an imported
+  /// kit's where somebody chose one and it has that drum.
+  DrumSamples? recordedDrum(Drum drum) {
+    final ours = bank == null ? null : drumIn(bank, drum);
+    if (ours == null) return null;
+    return bank!.playingDrum(drum, request.drumSound, ours);
+  }
 
   Float32List? synthesisedDrum(Drum drum) => switch (drum) {
     Drum.ride => kit?.ride[takesRandom.nextInt(kit.ride.length)],
@@ -1063,9 +1063,7 @@ _Parts _renderParts(
           final layer = (hit.hard ? samples.length - 1 : 0);
           drums.addRecording(
             at(beat),
-            // A drum hit has no rate and no loop: it is struck and it
-            // decays, so it goes in as plain samples.
-            SampledNote(pickTake(samples.layers[layer])),
+            pickTake(samples.layers[layer]),
             _drumLevel * hit.velocity * samples.levelling[layer],
           );
         } else {
@@ -1270,7 +1268,7 @@ Uint8List renderSnippet(
     final layer = hit.hard ? samples.length - 1 : 0;
     mix.addRecording(
       (hit.at * sampleRate).round(),
-      SampledNote(samples.layers[layer].first),
+      samples.layers[layer].first,
       hit.velocity * samples.levelling[layer],
     );
   }

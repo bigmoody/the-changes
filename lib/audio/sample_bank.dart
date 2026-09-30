@@ -12,7 +12,8 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import '../music/tune.dart' show BassSound, Comping;
+import '../music/tune.dart' show BassSound, Comping, DrumSound;
+import 'drum_patterns.dart' show Drum;
 
 /// One drum, recorded at two or three strengths of stroke ("layers"), each
 /// with a few takes of the same stroke.
@@ -27,8 +28,20 @@ import '../music/tune.dart' show BassSound, Comping;
 class DrumSamples {
   DrumSamples(this.layers) : levelling = _levelling(layers);
 
+  /// A kit's worth of plain recordings, for the band's own drums, which
+  /// are all trimmed to the app's rate and never loop.
+  DrumSamples.plain(List<List<Int16List>> layers)
+    : this([
+        for (final takes in layers)
+          [for (final take in takes) SampledNote(take)],
+      ]);
+
   /// Takes for each layer, softest layer first.
-  final List<List<Int16List>> layers;
+  ///
+  /// [SampledNote] rather than plain samples because an imported kit's
+  /// hits carry their own sample rate, and a kick recorded at 22 kHz
+  /// played at ours is not a kick.
+  final List<List<SampledNote>> layers;
 
   /// What to multiply each layer by to bring it up to the loudest layer's
   /// level, so only the tone changes from layer to layer.
@@ -36,11 +49,14 @@ class DrumSamples {
 
   int get length => layers.length;
 
-  static List<double> _levelling(List<List<Int16List>> layers) {
+  static List<double> _levelling(List<List<SampledNote>> layers) {
     final peaks = [
       for (final takes in layers)
         takes
-            .map((take) => take.fold(0, (peak, s) => math.max(peak, s.abs())))
+            .map(
+              (take) =>
+                  take.samples.fold(0, (peak, s) => math.max(peak, s.abs())),
+            )
             .reduce(math.max),
     ];
     final loudest = peaks.reduce(math.max);
@@ -188,6 +204,7 @@ class SampleBank {
     required this.tomLow,
     this.importedChords,
     this.importedBass,
+    this.importedDrums = const {},
   });
 
   /// Bass notes by MIDI pitch (E1–E3), two recorded takes each: every
@@ -216,6 +233,11 @@ class SampleBank {
   final SampledInstrument? importedChords;
   final SampledInstrument? importedBass;
 
+  /// An imported kit, drum by drum. Only the drums the kit actually had:
+  /// anything missing keeps the band's own, so a font without a cowbell
+  /// costs a cowbell and not a calypso.
+  final Map<Drum, DrumSamples> importedDrums;
+
   /// The same bank with these as the imported sounds, or with none.
   ///
   /// A copy rather than a setter because the bank is sent to the render
@@ -224,6 +246,7 @@ class SampleBank {
   SampleBank withImported({
     SampledInstrument? chords,
     SampledInstrument? bass,
+    Map<Drum, DrumSamples> drums = const {},
   }) => SampleBank(
     // this.bass, because the named argument above is the imported one.
     bass: this.bass,
@@ -241,6 +264,7 @@ class SampleBank {
     tomLow: tomLow,
     importedChords: chords,
     importedBass: bass,
+    importedDrums: drums,
   );
 
   /// Who plays the chords, given what somebody chose.
@@ -255,6 +279,13 @@ class SampleBank {
     BassSound.upright => bass,
     BassSound.imported => importedBass ?? bass,
   };
+
+  /// Which recordings to hit for [drum], given what somebody chose.
+  DrumSamples playingDrum(Drum drum, DrumSound sound, DrumSamples ours) =>
+      sound == DrumSound.imported ? importedDrums[drum] ?? ours : ours;
+
+  /// Whether an imported kit has anything in it at all.
+  bool get hasImportedDrums => importedDrums.isNotEmpty;
 
   /// Drum hits, softest layer first.
   final DrumSamples ride;
@@ -291,7 +322,7 @@ class SampleBank {
     Future<Int16List> wav(String path) async => decodeWav(await load(path));
     Future<SampledNote> note(String path) async => SampledNote(await wav(path));
 
-    Future<DrumSamples> kit(String name) async => DrumSamples([
+    Future<DrumSamples> kit(String name) async => DrumSamples.plain([
       for (final layer in [1, 2])
         [
           for (final take in [1, 2, 3, 4])
@@ -299,7 +330,7 @@ class SampleBank {
         ],
     ]);
 
-    Future<DrumSamples> toms(String name) async => DrumSamples([
+    Future<DrumSamples> toms(String name) async => DrumSamples.plain([
       for (final layer in [1, 2])
         [
           for (final take in [1, 2])
@@ -345,7 +376,7 @@ class SampleBank {
       ride: await kit('ride'),
       hiHatPedal: await kit('hihat_pedal'),
       hiHatClosed: await kit('hihat_closed'),
-      hiHatOpen: DrumSamples([
+      hiHatOpen: DrumSamples.plain([
         for (final layer in [2, 3])
           [
             for (final take in [1, 2, 3])
@@ -353,14 +384,14 @@ class SampleBank {
           ],
       ]),
       kick: await kit('kick'),
-      snare: DrumSamples([
+      snare: DrumSamples.plain([
         for (final layers in [
           [4, 6, 8],
           [24, 26, 28],
         ])
           [for (final level in layers) await wav('drums/snare_$level.wav')],
       ]),
-      crossStick: DrumSamples([
+      crossStick: DrumSamples.plain([
         [
           for (final layer in [6, 7]) await wav('drums/cross_stick_$layer.wav'),
         ],

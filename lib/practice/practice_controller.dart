@@ -463,6 +463,17 @@ class PracticeController extends ChangeNotifier {
   /// leave the row out when there is not.
   bool get hasImportedBass => player.samples?.importedBass != null;
 
+  /// Whether an imported kit has anything in it, so the mixer can leave
+  /// the row out when there is not.
+  bool get hasImportedDrums => player.samples?.hasImportedDrums ?? false;
+
+  Future<void> setDrumSound(DrumSound value) async {
+    if (value == settings.drumSound) return;
+    await settings.setDrumSound(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
   Future<void> setBassSound(BassSound value) async {
     if (value == settings.bassSound) return;
     await settings.setBassSound(value);
@@ -854,6 +865,7 @@ class PracticeController extends ChangeNotifier {
         samples: player.samples,
         comping: settings.comping,
         bassSound: settings.bassSound,
+        drumSound: settings.drumSound,
         arpeggios: _arpeggios,
         arpeggioSound: settings.arpeggioSound,
         arpeggioStart: settings.arpeggioStart,
@@ -870,6 +882,7 @@ class PracticeController extends ChangeNotifier {
     samples: player.samples,
     comping: settings.comping,
     bassSound: settings.bassSound,
+    drumSound: settings.drumSound,
     arpeggios: _arpeggios,
     arpeggioSound: settings.arpeggioSound,
     arpeggioStart: settings.arpeggioStart,
@@ -1044,6 +1057,7 @@ class PracticeController extends ChangeNotifier {
           seed: _lastSeed,
           comping: settings.comping,
           bassSound: settings.bassSound,
+          drumSound: settings.drumSound,
           arpeggios: _arpeggios,
           arpeggioSound: settings.arpeggioSound,
           arpeggioStart: settings.arpeggioStart,

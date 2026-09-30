@@ -196,6 +196,19 @@ enum BassSound {
   final String label;
 }
 
+/// Who plays the drums.
+enum DrumSound {
+  kit('The Band'),
+
+  /// A drum kit out of an imported SoundFont. Each drum falls back to the
+  /// band's own when the kit does not have it, so a font with no cowbell
+  /// costs you a cowbell and not a calypso.
+  imported('Imported Kit');
+
+  const DrumSound(this.label);
+  final String label;
+}
+
 /// What each instrument plays. A standard's [Feel] sets all three together,
 /// but they can be mixed: a bossa groove under a walking bass, say.
 class BandStyle {

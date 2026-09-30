@@ -124,6 +124,7 @@ Uint8List exportTrack(
       samples: request.samples,
       comping: request.comping,
       bassSound: request.bassSound,
+      drumSound: request.drumSound,
       arpeggios: request.arpeggios,
       arpeggioSound: request.arpeggioSound,
       arpeggioStart: request.arpeggioStart,

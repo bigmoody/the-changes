@@ -135,6 +135,7 @@ class AppSettings extends ChangeNotifier {
     this._aimFor,
     this._comping,
     this._bassSound,
+    this._drumSound,
     this._arpeggioSound,
     this._arpeggioStart,
     this._metronomeTempo,
@@ -154,6 +155,7 @@ class AppSettings extends ChangeNotifier {
     this._aimFor,
     this._comping = Comping.piano,
     this._bassSound = BassSound.upright,
+    this._drumSound = DrumSound.kit,
     this._arpeggioSound = Comping.piano,
     this._arpeggioStart = ArpeggioStart.root,
   ]) : _storage = null,
@@ -174,6 +176,7 @@ class AppSettings extends ChangeNotifier {
   static const _aimKey = 'aimFor';
   static const _compingKey = 'comping';
   static const _bassSoundKey = 'bassSound';
+  static const _drumSoundKey = 'drumSound';
   static const _arpeggioSoundKey = 'arpeggioSound';
   static const _arpeggioStartKey = 'arpeggioStart';
   static const _metronomeTempoKey = 'metronomeTempo';
@@ -194,6 +197,7 @@ class AppSettings extends ChangeNotifier {
     DrillTarget? aimFor;
     var comping = Comping.piano;
     var bassSound = BassSound.upright;
+    var drumSound = DrumSound.kit;
     var arpeggioSound = Comping.piano;
     var arpeggioStart = ArpeggioStart.root;
     var metronomeTempo = 120;
@@ -251,6 +255,11 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedBass,
         orElse: () => BassSound.upright,
       );
+      final savedDrums = await storage.getString(_drumSoundKey);
+      drumSound = DrumSound.values.firstWhere(
+        (value) => value.name == savedDrums,
+        orElse: () => DrumSound.kit,
+      );
       mixWithOthers = await storage.getBool(_mixKey) ?? true;
       takesWithBand = await storage.getBool(_takesBandKey) ?? true;
       final saved = await storage.getString(_instrumentKey);
@@ -278,6 +287,7 @@ class AppSettings extends ChangeNotifier {
       aimFor,
       comping,
       bassSound,
+      drumSound,
       arpeggioSound,
       arpeggioStart,
       metronomeTempo,
@@ -388,6 +398,21 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_bassSoundKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// Who plays the drums: the band's kit, or an imported one.
+  DrumSound get drumSound => _drumSound;
+  DrumSound _drumSound;
+
+  Future<void> setDrumSound(DrumSound value) async {
+    if (value == _drumSound) return;
+    _drumSound = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_drumSoundKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

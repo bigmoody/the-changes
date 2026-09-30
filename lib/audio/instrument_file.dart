@@ -15,6 +15,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'drum_patterns.dart' show Drum;
 import 'sample_bank.dart';
 
 /// A file that is not one of ours, or is from a version that is not.
@@ -145,6 +146,35 @@ SampledInstrument readInstrument(Uint8List bytes) {
     ],
     notes: notes,
   );
+}
+
+/// A drum kit as bytes, by writing each drum where a note would go.
+///
+/// The same file, on purpose: a kit is ten lists of recordings keyed by a
+/// small integer, which is exactly what the note map already is, and a
+/// second format to keep in step with the first would be two formats to
+/// get wrong.
+Uint8List writeKit(Map<Drum, DrumSamples> kit) => writeInstrument(
+  SampledInstrument(
+    name: 'Kit',
+    takesAre: Takes.velocity,
+    notes: {
+      for (final entry in kit.entries)
+        entry.key.index: [for (final layer in entry.value.layers) layer.single],
+    },
+  ),
+);
+
+/// Reads back what [writeKit] wrote.
+Map<Drum, DrumSamples> readKit(Uint8List bytes) {
+  final read = readInstrument(bytes);
+  return {
+    for (final entry in read.notes.entries)
+      if (entry.key >= 0 && entry.key < Drum.values.length)
+        Drum.values[entry.key]: DrumSamples([
+          for (final hit in entry.value) [hit],
+        ]),
+  };
 }
 
 Uint8List _uint32(int value) =>

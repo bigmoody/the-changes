@@ -367,6 +367,28 @@ void showMixer(BuildContext context, PracticeController controller) {
                   ),
                 ],
               ),
+            const SizedBox(height: 8),
+            if (controller.settings.drumSound == DrumSound.imported ||
+                controller.hasImportedDrums)
+              Row(
+                children: [
+                  Text('Drums', style: theme.textTheme.titleSmall),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SegmentedButton<DrumSound>(
+                      key: const ValueKey('drum-sound'),
+                      showSelectedIcon: false,
+                      segments: [
+                        for (final sound in DrumSound.values)
+                          ButtonSegment(value: sound, label: Text(sound.label)),
+                      ],
+                      selected: {controller.settings.drumSound},
+                      onSelectionChanged: (value) =>
+                          controller.setDrumSound(value.first),
+                    ),
+                  ),
+                ],
+              ),
             SwitchListTile(
               key: const ValueKey('count-in'),
               contentPadding: EdgeInsets.zero,

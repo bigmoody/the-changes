@@ -384,6 +384,54 @@ extension SoundFontInstruments on SoundFont {
     );
   }
 
+  /// A drum kit out of a percussion preset, by the note each drum sits on.
+  ///
+  /// The General MIDI percussion map is a convention, not a fact about the
+  /// file: note 36 is the kick because everybody agrees it is, and a font
+  /// that disagrees will come out wrong. Almost none do, because a kit
+  /// that did would play back wrong in every other program too.
+  ///
+  /// Unpitched, unlike everything else here. A drum is played at the speed
+  /// it was recorded and no other: shifting a snare to the key of the tune
+  /// is not a thing anybody wants. So the only rate is the sample's own.
+  Map<int, List<SampledNote>> drumKitFor(SoundFontPreset preset) {
+    if (!preset.isPercussion) {
+      throw SoundFontException(
+        '${preset.name} is an instrument rather than a drum kit.',
+      );
+    }
+    final regions = _regionsOf(preset);
+    final out = <int, List<({int velLow, SampledNote note})>>{};
+    final read = <_Region, _Recording?>{};
+    for (final region in regions) {
+      final recording = read.putIfAbsent(region, () => _recordingOf(region));
+      if (recording == null) continue;
+      // A zone spanning several notes is one drum offered at several keys,
+      // which is how some kits write their toms. Each key gets it.
+      for (var note = region.keyLow; note <= region.keyHigh; note++) {
+        out.putIfAbsent(note, () => []).add((
+          velLow: region.velLow,
+          // No key transposition, on purpose: see above.
+          note: SampledNote(
+            recording.samples,
+            rate: recording.rate,
+            loop: recording.loop,
+          ),
+        ));
+      }
+    }
+    if (out.isEmpty) {
+      throw SoundFontException('${preset.name} has no drums in it.');
+    }
+    return {
+      for (final entry in out.entries)
+        entry.key: [
+          for (final hit in entry.value..sort((a, b) => a.velLow - b.velLow))
+            hit.note,
+        ],
+    };
+  }
+
   /// The samples [region] plays, and what it takes to play them, or null
   /// when the sample it names is missing or empty.
   _Recording? _recordingOf(_Region region) {

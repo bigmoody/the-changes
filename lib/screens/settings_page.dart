@@ -114,6 +114,14 @@ class SettingsPage extends StatelessWidget {
               label: (sound) => sound.label,
               onChanged: settings.setBassSound,
             ),
+            _ChoiceTile<DrumSound>(
+              icon: Icons.album_outlined,
+              title: 'Drums Played By',
+              value: settings.drumSound,
+              options: DrumSound.values,
+              label: (sound) => sound.label,
+              onChanged: settings.setDrumSound,
+            ),
             if (soundFont case final store?)
               ListenableBuilder(
                 listenable: store,
@@ -123,11 +131,11 @@ class SettingsPage extends StatelessWidget {
                       ListTile(
                         key: ValueKey('import-soundfont-${role.name}'),
                         leading: const Icon(Icons.graphic_eq),
-                        title: Text(
-                          role == SoundFontRole.bass
-                              ? 'Import a Bass'
-                              : 'Import a Sound',
-                        ),
+                        title: Text(switch (role) {
+                          SoundFontRole.bass => 'Import a Bass',
+                          SoundFontRole.drums => 'Import a Kit',
+                          SoundFontRole.chords => 'Import a Sound',
+                        }),
                         subtitle: Text(switch ((role, store.nameFor(role))) {
                           (SoundFontRole.bass, null) =>
                             'Play the bass with a SoundFont of your own',

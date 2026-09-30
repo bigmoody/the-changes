@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../audio/instrument_file.dart';
+import '../audio/drum_patterns.dart' show Drum;
 import '../audio/sample_bank.dart';
 import '../settings/progression_store.dart';
 import 'recording_store.dart' show RecordingFiles;
@@ -26,7 +27,8 @@ import 'recording_store.dart' show RecordingFiles;
 /// What an imported sound is for.
 enum SoundFontRole {
   chords('Chords', 'instrument.tcsi'),
-  bass('Bass', 'bass.tcsi');
+  bass('Bass', 'bass.tcsi'),
+  drums('Drums', 'drums.tcsi');
 
   const SoundFontRole(this.label, this.fileName);
 
@@ -39,17 +41,30 @@ enum SoundFontRole {
 }
 
 class SoundFontStore extends ChangeNotifier {
-  SoundFontStore._(this._storage, this._files, this._names, this._instruments);
+  SoundFontStore._(
+    this._storage,
+    this._files,
+    this._names,
+    this._instruments,
+    this._drums,
+  );
 
   /// Nothing saved anywhere, for tests.
-  SoundFontStore.inMemory({SampledInstrument? chords, SampledInstrument? bass})
-    : _storage = MemoryStorage(),
-      _files = null,
-      _names = {
-        SoundFontRole.chords: ?chords?.name,
-        SoundFontRole.bass: ?bass?.name,
-      },
-      _instruments = {SoundFontRole.chords: ?chords, SoundFontRole.bass: ?bass};
+  SoundFontStore.inMemory({
+    SampledInstrument? chords,
+    SampledInstrument? bass,
+    Map<Drum, DrumSamples>? drums,
+  }) : _storage = MemoryStorage(),
+       _files = null,
+       _drums = {...?drums},
+       _names = {
+         SoundFontRole.chords: ?chords?.name,
+         SoundFontRole.bass: ?bass?.name,
+       },
+       _instruments = {
+         SoundFontRole.chords: ?chords,
+         SoundFontRole.bass: ?bass,
+       };
 
   static Future<SoundFontStore> load({
     TextStorage? storage,
@@ -58,6 +73,7 @@ class SoundFontStore extends ChangeNotifier {
     final store = storage ?? preferencesStorage('soundfont');
     final names = <SoundFontRole, String>{};
     final instruments = <SoundFontRole, SampledInstrument>{};
+    var drums = <Drum, DrumSamples>{};
     try {
       final text = await store.read();
       if (text != null && files != null) {
@@ -72,7 +88,11 @@ class SoundFontStore extends ChangeNotifier {
           final bytes = await files.read(role.fileName);
           if (bytes == null) continue;
           names[role] = name;
-          instruments[role] = readInstrument(bytes);
+          if (role == SoundFontRole.drums) {
+            drums = readKit(bytes);
+          } else {
+            instruments[role] = readInstrument(bytes);
+          }
         }
       }
     } catch (e) {
@@ -82,8 +102,9 @@ class SoundFontStore extends ChangeNotifier {
       debugPrint('Could not read the imported instruments: $e');
       names.clear();
       instruments.clear();
+      drums = {};
     }
-    return SoundFontStore._(store, files, names, instruments);
+    return SoundFontStore._(store, files, names, instruments, drums);
   }
 
   final TextStorage _storage;
@@ -91,15 +112,24 @@ class SoundFontStore extends ChangeNotifier {
   final Map<SoundFontRole, String> _names;
   final Map<SoundFontRole, SampledInstrument> _instruments;
 
+  /// The drums are their own shape: ten drums rather than one instrument,
+  /// so they do not fit beside the others.
+  final Map<Drum, DrumSamples> _drums;
+
   /// What the sound for [role] is called, for the row in Settings.
   String? nameFor(SoundFontRole role) => _names[role];
 
   SampledInstrument? instrumentFor(SoundFontRole role) => _instruments[role];
 
-  bool has(SoundFontRole role) => _instruments.containsKey(role);
+  bool has(SoundFontRole role) => role == SoundFontRole.drums
+      ? _drums.isNotEmpty
+      : _instruments.containsKey(role);
 
   SampledInstrument? get chords => _instruments[SoundFontRole.chords];
   SampledInstrument? get bass => _instruments[SoundFontRole.bass];
+
+  /// The imported kit, drum by drum. Empty when there is not one.
+  Map<Drum, DrumSamples> get drums => _drums;
 
   /// Keeps [instrument] as the sound for [role], replacing whatever was
   /// there.
@@ -111,8 +141,20 @@ class SoundFontStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Keeps [kit] as the drums, replacing whatever was there.
+  Future<void> keepKit(String name, Map<Drum, DrumSamples> kit) async {
+    _drums
+      ..clear()
+      ..addAll(kit);
+    _names[SoundFontRole.drums] = name;
+    await _files?.save(SoundFontRole.drums.fileName, writeKit(kit));
+    await _write();
+    notifyListeners();
+  }
+
   /// Throws one away, and that part goes back to the band's own sound.
   Future<void> forget(SoundFontRole role) async {
+    if (role == SoundFontRole.drums) _drums.clear();
     _instruments.remove(role);
     _names.remove(role);
     await _files?.remove(role.fileName);

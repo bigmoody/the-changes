@@ -249,7 +249,7 @@ Uint8List buildFont({
 
 /// A drum with one silent hit, for a bank that is only here to carry one
 /// melodic instrument into the renderer.
-final emptyDrum = DrumSamples([
+final emptyDrum = DrumSamples.plain([
   [Int16List(1)],
 ]);
 

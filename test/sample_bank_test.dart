@@ -108,7 +108,7 @@ void main() {
     expect(bank.crossStick.length, 1);
     final peaks = [
       for (final take in bank.crossStick.layers.single)
-        take.map((s) => s.abs()).reduce(math.max),
+        take.samples.map((s) => s.abs()).reduce(math.max),
     ];
     expect(peaks.reduce(math.max) / peaks.reduce(math.min), lessThan(1.6));
     // Every drum's layers are levelled, so how hard a hit lands is the
@@ -126,7 +126,7 @@ void main() {
       final levelled = [
         for (var i = 0; i < drum.length; i++)
           drum.layers[i]
-                  .map((t) => t.map((s) => s.abs()).reduce(math.max))
+                  .map((t) => t.samples.map((s) => s.abs()).reduce(math.max))
                   .reduce(math.max) *
               drum.levelling[i],
       ];

@@ -77,11 +77,13 @@ Future<void> main() async {
     player.samples = bank.withImported(
       chords: soundFont.chords,
       bass: soundFont.bass,
+      drums: soundFont.drums,
     );
     soundFont.addListener(
       () => player.samples = bank.withImported(
         chords: soundFont.chords,
         bass: soundFont.bass,
+        drums: soundFont.drums,
       ),
     );
     debugPrint(

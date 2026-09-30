@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/drum_patterns.dart' show Drum;
 import 'package:play_along/audio/instrument_file.dart';
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/audio/soundfont.dart';
@@ -52,6 +53,25 @@ SampleBank bankOf(
 );
 
 void main() {
+  // A General MIDI kit: a kick, a snare, a closed hi-hat and a ride,
+  // where the map puts them.
+  final generalMidiKit = buildFont(
+    name: 'A Kit',
+    bank: 128,
+    samples: [
+      sample(name: 'kick'),
+      sample(name: 'snare'),
+      sample(name: 'hat'),
+      sample(name: 'ride'),
+    ],
+    zones: [
+      zone(0, keyLow: 36, keyHigh: 36),
+      zone(1, keyLow: 38, keyHigh: 38),
+      zone(2, keyLow: 42, keyHigh: 42),
+      zone(3, keyLow: 51, keyHigh: 51),
+    ],
+  );
+
   // One key, so a test can say exactly which notes came out.
   final font = buildFont(
     name: 'Someone Else\'s Piano',
@@ -332,7 +352,9 @@ void main() {
       expect(find.textContaining('not a SoundFont'), findsOneWidget);
     });
 
-    testWidgets('a drum kit is offered but cannot be chosen', (tester) async {
+    testWidgets('a drum kit is not offered when a sound is wanted', (
+      tester,
+    ) async {
       final store = SoundFontStore.inMemory();
       await tester.pumpWidget(
         MaterialApp(
@@ -351,13 +373,79 @@ void main() {
       );
       await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('plays its own drums'), findsOneWidget);
-      await tester.tap(
-        find.byKey(const ValueKey('preset-0')),
-        warnIfMissed: false,
-      );
-      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('preset-0')), findsNothing);
+      expect(find.textContaining('only drum kits'), findsOneWidget);
       expect(store.has(SoundFontRole.chords), isFalse);
+    });
+
+    testWidgets('and an instrument is not offered when a kit is', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: SoundFontStore.inMemory(),
+            role: SoundFontRole.drums,
+            pick: () async => (name: 'piano.sf2', bytes: font),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('preset-0')), findsNothing);
+      expect(find.textContaining('no drum kits'), findsOneWidget);
+    });
+
+    testWidgets('choosing a kit puts it on', (tester) async {
+      final store = SoundFontStore.inMemory();
+      final settings = AppSettings.inMemory();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
+            role: SoundFontRole.drums,
+            settings: settings,
+            pick: () async => (name: 'gm.sf2', bytes: generalMidiKit),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      expect(store.has(SoundFontRole.drums), isTrue);
+      expect(settings.drumSound, DrumSound.imported);
+      expect(store.drums.keys, contains(Drum.kick));
+    });
+
+    testWidgets('a kit with nothing where the map says is refused', (
+      tester,
+    ) async {
+      // Its hits are up at 90, where General MIDI has nothing, so the band
+      // would not know what to hit.
+      final store = SoundFontStore.inMemory();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
+            role: SoundFontRole.drums,
+            pick: () async => (
+              name: 'odd.sf2',
+              bytes: buildFont(
+                bank: 128,
+                samples: [sample()],
+                zones: [zone(0, keyLow: 90, keyHigh: 92)],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('soundfont-problem')), findsOneWidget);
+      expect(store.has(SoundFontRole.drums), isFalse);
     });
 
     testWidgets('shows what is already in, and lets it go', (tester) async {
