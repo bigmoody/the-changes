@@ -49,10 +49,11 @@ SampleBank bankOf(
 );
 
 void main() {
+  // One key, so a test can say exactly which notes came out.
   final font = buildFont(
     name: 'Someone Else\'s Piano',
     samples: [sample(name: 'note', root: 60, length: 400)],
-    zones: [zone(0)],
+    zones: [zone(0, keyLow: 60, keyHigh: 60)],
   );
 
   group('keeping one', () {
@@ -67,6 +68,31 @@ void main() {
       expect(now.samples, was.samples);
       expect(now.rate, closeTo(was.rate, 1e-9));
       expect(now.loop, was.loop);
+    });
+
+    test('a shared recording is written once, not once per key', () {
+      // Sixty keys off one zone. Written naively a real piano preset came
+      // to 115 MB where 23 would do, and the file is what goes on a phone.
+      final wide = instrumentIn(
+        buildFont(
+          samples: [sample(length: 4000)],
+          zones: [zone(0, keyLow: 36, keyHigh: 96)],
+        ),
+      );
+      final written = writeInstrument(wide);
+      expect(wide.pitches, hasLength(61));
+      // One recording's worth of samples, plus a header, rather than 61.
+      expect(written.length, lessThan(4000 * 2 * 3));
+
+      // And shared again on the way back in, so opening the app does not
+      // undo it.
+      final read = readInstrument(written);
+      final distinct = <Object>{
+        for (final takes in read.notes.values)
+          for (final take in takes) take.samples,
+      };
+      expect(read.pitches, hasLength(61));
+      expect(distinct, hasLength(1));
     });
 
     test('a looping note keeps its loop across the write', () {

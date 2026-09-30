@@ -35,17 +35,25 @@ const _version = 1;
 /// [instrument] as bytes, to write somewhere.
 Uint8List writeInstrument(SampledInstrument instrument) {
   final samples = BytesBuilder();
+  // A recording is shared by every key it plays for: a font's lowest zone
+  // may answer for two octaves, and an instrument that wrote the same
+  // samples out once per key came to 115 MB where 23 would do.
+  final written = <Int16List, int>{};
   final notes = <Map<String, Object?>>[];
   for (final pitch in instrument.pitches) {
     final takes = <Map<String, Object?>>[];
     for (final take in instrument.notes[pitch]!) {
+      final at = written.putIfAbsent(take.samples, () {
+        final offset = samples.length ~/ 2;
+        samples.add(Uint8List.sublistView(take.samples));
+        return offset;
+      });
       takes.add({
-        'at': samples.length ~/ 2,
+        'at': at,
         'length': take.samples.length,
         'rate': take.rate,
         if (take.loop case final loop?) 'loop': [loop.$1, loop.$2],
       });
-      samples.add(Uint8List.sublistView(take.samples));
     }
     notes.add({'pitch': pitch, 'takes': takes});
   }
@@ -90,6 +98,8 @@ SampledInstrument readInstrument(Uint8List bytes) {
   final samplesAt = 12 + headerLength;
 
   final notes = <int, List<SampledNote>>{};
+  // Read once and shared again, the same way they were written.
+  final read = <int, Int16List>{};
   for (final note in (header['notes'] as List).cast<Map<String, Object?>>()) {
     final takes = <SampledNote>[];
     for (final take in (note['takes'] as List).cast<Map<String, Object?>>()) {
@@ -101,10 +111,13 @@ SampledInstrument readInstrument(Uint8List bytes) {
           'That saved instrument is cut short.',
         );
       }
-      final samples = Int16List(length);
-      for (var i = 0; i < length; i++) {
-        samples[i] = data.getInt16(from + i * 2, Endian.little);
-      }
+      final samples = read.putIfAbsent(at, () {
+        final out = Int16List(length);
+        for (var i = 0; i < length; i++) {
+          out[i] = data.getInt16(from + i * 2, Endian.little);
+        }
+        return out;
+      });
       final loop = take['loop'] as List?;
       takes.add(
         SampledNote(

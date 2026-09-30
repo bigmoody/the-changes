@@ -260,17 +260,38 @@ const _ibagSize = 4;
 const _igenSize = 4;
 const _shdrSize = 46;
 
-/// One stretch of the keyboard, and the recording that answers for it.
+/// One stretch of the keyboard and of the velocity range, and the recording
+/// that answers for it.
+///
+/// A region is a preset zone and an instrument zone met together. Fonts
+/// split their work between the two very differently: GeneralUser GS puts
+/// the whole articulation map at the preset level, forty-eight zones of it,
+/// all pointing at one instrument. Walking only the instrument gives that
+/// instrument forty-eight times over.
 class _Region {
-  _Region(this.generators);
+  _Region({
+    required this.generators,
+    required this.keyLow,
+    required this.keyHigh,
+    required this.velLow,
+    required this.velHigh,
+    required this.tuneCents,
+  });
+
   final Map<int, int> generators;
+  final int keyLow;
+  final int keyHigh;
+  final int velLow;
+  final int velHigh;
+
+  /// Tuning asked for at the preset level, which the spec adds to the
+  /// instrument's rather than replacing it.
+  final int tuneCents;
 
   int? get sampleId => generators[_genSampleId];
-  int get keyLow => (generators[_genKeyRange] ?? 0x7F00) & 0xFF;
-  int get keyHigh => ((generators[_genKeyRange] ?? 0x7F00) >> 8) & 0xFF;
-  int get velLow => (generators[_genVelRange] ?? 0x7F00) & 0xFF;
-  int get velHigh => ((generators[_genVelRange] ?? 0x7F00) >> 8) & 0xFF;
   bool get loops => (generators[_genSampleModes] ?? 0) & 1 == 1;
+
+  bool covers(int pitch) => pitch >= keyLow && pitch <= keyHigh;
 
   /// Signed, because a generator's amount is two bytes read either way
   /// depending on what it means.
@@ -281,21 +302,31 @@ class _Region {
   }
 }
 
+/// A recording with the facts about it that do not depend on which key is
+/// being played.
+typedef _Recording = ({
+  Int16List samples,
+  int root,
+  double rate,
+  (int, int)? loop,
+});
+
 extension SoundFontInstruments on SoundFont {
   /// Reads [preset] into something the band can play.
   ///
-  /// Every zone of the preset becomes one recorded note, filed under the
-  /// key it was recorded at. Where a font gives several zones the same
-  /// root, which is how it writes a soft and a loud take of one note, they
-  /// become that note's takes, quietest first.
+  /// Every key the preset answers for becomes a note, with the recording
+  /// the font would use for it pitched to that key. Where the font gives a
+  /// key several recordings at different velocities they become that
+  /// note's takes, quietest first.
   ///
-  /// The zones' key ranges are not kept. [SampledInstrument] is keyed by
-  /// the pitch somebody played, and finds anything else by shifting the
-  /// nearest one, which is how the built-in piano works too. For a font
-  /// whose zones sit around their root note, which is nearly all of them,
-  /// that comes out the same. For one that stretches a sample a long way
-  /// upwards on purpose, it does not, and a few notes will be brighter
-  /// than the font intended.
+  /// Keeping the key ranges rather than filing everything under its root
+  /// note matters more than it sounds. A font's zones are not centred on
+  /// their roots: a piano zone may be recorded at C and stretched up a
+  /// fifth, and the font knows where it wants the seams. Following them is
+  /// the difference between a piano and a piano with a few strange notes.
+  ///
+  /// The recordings themselves are shared between the keys that use them,
+  /// so a note is a few dozen bytes and not a copy of the sample.
   SampledInstrument instrumentFor(SoundFontPreset preset) {
     if (preset.isPercussion) {
       throw const SoundFontException(
@@ -308,40 +339,59 @@ extension SoundFontInstruments on SoundFont {
       throw SoundFontException('${preset.name} has no playable notes in it.');
     }
 
-    final byRoot = <int, List<(int, SampledNote)>>{};
-    for (final region in regions) {
-      final note = _noteFrom(region);
-      if (note == null) continue;
-      byRoot.putIfAbsent(note.$1, () => []).add((region.velLow, note.$2));
+    final read = <_Region, _Recording?>{};
+    final notes = <int, List<SampledNote>>{};
+    var widest = <_Region>[];
+    for (var pitch = 0; pitch < 128; pitch++) {
+      final covering = regions.where((r) => r.covers(pitch)).toList()
+        ..sort((a, b) => a.velLow - b.velLow);
+      if (covering.isEmpty) continue;
+      final takes = <SampledNote>[];
+      for (final region in covering) {
+        final recording = read.putIfAbsent(region, () => _recordingOf(region));
+        if (recording == null) continue;
+        takes.add(
+          SampledNote(
+            recording.samples,
+            // The sample's own rate and tuning, and then however far this
+            // key is from the note it was played at.
+            rate:
+                recording.rate * _centsToRatio((pitch - recording.root) * 100),
+            loop: recording.loop,
+          ),
+        );
+      }
+      if (takes.isEmpty) continue;
+      notes[pitch] = takes;
+      if (covering.length > widest.length) widest = covering;
     }
-    if (byRoot.isEmpty) {
+    if (notes.isEmpty) {
       throw SoundFontException(
         '${preset.name} points at sample data that is not in the file.',
       );
     }
+
     return SampledInstrument(
       name: preset.name,
       // A SoundFont has velocity layers and no concept of a round robin, so
       // the takes of a note are always softest first.
       takesAre: Takes.velocity,
-      notes: {
-        for (final entry in byRoot.entries)
-          entry.key: [
-            for (final take in entry.value..sort((a, b) => a.$1 - b.$1))
-              take.$2,
-          ],
-      },
+      // Where the layers change over, taken from the font rather than
+      // guessed at: they are rarely even, and the piano above has eight of
+      // them with the first covering well over a third of the range.
+      velocityBands: [for (final region in widest.skip(1)) region.velLow / 127],
+      notes: notes,
     );
   }
 
-  /// The pitch it was recorded at, and the recording, or null when the
-  /// sample it names is missing or empty.
-  (int, SampledNote)? _noteFrom(_Region region) {
+  /// The samples [region] plays, and what it takes to play them, or null
+  /// when the sample it names is missing or empty.
+  _Recording? _recordingOf(_Region region) {
     final shdr = _tables['shdr']!;
     final id = region.sampleId;
-    if (id == null) return null;
+    if (id == null || id < 0) return null;
     final at = shdr.start + id * _shdrSize;
-    if (id < 0 || at + _shdrSize > shdr.start + shdr.length) return null;
+    if (at + _shdrSize > shdr.start + shdr.length) return null;
     final data = ByteData.sublistView(_bytes);
 
     final type = data.getUint16(at + 44, Endian.little);
@@ -374,24 +424,23 @@ extension SoundFontInstruments on SoundFont {
         region.signed(_genEndLoopOffset) +
         region.signed(_genEndLoopOffsetCoarse) * 32768;
 
-    if (rate <= 0) return null;
-    if (end <= start) return null;
-    if (end > _sampleDataLength) return null;
+    if (rate <= 0 || end <= start || end > _sampleDataLength) return null;
 
     final samples = Int16List(end - start);
     for (var i = 0; i < samples.length; i++) {
       samples[i] = data.getInt16(_sampleData + (start + i) * 2, Endian.little);
     }
 
-    final root = region.generators[_genRootKey] ?? original;
-    // The recording's own rate against ours, and whatever tuning the font
-    // asks for on top. The pitch it is played at is the band's business,
-    // not the font's, so the root key is not folded in here.
+    // A root key of 255 is the spec's way of saying "whatever the sample
+    // said", which we have already taken.
+    final override = region.generators[_genRootKey];
+    final root = override == null || override > 127 ? original : override;
+
     final cents =
         correction +
         region.signed(_genFineTune) +
-        region.signed(_genCoarseTune) * 100;
-    final speed = rate / SampleBank.sampleRate * _centsToRatio(cents);
+        region.signed(_genCoarseTune) * 100 +
+        region.tuneCents;
 
     (int, int)? loop;
     if (region.loops &&
@@ -400,16 +449,23 @@ extension SoundFontInstruments on SoundFont {
         loopEnd <= end) {
       loop = (loopStart - start, loopEnd - start);
     }
-    // A root key of 255 is the spec's way of saying "whatever the sample
-    // said", which we have already taken.
     return (
-      root > 127 ? original : root,
-      SampledNote(samples, rate: speed, loop: loop),
+      samples: samples,
+      root: root,
+      // The recording's own rate against ours, and whatever tuning the font
+      // asks for on top.
+      rate: rate / SampleBank.sampleRate * _centsToRatio(cents),
+      loop: loop,
     );
   }
 
-  /// Every instrument zone reachable from [preset], with the defaults its
-  /// global zones set already folded in.
+  /// Every preset zone met with every instrument zone it overlaps.
+  ///
+  /// Where they disagree about which keys or velocities they answer for,
+  /// the answer is the overlap, and a pair with no overlap is not a region
+  /// at all. That is what keeps a preset from being its instrument over and
+  /// over: the font narrows at the preset level and the instrument is
+  /// walked once per narrowing.
   List<_Region> _regionsOf(SoundFontPreset preset) {
     final data = ByteData.sublistView(_bytes);
     final phdr = _tables['phdr']!;
@@ -429,12 +485,22 @@ extension SoundFontInstruments on SoundFont {
     );
 
     final out = <_Region>[];
+    var presetGlobals = <int, int>{};
     for (var bag = firstBag; bag < lastBag; bag++) {
-      final gens = _generators(data, pbag, pgen, bag, _pbagSize, _pgenSize, 0);
-      final which = gens[_genInstrument];
+      final zone = {
+        ...presetGlobals,
+        ..._generators(data, pbag, pgen, bag, _pbagSize, _pgenSize),
+      };
+      final which = zone[_genInstrument];
       // A preset zone with no instrument generator is the global one: it
-      // sets defaults for the zones after it, none of which this reads.
-      if (which == null) continue;
+      // sets defaults for the zones after it.
+      if (which == null) {
+        presetGlobals = zone;
+        continue;
+      }
+      if (inst.start + (which + 2) * _instSize > inst.start + inst.length) {
+        continue;
+      }
       final firstInstBag = data.getUint16(
         inst.start + which * _instSize + 20,
         Endian.little,
@@ -444,23 +510,41 @@ extension SoundFontInstruments on SoundFont {
         Endian.little,
       );
 
-      var globals = <int, int>{};
-      for (var zone = firstInstBag; zone < lastInstBag; zone++) {
-        final zoneGens = _generators(
-          data,
-          ibag,
-          igen,
-          zone,
-          _ibagSize,
-          _igenSize,
-          0,
-        );
+      final presetKeys = _range(zone[_genKeyRange]);
+      final presetVels = _range(zone[_genVelRange]);
+      // The spec adds the preset's tuning to the instrument's rather than
+      // replacing it. Everything else it could say here is attenuation,
+      // filters and envelopes, which the band decides.
+      final tune =
+          _signedOf(zone[_genFineTune]) + _signedOf(zone[_genCoarseTune]) * 100;
+
+      var instGlobals = <int, int>{};
+      for (var z = firstInstBag; z < lastInstBag; z++) {
+        final zoneGens = {
+          ...instGlobals,
+          ..._generators(data, ibag, igen, z, _ibagSize, _igenSize),
+        };
         if (!zoneGens.containsKey(_genSampleId)) {
-          // The instrument's own global zone, same rule as above.
-          globals = zoneGens;
+          instGlobals = zoneGens;
           continue;
         }
-        out.add(_Region({...globals, ...zoneGens}));
+        final keys = _range(zoneGens[_genKeyRange]);
+        final vels = _range(zoneGens[_genVelRange]);
+        final keyLow = math.max(presetKeys.$1, keys.$1);
+        final keyHigh = math.min(presetKeys.$2, keys.$2);
+        final velLow = math.max(presetVels.$1, vels.$1);
+        final velHigh = math.min(presetVels.$2, vels.$2);
+        if (keyLow > keyHigh || velLow > velHigh) continue;
+        out.add(
+          _Region(
+            generators: zoneGens,
+            keyLow: keyLow,
+            keyHigh: keyHigh,
+            velLow: velLow,
+            velHigh: velHigh,
+            tuneCents: tune,
+          ),
+        );
       }
     }
     return out;
@@ -478,12 +562,11 @@ extension SoundFontInstruments on SoundFont {
     int zone,
     int bagSize,
     int genSize,
-    int bagOffset,
   ) {
     final bagAt = bagTable.start + zone * bagSize;
     if (bagAt + bagSize * 2 > bagTable.start + bagTable.length) return const {};
-    final from = data.getUint16(bagAt + bagOffset, Endian.little);
-    final to = data.getUint16(bagAt + bagSize + bagOffset, Endian.little);
+    final from = data.getUint16(bagAt, Endian.little);
+    final to = data.getUint16(bagAt + bagSize, Endian.little);
     final out = <int, int>{};
     for (var i = from; i < to; i++) {
       final at = genTable.start + i * genSize;
@@ -496,6 +579,14 @@ extension SoundFontInstruments on SoundFont {
     return out;
   }
 }
+
+/// A key or velocity range generator, as low and high. Absent means the
+/// whole range, which is what the spec's default of 0 to 127 comes to.
+(int, int) _range(int? raw) =>
+    raw == null ? (0, 127) : (raw & 0xFF, (raw >> 8) & 0xFF);
+
+int _signedOf(int? raw) =>
+    raw == null ? 0 : (raw >= 0x8000 ? raw - 0x10000 : raw);
 
 double _centsToRatio(int cents) =>
     cents == 0 ? 1 : math.pow(2, cents / 1200).toDouble();

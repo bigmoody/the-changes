@@ -65,6 +65,7 @@ Uint8List buildFont({
   int bank = 0,
   List<Sample> samples = const [],
   List<Zone> zones = const [],
+  List<Zone> presetZones = const [],
   bool withSampleData = true,
 }) {
   final out = BytesBuilder();
@@ -123,15 +124,33 @@ Uint8List buildFont({
     ..add(u32(0))
     ..add(u32(0));
 
-  // One preset zone, pointing at instrument 0.
-  final pbag = BytesBuilder()
-    ..add(u16(0))
-    ..add(u16(0))
-    ..add(u16(1))
+  // The preset zones. One plain zone pointing at instrument 0 unless the
+  // caller asks for its own, which is how a real font narrows by key and
+  // velocity at the preset level before ever reaching the instrument.
+  final pbag = BytesBuilder();
+  final pgen = BytesBuilder();
+  var pgenAt = 0;
+  for (final split in presetZones.isEmpty ? [null] : presetZones) {
+    pbag
+      ..add(u16(pgenAt))
+      ..add(u16(0));
+    if (split != null) {
+      pgen
+        ..add(u16(43))
+        ..add(u16(split.keyLow | (split.keyHigh << 8)))
+        ..add(u16(44))
+        ..add(u16(split.velLow | (split.velHigh << 8)));
+      pgenAt += 2;
+    }
+    pgen
+      ..add(u16(41))
+      ..add(u16(0)); // instrument 0
+    pgenAt += 1;
+  }
+  pbag
+    ..add(u16(pgenAt))
     ..add(u16(0));
-  final pgen = BytesBuilder()
-    ..add(u16(41))
-    ..add(u16(0)) // instrument 0
+  pgen
     ..add(u16(0))
     ..add(u16(0)); // terminal
 
@@ -277,7 +296,7 @@ void main() {
   });
 
   group('building an instrument', () {
-    test('files each zone under the note it was recorded at', () {
+    test('answers for every key the font says it does', () {
       final font = SoundFont.read(
         buildFont(
           samples: [
@@ -293,12 +312,44 @@ void main() {
         ),
       );
       final instrument = font.instrumentFor(font.presets.single);
-      expect(instrument.pitches, [48, 60, 72]);
-      expect(instrument.lowest, 48);
-      expect(instrument.highest, 72);
-      // And it behaves like any other instrument from there.
-      expect(instrument.nearest(59).$1, -1);
-      expect(instrument.nearest(59).$2.single.samples, isNotEmpty);
+      // Not three notes filed under their roots: every key in the ranges,
+      // because the font put the seams where it wanted them and they are
+      // not halfway between the roots.
+      expect(instrument.lowest, 36);
+      expect(instrument.highest, 96);
+      expect(instrument.pitches, hasLength(61));
+    });
+
+    test('a key is played at its own pitch, not its recording\'s', () {
+      final font = SoundFont.read(
+        buildFont(
+          samples: [sample(root: 60)],
+          zones: [zone(0, keyLow: 48, keyHigh: 72)],
+        ),
+      );
+      final instrument = font.instrumentFor(font.presets.single);
+      // On the root, untouched. A tone up, a tone's worth faster.
+      expect(instrument.notes[60]!.single.rate, closeTo(1, 0.0001));
+      expect(instrument.notes[62]!.single.rate, closeTo(1.1225, 0.0005));
+      expect(instrument.notes[48]!.single.rate, closeTo(0.5, 0.0005));
+    });
+
+    test('one recording is shared by every key that plays it', () {
+      // Sixty keys off one zone must not be sixty copies of the samples:
+      // a real piano preset came to 115 MB that way and 23 shared.
+      final font = SoundFont.read(
+        buildFont(
+          samples: [sample(length: 200)],
+          zones: [zone(0, keyLow: 36, keyHigh: 96)],
+        ),
+      );
+      final instrument = font.instrumentFor(font.presets.single);
+      final distinct = <Object>{
+        for (final takes in instrument.notes.values)
+          for (final take in takes) take.samples,
+      };
+      expect(instrument.pitches, hasLength(61));
+      expect(distinct, hasLength(1));
     });
 
     test('several takes of one note come out softest first', () {
@@ -322,6 +373,74 @@ void main() {
       // The quiet one is the longer recording, so length says which is which.
       expect(takes.first.samples.length, 80);
       expect(takes.last.samples.length, 40);
+    });
+
+    test('a preset zone does not multiply the instrument behind it', () {
+      // How a real font is laid out, and the bug it found: the preset
+      // carries the articulation map and points every zone of it at one
+      // instrument. Walking the instrument once per preset zone gave a
+      // piano forty-eight takes of every note and a hundred megabytes.
+      final font = SoundFont.read(
+        buildFont(
+          samples: [
+            sample(name: 'low', root: 48),
+            sample(name: 'high', root: 72),
+          ],
+          zones: [
+            zone(0, keyLow: 36, keyHigh: 59),
+            zone(1, keyLow: 60, keyHigh: 84),
+          ],
+          presetZones: [
+            zone(0, keyLow: 36, keyHigh: 59),
+            zone(0, keyLow: 60, keyHigh: 84),
+          ],
+        ),
+      );
+      final instrument = font.instrumentFor(font.presets.single);
+      // One take a key, not two: each preset zone reaches only the
+      // instrument zone it overlaps.
+      for (final takes in instrument.notes.values) {
+        expect(takes, hasLength(1));
+      }
+    });
+
+    test('a preset zone narrows what the instrument offers', () {
+      final font = SoundFont.read(
+        buildFont(
+          samples: [sample(root: 60)],
+          zones: [zone(0, keyLow: 0, keyHigh: 127)],
+          presetZones: [zone(0, keyLow: 60, keyHigh: 72)],
+        ),
+      );
+      final instrument = font.instrumentFor(font.presets.single);
+      // The overlap, not either one on its own.
+      expect(instrument.lowest, 60);
+      expect(instrument.highest, 72);
+    });
+
+    test('the velocity layers change over where the font says', () {
+      final font = SoundFont.read(
+        buildFont(
+          samples: [
+            sample(name: 'soft'),
+            sample(name: 'loud'),
+          ],
+          zones: [
+            zone(0, velLow: 0, velHigh: 99),
+            zone(1, velLow: 100, velHigh: 127),
+          ],
+        ),
+      );
+      final instrument = font.instrumentFor(font.presets.single);
+      // Not halfway: a font's layers are rarely even, and guessing at
+      // thirds would play the loud recording for a medium note.
+      expect(instrument.velocityBands, hasLength(1));
+      expect(instrument.velocityBands.single, closeTo(100 / 127, 0.001));
+      final takes = instrument.notes[60]!;
+      expect(
+        instrument.forVelocity(takes, 0.5).samples.length,
+        takes.first.samples.length,
+      );
     });
 
     test('a sample recorded at another rate is played at its own pitch', () {
