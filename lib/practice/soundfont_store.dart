@@ -54,12 +54,16 @@ class SoundFontStore extends ChangeNotifier {
     SampledInstrument? chords,
     SampledInstrument? bass,
     Map<Drum, DrumSamples>? drums,
+    String drumsName = 'Kit',
   }) : _storage = MemoryStorage(),
        _files = null,
        _drums = {...?drums},
        _names = {
          SoundFontRole.chords: ?chords?.name,
          SoundFontRole.bass: ?bass?.name,
+         // A kit with no name would leave the row in Settings saying there
+         // is not one while there is.
+         if (drums != null && drums.isNotEmpty) SoundFontRole.drums: drumsName,
        },
        _instruments = {
          SoundFontRole.chords: ?chords,

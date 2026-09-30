@@ -20,6 +20,9 @@ import 'package:play_along/settings/progression_store.dart';
 import 'package:play_along/practice/soundfont_store.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/screens/import_soundfont_screen.dart';
+import 'package:play_along/screens/settings_page.dart';
+import 'package:play_along/library/library_store.dart';
+import 'package:play_along/audio/practice_player.dart';
 
 import 'soundfont_test.dart' show buildFont, sample, zone, emptyDrum;
 
@@ -457,6 +460,67 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('forget-soundfont')));
       await tester.pumpAndSettle();
       expect(store.has(SoundFontRole.chords), isFalse);
+    });
+  });
+
+  group('the rows in Settings', () {
+    Future<void> openSettings(WidgetTester tester, SoundFontStore store) =>
+        tester.pumpWidget(
+          MaterialApp(
+            home: SettingsPage(
+              player: PracticePlayer(),
+              settings: AppSettings.inMemory(),
+              progressions: ProgressionStore.inMemory(),
+              library: LibraryStore.inMemory(),
+              soundFont: store,
+            ),
+          ),
+        );
+
+    testWidgets('each one says what it is for, and none says the chords', (
+      tester,
+    ) async {
+      // The bug this is here for: the drums row read "Play the chords
+      // with a SoundFont of your own", because a catch-all case caught it.
+      await openSettings(tester, SoundFontStore.inMemory());
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('import-soundfont-drums')),
+        200,
+      );
+      expect(
+        find.text('Play the chords with a SoundFont of your own'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Play the bass with a SoundFont of your own'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Play the drums with a kit of your own'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('and each says where its sound is chosen once there is one', (
+      tester,
+    ) async {
+      final store = SoundFontStore.inMemory(
+        chords: instrumentIn(font),
+        drums: {Drum.kick: emptyDrum},
+      );
+      await openSettings(tester, store);
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('import-soundfont-drums')),
+        200,
+      );
+      expect(
+        find.textContaining('is ready, under Chords Played By'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('is ready, under Drums Played By'),
+        findsOneWidget,
+      );
     });
   });
 }

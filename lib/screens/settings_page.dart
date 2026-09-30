@@ -136,15 +136,22 @@ class SettingsPage extends StatelessWidget {
                           SoundFontRole.drums => 'Import a Kit',
                           SoundFontRole.chords => 'Import a Sound',
                         }),
+                        // Written out per role rather than with a
+                        // catch-all: a missing case silently reading
+                        // "the chords" is exactly what a catch-all hides.
                         subtitle: Text(switch ((role, store.nameFor(role))) {
+                          (SoundFontRole.chords, null) =>
+                            'Play the chords with a SoundFont of your own',
                           (SoundFontRole.bass, null) =>
                             'Play the bass with a SoundFont of your own',
-                          (_, null) =>
-                            'Play the chords with a SoundFont of your own',
+                          (SoundFontRole.drums, null) =>
+                            'Play the drums with a kit of your own',
+                          (SoundFontRole.chords, final name?) =>
+                            '$name is ready, under Chords Played By',
                           (SoundFontRole.bass, final name?) =>
                             '$name is ready, under Bass Played By',
-                          (_, final name?) =>
-                            '$name is ready, under Chords Played By',
+                          (SoundFontRole.drums, final name?) =>
+                            '$name is ready, under Drums Played By',
                         }),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => Navigator.of(context).push(

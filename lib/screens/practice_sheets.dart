@@ -372,7 +372,9 @@ void showMixer(BuildContext context, PracticeController controller) {
                 controller.hasImportedDrums)
               Row(
                 children: [
-                  Text('Drums', style: theme.textTheme.titleSmall),
+                  // "Kit" and not "Drums": there is already a Drums row
+                  // above, and it means the groove rather than the sound.
+                  Text('Kit', style: theme.textTheme.titleSmall),
                   const SizedBox(width: 12),
                   Expanded(
                     child: SegmentedButton<DrumSound>(
