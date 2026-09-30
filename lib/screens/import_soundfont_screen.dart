@@ -1,17 +1,25 @@
-// Bringing in a SoundFont, so the chords can be played by somebody else's
-// piano.
+// Choosing which of the band play out of a SoundFont.
 //
-// Pick a file, see what is in it, choose one sound. That is the whole
-// screen, and the middle step is the reason it is a screen at all: a
-// General MIDI font holds a hundred and twenty-eight instruments, and the
-// file name says nothing about which of them somebody wants.
+// One file, and then you say what each part of it is for: this preset
+// plays the chords, that one the bass, the kit plays the drums. It used to
+// be three separate trips through the file picker, one per part, which
+// meant choosing the same file three times to make a band out of it.
+//
+// A pitched preset can play the chords or the bass; a drum kit can only
+// play the drums, because it has no pitch and the band would be asking it
+// for chords. So each preset offers only the parts it could actually do.
+//
+// Nothing here has to come from one file. Each part keeps its own, so a
+// good piano out of one font and a good kit out of another is an ordinary
+// thing to do: choose a file, assign what you want from it, choose
+// another, assign from that.
 //
 // The file is read on the phone and goes nowhere, like the iReal import
 // and the MIDI parts. The app ships no fonts of its own: plenty of the
 // good free ones carry licences that would have to be honoured one at a
 // time, and a font somebody found is theirs and not ours.
 //
-// Only the chosen sound is kept (see instrument_file.dart). The .sf2 is
+// Only the chosen sounds are kept (see instrument_file.dart). The .sf2 is
 // let go as soon as this screen closes.
 
 import 'dart:typed_data';
@@ -19,10 +27,10 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../audio/imported_kit.dart';
 import '../audio/sample_bank.dart';
 import '../audio/soundfont.dart';
 import '../music/tune.dart' show BassSound, Comping, DrumSound;
-import '../audio/imported_kit.dart';
 import '../practice/soundfont_store.dart';
 import '../settings/app_settings.dart';
 import 'tunes_page.dart' show SectionHeader;
@@ -31,16 +39,11 @@ class ImportSoundFontScreen extends StatefulWidget {
   const ImportSoundFontScreen({
     super.key,
     required this.store,
-    this.role = SoundFontRole.chords,
     this.settings,
     this.pick,
   });
 
   final SoundFontStore store;
-
-  /// What the sound being chosen is for. The chords and the bass keep
-  /// their own, because they are two different files.
-  final SoundFontRole role;
 
   /// So that choosing a sound also puts it on. Without it the sound is
   /// kept and nothing plays it, which is a strange thing to do to
@@ -59,6 +62,12 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
   SoundFont? _font;
   String? _problem;
   var _busy = false;
+
+  /// Which parts [preset] could play. A kit has no pitch, so it can only
+  /// be the drums; anything else can comp or walk but cannot be a kit.
+  List<SoundFontRole> _rolesFor(SoundFontPreset preset) => preset.isPercussion
+      ? const [SoundFontRole.drums]
+      : const [SoundFontRole.chords, SoundFontRole.bass];
 
   Future<({String name, Uint8List bytes})?> _pickFile() async {
     // Any file rather than only .sf2: the extension is not reliable on
@@ -97,19 +106,49 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
     }
   }
 
+  /// Asks which part [preset] should play, when there is a choice.
+  Future<SoundFontRole?> _whichPart(SoundFontPreset preset) async {
+    final roles = _rolesFor(preset);
+    if (roles.length == 1) return roles.single;
+    return showModalBottomSheet<SoundFontRole>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text(
+                '${preset.name} plays',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            for (final role in roles)
+              ListTile(
+                key: ValueKey('play-as-${role.name}'),
+                title: Text(role.part),
+                onTap: () => Navigator.of(context).pop(role),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _keep(SoundFontPreset preset) async {
     final font = _font;
     if (font == null) return;
+    final role = await _whichPart(preset);
+    if (role == null || !mounted) return;
     final messenger = ScaffoldMessenger.of(context);
-    final navigator = Navigator.of(context);
     setState(() {
       _busy = true;
       _problem = null;
     });
     try {
       // Reading the samples out is the slow part, and it happens once.
-      final String what;
-      if (widget.role == SoundFontRole.drums) {
+      if (role == SoundFontRole.drums) {
         final kit = kitFromGeneralMidi(font.drumKitFor(preset));
         if (kit.isEmpty) {
           setState(() {
@@ -122,15 +161,14 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
         }
         await widget.store.keepKit(preset.name, kit);
         await widget.settings?.setDrumSound(DrumSound.imported);
-        what = 'the drums';
       } else {
         final SampledInstrument instrument = font.instrumentFor(preset);
-        await widget.store.keep(widget.role, instrument);
+        await widget.store.keep(role, instrument);
         // And put it on. Anybody who has just picked a sound out of a file
         // wants to hear it, and leaving it to a second trip through
         // Settings makes the app look broken to everyone who does not make
         // that trip.
-        switch (widget.role) {
+        switch (role) {
           case SoundFontRole.chords:
             await widget.settings?.setComping(Comping.imported);
           case SoundFontRole.bass:
@@ -138,13 +176,16 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
           case SoundFontRole.drums:
             break;
         }
-        what = widget.role == SoundFontRole.bass ? 'the bass' : 'the chords';
       }
       if (!mounted) return;
+      setState(() => _busy = false);
+      // No pop: the whole point is that one file can give the band more
+      // than one of its players, so the list stays where it was.
       messenger.showSnackBar(
-        SnackBar(content: Text('${preset.name} will play $what')),
+        SnackBar(
+          content: Text('${preset.name} will play ${role.part.toLowerCase()}'),
+        ),
       );
-      navigator.pop();
     } on SoundFontException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -154,27 +195,13 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
     }
   }
 
-  /// The presets worth showing: kits when a kit is wanted, instruments
-  /// otherwise. Listing the rest greyed out was just a longer list to
-  /// scroll past.
-  List<SoundFontPreset> _offered(SoundFont font) => [
-    for (final preset in font.presets)
-      if (preset.isPercussion == (widget.role == SoundFontRole.drums)) preset,
-  ];
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final font = _font;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(switch (widget.role) {
-          SoundFontRole.bass => 'Import a Bass',
-          SoundFontRole.drums => 'Import a Kit',
-          SoundFontRole.chords => 'Import a Sound',
-        }),
-      ),
+      appBar: AppBar(title: const Text('Imported Sounds')),
       body: SafeArea(
         child: ListenableBuilder(
           listenable: widget.store,
@@ -184,22 +211,9 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Text(
-                  switch (widget.role) {
-                    SoundFontRole.bass =>
-                      'A SoundFont (.sf2) holds recorded instruments. '
-                          'Choose a file and pick one sound from it, and '
-                          'the bass player will use that instead of the '
-                          'upright.',
-                    SoundFontRole.drums =>
-                      'A SoundFont (.sf2) can hold drum kits as well as '
-                          'instruments. Only the kits are listed here. Any '
-                          'drum the kit does not have stays the band\'s own.',
-                    SoundFontRole.chords =>
-                      'A SoundFont (.sf2) holds recorded instruments. '
-                          'Choose a file and pick one sound from it, and '
-                          'the band will comp with that instead of its '
-                          'own piano.',
-                  },
+                  'A SoundFont (.sf2) holds recorded instruments, and often '
+                  'a drum kit as well. Choose a file and say what each sound '
+                  'in it is for. They need not all come from the same file.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
@@ -232,55 +246,55 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
                     ),
                   ),
                 ),
+              // What the band is playing now, and where each of them came
+              // from. Above the file's own list, because somebody who
+              // opens this screen is as likely to be checking as changing.
+              if (widget.store.anything) ...[
+                const SectionHeader('The Band Plays'),
+                for (final role in SoundFontRole.values)
+                  ListTile(
+                    key: ValueKey('playing-${role.name}'),
+                    leading: Icon(
+                      widget.store.has(role)
+                          ? Icons.graphic_eq
+                          : Icons.music_note_outlined,
+                    ),
+                    title: Text(role.part),
+                    subtitle: Text(widget.store.nameFor(role) ?? role.ours),
+                    trailing: widget.store.has(role)
+                        ? TextButton(
+                            key: ValueKey('forget-${role.name}'),
+                            onPressed: () => widget.store.forget(role),
+                            child: const Text('Remove'),
+                          )
+                        : null,
+                  ),
+              ],
               if (font != null && !_busy) ...[
                 SectionHeader(font.name),
-                if (_offered(font).isEmpty)
+                if (font.presets.isEmpty)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     child: Text(
-                      widget.role == SoundFontRole.drums
-                          ? 'There are no drum kits in this file. A kit sits '
-                                'in bank 128, and this one has none.'
-                          : 'There are no instruments in this file, only '
-                                'drum kits.',
+                      'There is nothing playable in this file.',
                       key: const ValueKey('nothing-offered'),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
                     ),
                   ),
-                for (final preset in _offered(font))
+                for (final preset in font.presets)
                   ListTile(
                     key: ValueKey('preset-${preset.index}'),
                     title: Text(preset.name),
                     subtitle: Text(
-                      'Bank ${preset.bank}, program ${preset.program}',
+                      preset.isPercussion
+                          ? 'A drum kit'
+                          : 'Bank ${preset.bank}, program ${preset.program}',
                     ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _keep(preset),
                   ),
-              ],
-              if (widget.store.nameFor(widget.role) case final kept?
-                  when font == null) ...[
-                const SectionHeader('Playing Now'),
-                ListTile(
-                  key: const ValueKey('kept-soundfont'),
-                  leading: const Icon(Icons.graphic_eq),
-                  title: Text(kept),
-                  subtitle: Text(switch (widget.role) {
-                    SoundFontRole.bass =>
-                      'Chosen under Bass Played By in Settings',
-                    SoundFontRole.drums =>
-                      'Chosen under Drums Played By in Settings',
-                    SoundFontRole.chords =>
-                      'Chosen under Chords Played By in Settings',
-                  }),
-                  trailing: TextButton(
-                    key: const ValueKey('forget-soundfont'),
-                    onPressed: () => widget.store.forget(widget.role),
-                    child: const Text('Remove'),
-                  ),
-                ),
               ],
             ],
           ),

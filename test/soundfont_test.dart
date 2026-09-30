@@ -63,6 +63,7 @@ Sample sample({
 Uint8List buildFont({
   String name = 'Test Font',
   int bank = 0,
+  List<int> moreBanks = const [],
   List<Sample> samples = const [],
   List<Zone> zones = const [],
   List<Zone> presetZones = const [],
@@ -107,19 +108,28 @@ Uint8List buildFont({
   }
 
   // ── pdta
-  final phdr = BytesBuilder()
-    ..add(fixed('Preset', 20))
-    ..add(u16(0)) // program
-    ..add(u16(bank))
-    ..add(u16(0)) // first preset bag
-    ..add(u32(0))
-    ..add(u32(0))
-    ..add(u32(0))
-    // The terminal record every table ends with.
+  // One preset per bank asked for, each with its own zone pointing at the
+  // one instrument. That is enough to write a file with an instrument and
+  // a kit in it, which is what a General MIDI font is: what makes a preset
+  // a kit is its bank and not its contents.
+  final banks = [bank, ...moreBanks];
+  final phdr = BytesBuilder();
+  for (final (i, b) in banks.indexed) {
+    phdr
+      ..add(fixed('Preset $i', 20))
+      ..add(u16(0)) // program
+      ..add(u16(b))
+      ..add(u16(i)) // first preset bag
+      ..add(u32(0))
+      ..add(u32(0))
+      ..add(u32(0));
+  }
+  // The terminal record every table ends with.
+  phdr
     ..add(fixed('EOP', 20))
     ..add(u16(0))
     ..add(u16(0))
-    ..add(u16(1))
+    ..add(u16(banks.length))
     ..add(u32(0))
     ..add(u32(0))
     ..add(u32(0));
@@ -130,7 +140,11 @@ Uint8List buildFont({
   final pbag = BytesBuilder();
   final pgen = BytesBuilder();
   var pgenAt = 0;
-  for (final split in presetZones.isEmpty ? [null] : presetZones) {
+  // With no splits asked for, one zone per preset, so preset i's bag is
+  // bag i. Splits belong to a single preset, which is how they are used.
+  assert(presetZones.isEmpty || banks.length == 1);
+  for (final split
+      in presetZones.isEmpty ? [for (final _ in banks) null] : presetZones) {
     pbag
       ..add(u16(pgenAt))
       ..add(u16(0));
@@ -261,7 +275,7 @@ void main() {
       );
       expect(font.name, 'Nice Piano');
       expect(font.presets, hasLength(1));
-      expect(font.presets.single.name, 'Preset');
+      expect(font.presets.single.name, 'Preset 0');
       expect(font.presets.single.bank, 0);
       expect(font.presets.single.isPercussion, isFalse);
     });

@@ -122,49 +122,35 @@ class SettingsPage extends StatelessWidget {
               label: (sound) => sound.label,
               onChanged: settings.setDrumSound,
             ),
+            // One row and not three. Which parts come out of a SoundFont
+            // is a question about the band, not three separate errands,
+            // and three rows meant choosing the same file three times to
+            // make a band out of it.
             if (soundFont case final store?)
               ListenableBuilder(
                 listenable: store,
-                builder: (context, _) => Column(
-                  children: [
-                    for (final role in SoundFontRole.values)
-                      ListTile(
-                        key: ValueKey('import-soundfont-${role.name}'),
-                        leading: const Icon(Icons.graphic_eq),
-                        title: Text(switch (role) {
-                          SoundFontRole.bass => 'Import a Bass',
-                          SoundFontRole.drums => 'Import a Kit',
-                          SoundFontRole.chords => 'Import a Sound',
-                        }),
-                        // Written out per role rather than with a
-                        // catch-all: a missing case silently reading
-                        // "the chords" is exactly what a catch-all hides.
-                        subtitle: Text(switch ((role, store.nameFor(role))) {
-                          (SoundFontRole.chords, null) =>
-                            'Play the chords with a SoundFont of your own',
-                          (SoundFontRole.bass, null) =>
-                            'Play the bass with a SoundFont of your own',
-                          (SoundFontRole.drums, null) =>
-                            'Play the drums with a kit of your own',
-                          (SoundFontRole.chords, final name?) =>
-                            '$name is ready, under Chords Played By',
-                          (SoundFontRole.bass, final name?) =>
-                            '$name is ready, under Bass Played By',
-                          (SoundFontRole.drums, final name?) =>
-                            '$name is ready, under Drums Played By',
-                        }),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => ImportSoundFontScreen(
-                              store: store,
-                              role: role,
-                              settings: settings,
-                            ),
-                          ),
-                        ),
+                builder: (context, _) => ListTile(
+                  key: const ValueKey('import-soundfont'),
+                  leading: const Icon(Icons.graphic_eq),
+                  title: const Text('Imported Sounds'),
+                  subtitle: Text(
+                    store.anything
+                        ? [
+                            for (final role in SoundFontRole.values)
+                              if (store.nameFor(role) case final name?)
+                                '${role.label}: $name',
+                          ].join(' · ')
+                        : 'Play any of the band from a SoundFont of your own',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ImportSoundFontScreen(
+                        store: store,
+                        settings: settings,
                       ),
-                  ],
+                    ),
+                  ),
                 ),
               ),
             SwitchListTile(

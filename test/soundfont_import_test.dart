@@ -75,6 +75,18 @@ void main() {
     ],
   );
 
+  // A file with an instrument and a kit in it, which is what a General
+  // MIDI font is.
+  final wholeBand = buildFont(
+    name: 'A Whole Band',
+    moreBanks: [128],
+    samples: [
+      sample(name: 'piano'),
+      sample(name: 'kick'),
+    ],
+    zones: [zone(0, keyLow: 60, keyHigh: 60), zone(1, keyLow: 36, keyHigh: 36)],
+  );
+
   // One key, so a test can say exactly which notes came out.
   final font = buildFont(
     name: 'Someone Else\'s Piano',
@@ -163,12 +175,12 @@ void main() {
       final saved = MemoryStorage();
       final store = await SoundFontStore.load(storage: saved, files: files);
       await store.keep(SoundFontRole.chords, instrumentIn(font));
-      expect(store.nameFor(SoundFontRole.chords), "Preset");
+      expect(store.nameFor(SoundFontRole.chords), "Preset 0");
 
       // The same files and the same preferences, opened again.
       final again = await SoundFontStore.load(storage: saved, files: files);
       expect(again.has(SoundFontRole.chords), isTrue);
-      expect(again.nameFor(SoundFontRole.chords), 'Preset');
+      expect(again.nameFor(SoundFontRole.chords), 'Preset 0');
       expect(again.chords!.pitches, [60]);
     });
 
@@ -308,6 +320,8 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('preset-0')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('play-as-chords')));
+      await tester.pumpAndSettle();
       expect(store.has(SoundFontRole.chords), isTrue);
       expect(store.chords!.pitches, [60]);
     });
@@ -330,6 +344,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('play-as-chords')));
       await tester.pumpAndSettle();
       expect(store.has(SoundFontRole.chords), isTrue);
       expect(settings.comping, Comping.imported);
@@ -355,58 +371,45 @@ void main() {
       expect(find.textContaining('not a SoundFont'), findsOneWidget);
     });
 
-    testWidgets('a drum kit is not offered when a sound is wanted', (
-      tester,
-    ) async {
-      final store = SoundFontStore.inMemory();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ImportSoundFontScreen(
-            store: store,
-            pick: () async => (
-              name: 'gm.sf2',
-              bytes: buildFont(
-                bank: 128,
-                samples: [sample()],
-                zones: [zone(0)],
-              ),
-            ),
-          ),
-        ),
-      );
-      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('preset-0')), findsNothing);
-      expect(find.textContaining('only drum kits'), findsOneWidget);
-      expect(store.has(SoundFontRole.chords), isFalse);
-    });
-
-    testWidgets('and an instrument is not offered when a kit is', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          home: ImportSoundFontScreen(
-            store: SoundFontStore.inMemory(),
-            role: SoundFontRole.drums,
-            pick: () async => (name: 'piano.sf2', bytes: font),
-          ),
-        ),
-      );
-      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('preset-0')), findsNothing);
-      expect(find.textContaining('no drum kits'), findsOneWidget);
-    });
-
-    testWidgets('choosing a kit puts it on', (tester) async {
+    testWidgets('a pitched preset asks which part it is for', (tester) async {
+      // The whole point of one screen instead of three: a piano could comp
+      // or it could walk, so it is asked rather than assumed.
       final store = SoundFontStore.inMemory();
       final settings = AppSettings.inMemory();
       await tester.pumpWidget(
         MaterialApp(
           home: ImportSoundFontScreen(
             store: store,
-            role: SoundFontRole.drums,
+            settings: settings,
+            pick: () async => (name: 'piano.sf2', bytes: font),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('play-as-chords')), findsOneWidget);
+      expect(find.byKey(const ValueKey('play-as-bass')), findsOneWidget);
+      // And never the drums: it has pitch and no idea where a kick is.
+      expect(find.byKey(const ValueKey('play-as-drums')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('play-as-bass')));
+      await tester.pumpAndSettle();
+      expect(store.has(SoundFontRole.bass), isTrue);
+      expect(store.has(SoundFontRole.chords), isFalse);
+      expect(settings.bassSound, BassSound.imported);
+    });
+
+    testWidgets('a kit is not asked, because it can only be the drums', (
+      tester,
+    ) async {
+      final store = SoundFontStore.inMemory();
+      final settings = AppSettings.inMemory();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
             settings: settings,
             pick: () async => (name: 'gm.sf2', bytes: generalMidiKit),
           ),
@@ -416,9 +419,53 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('preset-0')));
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('play-as-drums')), findsNothing);
       expect(store.has(SoundFontRole.drums), isTrue);
       expect(settings.drumSound, DrumSound.imported);
       expect(store.drums.keys, contains(Drum.kick));
+    });
+
+    testWidgets('one file can give the band more than one of its players', (
+      tester,
+    ) async {
+      // The thing three separate screens made you choose the same file
+      // three times to do.
+      final store = SoundFontStore.inMemory();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
+            settings: AppSettings.inMemory(),
+            pick: () async => (name: 'band.sf2', bytes: wholeBand),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+
+      // The pitched one on the chords.
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('play-as-chords')));
+      await tester.pumpAndSettle();
+      // The list is still there: choosing did not close the screen.
+      expect(find.byKey(const ValueKey('preset-1')), findsOneWidget);
+      expect(store.has(SoundFontRole.chords), isTrue);
+
+      // Once the message about the first one has gone, since it sits over
+      // the bottom of the list.
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+
+      // And the kit on the drums, without choosing the file again. It has
+      // moved down the page, because assigning the first one added the
+      // section that says who is playing what.
+      await tester.ensureVisible(find.byKey(const ValueKey('preset-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-1')));
+      await tester.pumpAndSettle();
+      expect(store.has(SoundFontRole.chords), isTrue);
+      expect(store.has(SoundFontRole.drums), isTrue);
     });
 
     testWidgets('a kit with nothing where the map says is refused', (
@@ -431,7 +478,6 @@ void main() {
         MaterialApp(
           home: ImportSoundFontScreen(
             store: store,
-            role: SoundFontRole.drums,
             pick: () async => (
               name: 'odd.sf2',
               bytes: buildFont(
@@ -451,13 +497,23 @@ void main() {
       expect(store.has(SoundFontRole.drums), isFalse);
     });
 
-    testWidgets('shows what is already in, and lets it go', (tester) async {
+    testWidgets('it says who is playing each part, and lets one go', (
+      tester,
+    ) async {
       final store = SoundFontStore.inMemory(chords: instrumentIn(font));
       await tester.pumpWidget(
         MaterialApp(home: ImportSoundFontScreen(store: store)),
       );
-      expect(find.byKey(const ValueKey('kept-soundfont')), findsOneWidget);
-      await tester.tap(find.byKey(const ValueKey('forget-soundfont')));
+      // All three parts listed, with the band's own named where nothing
+      // has been imported.
+      expect(find.byKey(const ValueKey('playing-chords')), findsOneWidget);
+      expect(find.byKey(const ValueKey('playing-bass')), findsOneWidget);
+      expect(find.byKey(const ValueKey('playing-drums')), findsOneWidget);
+      expect(find.text("The band's upright"), findsOneWidget);
+      expect(find.text("The band's own kit"), findsOneWidget);
+      // Only the imported one can be let go.
+      expect(find.byKey(const ValueKey('forget-bass')), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('forget-chords')));
       await tester.pumpAndSettle();
       expect(store.has(SoundFontRole.chords), isFalse);
     });
@@ -477,50 +533,36 @@ void main() {
           ),
         );
 
-    testWidgets('each one says what it is for, and none says the chords', (
-      tester,
-    ) async {
-      // The bug this is here for: the drums row read "Play the chords
-      // with a SoundFont of your own", because a catch-all case caught it.
+    testWidgets('one row, saying nothing is imported yet', (tester) async {
       await openSettings(tester, SoundFontStore.inMemory());
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('import-soundfont-drums')),
+        find.byKey(const ValueKey('import-soundfont')),
         200,
       );
       expect(
-        find.text('Play the chords with a SoundFont of your own'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Play the bass with a SoundFont of your own'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Play the drums with a kit of your own'),
+        find.text('Play any of the band from a SoundFont of your own'),
         findsOneWidget,
       );
     });
 
-    testWidgets('and each says where its sound is chosen once there is one', (
-      tester,
-    ) async {
+    testWidgets('and naming each part once there is something', (tester) async {
+      // The bug a per-role subtitle once had: the drums row read "Play the
+      // chords...", because a catch-all case caught it. One row now, and
+      // it names the parts it actually has.
       final store = SoundFontStore.inMemory(
         chords: instrumentIn(font),
         drums: {Drum.kick: emptyDrum},
+        drumsName: 'A Kit',
       );
       await openSettings(tester, store);
       await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('import-soundfont-drums')),
+        find.byKey(const ValueKey('import-soundfont')),
         200,
       );
-      expect(
-        find.textContaining('is ready, under Chords Played By'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining('is ready, under Drums Played By'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Chords: Preset 0'), findsOneWidget);
+      expect(find.textContaining('Drums: A Kit'), findsOneWidget);
+      // And nothing about the bass, because nothing was imported for it.
+      expect(find.textContaining('Bass:'), findsNothing);
     });
   });
 }

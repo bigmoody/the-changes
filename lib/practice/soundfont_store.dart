@@ -26,13 +26,19 @@ import 'recording_store.dart' show RecordingFiles;
 
 /// What an imported sound is for.
 enum SoundFontRole {
-  chords('Chords', 'instrument.tcsi'),
-  bass('Bass', 'bass.tcsi'),
-  drums('Drums', 'drums.tcsi');
+  chords('Chords', 'The Chords', 'The band\'s piano', 'instrument.tcsi'),
+  bass('Bass', 'The Bass', 'The band\'s upright', 'bass.tcsi'),
+  drums('Drums', 'The Drums', 'The band\'s own kit', 'drums.tcsi');
 
-  const SoundFontRole(this.label, this.fileName);
+  const SoundFontRole(this.label, this.part, this.ours, this.fileName);
 
   final String label;
+
+  /// What to call the part on screen, as a thing the band has.
+  final String part;
+
+  /// What plays it when nothing has been imported for it.
+  final String ours;
 
   /// Its own file. 'instrument.tcsi' is what the chords were called before
   /// there was a bass, and renaming it would throw away anybody's import
@@ -134,6 +140,9 @@ class SoundFontStore extends ChangeNotifier {
 
   /// The imported kit, drum by drum. Empty when there is not one.
   Map<Drum, DrumSamples> get drums => _drums;
+
+  /// Whether anything at all has been imported.
+  bool get anything => SoundFontRole.values.any(has);
 
   /// Keeps [instrument] as the sound for [role], replacing whatever was
   /// there.
