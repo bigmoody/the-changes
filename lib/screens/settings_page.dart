@@ -136,9 +136,16 @@ class SettingsPage extends StatelessWidget {
                   subtitle: Text(
                     store.anything
                         ? [
-                            for (final role in SoundFontRole.values)
+                            for (final role in [
+                              SoundFontRole.chords,
+                              SoundFontRole.bass,
+                            ])
                               if (store.nameFor(role) case final name?)
                                 '${role.label}: $name',
+                            // The drums are chosen one at a time, so they
+                            // are summarised rather than named.
+                            if (store.drumsFrom case final drums?)
+                              'Drums: $drums',
                           ].join(' · ')
                         : 'Play any of the band from a SoundFont of your own',
                   ),

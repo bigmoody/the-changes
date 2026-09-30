@@ -22,16 +22,23 @@ import '../music/tune.dart';
 
 /// The pieces of the kit the patterns can call for.
 enum Drum {
-  ride,
-  hiHatPedal,
-  hiHatClosed,
-  hiHatOpen,
-  kick,
-  snare,
-  crossStick,
-  cowbell,
-  tomHigh,
-  tomLow,
+  ride('Ride Cymbal'),
+  hiHatPedal('Hi-Hat, Pedal'),
+  hiHatClosed('Hi-Hat, Closed'),
+  hiHatOpen('Hi-Hat, Open'),
+  kick('Kick'),
+  snare('Snare'),
+  crossStick('Cross-Stick'),
+  cowbell('Cowbell'),
+  tomHigh('Tom, High'),
+  tomLow('Tom, Low');
+
+  const Drum(this.label);
+
+  /// What to call it on screen, now that each one can be chosen on its
+  /// own. Comma-first so a list of them sorts and scans by the drum
+  /// rather than by which hi-hat it is.
+  final String label;
 }
 
 /// One hit: [beat] counts from the start of the bar.

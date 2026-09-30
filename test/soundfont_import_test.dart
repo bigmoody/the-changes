@@ -31,6 +31,15 @@ SampledInstrument instrumentIn(Uint8List font) {
   return read.instrumentFor(read.presets.single);
 }
 
+/// A window tall enough for the whole screen: two parts, ten drums and a
+/// file's worth of presets do not fit in the default one, and none of
+/// these tests is about scrolling.
+void tallWindow(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1200, 6000);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
 /// A bank whose every melodic instrument is [instrument], so a render can
 /// be asked what it played without any of the real samples being loaded.
 SampleBank bankOf(
@@ -73,6 +82,14 @@ void main() {
       zone(2, keyLow: 42, keyHigh: 42),
       zone(3, keyLow: 51, keyHigh: 51),
     ],
+  );
+
+  // A second kit, with a different kick in it, for mixing.
+  final otherKit = buildFont(
+    name: 'Another Kit',
+    bank: 128,
+    samples: [sample(name: 'other kick', length: 120)],
+    zones: [zone(0, keyLow: 36, keyHigh: 36)],
   );
 
   // A file with an instrument and a kit in it, which is what a General
@@ -419,7 +436,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('preset-0')));
       await tester.pumpAndSettle();
+      // It is never asked whether it is the chords: it has no pitch.
       expect(find.byKey(const ValueKey('play-as-drums')), findsNothing);
+      expect(find.byKey(const ValueKey('play-as-chords')), findsNothing);
+      // It is asked how much of it to take.
+      await tester.tap(find.byKey(const ValueKey('take-whole-kit')));
+      await tester.pumpAndSettle();
       expect(store.has(SoundFontRole.drums), isTrue);
       expect(settings.drumSound, DrumSound.imported);
       expect(store.drums.keys, contains(Drum.kick));
@@ -431,6 +453,7 @@ void main() {
       // The thing three separate screens made you choose the same file
       // three times to do.
       final store = SoundFontStore.inMemory();
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
           home: ImportSoundFontScreen(
@@ -464,8 +487,147 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('preset-1')));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('take-whole-kit')));
+      await tester.pumpAndSettle();
       expect(store.has(SoundFontRole.chords), isTrue);
       expect(store.has(SoundFontRole.drums), isTrue);
+    });
+
+    testWidgets('one drum can be taken out of a kit, and only that one', (
+      tester,
+    ) async {
+      final store = SoundFontStore.inMemory();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
+            settings: AppSettings.inMemory(),
+            pick: () async => (name: 'gm.sf2', bytes: generalMidiKit),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      // Every drum the kit actually has is offered, and nothing it does
+      // not: this one has no cowbell.
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('take-snare')),
+        100,
+        // The sheet's own list, which is the last one on screen.
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(find.byKey(const ValueKey('take-snare')), findsOneWidget);
+      expect(find.byKey(const ValueKey('take-cowbell')), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('take-snare')));
+      await tester.pumpAndSettle();
+      expect(store.hasDrum(Drum.snare), isTrue);
+      // And the kick, which that kit also has, is untouched.
+      expect(store.hasDrum(Drum.kick), isFalse);
+      expect(store.drums.keys, [Drum.snare]);
+    });
+
+    testWidgets('drums can come from two different kits', (tester) async {
+      // The point of the whole change: a snare out of one kit and cymbals
+      // out of another is how people build a kit.
+      final store = SoundFontStore.inMemory();
+      var file = generalMidiKit;
+      tallWindow(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
+            settings: AppSettings.inMemory(),
+            pick: () async => (name: 'kit.sf2', bytes: file),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('take-snare')),
+        100,
+        // The sheet's own list, which is the last one on screen.
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.byKey(const ValueKey('take-snare')));
+      await tester.pumpAndSettle();
+      final snare = store.drums[Drum.snare];
+
+      // A second file, and the kick out of that one.
+      file = otherKit;
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('take-kick')),
+        100,
+        // The sheet's own list, which is the last one on screen.
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.tap(find.byKey(const ValueKey('take-kick')));
+      await tester.pumpAndSettle();
+
+      expect(store.drums.keys, containsAll([Drum.snare, Drum.kick]));
+      // The snare is still the one from the first kit.
+      expect(identical(store.drums[Drum.snare], snare), isTrue);
+      expect(
+        store.nameForDrum(Drum.snare),
+        isNot(store.nameForDrum(Drum.kick)),
+      );
+    });
+
+    testWidgets('taking a whole kit leaves alone what it has not got', (
+      tester,
+    ) async {
+      // Somebody who found a cowbell they like and then imports a kit for
+      // the cymbals should keep the cowbell.
+      final store = SoundFontStore.inMemory(
+        drums: {Drum.cowbell: emptyDrum},
+        drumsName: 'An Old Kit',
+      );
+      tallWindow(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
+            settings: AppSettings.inMemory(),
+            pick: () async => (name: 'gm.sf2', bytes: generalMidiKit),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('take-whole-kit')));
+      await tester.pumpAndSettle();
+      expect(store.hasDrum(Drum.kick), isTrue);
+      expect(store.nameForDrum(Drum.cowbell), 'An Old Kit');
+    });
+
+    testWidgets('a drum can be sent back to the band on its own', (
+      tester,
+    ) async {
+      final store = SoundFontStore.inMemory(
+        drums: {Drum.kick: emptyDrum, Drum.snare: emptyDrum},
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: ImportSoundFontScreen(store: store)),
+      );
+      tallWindow(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('forget-kick')));
+      await tester.pumpAndSettle();
+      expect(store.hasDrum(Drum.kick), isFalse);
+      expect(store.hasDrum(Drum.snare), isTrue);
     });
 
     testWidgets('a kit with nothing where the map says is refused', (
@@ -493,6 +655,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('preset-0')));
       await tester.pumpAndSettle();
+      // Refused before it ever asks which drum, because there are none.
+      expect(find.byKey(const ValueKey('take-whole-kit')), findsNothing);
       expect(find.byKey(const ValueKey('soundfont-problem')), findsOneWidget);
       expect(store.has(SoundFontRole.drums), isFalse);
     });
@@ -501,16 +665,18 @@ void main() {
       tester,
     ) async {
       final store = SoundFontStore.inMemory(chords: instrumentIn(font));
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(home: ImportSoundFontScreen(store: store)),
       );
-      // All three parts listed, with the band's own named where nothing
-      // has been imported.
+      // The chords and the bass as parts, and then every drum on its own,
+      // with the band's own named where nothing has been imported.
       expect(find.byKey(const ValueKey('playing-chords')), findsOneWidget);
       expect(find.byKey(const ValueKey('playing-bass')), findsOneWidget);
-      expect(find.byKey(const ValueKey('playing-drums')), findsOneWidget);
+      expect(find.byKey(const ValueKey('playing-kick')), findsOneWidget);
+      expect(find.byKey(const ValueKey('playing-ride')), findsOneWidget);
       expect(find.text("The band's upright"), findsOneWidget);
-      expect(find.text("The band's own kit"), findsOneWidget);
+      expect(find.text("The band's own"), findsNWidgets(Drum.values.length));
       // Only the imported one can be let go.
       expect(find.byKey(const ValueKey('forget-bass')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('forget-chords')));
@@ -560,7 +726,7 @@ void main() {
         200,
       );
       expect(find.textContaining('Chords: Preset 0'), findsOneWidget);
-      expect(find.textContaining('Drums: A Kit'), findsOneWidget);
+      expect(find.textContaining('Drums:'), findsOneWidget);
       // And nothing about the bass, because nothing was imported for it.
       expect(find.textContaining('Bass:'), findsNothing);
     });
