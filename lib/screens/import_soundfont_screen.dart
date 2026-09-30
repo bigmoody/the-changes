@@ -21,7 +21,7 @@ import 'package:flutter/material.dart';
 
 import '../audio/sample_bank.dart';
 import '../audio/soundfont.dart';
-import '../music/tune.dart' show Comping;
+import '../music/tune.dart' show BassSound, Comping;
 import '../practice/soundfont_store.dart';
 import '../settings/app_settings.dart';
 import 'tunes_page.dart' show SectionHeader;
@@ -30,11 +30,16 @@ class ImportSoundFontScreen extends StatefulWidget {
   const ImportSoundFontScreen({
     super.key,
     required this.store,
+    this.role = SoundFontRole.chords,
     this.settings,
     this.pick,
   });
 
   final SoundFontStore store;
+
+  /// What the sound being chosen is for. The chords and the bass keep
+  /// their own, because they are two different files.
+  final SoundFontRole role;
 
   /// So that choosing a sound also puts it on. Without it the sound is
   /// kept and nothing plays it, which is a strange thing to do to
@@ -103,14 +108,24 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
     try {
       // Reading the samples out is the slow part, and it happens once.
       final SampledInstrument instrument = font.instrumentFor(preset);
-      await widget.store.keep(instrument);
+      await widget.store.keep(widget.role, instrument);
       // And put it on. Anybody who has just picked a sound out of a file
       // wants to hear it, and leaving it to a second trip through Settings
       // makes the app look broken to everyone who does not make that trip.
-      await widget.settings?.setComping(Comping.imported);
+      switch (widget.role) {
+        case SoundFontRole.chords:
+          await widget.settings?.setComping(Comping.imported);
+        case SoundFontRole.bass:
+          await widget.settings?.setBassSound(BassSound.imported);
+      }
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('${instrument.name} will play the chords')),
+        SnackBar(
+          content: Text(
+            '${instrument.name} will play '
+            '${widget.role == SoundFontRole.bass ? "the bass" : "the chords"}',
+          ),
+        ),
       );
       navigator.pop();
     } on SoundFontException catch (e) {
@@ -128,7 +143,13 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
     final scheme = theme.colorScheme;
     final font = _font;
     return Scaffold(
-      appBar: AppBar(title: const Text('Import a Sound')),
+      appBar: AppBar(
+        title: Text(
+          widget.role == SoundFontRole.bass
+              ? 'Import a Bass'
+              : 'Import a Sound',
+        ),
+      ),
       body: SafeArea(
         child: ListenableBuilder(
           listenable: widget.store,
@@ -138,9 +159,15 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Text(
-                  'A SoundFont (.sf2) holds recorded instruments. Choose a '
-                  'file and pick one sound from it, and the band will comp '
-                  'with that instead of its own piano.',
+                  widget.role == SoundFontRole.bass
+                      ? 'A SoundFont (.sf2) holds recorded instruments. '
+                            'Choose a file and pick one sound from it, and '
+                            'the bass player will use that instead of the '
+                            'upright.'
+                      : 'A SoundFont (.sf2) holds recorded instruments. '
+                            'Choose a file and pick one sound from it, and '
+                            'the band will comp with that instead of its '
+                            'own piano.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
@@ -189,18 +216,21 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
                     onTap: preset.isPercussion ? null : () => _keep(preset),
                   ),
               ],
-              if (widget.store.name case final kept? when font == null) ...[
+              if (widget.store.nameFor(widget.role) case final kept?
+                  when font == null) ...[
                 const SectionHeader('Playing Now'),
                 ListTile(
                   key: const ValueKey('kept-soundfont'),
                   leading: const Icon(Icons.graphic_eq),
                   title: Text(kept),
-                  subtitle: const Text(
-                    'Chosen under Chords Played By in Settings',
+                  subtitle: Text(
+                    widget.role == SoundFontRole.bass
+                        ? 'Chosen under Bass Played By in Settings'
+                        : 'Chosen under Chords Played By in Settings',
                   ),
                   trailing: TextButton(
                     key: const ValueKey('forget-soundfont'),
-                    onPressed: widget.store.forget,
+                    onPressed: () => widget.store.forget(widget.role),
                     child: const Text('Remove'),
                   ),
                 ),

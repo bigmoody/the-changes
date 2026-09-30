@@ -74,9 +74,15 @@ Future<void> main() async {
     // Whatever SoundFont somebody imported rides along with the bank, and
     // is put back whenever they change it. The bank is what goes to the
     // render isolate, so this is the only place it needs to be.
-    player.samples = bank.withImported(soundFont.instrument);
+    player.samples = bank.withImported(
+      chords: soundFont.chords,
+      bass: soundFont.bass,
+    );
     soundFont.addListener(
-      () => player.samples = bank.withImported(soundFont.instrument),
+      () => player.samples = bank.withImported(
+        chords: soundFont.chords,
+        bass: soundFont.bass,
+      ),
     );
     debugPrint(
       'Loaded instrument samples in ${stopwatch.elapsedMilliseconds} ms',

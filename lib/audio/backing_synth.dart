@@ -115,6 +115,7 @@ class BackingRequest {
     this.seed = 0,
     this.samples,
     this.comping = Comping.piano,
+    this.bassSound = BassSound.upright,
     this.arpeggios = false,
     this.arpeggioSound = Comping.piano,
     this.arpeggioStart = ArpeggioStart.root,
@@ -139,6 +140,9 @@ class BackingRequest {
 
   /// Who plays the chords.
   final Comping comping;
+
+  /// Who plays the bass.
+  final BassSound bassSound;
 
   /// Whether to add a part playing each chord as a broken chord.
   final bool arpeggios;
@@ -166,6 +170,7 @@ class BackingRequest {
     seed: seed,
     samples: samples,
     comping: comping,
+    bassSound: bassSound,
     arpeggios: arpeggios,
     arpeggioSound: arpeggioSound,
     arpeggioStart: arpeggioStart,
@@ -460,6 +465,10 @@ _Parts _renderParts(
   final tune = request.tune;
   final loop = request.loop;
   final bank = request.samples;
+  // Who is actually playing the bass. An imported one has its own key map
+  // and its own idea of what each recording was played at, which is why
+  // this is asked of the bank rather than assumed.
+  final bassSound = bank?.playingBass(request.bassSound);
   final sampleRate = request.sampleRate;
   final beatsPerBar = tune.beatsPerBar;
   final choruses = chorusesIn(request, batch);
@@ -621,7 +630,7 @@ _Parts _renderParts(
   for (final note in bassLine) {
     if (!sounds(LayOut.bass, note.beat)) continue;
     if (bank != null) {
-      final recordings = bank.bass.at(note.pitch);
+      final recordings = bassSound!.at(note.pitch);
       bass.addRecording(
         at(note.beat),
         recordings[takesRandom.nextInt(recordings.length)],
@@ -952,7 +961,7 @@ _Parts _renderParts(
           );
         case PartVoice.bass:
           if (bank != null) {
-            final recordings = bank.bass.at(pitch);
+            final recordings = bassSound!.at(pitch);
             importedMix.addRecording(
               start,
               recordings[takesRandom.nextInt(recordings.length)],

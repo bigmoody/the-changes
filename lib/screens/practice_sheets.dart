@@ -343,6 +343,30 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            // And who plays the bass, which is only a choice once somebody
+            // has imported something for it.
+            if (controller.settings.bassSound == BassSound.imported ||
+                controller.hasImportedBass)
+              Row(
+                children: [
+                  Text('Bass', style: theme.textTheme.titleSmall),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SegmentedButton<BassSound>(
+                      key: const ValueKey('bass-sound'),
+                      showSelectedIcon: false,
+                      segments: [
+                        for (final sound in BassSound.values)
+                          ButtonSegment(value: sound, label: Text(sound.label)),
+                      ],
+                      selected: {controller.settings.bassSound},
+                      onSelectionChanged: (value) =>
+                          controller.setBassSound(value.first),
+                    ),
+                  ),
+                ],
+              ),
             SwitchListTile(
               key: const ValueKey('count-in'),
               contentPadding: EdgeInsets.zero,

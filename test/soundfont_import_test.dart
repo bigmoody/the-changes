@@ -31,7 +31,8 @@ SampledInstrument instrumentIn(Uint8List font) {
 /// be asked what it played without any of the real samples being loaded.
 SampleBank bankOf(
   SampledInstrument instrument, {
-  SampledInstrument? imported,
+  SampledInstrument? importedChords,
+  SampledInstrument? importedBass,
 }) => SampleBank(
   bass: instrument,
   piano: instrument,
@@ -46,7 +47,8 @@ SampleBank bankOf(
   cowbell: emptyDrum,
   tomHigh: emptyDrum,
   tomLow: emptyDrum,
-  imported: imported,
+  importedChords: importedChords,
+  importedBass: importedBass,
 );
 
 void main() {
@@ -129,34 +131,64 @@ void main() {
   group('the store', () {
     test('has nothing in it to begin with', () {
       final store = SoundFontStore.inMemory();
-      expect(store.hasOne, isFalse);
-      expect(store.name, isNull);
+      expect(store.has(SoundFontRole.chords), isFalse);
+      expect(store.nameFor(SoundFontRole.chords), isNull);
     });
 
     test('keeps one, and finds it again after a restart', () async {
       final files = NoRecordingFiles();
       final saved = MemoryStorage();
       final store = await SoundFontStore.load(storage: saved, files: files);
-      await store.keep(instrumentIn(font));
-      expect(store.name, "Preset");
+      await store.keep(SoundFontRole.chords, instrumentIn(font));
+      expect(store.nameFor(SoundFontRole.chords), "Preset");
 
       // The same files and the same preferences, opened again.
       final again = await SoundFontStore.load(storage: saved, files: files);
-      expect(again.hasOne, isTrue);
-      expect(again.name, 'Preset');
-      expect(again.instrument!.pitches, [60]);
+      expect(again.has(SoundFontRole.chords), isTrue);
+      expect(again.nameFor(SoundFontRole.chords), 'Preset');
+      expect(again.chords!.pitches, [60]);
+    });
+
+    test('a bass and a chord sound live side by side', () async {
+      // The whole reason they are two files: choosing a bass must not
+      // throw away the piano chosen last week.
+      final files = NoRecordingFiles();
+      final saved = MemoryStorage();
+      final store = await SoundFontStore.load(storage: saved, files: files);
+      final piano = instrumentIn(font);
+      final bass = instrumentIn(
+        buildFont(
+          name: 'A Bass',
+          samples: [sample(name: 'low', root: 40, length: 200)],
+          zones: [zone(0, keyLow: 28, keyHigh: 52)],
+        ),
+      );
+      await store.keep(SoundFontRole.chords, piano);
+      await store.keep(SoundFontRole.bass, bass);
+      expect(store.chords!.pitches, [60]);
+      expect(store.bass!.lowest, 28);
+
+      // And both come back.
+      final again = await SoundFontStore.load(storage: saved, files: files);
+      expect(again.chords!.pitches, [60]);
+      expect(again.bass!.lowest, 28);
+
+      // Letting the bass go leaves the chords where they were.
+      await again.forget(SoundFontRole.bass);
+      expect(again.has(SoundFontRole.bass), isFalse);
+      expect(again.has(SoundFontRole.chords), isTrue);
     });
 
     test('forgetting one leaves nothing behind', () async {
       final files = NoRecordingFiles();
       final saved = MemoryStorage();
       final store = await SoundFontStore.load(storage: saved, files: files);
-      await store.keep(instrumentIn(font));
-      await store.forget();
-      expect(store.hasOne, isFalse);
-      expect(store.name, isNull);
+      await store.keep(SoundFontRole.chords, instrumentIn(font));
+      await store.forget(SoundFontRole.chords);
+      expect(store.has(SoundFontRole.chords), isFalse);
+      expect(store.nameFor(SoundFontRole.chords), isNull);
       final again = await SoundFontStore.load(storage: saved, files: files);
-      expect(again.hasOne, isFalse);
+      expect(again.has(SoundFontRole.chords), isFalse);
     });
   });
 
@@ -168,7 +200,7 @@ void main() {
       defaultTempo: 120,
     );
 
-    Uint8List chordsWith(Comping comping, {SampledInstrument? imported}) {
+    Uint8List chordsWith(Comping comping, {SampledInstrument? importedChords}) {
       final ours = instrumentIn(
         buildFont(samples: [sample(length: 400)], zones: [zone(0)]),
       );
@@ -180,7 +212,7 @@ void main() {
           tempo: 120,
           countInBars: 0,
           comping: comping,
-          samples: bankOf(ours, imported: imported),
+          samples: bankOf(ours, importedChords: importedChords),
         ),
       ).stems[Instrument.chords]!;
     }
@@ -191,9 +223,40 @@ void main() {
         buildFont(samples: [sample(length: 40)], zones: [zone(0)]),
       );
       expect(
-        chordsWith(Comping.imported, imported: other),
+        chordsWith(Comping.imported, importedChords: other),
         isNot(chordsWith(Comping.piano)),
       );
+    });
+
+    Uint8List bassWith(BassSound sound, {SampledInstrument? importedBass}) {
+      final ours = instrumentIn(
+        buildFont(samples: [sample(length: 400)], zones: [zone(0)]),
+      );
+      final t = tune();
+      return renderBacking(
+        BackingRequest(
+          tune: t,
+          loop: LoopRange.wholeTune(t),
+          tempo: 120,
+          countInBars: 0,
+          bassSound: sound,
+          samples: bankOf(ours, importedBass: importedBass),
+        ),
+      ).stems[Instrument.bass]!;
+    }
+
+    test('an imported bass is what the bass player uses', () {
+      final other = instrumentIn(
+        buildFont(samples: [sample(length: 40)], zones: [zone(0)]),
+      );
+      expect(
+        bassWith(BassSound.imported, importedBass: other),
+        isNot(bassWith(BassSound.upright)),
+      );
+    });
+
+    test('with no bass imported it falls back to the upright', () {
+      expect(bassWith(BassSound.imported), bassWith(BassSound.upright));
     });
 
     test('with nothing imported it falls back to the piano', () {
@@ -222,8 +285,8 @@ void main() {
 
       await tester.tap(find.byKey(const ValueKey('preset-0')));
       await tester.pumpAndSettle();
-      expect(store.hasOne, isTrue);
-      expect(store.instrument!.pitches, [60]);
+      expect(store.has(SoundFontRole.chords), isTrue);
+      expect(store.chords!.pitches, [60]);
     });
 
     testWidgets('choosing a sound also puts it on', (tester) async {
@@ -245,7 +308,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('preset-0')));
       await tester.pumpAndSettle();
-      expect(store.hasOne, isTrue);
+      expect(store.has(SoundFontRole.chords), isTrue);
       expect(settings.comping, Comping.imported);
     });
 
@@ -294,18 +357,18 @@ void main() {
         warnIfMissed: false,
       );
       await tester.pumpAndSettle();
-      expect(store.hasOne, isFalse);
+      expect(store.has(SoundFontRole.chords), isFalse);
     });
 
     testWidgets('shows what is already in, and lets it go', (tester) async {
-      final store = SoundFontStore.inMemory(instrument: instrumentIn(font));
+      final store = SoundFontStore.inMemory(chords: instrumentIn(font));
       await tester.pumpWidget(
         MaterialApp(home: ImportSoundFontScreen(store: store)),
       );
       expect(find.byKey(const ValueKey('kept-soundfont')), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('forget-soundfont')));
       await tester.pumpAndSettle();
-      expect(store.hasOne, isFalse);
+      expect(store.has(SoundFontRole.chords), isFalse);
     });
   });
 }

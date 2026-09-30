@@ -180,6 +180,22 @@ enum Comping {
   final String label;
 }
 
+/// Who plays the bass.
+///
+/// Its own list rather than [Comping]'s, because the choices are not the
+/// same ones: nobody wants the bass part played on a guitar, and an
+/// imported bass is a different file from an imported piano.
+enum BassSound {
+  upright('Upright Bass'),
+
+  /// A SoundFont imported for the bass. Falls back to the upright when
+  /// there is not one.
+  imported('Imported Sound');
+
+  const BassSound(this.label);
+  final String label;
+}
+
 /// What each instrument plays. A standard's [Feel] sets all three together,
 /// but they can be mixed: a bossa groove under a walking bass, say.
 class BandStyle {

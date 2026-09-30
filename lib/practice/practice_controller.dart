@@ -459,6 +459,17 @@ class PracticeController extends ChangeNotifier {
 
   /// Piano or guitar on the chords, for every tune; the band picks it up
   /// straight away.
+  /// Whether there is an imported bass to choose at all, so the mixer can
+  /// leave the row out when there is not.
+  bool get hasImportedBass => player.samples?.importedBass != null;
+
+  Future<void> setBassSound(BassSound value) async {
+    if (value == settings.bassSound) return;
+    await settings.setBassSound(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
   Future<void> setComping(Comping value) async {
     if (value == settings.comping) return;
     await settings.setComping(value);
@@ -842,6 +853,7 @@ class PracticeController extends ChangeNotifier {
         seed: take.seed,
         samples: player.samples,
         comping: settings.comping,
+        bassSound: settings.bassSound,
         arpeggios: _arpeggios,
         arpeggioSound: settings.arpeggioSound,
         arpeggioStart: settings.arpeggioStart,
@@ -857,6 +869,7 @@ class PracticeController extends ChangeNotifier {
     seed: _lastSeed == 0 ? 1 : _lastSeed,
     samples: player.samples,
     comping: settings.comping,
+    bassSound: settings.bassSound,
     arpeggios: _arpeggios,
     arpeggioSound: settings.arpeggioSound,
     arpeggioStart: settings.arpeggioStart,
@@ -1030,6 +1043,7 @@ class PracticeController extends ChangeNotifier {
           countInBars: withCountIn && _countIn ? 1 : 0,
           seed: _lastSeed,
           comping: settings.comping,
+          bassSound: settings.bassSound,
           arpeggios: _arpeggios,
           arpeggioSound: settings.arpeggioSound,
           arpeggioStart: settings.arpeggioStart,

@@ -12,7 +12,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import '../music/tune.dart' show Comping;
+import '../music/tune.dart' show BassSound, Comping;
 
 /// One drum, recorded at two or three strengths of stroke ("layers"), each
 /// with a few takes of the same stroke.
@@ -186,7 +186,8 @@ class SampleBank {
     required this.cowbell,
     required this.tomHigh,
     required this.tomLow,
-    this.imported,
+    this.importedChords,
+    this.importedBass,
   });
 
   /// Bass notes by MIDI pitch (E1–E3), two recorded takes each: every
@@ -207,17 +208,25 @@ class SampleBank {
   /// a busy comp repeats itself less.
   final SampledInstrument guitar;
 
-  /// A SoundFont somebody imported, if they have. Null is the usual case
-  /// and everything falls back to the piano.
-  final SampledInstrument? imported;
+  /// SoundFonts somebody imported, if they have. Null is the usual case,
+  /// and each falls back to the band's own instrument.
+  ///
+  /// Two of them, because a piano and a bass are two files: importing a
+  /// bass would otherwise throw away the piano somebody chose last week.
+  final SampledInstrument? importedChords;
+  final SampledInstrument? importedBass;
 
-  /// The same bank with [instrument] as the imported sound, or with none.
+  /// The same bank with these as the imported sounds, or with none.
   ///
   /// A copy rather than a setter because the bank is sent to the render
   /// isolate, where a bank that can change underneath a render in progress
   /// would be a very hard bug to find.
-  SampleBank withImported(SampledInstrument? instrument) => SampleBank(
-    bass: bass,
+  SampleBank withImported({
+    SampledInstrument? chords,
+    SampledInstrument? bass,
+  }) => SampleBank(
+    // this.bass, because the named argument above is the imported one.
+    bass: this.bass,
     piano: piano,
     guitar: guitar,
     ride: ride,
@@ -230,14 +239,21 @@ class SampleBank {
     cowbell: cowbell,
     tomHigh: tomHigh,
     tomLow: tomLow,
-    imported: instrument,
+    importedChords: chords,
+    importedBass: bass,
   );
 
   /// Who plays the chords, given what somebody chose.
   SampledInstrument playing(Comping comping) => switch (comping) {
     Comping.piano => piano,
     Comping.guitar => guitar,
-    Comping.imported => imported ?? piano,
+    Comping.imported => importedChords ?? piano,
+  };
+
+  /// Who plays the bass, given what somebody chose.
+  SampledInstrument playingBass(BassSound sound) => switch (sound) {
+    BassSound.upright => bass,
+    BassSound.imported => importedBass ?? bass,
   };
 
   /// Drum hits, softest layer first.

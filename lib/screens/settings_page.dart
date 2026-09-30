@@ -106,27 +106,50 @@ class SettingsPage extends StatelessWidget {
               label: (sound) => sound.label,
               onChanged: settings.setArpeggioSound,
             ),
+            _ChoiceTile<BassSound>(
+              icon: Icons.music_note_outlined,
+              title: 'Bass Played By',
+              value: settings.bassSound,
+              options: BassSound.values,
+              label: (sound) => sound.label,
+              onChanged: settings.setBassSound,
+            ),
             if (soundFont case final store?)
               ListenableBuilder(
                 listenable: store,
-                builder: (context, _) => ListTile(
-                  key: const ValueKey('import-soundfont'),
-                  leading: const Icon(Icons.graphic_eq),
-                  title: const Text('Import a Sound'),
-                  subtitle: Text(
-                    store.name == null
-                        ? 'Play the chords with a SoundFont of your own'
-                        : '${store.name} is ready, under Chords Played By',
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => ImportSoundFontScreen(
-                        store: store,
-                        settings: settings,
+                builder: (context, _) => Column(
+                  children: [
+                    for (final role in SoundFontRole.values)
+                      ListTile(
+                        key: ValueKey('import-soundfont-${role.name}'),
+                        leading: const Icon(Icons.graphic_eq),
+                        title: Text(
+                          role == SoundFontRole.bass
+                              ? 'Import a Bass'
+                              : 'Import a Sound',
+                        ),
+                        subtitle: Text(switch ((role, store.nameFor(role))) {
+                          (SoundFontRole.bass, null) =>
+                            'Play the bass with a SoundFont of your own',
+                          (_, null) =>
+                            'Play the chords with a SoundFont of your own',
+                          (SoundFontRole.bass, final name?) =>
+                            '$name is ready, under Bass Played By',
+                          (_, final name?) =>
+                            '$name is ready, under Chords Played By',
+                        }),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => ImportSoundFontScreen(
+                              store: store,
+                              role: role,
+                              settings: settings,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             SwitchListTile(

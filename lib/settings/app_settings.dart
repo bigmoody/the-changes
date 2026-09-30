@@ -134,6 +134,7 @@ class AppSettings extends ChangeNotifier {
     this._diagram,
     this._aimFor,
     this._comping,
+    this._bassSound,
     this._arpeggioSound,
     this._arpeggioStart,
     this._metronomeTempo,
@@ -152,6 +153,7 @@ class AppSettings extends ChangeNotifier {
     this._diagram = ChordDiagram.none,
     this._aimFor,
     this._comping = Comping.piano,
+    this._bassSound = BassSound.upright,
     this._arpeggioSound = Comping.piano,
     this._arpeggioStart = ArpeggioStart.root,
   ]) : _storage = null,
@@ -171,6 +173,7 @@ class AppSettings extends ChangeNotifier {
   static const _diagramKey = 'chordDiagram';
   static const _aimKey = 'aimFor';
   static const _compingKey = 'comping';
+  static const _bassSoundKey = 'bassSound';
   static const _arpeggioSoundKey = 'arpeggioSound';
   static const _arpeggioStartKey = 'arpeggioStart';
   static const _metronomeTempoKey = 'metronomeTempo';
@@ -190,6 +193,7 @@ class AppSettings extends ChangeNotifier {
     var diagram = ChordDiagram.none;
     DrillTarget? aimFor;
     var comping = Comping.piano;
+    var bassSound = BassSound.upright;
     var arpeggioSound = Comping.piano;
     var arpeggioStart = ArpeggioStart.root;
     var metronomeTempo = 120;
@@ -242,6 +246,11 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedComping,
         orElse: () => Comping.piano,
       );
+      final savedBass = await storage.getString(_bassSoundKey);
+      bassSound = BassSound.values.firstWhere(
+        (value) => value.name == savedBass,
+        orElse: () => BassSound.upright,
+      );
       mixWithOthers = await storage.getBool(_mixKey) ?? true;
       takesWithBand = await storage.getBool(_takesBandKey) ?? true;
       final saved = await storage.getString(_instrumentKey);
@@ -268,6 +277,7 @@ class AppSettings extends ChangeNotifier {
       diagram,
       aimFor,
       comping,
+      bassSound,
       arpeggioSound,
       arpeggioStart,
       metronomeTempo,
@@ -362,6 +372,22 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_compingKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// Who plays the bass: the band's upright, or a SoundFont somebody
+  /// imported for it.
+  BassSound get bassSound => _bassSound;
+  BassSound _bassSound;
+
+  Future<void> setBassSound(BassSound value) async {
+    if (value == _bassSound) return;
+    _bassSound = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_bassSoundKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

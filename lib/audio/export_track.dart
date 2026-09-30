@@ -123,6 +123,7 @@ Uint8List exportTrack(
       seed: request.seed,
       samples: request.samples,
       comping: request.comping,
+      bassSound: request.bassSound,
       arpeggios: request.arpeggios,
       arpeggioSound: request.arpeggioSound,
       arpeggioStart: request.arpeggioStart,
