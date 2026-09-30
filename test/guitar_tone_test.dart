@@ -56,7 +56,7 @@ void main() {
     expect(bank.guitar.notes.length, SampleBank.guitarPitches.length);
     for (final takes in bank.guitar.notes.values) {
       expect(takes.length, 3);
-      expect(takes.every((take) => take.isNotEmpty), isTrue);
+      expect(takes.every((take) => take.samples.isNotEmpty), isTrue);
     }
   });
 
@@ -67,7 +67,7 @@ void main() {
         in bank.guitar.notes.entries) {
       final bright = [
         for (final take in takes)
-          _brightness([for (final s in take) s / 32768]),
+          _brightness([for (final s in take.samples) s / 32768]),
       ];
       expect(
         bright.reduce(math.max) / bright.reduce(math.min),

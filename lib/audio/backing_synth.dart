@@ -659,10 +659,9 @@ _Parts _renderParts(
     if (bank != null) {
       final (shift, layers) = bank.piano.nearest(pitch);
       // Softer hits use the softer recording, not just a quieter one.
-      final layer = velocity < 0.72 ? 0 : (velocity < 0.86 ? 1 : 2);
       target.addRecording(
         start,
-        layers[layer],
+        bank.piano.forVelocity(layers, velocity),
         0.52 * velocity * level,
         rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: (beatSeconds * lengthBeats * sampleRate).round(),
@@ -1041,7 +1040,9 @@ _Parts _renderParts(
           final layer = (hit.hard ? samples.length - 1 : 0);
           drums.addRecording(
             at(beat),
-            pickTake(samples.layers[layer]),
+            // A drum hit has no rate and no loop: it is struck and it
+            // decays, so it goes in as plain samples.
+            SampledNote(pickTake(samples.layers[layer])),
             _drumLevel * hit.velocity * samples.levelling[layer],
           );
         } else {
@@ -1230,10 +1231,9 @@ Uint8List renderSnippet(
       );
     } else {
       final (shift, layers) = bank.piano.nearest(note.pitch);
-      final layer = note.velocity < 0.72 ? 0 : (note.velocity < 0.86 ? 1 : 2);
       mix.addRecording(
         start,
-        layers[layer],
+        bank.piano.forVelocity(layers, note.velocity),
         0.63 * note.velocity,
         rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: hold,
@@ -1247,7 +1247,7 @@ Uint8List renderSnippet(
     final layer = hit.hard ? samples.length - 1 : 0;
     mix.addRecording(
       (hit.at * sampleRate).round(),
-      samples.layers[layer].first,
+      SampledNote(samples.layers[layer].first),
       hit.velocity * samples.levelling[layer],
     );
   }
@@ -1457,35 +1457,61 @@ class _Mix {
   final int loopStart;
   final Float32List buffer;
 
-  /// Mixes in a recorded sample at [start].
+  /// Mixes in a recorded note at [start].
   ///
-  /// [rate] above 1 plays it faster and higher (for small pitch shifts). If
-  /// [holdSamples] is given, the sound is faded out over [releaseSamples]
-  /// after that point, like a key being released or a string being damped.
+  /// [rate] above 1 plays it faster and higher (for small pitch shifts); the
+  /// take's own rate is multiplied in, so a sample recorded at 22 kHz comes
+  /// out at the pitch it was played. If [holdSamples] is given, the sound is
+  /// faded out over [releaseSamples] after that point, like a key being
+  /// released or a string being damped.
+  ///
+  /// A recording with a loop goes round it for as long as the note is held,
+  /// rather than running off its own end. That is how an organ or a Rhodes
+  /// out of a SoundFont is stored: a moment of the attack, then a region
+  /// to repeat. A one-shot, which is every built-in recording, simply runs
+  /// out, and the loop costs it nothing.
   void addRecording(
     int start,
-    Int16List sample,
+    SampledNote note,
     double gain, {
     double rate = 1,
     int? holdSamples,
     int releaseSamples = 0,
   }) {
+    final sample = note.samples;
+    final speed = rate * note.rate;
     final scale = gain / 32768;
-    var length = (sample.length / rate).floor() - 1;
+    final loop = note.loop;
+    // Where the readhead may not go: one short of the end, because reading
+    // a fraction of the way between two samples needs the one after it.
+    final last = (loop == null ? sample.length : loop.$2) - 1;
+    var length = (last / speed).floor();
     if (holdSamples != null) {
       length = math.min(length, holdSamples + releaseSamples);
+    } else if (loop != null) {
+      // Nothing says when to stop, so the loop would go round for ever.
+      length = math.min(length, sample.length);
     }
+    if (loop != null && holdSamples != null) {
+      length = holdSamples + releaseSamples;
+    }
+    final loopLength = loop == null ? 0 : loop.$2 - loop.$1;
     for (var i = 0; i < length; i++) {
+      var position = i * speed;
+      if (loop != null && loopLength > 0 && position > loop.$1) {
+        position = loop.$1 + (position - loop.$1) % loopLength;
+      }
       double value;
-      if (rate == 1) {
+      if (speed == 1 && loop == null) {
         value = sample[i].toDouble();
       } else {
-        final position = i * rate;
         final index = position.floor();
+        if (index + 1 >= sample.length) break;
         final fraction = position - index;
         value = sample[index] + (sample[index + 1] - sample[index]) * fraction;
       }
       if (holdSamples != null && i > holdSamples) {
+        if (releaseSamples == 0) break;
         value *= 1 - (i - holdSamples) / releaseSamples;
       }
       add(start + i, value * scale);

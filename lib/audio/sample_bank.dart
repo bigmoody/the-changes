@@ -46,6 +46,32 @@ class DrumSamples {
   }
 }
 
+/// One recording of one note.
+///
+/// The built-in instruments are trimmed WAVs at the app's own sample rate,
+/// so for them this is the samples and nothing else. A note out of a
+/// SoundFont carries two more facts that cannot be baked into the samples:
+/// the rate it was recorded at, which is often not ours, and where it
+/// loops, because a sustained sound is stored as a short piece of the note
+/// plus a region to go round while the key is held. Without the loop an
+/// organ stops dead a third of a second in.
+class SampledNote {
+  const SampledNote(this.samples, {this.rate = 1, this.loop});
+
+  final Int16List samples;
+
+  /// How much faster than normal to read it, before any pitch shift: the
+  /// ratio of its own sample rate to the app's, with any fine tuning the
+  /// recording asks for folded in.
+  final double rate;
+
+  /// The region to repeat while the note is held, as sample offsets. Null
+  /// for a one-shot, which is every built-in recording.
+  final (int, int)? loop;
+
+  int get length => samples.length;
+}
+
 /// How an instrument's recordings of one note differ from each other.
 enum Takes {
   /// The same stroke played again: pick one at random, so a busy part does
@@ -73,6 +99,7 @@ class SampledInstrument {
     required this.name,
     required this.notes,
     required this.takesAre,
+    this.velocityBands = const [],
   }) : pitches = notes.keys.toList()..sort() {
     assert(notes.isNotEmpty, '$name has no recordings');
   }
@@ -81,12 +108,39 @@ class SampledInstrument {
   final String name;
 
   /// The recordings, by the MIDI pitch they were played at.
-  final Map<int, List<Int16List>> notes;
+  final Map<int, List<SampledNote>> notes;
 
   /// Those pitches in order, so [nearest] is a walk rather than a search.
   final List<int> pitches;
 
   final Takes takesAre;
+
+  /// Where one velocity layer gives way to the next, when the instrument
+  /// has an opinion about it.
+  ///
+  /// The built-in piano does: its three recordings change over at 0.72 and
+  /// 0.86, which are not even thirds because they were found by playing it
+  /// rather than by dividing one by three. Anything without an opinion,
+  /// which is every imported instrument, gets even bands.
+  final List<double> velocityBands;
+
+  /// Which recording of a note to play at [velocity].
+  ///
+  /// Written here rather than at the call sites because the call sites used
+  /// to assume the piano's three layers, which made a font with one take
+  /// or four a crash rather than a sound.
+  SampledNote forVelocity(List<SampledNote> takes, double velocity) {
+    if (takes.length == 1) return takes.first;
+    if (velocityBands.isNotEmpty) {
+      var layer = 0;
+      while (layer < velocityBands.length && velocity >= velocityBands[layer]) {
+        layer++;
+      }
+      return takes[layer.clamp(0, takes.length - 1)];
+    }
+    final band = (velocity * takes.length).floor();
+    return takes[band.clamp(0, takes.length - 1)];
+  }
 
   int get lowest => pitches.first;
   int get highest => pitches.last;
@@ -95,7 +149,7 @@ class SampledInstrument {
   /// shifted to get there. Past either end of the range that shift grows,
   /// which is right for a line that climbs deliberately out of the
   /// instrument's register.
-  (int, List<Int16List>) nearest(int pitch) {
+  (int, List<SampledNote>) nearest(int pitch) {
     final nearest = pitches.reduce(
       (a, b) => (a - pitch).abs() <= (b - pitch).abs() ? a : b,
     );
@@ -108,7 +162,7 @@ class SampledInstrument {
   /// walking line that dips under the bottom of an upright should play the
   /// bottom note, the way a bass player would, rather than a pitched-down
   /// one; use [nearest] where the line is meant to leave the register.
-  List<Int16List> at(int pitch) {
+  List<SampledNote> at(int pitch) {
     final wanted = pitch.clamp(lowest, highest);
     return notes[wanted] ?? nearest(wanted).$2;
   }
@@ -183,6 +237,7 @@ class SampleBank {
     Future<Uint8List> Function(String path) load,
   ) async {
     Future<Int16List> wav(String path) async => decodeWav(await load(path));
+    Future<SampledNote> note(String path) async => SampledNote(await wav(path));
 
     Future<DrumSamples> kit(String name) async => DrumSamples([
       for (final layer in [1, 2])
@@ -207,19 +262,20 @@ class SampleBank {
         notes: {
           for (final pitch in bassPitches)
             pitch: [
-              await wav('bass/bass_${pitch}_rr1.wav'),
-              await wav('bass/bass_${pitch}_rr2.wav'),
+              await note('bass/bass_${pitch}_rr1.wav'),
+              await note('bass/bass_${pitch}_rr2.wav'),
             ],
         },
       ),
       piano: SampledInstrument(
         name: 'Piano',
         takesAre: Takes.velocity,
+        velocityBands: const [0.72, 0.86],
         notes: {
           for (final pitch in pianoPitches)
             pitch: [
               for (final layer in [1, 2, 3])
-                await wav('piano/piano_${pitch}_v$layer.wav'),
+                await note('piano/piano_${pitch}_v$layer.wav'),
             ],
         },
       ),
@@ -229,8 +285,8 @@ class SampleBank {
         notes: {
           for (final pitch in guitarPitches)
             pitch: [
-              for (final take in [1, 2, 3])
-                await wav('guitar/guitar_${pitch}_rr$take.wav'),
+              for (final round in [1, 2, 3])
+                await note('guitar/guitar_${pitch}_rr$round.wav'),
             ],
         },
       ),

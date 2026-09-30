@@ -33,7 +33,7 @@ SampledInstrument madeUp(List<int> pitches) => SampledInstrument(
   name: 'Made up',
   takesAre: Takes.roundRobin,
   notes: {
-    for (final pitch in pitches) pitch: [Int16List(4)],
+    for (final pitch in pitches) pitch: [SampledNote(Int16List(4))],
   },
 );
 
@@ -312,7 +312,7 @@ void main() {
       // brighter than the others would be heard as a wobble.
       for (final MapEntry(key: pitch, value: takes)
           in bank.guitar.notes.entries) {
-        final all = [for (final take in takes) brightness(take)];
+        final all = [for (final take in takes) brightness(take.samples)];
         expect(
           all.reduce(math.max) / all.reduce(math.min),
           lessThan(1.5),
