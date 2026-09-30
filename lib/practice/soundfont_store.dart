@@ -240,6 +240,23 @@ class SoundFontStore extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sends the whole band back to its own instruments.
+  ///
+  /// One call rather than seven trips through the list, and one write
+  /// rather than seven: somebody who has been trying sounds out and wants
+  /// to hear the band again should not have to undo it a drum at a time.
+  Future<void> forgetEverything() async {
+    _instruments.clear();
+    _names.clear();
+    _drums.clear();
+    _drumNames.clear();
+    for (final role in SoundFontRole.values) {
+      await _files?.remove(role.fileName);
+    }
+    await _write();
+    notifyListeners();
+  }
+
   Future<void> _saveDrums() async {
     if (_drums.isEmpty) {
       await _files?.remove(SoundFontRole.drums.fileName);

@@ -231,6 +231,23 @@ void main() {
       expect(again.has(SoundFontRole.chords), isTrue);
     });
 
+    test('forgetting everything takes the files with it', () async {
+      final files = NoRecordingFiles();
+      final saved = MemoryStorage();
+      final store = await SoundFontStore.load(storage: saved, files: files);
+      await store.keep(SoundFontRole.chords, instrumentIn(font));
+      await store.keepKit('A Kit', {Drum.kick: emptyDrum});
+      expect(files.saved, isNotEmpty);
+
+      await store.forgetEverything();
+      expect(store.anything, isFalse);
+      expect(files.saved, isEmpty);
+
+      // And it stays gone across a restart.
+      final again = await SoundFontStore.load(storage: saved, files: files);
+      expect(again.anything, isFalse);
+    });
+
     test('forgetting one leaves nothing behind', () async {
       final files = NoRecordingFiles();
       final saved = MemoryStorage();
@@ -628,6 +645,57 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.hasDrum(Drum.kick), isFalse);
       expect(store.hasDrum(Drum.snare), isTrue);
+    });
+
+    testWidgets('everything can go at once, once it is confirmed', (
+      tester,
+    ) async {
+      final store = SoundFontStore.inMemory(
+        chords: instrumentIn(font),
+        bass: instrumentIn(font),
+        drums: {Drum.kick: emptyDrum, Drum.snare: emptyDrum},
+      );
+      final settings = AppSettings.inMemory();
+      await settings.setComping(Comping.imported);
+      await settings.setBassSound(BassSound.imported);
+      await settings.setDrumSound(DrumSound.imported);
+      tallWindow(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(store: store, settings: settings),
+        ),
+      );
+
+      // Asked first, and backing out keeps everything.
+      await tester.tap(find.byKey(const ValueKey('forget-everything')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keep Them'));
+      await tester.pumpAndSettle();
+      expect(store.anything, isTrue);
+
+      await tester.tap(find.byKey(const ValueKey('forget-everything')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('really-forget-everything')));
+      await tester.pumpAndSettle();
+      expect(store.anything, isFalse);
+      expect(store.drums, isEmpty);
+
+      // And nothing left claiming to play a sound that has gone.
+      expect(settings.comping, Comping.piano);
+      expect(settings.arpeggioSound, Comping.piano);
+      expect(settings.bassSound, BassSound.upright);
+      expect(settings.drumSound, DrumSound.kit);
+    });
+
+    testWidgets('and is not offered when there is nothing to remove', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(store: SoundFontStore.inMemory()),
+        ),
+      );
+      expect(find.byKey(const ValueKey('forget-everything')), findsNothing);
     });
 
     testWidgets('a kit with nothing where the map says is refused', (

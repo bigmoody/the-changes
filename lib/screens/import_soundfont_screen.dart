@@ -245,6 +245,43 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
     }
   }
 
+  /// Throws every imported sound away and puts the band's own back on.
+  ///
+  /// Asked first, because it is several minutes of choosing undone in one
+  /// tap and the files go with it.
+  Future<void> _forgetEverything() async {
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Play the Whole Band Again?'),
+        content: const Text(
+          'Every sound you have imported is thrown away, and the band goes '
+          'back to its own piano, upright and kit. The SoundFonts you took '
+          'them from are untouched.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep Them'),
+          ),
+          TextButton(
+            key: const ValueKey('really-forget-everything'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove All'),
+          ),
+        ],
+      ),
+    );
+    if (sure != true) return;
+    await widget.store.forgetEverything();
+    // And the settings back with them, so nothing is left saying it is
+    // playing an imported sound that is no longer there.
+    await widget.settings?.setComping(Comping.piano);
+    await widget.settings?.setArpeggioSound(Comping.piano);
+    await widget.settings?.setBassSound(BassSound.upright);
+    await widget.settings?.setDrumSound(DrumSound.kit);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -345,6 +382,21 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
                           )
                         : null,
                   ),
+                // Undoing the lot in one go. Somebody who has been trying
+                // sounds out and wants the band back should not have to
+                // undo it a drum at a time.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: OutlinedButton.icon(
+                    key: const ValueKey('forget-everything'),
+                    onPressed: _forgetEverything,
+                    icon: const Icon(Icons.undo),
+                    label: const Text('Play the Whole Band Again'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: scheme.error,
+                    ),
+                  ),
+                ),
               ],
               if (font != null && !_busy) ...[
                 SectionHeader(font.name),
