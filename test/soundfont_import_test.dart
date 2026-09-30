@@ -17,6 +17,7 @@ import 'package:play_along/music/tune.dart';
 import 'package:play_along/practice/recording_store.dart';
 import 'package:play_along/settings/progression_store.dart';
 import 'package:play_along/practice/soundfont_store.dart';
+import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/screens/import_soundfont_screen.dart';
 
 import 'soundfont_test.dart' show buildFont, sample, zone, emptyDrum;
@@ -223,6 +224,29 @@ void main() {
       await tester.pumpAndSettle();
       expect(store.hasOne, isTrue);
       expect(store.instrument!.pitches, [60]);
+    });
+
+    testWidgets('choosing a sound also puts it on', (tester) async {
+      // Otherwise the sound is kept, nothing plays it, and the app looks
+      // broken to everybody who does not make a second trip to Settings.
+      final store = SoundFontStore.inMemory();
+      final settings = AppSettings.inMemory();
+      expect(settings.comping, Comping.piano);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportSoundFontScreen(
+            store: store,
+            settings: settings,
+            pick: () async => (name: 'piano.sf2', bytes: font),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('preset-0')));
+      await tester.pumpAndSettle();
+      expect(store.hasOne, isTrue);
+      expect(settings.comping, Comping.imported);
     });
 
     testWidgets('says what is wrong with a file it cannot read', (

@@ -121,7 +121,10 @@ class SettingsPage extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => ImportSoundFontScreen(store: store),
+                      builder: (_) => ImportSoundFontScreen(
+                        store: store,
+                        settings: settings,
+                      ),
                     ),
                   ),
                 ),

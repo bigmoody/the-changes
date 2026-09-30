@@ -21,13 +21,25 @@ import 'package:flutter/material.dart';
 
 import '../audio/sample_bank.dart';
 import '../audio/soundfont.dart';
+import '../music/tune.dart' show Comping;
 import '../practice/soundfont_store.dart';
+import '../settings/app_settings.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 class ImportSoundFontScreen extends StatefulWidget {
-  const ImportSoundFontScreen({super.key, required this.store, this.pick});
+  const ImportSoundFontScreen({
+    super.key,
+    required this.store,
+    this.settings,
+    this.pick,
+  });
 
   final SoundFontStore store;
+
+  /// So that choosing a sound also puts it on. Without it the sound is
+  /// kept and nothing plays it, which is a strange thing to do to
+  /// somebody who has just chosen one.
+  final AppSettings? settings;
 
   /// How a file is chosen. Tests hand in their own, because there is no
   /// picker to tap in a widget test.
@@ -92,6 +104,10 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
       // Reading the samples out is the slow part, and it happens once.
       final SampledInstrument instrument = font.instrumentFor(preset);
       await widget.store.keep(instrument);
+      // And put it on. Anybody who has just picked a sound out of a file
+      // wants to hear it, and leaving it to a second trip through Settings
+      // makes the app look broken to everyone who does not make that trip.
+      await widget.settings?.setComping(Comping.imported);
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('${instrument.name} will play the chords')),
