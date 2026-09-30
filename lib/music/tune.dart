@@ -169,7 +169,12 @@ bool figuresApply(PianoStyle style, Comping who) => switch (style) {
 
 enum Comping {
   piano('Piano'),
-  guitar('Guitar');
+  guitar('Guitar'),
+
+  /// Whatever SoundFont somebody imported. It falls back to the piano
+  /// when there is not one, so a setting saved on a phone that has since
+  /// lost the file still plays.
+  imported('Imported Sound');
 
   const Comping(this.label);
   final String label;

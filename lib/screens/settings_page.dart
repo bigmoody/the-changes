@@ -4,11 +4,13 @@ import '../audio/practice_player.dart';
 import '../library/library_store.dart';
 import '../music/chord_drill.dart';
 import '../music/tune.dart';
+import '../practice/soundfont_store.dart';
 import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import 'about.dart';
 import 'backup_screen.dart';
+import 'import_soundfont_screen.dart';
 import 'chart_instrument_button.dart';
 import 'tunes_page.dart' show SectionHeader;
 
@@ -23,6 +25,7 @@ class SettingsPage extends StatelessWidget {
     required this.progressions,
     required this.library,
     this.takes,
+    this.soundFont,
   });
 
   final PracticePlayer player;
@@ -30,6 +33,11 @@ class SettingsPage extends StatelessWidget {
   final ProgressionStore progressions;
   final LibraryStore library;
   final TakeStore? takes;
+
+  /// Where an imported SoundFont lives. Without it the row that imports
+  /// one is not offered, which is what tests that do not care about sound
+  /// get.
+  final SoundFontStore? soundFont;
 
   @override
   Widget build(BuildContext context) {
@@ -98,6 +106,26 @@ class SettingsPage extends StatelessWidget {
               label: (sound) => sound.label,
               onChanged: settings.setArpeggioSound,
             ),
+            if (soundFont case final store?)
+              ListenableBuilder(
+                listenable: store,
+                builder: (context, _) => ListTile(
+                  key: const ValueKey('import-soundfont'),
+                  leading: const Icon(Icons.graphic_eq),
+                  title: const Text('Import a Sound'),
+                  subtitle: Text(
+                    store.name == null
+                        ? 'Play the chords with a SoundFont of your own'
+                        : '${store.name} is ready, under Chords Played By',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ImportSoundFontScreen(store: store),
+                    ),
+                  ),
+                ),
+              ),
             SwitchListTile(
               secondary: const Icon(Icons.queue_music),
               title: const Text('Keep Other Apps Playing'),

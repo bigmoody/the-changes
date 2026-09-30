@@ -113,7 +113,7 @@ class SoundFont {
       );
     }
 
-    var name = fileName;
+    String? inam;
     var sampleData = 0;
     var sampleDataLength = 0;
     final tables = <String, _Table>{};
@@ -137,7 +137,7 @@ class SoundFont {
         final kept = _min(length, bytes.length - start);
         switch ((list, chunk)) {
           case ('INFO', 'INAM'):
-            name ??= _string(bytes, start, kept);
+            inam = _string(bytes, start, kept);
           case ('sdta', 'smpl'):
             sampleData = start;
             sampleDataLength = kept ~/ 2;
@@ -172,7 +172,9 @@ class SoundFont {
     }
 
     final font = SoundFont._(
-      name ?? 'SoundFont',
+      // What the font calls itself, and only then what the file is
+      // called: the file is often "GeneralUser GS v1.471.sf2".
+      inam?.isNotEmpty == true ? inam! : (fileName ?? 'SoundFont'),
       bytes,
       sampleData,
       sampleDataLength,

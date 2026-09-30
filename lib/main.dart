@@ -19,6 +19,7 @@ import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
 import 'practice/part_store.dart';
 import 'practice/lick_store.dart';
+import 'practice/soundfont_store.dart';
 import 'practice/recording_store.dart';
 import 'settings/progression_store.dart';
 import 'theme.dart';
@@ -36,6 +37,9 @@ Future<void> main() async {
     files: DeviceRecordingFiles(),
   );
   final licks = await LickStore.load(files: DeviceRecordingFiles('licks'));
+  final soundFont = await SoundFontStore.load(
+    files: DeviceRecordingFiles('soundfont'),
+  );
   final player = PracticePlayer();
   String? audioError;
   try {
@@ -54,6 +58,7 @@ Future<void> main() async {
       partStore: partStore,
       recordingStore: recordingStore,
       licks: licks,
+      soundFont: soundFont,
       audioError: audioError,
     ),
   );
@@ -62,9 +67,16 @@ Future<void> main() async {
   // isn't slowed down. Until they're ready the band uses synthesised sounds.
   try {
     final stopwatch = Stopwatch()..start();
-    player.samples = await SampleBank.load(
+    final bank = await SampleBank.load(
       (path) async =>
           (await rootBundle.load('assets/sounds/$path')).buffer.asUint8List(),
+    );
+    // Whatever SoundFont somebody imported rides along with the bank, and
+    // is put back whenever they change it. The bank is what goes to the
+    // render isolate, so this is the only place it needs to be.
+    player.samples = bank.withImported(soundFont.instrument);
+    soundFont.addListener(
+      () => player.samples = bank.withImported(soundFont.instrument),
     );
     debugPrint(
       'Loaded instrument samples in ${stopwatch.elapsedMilliseconds} ms',
@@ -85,6 +97,7 @@ class TheChangesApp extends StatelessWidget {
     required this.partStore,
     required this.recordingStore,
     required this.licks,
+    required this.soundFont,
     this.audioError,
   });
 
@@ -98,6 +111,9 @@ class TheChangesApp extends StatelessWidget {
   /// Where recordings of real players are kept.
   final RecordingStore recordingStore;
   final LickStore licks;
+
+  /// The SoundFont somebody imported, if any.
+  final SoundFontStore soundFont;
   final String? audioError;
 
   @override
@@ -116,6 +132,7 @@ class TheChangesApp extends StatelessWidget {
         partStore: partStore,
         recordingStore: recordingStore,
         licks: licks,
+        soundFont: soundFont,
         audioError: audioError,
       ),
     );

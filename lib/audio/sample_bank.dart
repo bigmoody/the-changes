@@ -12,6 +12,8 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import '../music/tune.dart' show Comping;
+
 /// One drum, recorded at two or three strengths of stroke ("layers"), each
 /// with a few takes of the same stroke.
 ///
@@ -184,6 +186,7 @@ class SampleBank {
     required this.cowbell,
     required this.tomHigh,
     required this.tomLow,
+    this.imported,
   });
 
   /// Bass notes by MIDI pitch (E1–E3), two recorded takes each: every
@@ -203,6 +206,39 @@ class SampleBank {
   /// louder, which velocity already does. Three takes rather than two, so
   /// a busy comp repeats itself less.
   final SampledInstrument guitar;
+
+  /// A SoundFont somebody imported, if they have. Null is the usual case
+  /// and everything falls back to the piano.
+  final SampledInstrument? imported;
+
+  /// The same bank with [instrument] as the imported sound, or with none.
+  ///
+  /// A copy rather than a setter because the bank is sent to the render
+  /// isolate, where a bank that can change underneath a render in progress
+  /// would be a very hard bug to find.
+  SampleBank withImported(SampledInstrument? instrument) => SampleBank(
+    bass: bass,
+    piano: piano,
+    guitar: guitar,
+    ride: ride,
+    hiHatPedal: hiHatPedal,
+    hiHatClosed: hiHatClosed,
+    hiHatOpen: hiHatOpen,
+    kick: kick,
+    snare: snare,
+    crossStick: crossStick,
+    cowbell: cowbell,
+    tomHigh: tomHigh,
+    tomLow: tomLow,
+    imported: instrument,
+  );
+
+  /// Who plays the chords, given what somebody chose.
+  SampledInstrument playing(Comping comping) => switch (comping) {
+    Comping.piano => piano,
+    Comping.guitar => guitar,
+    Comping.imported => imported ?? piano,
+  };
 
   /// Drum hits, softest layer first.
   final DrumSamples ride;

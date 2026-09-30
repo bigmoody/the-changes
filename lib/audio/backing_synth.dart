@@ -646,6 +646,9 @@ _Parts _renderParts(
   }
 
   // ── Piano ──────────────────────────────────────────────────────────────
+  /// The keyboard part: the piano, or an imported SoundFont standing in
+  /// its place. It keeps the piano's envelope either way, because the band
+  /// decides how long a chord is held and the font has no say in it.
   void playPianoNote(
     int pitch,
     int start,
@@ -653,15 +656,17 @@ _Parts _renderParts(
     double velocity, {
     _Mix? into,
     double level = 1,
+    SampledInstrument? instrument,
     required double beatSeconds,
   }) {
     final target = into ?? piano;
     if (bank != null) {
-      final (shift, layers) = bank.piano.nearest(pitch);
+      final sound = instrument ?? bank.piano;
+      final (shift, layers) = sound.nearest(pitch);
       // Softer hits use the softer recording, not just a quieter one.
       target.addRecording(
         start,
-        bank.piano.forVelocity(layers, velocity),
+        sound.forVelocity(layers, velocity),
         0.52 * velocity * level,
         rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: (beatSeconds * lengthBeats * sampleRate).round(),
@@ -722,6 +727,13 @@ _Parts _renderParts(
       );
     }
   }
+
+  // Who is actually playing the chords, and the arpeggios. An imported
+  // SoundFont plays through the pianist: the guitarist's voicings are
+  // shapes a hand makes on a neck, and putting an organ through them
+  // would be a strange thing to hear.
+  final chordSound = bank?.playing(request.comping);
+  final arpeggioSound = bank?.playing(request.arpeggioSound);
 
   final loopBars =
       (loop.endBeat - 1) ~/ beatsPerBar - loop.startBeat ~/ beatsPerBar + 1;
@@ -840,6 +852,7 @@ _Parts _renderParts(
               at(chorusBeat + slotStart + hit.beat) + spread,
               hit.length,
               hit.velocity * (0.9 + human.nextDouble() * 0.1),
+              instrument: chordSound,
               beatSeconds: secondsPerBeatAt(chorusBeat + slotStart + hit.beat),
             );
           }
@@ -884,6 +897,7 @@ _Parts _renderParts(
           // Gently played, for a mellow tone, but as present as the chords:
           // they're what you're listening for.
           level: 1.6,
+          instrument: arpeggioSound,
           beatSeconds: secondsPerBeatAt(note.beat),
         );
       }
