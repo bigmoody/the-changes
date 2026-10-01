@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../audio/drum_patterns.dart' show Drum;
 import '../audio/practice_player.dart';
 import '../library/library_store.dart';
 import '../music/chord_drill.dart';
@@ -10,6 +11,7 @@ import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import 'about.dart';
 import 'backup_screen.dart';
+import 'drum_kit_screen.dart';
 import 'import_soundfont_screen.dart';
 import 'chart_instrument_button.dart';
 import 'tunes_page.dart' show SectionHeader;
@@ -122,6 +124,32 @@ class SettingsPage extends StatelessWidget {
               label: (sound) => sound.label,
               onChanged: settings.setDrumSound,
             ),
+            // Its own row, right under the one that switches it on. A kit
+            // is ten choices rather than one, and reaching them through
+            // the general import screen meant scrolling past forty
+            // instruments to find a kit at the bottom of a file.
+            if (soundFont case final store?)
+              ListenableBuilder(
+                listenable: store,
+                builder: (context, _) => ListTile(
+                  key: const ValueKey('drum-kit'),
+                  leading: const Icon(Icons.graphic_eq),
+                  title: const Text('Drum Kit'),
+                  subtitle: Text(
+                    store.drumsFrom == null
+                        ? 'Take any drum from a SoundFont of your own'
+                        : '${store.drums.length} of ${Drum.values.length} '
+                              'from ${store.drumsFrom}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          DrumKitScreen(store: store, settings: settings),
+                    ),
+                  ),
+                ),
+              ),
             // One row and not three. Which parts come out of a SoundFont
             // is a question about the band, not three separate errands,
             // and three rows meant choosing the same file three times to

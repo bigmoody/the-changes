@@ -39,6 +39,7 @@ import '../audio/soundfont.dart';
 import '../music/tune.dart' show BassSound, Comping, DrumSound;
 import '../practice/soundfont_store.dart';
 import '../settings/app_settings.dart';
+import 'drum_kit_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 class ImportSoundFontScreen extends StatefulWidget {
@@ -356,32 +357,35 @@ class _ImportSoundFontScreenState extends State<ImportSoundFontScreen> {
                           )
                         : null,
                   ),
-                // The drums one at a time, because that is how they are
-                // chosen now. A single line saying "the drums" would hide
-                // the one thing this section is for: which drum is coming
-                // from where.
-                const SectionHeader('The Drums'),
-                for (final drum in Drum.values)
-                  ListTile(
-                    key: ValueKey('playing-${drum.name}'),
-                    dense: true,
-                    leading: Icon(
-                      widget.store.hasDrum(drum)
-                          ? Icons.graphic_eq
-                          : Icons.music_note_outlined,
-                    ),
-                    title: Text(drum.label),
-                    subtitle: Text(
-                      widget.store.nameForDrum(drum) ?? "The band's own",
-                    ),
-                    trailing: widget.store.hasDrum(drum)
-                        ? TextButton(
-                            key: ValueKey('forget-${drum.name}'),
-                            onPressed: () => widget.store.forgetDrum(drum),
-                            child: const Text('Remove'),
-                          )
-                        : null,
+                // One line for the drums, and the detail on their own
+                // screen. Ten rows here made this page mostly drums, and
+                // the place to change them is the screen that starts from
+                // the drum rather than from a file.
+                ListTile(
+                  key: const ValueKey('playing-drums'),
+                  leading: Icon(
+                    widget.store.has(SoundFontRole.drums)
+                        ? Icons.graphic_eq
+                        : Icons.music_note_outlined,
                   ),
+                  title: Text(SoundFontRole.drums.part),
+                  subtitle: Text(
+                    widget.store.drumsFrom == null
+                        ? SoundFontRole.drums.ours
+                        : '${widget.store.drums.length} of '
+                              '${Drum.values.length} from '
+                              '${widget.store.drumsFrom}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => DrumKitScreen(
+                        store: widget.store,
+                        settings: widget.settings,
+                      ),
+                    ),
+                  ),
+                ),
                 // Undoing the lot in one go. Somebody who has been trying
                 // sounds out and wants the band back should not have to
                 // undo it a drum at a time.

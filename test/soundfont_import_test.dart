@@ -630,23 +630,6 @@ void main() {
       expect(store.nameForDrum(Drum.cowbell), 'An Old Kit');
     });
 
-    testWidgets('a drum can be sent back to the band on its own', (
-      tester,
-    ) async {
-      final store = SoundFontStore.inMemory(
-        drums: {Drum.kick: emptyDrum, Drum.snare: emptyDrum},
-      );
-      await tester.pumpWidget(
-        MaterialApp(home: ImportSoundFontScreen(store: store)),
-      );
-      tallWindow(tester);
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('forget-kick')));
-      await tester.pumpAndSettle();
-      expect(store.hasDrum(Drum.kick), isFalse);
-      expect(store.hasDrum(Drum.snare), isTrue);
-    });
-
     testWidgets('everything can go at once, once it is confirmed', (
       tester,
     ) async {
@@ -741,10 +724,12 @@ void main() {
       // with the band's own named where nothing has been imported.
       expect(find.byKey(const ValueKey('playing-chords')), findsOneWidget);
       expect(find.byKey(const ValueKey('playing-bass')), findsOneWidget);
-      expect(find.byKey(const ValueKey('playing-kick')), findsOneWidget);
-      expect(find.byKey(const ValueKey('playing-ride')), findsOneWidget);
+      // The drums as one line, with their detail a tap away: ten rows
+      // here made this page mostly drums.
+      expect(find.byKey(const ValueKey('playing-drums')), findsOneWidget);
+      expect(find.byKey(const ValueKey('playing-kick')), findsNothing);
       expect(find.text("The band's upright"), findsOneWidget);
-      expect(find.text("The band's own"), findsNWidgets(Drum.values.length));
+      expect(find.text("The band's own kit"), findsOneWidget);
       // Only the imported one can be let go.
       expect(find.byKey(const ValueKey('forget-bass')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('forget-chords')));
