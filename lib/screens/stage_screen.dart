@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import '../practice/practice_controller.dart';
 import '../theme.dart';
 import 'chord_chart.dart' show ChordChart, CountInBubble;
+import 'play_shortcuts.dart';
 
 class StageScreen extends StatelessWidget {
   const StageScreen({super.key, required this.controller});
@@ -29,27 +30,32 @@ class StageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: controller,
-    builder: (context, _) => Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                key: const ValueKey('stage-chart'),
-                behavior: HitTestBehavior.opaque,
-                onTap: controller.togglePlay,
-                child: Stack(
-                  children: [
-                    ChordChart(controller: controller, stage: true),
-                    if (controller.countInBeat != null)
-                      CountInBubble(beat: controller.countInBeat!),
-                  ],
+    // The spacebar as well as the whole chart. On a stand a metre away a
+    // keyboard may be the only thing within reach.
+    builder: (context, _) => PlayPauseShortcut(
+      onPlayPause: controller.togglePlay,
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  key: const ValueKey('stage-chart'),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: controller.togglePlay,
+                  child: Stack(
+                    children: [
+                      ChordChart(controller: controller, stage: true),
+                      if (controller.countInBeat != null)
+                        CountInBubble(beat: controller.countInBeat!),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const Divider(height: 1),
-            _StageBar(controller: controller),
-          ],
+              const Divider(height: 1),
+              _StageBar(controller: controller),
+            ],
+          ),
         ),
       ),
     ),

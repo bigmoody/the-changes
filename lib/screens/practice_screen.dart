@@ -23,6 +23,7 @@ import '../settings/progression_store.dart';
 import 'chord_chart.dart';
 import 'loop_bar.dart';
 import 'now_playing.dart';
+import 'play_shortcuts.dart';
 import 'practice_sheets.dart';
 import 'progression_editor_screen.dart';
 import 'setlists_screen.dart' show showAddToSetlist;
@@ -206,58 +207,63 @@ class _PracticeScreenState extends State<PracticeScreen> {
     // ListenableBuilder rebuilds this part whenever the controller changes.
     return ListenableBuilder(
       listenable: _controller,
-      builder: (context, _) => Scaffold(
-        appBar: AppBar(
-          title: _TuneTitle(widget.tune.title),
-          actions: [
-            if (widget.progression != null && widget.progressions != null)
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                tooltip: 'Edit progression',
-                onPressed: _edit,
-              ),
-            if (_controller.canRecord)
-              IconButton(
-                key: const ValueKey('takes'),
-                icon: const Icon(Icons.graphic_eq),
-                tooltip: 'Takes',
-                onPressed: () => showTakes(context, _controller),
-              ),
-            IconButton(
-              key: const ValueKey('arrangement'),
-              icon: const Icon(Icons.queue_music_outlined),
-              // Filled in once it's more than a loop, so a performance set
-              // up earlier isn't forgotten about.
-              isSelected: !_controller.arrangement.isPlain,
-              selectedIcon: const Icon(Icons.queue_music),
-              tooltip: 'Arrangement',
-              onPressed: () => showArrangement(context, _controller),
-            ),
-            TextButton(
-              onPressed: () => showViewOptions(context, _controller),
-              child: const Text('View'),
-            ),
-            _MoreMenu(
-              library: widget.library,
-              tune: _ref,
-              title: widget.tune.title,
-              onShare: () => shareChart(
-                context,
-                _controller.originalTune,
-                semitones: _controller.semitones,
-              ),
-              // The same controller goes with it, so the band carries on
-              // playing as you walk on and off.
-              onStage: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => StageScreen(controller: _controller),
+      builder: (context, _) => PlayPauseShortcut(
+        onPlayPause: () {
+          if (!_controller.isPreparing) _controller.togglePlay();
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: _TuneTitle(widget.tune.title),
+            actions: [
+              if (widget.progression != null && widget.progressions != null)
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  tooltip: 'Edit progression',
+                  onPressed: _edit,
                 ),
+              if (_controller.canRecord)
+                IconButton(
+                  key: const ValueKey('takes'),
+                  icon: const Icon(Icons.graphic_eq),
+                  tooltip: 'Takes',
+                  onPressed: () => showTakes(context, _controller),
+                ),
+              IconButton(
+                key: const ValueKey('arrangement'),
+                icon: const Icon(Icons.queue_music_outlined),
+                // Filled in once it's more than a loop, so a performance set
+                // up earlier isn't forgotten about.
+                isSelected: !_controller.arrangement.isPlain,
+                selectedIcon: const Icon(Icons.queue_music),
+                tooltip: 'Arrangement',
+                onPressed: () => showArrangement(context, _controller),
               ),
-              onRecord: () => showPracticeRecord(context, _controller),
-            ),
-          ],
+              TextButton(
+                onPressed: () => showViewOptions(context, _controller),
+                child: const Text('View'),
+              ),
+              _MoreMenu(
+                library: widget.library,
+                tune: _ref,
+                title: widget.tune.title,
+                onShare: () => shareChart(
+                  context,
+                  _controller.originalTune,
+                  semitones: _controller.semitones,
+                ),
+                // The same controller goes with it, so the band carries on
+                // playing as you walk on and off.
+                onStage: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => StageScreen(controller: _controller),
+                  ),
+                ),
+                onRecord: () => showPracticeRecord(context, _controller),
+              ),
+            ],
+          ),
+          body: SafeArea(child: _Reading(controller: _controller)),
         ),
-        body: SafeArea(child: _Reading(controller: _controller)),
       ),
     );
   }
