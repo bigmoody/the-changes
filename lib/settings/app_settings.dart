@@ -1,4 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
+
+import 'chord_colours.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../music/chord.dart';
@@ -136,6 +142,8 @@ class AppSettings extends ChangeNotifier {
     this._comping,
     this._bassSound,
     this._drumSound,
+    this._chordColours,
+    this._colourChords,
     this._arpeggioSound,
     this._arpeggioStart,
     this._metronomeTempo,
@@ -156,6 +164,8 @@ class AppSettings extends ChangeNotifier {
     this._comping = Comping.piano,
     this._bassSound = BassSound.upright,
     this._drumSound = DrumSound.kit,
+    this._chordColours = const ChordColours(),
+    this._colourChords = true,
     this._arpeggioSound = Comping.piano,
     this._arpeggioStart = ArpeggioStart.root,
   ]) : _storage = null,
@@ -177,6 +187,8 @@ class AppSettings extends ChangeNotifier {
   static const _compingKey = 'comping';
   static const _bassSoundKey = 'bassSound';
   static const _drumSoundKey = 'drumSound';
+  static const _chordColoursKey = 'chordColours';
+  static const _colourChordsKey = 'colourChords';
   static const _arpeggioSoundKey = 'arpeggioSound';
   static const _arpeggioStartKey = 'arpeggioStart';
   static const _metronomeTempoKey = 'metronomeTempo';
@@ -198,6 +210,8 @@ class AppSettings extends ChangeNotifier {
     var comping = Comping.piano;
     var bassSound = BassSound.upright;
     var drumSound = DrumSound.kit;
+    var chordColours = const ChordColours();
+    var colourChords = true;
     var arpeggioSound = Comping.piano;
     var arpeggioStart = ArpeggioStart.root;
     var metronomeTempo = 120;
@@ -255,6 +269,13 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedBass,
         orElse: () => BassSound.upright,
       );
+      final savedColours = await storage.getString(_chordColoursKey);
+      if (savedColours != null) {
+        chordColours = ChordColours.fromJson(
+          jsonDecode(savedColours) as Map<String, Object?>,
+        );
+      }
+      colourChords = await storage.getBool(_colourChordsKey) ?? true;
       final savedDrums = await storage.getString(_drumSoundKey);
       drumSound = DrumSound.values.firstWhere(
         (value) => value.name == savedDrums,
@@ -288,6 +309,8 @@ class AppSettings extends ChangeNotifier {
       comping,
       bassSound,
       drumSound,
+      chordColours,
+      colourChords,
       arpeggioSound,
       arpeggioStart,
       metronomeTempo,
@@ -413,6 +436,56 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_drumSoundKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// What colour each root looks like, for somebody who sees them in
+  /// colour. Empty unless they have said.
+  ChordColours get chordColours => _chordColours;
+  ChordColours _chordColours;
+
+  /// Whether to use them. Separate from whether there are any, so the
+  /// chart can be turned plain for a moment without losing a mapping that
+  /// took a while to put in.
+  bool get colourChords => _colourChords;
+  bool _colourChords;
+
+  /// The colour for [pitchClass] as it should be drawn, or null when
+  /// there is not one or they are turned off.
+  Color? chordColourFor(int pitchClass) =>
+      _colourChords ? _chordColours.of(pitchClass) : null;
+
+  Future<void> setChordColour(int pitchClass, Color? colour) async {
+    _chordColours = _chordColours.set(pitchClass, colour);
+    notifyListeners();
+    await _saveChordColours();
+  }
+
+  Future<void> clearChordColours() async {
+    _chordColours = const ChordColours();
+    notifyListeners();
+    await _saveChordColours();
+  }
+
+  Future<void> setColourChords(bool value) async {
+    if (value == _colourChords) return;
+    _colourChords = value;
+    notifyListeners();
+    try {
+      await _storage?.setBool(_colourChordsKey, value);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  Future<void> _saveChordColours() async {
+    try {
+      await _storage?.setString(
+        _chordColoursKey,
+        jsonEncode(_chordColours.toJson()),
+      );
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

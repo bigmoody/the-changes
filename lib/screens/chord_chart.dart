@@ -15,6 +15,7 @@ import '../music/chart_layout.dart';
 import '../music/chord_aids.dart';
 import '../music/tune.dart';
 import '../practice/practice_controller.dart';
+import '../settings/chord_colours.dart';
 import '../theme.dart';
 
 /// The whole chart, always fitted to the available space: no scrolling.
@@ -801,14 +802,24 @@ class _BarCell extends StatelessWidget {
     final tune = controller.chart;
     final beat = controller.currentBeat;
     final times = [for (final bar in cell.bars) tune.bars[bar][index]];
+    // The colour somebody sees this root as, if they see roots as
+    // colours. Lifted or dropped only as far as it must be to be read on
+    // whichever paper the app is on, which leaves the hue alone.
+    final theirs = controller.settings.chordColourFor(times.first.chord.root);
+    final ink = theirs == null
+        ? scheme.onSurface
+        : readableOn(theirs, scheme.surface);
     if (beat != null &&
         times.any((slot) => beat >= slot.startBeat && beat < slot.endBeat)) {
-      return scheme.onTertiaryContainer;
+      // The bar being played is already boxed and tinted, so it does not
+      // need the lettering as well, and taking somebody's colour away on
+      // the one bar they are looking at would be the wrong way round.
+      return theirs == null ? scheme.onTertiaryContainer : ink;
     }
     if (!times.any(controller.loop.containsSlot)) {
-      return scheme.onSurface.withValues(alpha: 0.4);
+      return ink.withValues(alpha: 0.4);
     }
-    return scheme.onSurface;
+    return ink;
   }
 }
 

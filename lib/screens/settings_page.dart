@@ -14,6 +14,7 @@ import 'backup_screen.dart';
 import 'drum_kit_screen.dart';
 import 'import_soundfont_screen.dart';
 import 'chart_instrument_button.dart';
+import 'chord_colours_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 /// The Settings tab: everything that holds across the whole app, gathered
@@ -90,6 +91,25 @@ class SettingsPage extends StatelessWidget {
               options: [null, ...DrillTarget.values],
               label: (target) => target?.label ?? 'Off',
               onChanged: settings.setAimFor,
+            ),
+            ListTile(
+              key: const ValueKey('chord-colours'),
+              leading: const Icon(Icons.palette_outlined),
+              title: const Text('Chord Colours'),
+              subtitle: Text(switch ((
+                settings.chordColours.byPitchClass.length,
+                settings.colourChords,
+              )) {
+                (0, _) => 'If you see pitches as colours, set yours here',
+                (final set, false) => '$set set, and turned off',
+                (final set, _) => '$set of 12 set',
+              }),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => ChordColoursScreen(settings: settings),
+                ),
+              ),
             ),
             const SectionHeader('Sound'),
             _ChoiceTile<Comping>(
