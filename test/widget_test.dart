@@ -225,12 +225,14 @@ void main() {
     await tester.tap(find.text('Learn'));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(AppBar, 'Learn'), findsOneWidget);
+    // In the order the page shows them: Practise first, then Look It Up,
+    // and A to Z inside each. Scrolling only goes forward below.
     for (final page in [
       'Chord Quiz',
       'Metronome',
       'Chord Symbols',
-      'Guitar Chords',
       'Chord Tones',
+      'Guitar Chords',
       'Scales & Modes',
     ]) {
       await tester.scrollUntilVisible(
@@ -245,6 +247,11 @@ void main() {
       -100,
       scrollable: find.byType(Scrollable).first,
     );
+    // Properly into view rather than merely built: scrolled to the very
+    // top of the viewport it sits under the app bar, and the tap lands on
+    // that instead.
+    await tester.ensureVisible(find.text('Chord Symbols'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Chord Symbols'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).last, 'ø');

@@ -1,7 +1,18 @@
 // The Learn tab: everything for learning the language rather than playing
-// a tune: a quiz to drill chords against the clock, and the pages to look
-// things up in. Each opens full screen and starts fresh every time, so a
-// quiz is always a new round.
+// a tune. Each opens full screen and starts fresh every time, so a quiz is
+// always a new round.
+//
+// Three sections, and A to Z inside each. Thirty-odd pages is too many to
+// hold in your head, so the only question worth answering quickly is
+// "where is the one I want", and alphabetical answers it without anybody
+// having to learn an order somebody else chose.
+//
+//   Practise    things you do: drills, rounds, the metronome
+//   Concepts    one idea a page, with the sound and the notation
+//   Look It Up  reference, for when you want the answer and not the lesson
+//
+// The concepts used to sit under Practise, which made that heading a lie
+// and the list twice as long as it looked.
 
 import 'package:flutter/material.dart';
 
@@ -71,36 +82,6 @@ class LearnPage extends StatelessWidget {
         children: [
           const SectionHeader('Practise'),
           _LearnCard(
-            key: const ValueKey('learn-walking-bass'),
-            icon: Icons.linear_scale,
-            title: 'Walking Bass',
-            subtitle:
-                'How a line gets through a bar and onto the next chord: '
-                'the shapes the band\'s own bassist plays',
-            onTap: () =>
-                open(WalkingBassScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-ear'),
-            icon: Icons.hearing,
-            title: 'Name What You Hear',
-            subtitle:
-                'The app plays a chord or a cadence in a key at random '
-                'and you say what it was, with why it sounds like that',
-            onTap: () =>
-                open(EarTrainingScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-scale-patterns'),
-            icon: Icons.stairs_outlined,
-            title: 'Scale Patterns',
-            subtitle:
-                'A scale in 3rds, 4ths, triads or fours, round all twelve '
-                'keys: what lines are made of, rather than up and down',
-            onTap: () =>
-                open(ScalePatternsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
             key: const ValueKey('learn-changes-in-keys'),
             icon: Icons.all_inclusive,
             title: 'Changes in Twelve Keys',
@@ -110,22 +91,16 @@ class LearnPage extends StatelessWidget {
             onTap: () =>
                 open(ChangesInKeysScreen(player: player, settings: settings)),
           ),
-          if (phrases case final store?)
-            _LearnCard(
-              key: const ValueKey('learn-phrases'),
-              icon: Icons.graphic_eq,
-              title: 'Phrases',
-              subtitle:
-                  'Record something worth keeping and hear it back in any '
-                  'key: your playing, moved, not written down',
-              onTap: () => open(
-                PhrasesScreen(
-                  phrases: store,
-                  player: player,
-                  settings: settings,
-                ),
-              ),
-            ),
+          _LearnCard(
+            key: const ValueKey('learn-identify'),
+            icon: Icons.hearing,
+            title: 'Chord Identifier',
+            subtitle:
+                'Play a chord on the guitar or the keys and the app '
+                'names it',
+            onTap: () =>
+                open(ChordIdentifierScreen(player: player, settings: settings)),
+          ),
           _LearnCard(
             key: const ValueKey('learn-quiz'),
             icon: Icons.timer_outlined,
@@ -147,24 +122,40 @@ class LearnPage extends StatelessWidget {
                 open(MetronomeScreen(player: player, settings: settings)),
           ),
           _LearnCard(
-            key: const ValueKey('learn-where-am-i'),
-            icon: Icons.explore_outlined,
-            title: 'Where Am I?',
+            key: const ValueKey('learn-ear'),
+            icon: Icons.hearing,
+            title: 'Name What You Hear',
             subtitle:
-                'The band plays from the top and cuts out: say which bar '
-                'it stopped in',
+                'The app plays a chord or a cadence in a key at random '
+                'and you say what it was, with why it sounds like that',
             onTap: () =>
-                open(WhereAmIScreen(player: player, settings: settings)),
+                open(EarTrainingScreen(player: player, settings: settings)),
           ),
+          if (phrases case final store?)
+            _LearnCard(
+              key: const ValueKey('learn-phrases'),
+              icon: Icons.graphic_eq,
+              title: 'Phrases',
+              subtitle:
+                  'Record something worth keeping and hear it back in any '
+                  'key: your playing, moved, not written down',
+              onTap: () => open(
+                PhrasesScreen(
+                  phrases: store,
+                  player: player,
+                  settings: settings,
+                ),
+              ),
+            ),
           _LearnCard(
-            key: const ValueKey('learn-trading'),
-            icon: Icons.swap_vert,
-            title: 'Trading Fours',
+            key: const ValueKey('learn-scale-patterns'),
+            icon: Icons.stairs_outlined,
+            title: 'Scale Patterns',
             subtitle:
-                'They play four, you play four, round and round: the '
-                'oldest way of learning this music',
+                'A scale in 3rds, 4ths, triads or fours, round all twelve '
+                'keys: what lines are made of, rather than up and down',
             onTap: () =>
-                open(TradingScreen(player: player, settings: settings)),
+                open(ScalePatternsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-side-by-side'),
@@ -177,6 +168,37 @@ class LearnPage extends StatelessWidget {
                 open(SideBySideScreen(player: player, settings: settings)),
           ),
           _LearnCard(
+            key: const ValueKey('learn-trading'),
+            icon: Icons.swap_vert,
+            title: 'Trading Fours',
+            subtitle:
+                'They play four, you play four, round and round: the '
+                'oldest way of learning this music',
+            onTap: () =>
+                open(TradingScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-walking-bass'),
+            icon: Icons.linear_scale,
+            title: 'Walking Bass',
+            subtitle:
+                'How a line gets through a bar and onto the next chord: '
+                'the shapes the band\'s own bassist plays',
+            onTap: () =>
+                open(WalkingBassScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-where-am-i'),
+            icon: Icons.explore_outlined,
+            title: 'Where Am I?',
+            subtitle:
+                'The band plays from the top and cuts out: say which bar '
+                'it stopped in',
+            onTap: () =>
+                open(WhereAmIScreen(player: player, settings: settings)),
+          ),
+          const SectionHeader('Concepts'),
+          _LearnCard(
             key: const ValueKey('learn-bebop-scales'),
             icon: Icons.stairs,
             title: 'Bebop Scales',
@@ -185,26 +207,6 @@ class LearnPage extends StatelessWidget {
                 'and what happens without it',
             onTap: () =>
                 open(BebopScalesScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-number-patterns'),
-            icon: Icons.pin_outlined,
-            title: 'Number Patterns',
-            subtitle:
-                'One shape (1-2-3-5) run through the changes, so your '
-                'hand stays still while the notes move',
-            onTap: () =>
-                open(NumberPatternsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-tritone-subs'),
-            icon: Icons.swap_horiz,
-            title: 'Tritone Subs',
-            subtitle:
-                'Why one dominant can stand in for another: they are the '
-                'same two notes in the middle',
-            onTap: () =>
-                open(TritoneSubsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-passing'),
@@ -217,35 +219,6 @@ class LearnPage extends StatelessWidget {
                 open(PassingChordsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
-            key: const ValueKey('learn-phrasing'),
-            icon: Icons.graphic_eq,
-            title: 'Where Phrases Start',
-            subtitle:
-                'The same four notes moved around the bar: when a line '
-                'comes in, and which notes get the weight',
-            onTap: () =>
-                open(PhrasingScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-swing'),
-            icon: Icons.waves,
-            title: 'Swing',
-            subtitle:
-                'How late the "and" really is, and why it is not the '
-                'triplet you were taught, except at one tempo',
-            onTap: () => open(SwingScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-rhythm-changes'),
-            icon: Icons.repeat,
-            title: 'Rhythm Changes',
-            subtitle:
-                'The other form worth knowing by heart, and the eight '
-                'bars of it to learn first',
-            onTap: () =>
-                open(RhythmChangesScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
             key: const ValueKey('learn-comping'),
             icon: Icons.piano,
             title: 'Comping',
@@ -254,15 +227,6 @@ class LearnPage extends StatelessWidget {
                 'alone: the other half of playing changes',
             onTap: () =>
                 open(CompingScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-modal'),
-            icon: Icons.blur_on,
-            title: 'Modal',
-            subtitle:
-                'What to do when one chord lasts sixteen bars, and the '
-                'question the chart will not answer',
-            onTap: () => open(ModalScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-enclosures'),
@@ -275,26 +239,6 @@ class LearnPage extends StatelessWidget {
                 open(EnclosuresScreen(player: player, settings: settings)),
           ),
           _LearnCard(
-            key: const ValueKey('learn-voicings'),
-            icon: Icons.layers_outlined,
-            title: 'Voicings',
-            subtitle:
-                'The same chord arranged six ways: shells, the rootless '
-                'forms, and what drop 2 actually means',
-            onTap: () =>
-                open(VoicingsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-upper-structures'),
-            icon: Icons.change_history,
-            title: 'Upper Structures',
-            subtitle:
-                'A plain triad on top of a dominant: the altered sound '
-                'without having to spell it',
-            onTap: () =>
-                open(UpperStructuresScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
             key: const ValueKey('learn-guide-tones'),
             icon: Icons.linear_scale,
             title: 'Guide Tones',
@@ -303,6 +247,44 @@ class LearnPage extends StatelessWidget {
                 'a progression while everything else moves',
             onTap: () =>
                 open(GuideTonesScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-modal'),
+            icon: Icons.blur_on,
+            title: 'Modal',
+            subtitle:
+                'What to do when one chord lasts sixteen bars, and the '
+                'question the chart will not answer',
+            onTap: () => open(ModalScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-number-patterns'),
+            icon: Icons.pin_outlined,
+            title: 'Number Patterns',
+            subtitle:
+                'One shape (1-2-3-5) run through the changes, so your '
+                'hand stays still while the notes move',
+            onTap: () =>
+                open(NumberPatternsScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-rhythm-changes'),
+            icon: Icons.repeat,
+            title: 'Rhythm Changes',
+            subtitle:
+                'The other form worth knowing by heart, and the eight '
+                'bars of it to learn first',
+            onTap: () =>
+                open(RhythmChangesScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-swing'),
+            icon: Icons.waves,
+            title: 'Swing',
+            subtitle:
+                'How late the "and" really is, and why it is not the '
+                'triplet you were taught, except at one tempo',
+            onTap: () => open(SwingScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             key: const ValueKey('learn-through-the-changes'),
@@ -316,48 +298,52 @@ class LearnPage extends StatelessWidget {
             ),
           ),
           _LearnCard(
-            key: const ValueKey('learn-identify'),
-            icon: Icons.hearing,
-            title: 'Chord Identifier',
+            key: const ValueKey('learn-tritone-subs'),
+            icon: Icons.swap_horiz,
+            title: 'Tritone Subs',
             subtitle:
-                'Play a chord on the guitar or the keys and the app '
-                'names it',
+                'Why one dominant can stand in for another: they are the '
+                'same two notes in the middle',
             onTap: () =>
-                open(ChordIdentifierScreen(player: player, settings: settings)),
+                open(TritoneSubsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
-            key: const ValueKey('learn-listening'),
-            icon: Icons.album_outlined,
-            title: 'Listening',
+            key: const ValueKey('learn-upper-structures'),
+            icon: Icons.change_history,
+            title: 'Upper Structures',
             subtitle:
-                'The records these tunes come from, because a chart is a '
-                'reminder of a performance and not the tune',
-            onTap: () => open(const ListeningScreen()),
+                'A plain triad on top of a dominant: the altered sound '
+                'without having to spell it',
+            onTap: () =>
+                open(UpperStructuresScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-voicings'),
+            icon: Icons.layers_outlined,
+            title: 'Voicings',
+            subtitle:
+                'The same chord arranged six ways: shells, the rootless '
+                'forms, and what drop 2 actually means',
+            onTap: () =>
+                open(VoicingsScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-phrasing'),
+            icon: Icons.graphic_eq,
+            title: 'Where Phrases Start',
+            subtitle:
+                'The same four notes moved around the bar: when a line '
+                'comes in, and which notes get the weight',
+            onTap: () =>
+                open(PhrasingScreen(player: player, settings: settings)),
           ),
           const SectionHeader('Look It Up'),
-          _LearnCard(
-            key: const ValueKey('learn-reading'),
-            music: Clef.treble.glyph,
-            title: 'Reading Music',
-            subtitle:
-                'The stave, the clefs, note values, rests and the rest of '
-                'the marks on the page',
-            onTap: () => open(const ReadingMusicScreen()),
-          ),
           _LearnCard(
             // A chord symbol, lettered as on the chart.
             symbol: 'ø7',
             title: 'Chord Symbols',
             subtitle: 'What Δ7, ø, alt and the rest mean',
             onTap: () => open(const ChordReferenceScreen()),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-guitar-chords'),
-            icon: Icons.grid_on,
-            title: 'Guitar Chords',
-            subtitle: 'Every way to play each chord up the neck, to hear',
-            onTap: () =>
-                open(GuitarChordsScreen(player: player, settings: settings)),
           ),
           _LearnCard(
             icon: Icons.piano_outlined,
@@ -368,6 +354,32 @@ class LearnPage extends StatelessWidget {
             onTap: () => open(
               ChordTonesReferenceScreen(player: player, settings: settings),
             ),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-guitar-chords'),
+            icon: Icons.grid_on,
+            title: 'Guitar Chords',
+            subtitle: 'Every way to play each chord up the neck, to hear',
+            onTap: () =>
+                open(GuitarChordsScreen(player: player, settings: settings)),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-listening'),
+            icon: Icons.album_outlined,
+            title: 'Listening',
+            subtitle:
+                'The records these tunes come from, because a chart is a '
+                'reminder of a performance and not the tune',
+            onTap: () => open(const ListeningScreen()),
+          ),
+          _LearnCard(
+            key: const ValueKey('learn-reading'),
+            music: Clef.treble.glyph,
+            title: 'Reading Music',
+            subtitle:
+                'The stave, the clefs, note values, rests and the rest of '
+                'the marks on the page',
+            onTap: () => open(const ReadingMusicScreen()),
           ),
           _LearnCard(
             icon: Icons.stairs_outlined,
