@@ -533,6 +533,7 @@ class _BarCell extends StatelessWidget {
         ? null
         : currentBeat ~/ tune.beatsPerBar;
     final isCurrentBar = cell.bars.contains(currentBar);
+    final mark = controller.settings.markTheBar;
     // Where the band comes in, when that isn't the top of the loop.
     final startsHere = controller.startBar == barIndex;
     // A loop is marked on the chart as you'd pencil it in: repeat signs
@@ -581,10 +582,14 @@ class _BarCell extends StatelessWidget {
         // Paper, ruled off like a lead sheet's bars; the bar that's playing
         // marked in pencil.
         child: Material(
-          color: isCurrentBar ? scheme.tertiaryContainer : cardColour(scheme),
+          // Filled, ruled round, or left alone: whichever the reader can
+          // stand having travel across the page at them.
+          color: isCurrentBar && mark.fills
+              ? scheme.tertiaryContainer
+              : cardColour(scheme),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(math.min(6, height / 5)),
-            side: isCurrentBar
+            side: isCurrentBar && mark.marks
                 ? BorderSide(color: scheme.tertiary, width: 2.5)
                 : BorderSide(color: scheme.outlineVariant),
           ),
@@ -814,6 +819,11 @@ class _BarCell extends StatelessWidget {
       // The bar being played is already boxed and tinted, so it does not
       // need the lettering as well, and taking somebody's colour away on
       // the one bar they are looking at would be the wrong way round.
+      //
+      // Unless the tint is not there, in which case the lettering has to
+      // go back to the ordinary ink: a colour chosen to read on a tinted
+      // box is the wrong one on plain paper.
+      if (!controller.settings.markTheBar.fills) return ink;
       return theirs == null ? scheme.onTertiaryContainer : ink;
     }
     if (!times.any(controller.loop.containsSlot)) {

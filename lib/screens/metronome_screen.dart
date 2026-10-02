@@ -407,7 +407,13 @@ class _Dot extends StatelessWidget {
       height: 20,
       child: Center(
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 80),
+          // The one animation in the app, so the one place the system's
+          // Reduce Motion has anything to switch off. Somebody who has
+          // told their phone they do not want things moving has answered
+          // this already and should not be asked again.
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 80),
           width: size,
           height: size,
           decoration: BoxDecoration(

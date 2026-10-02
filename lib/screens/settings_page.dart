@@ -85,6 +85,22 @@ class SettingsPage extends StatelessWidget {
               'tune rather than a list of names; the guide tones are the '
               '3rd and 7th, the notes that move least between changes.',
             ),
+            _ChoiceTile<MarkTheBar>(
+              icon: Icons.crop_square,
+              title: 'Mark the Bar',
+              value: settings.markTheBar,
+              options: MarkTheBar.values,
+              label: (mark) => mark.label,
+              onChanged: settings.setMarkTheBar,
+            ),
+            const _Note(
+              'How the bar being played is marked. Nothing on the chart is '
+              'animated, but the mark does travel across the page about '
+              'once a second while you play, and for some people that is '
+              'what makes a chart hard to read. Turn it down to an outline, '
+              'or off altogether if you would rather feel the beat than '
+              'watch it.',
+            ),
             _ChoiceTile<FeelTheBeat>(
               icon: Icons.vibration,
               title: 'Feel the Beat',

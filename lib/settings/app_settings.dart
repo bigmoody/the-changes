@@ -133,6 +133,34 @@ enum ChordAid {
   };
 }
 
+/// How the bar being played is marked on the chart.
+///
+/// The chart does not animate anything, but one thing on it does move: a
+/// filled box travelling bar to bar for as long as the tune runs, in the
+/// corner of your eye, about once a second. For a lot of people that
+/// block is the only thing holding their place in the form. For others it
+/// is exactly what makes a page hard to read, and it competes with the
+/// chords they are trying to get off it.
+///
+/// So it is a choice rather than a default anybody has to live with.
+/// Nothing is a real option now that the beat can be felt instead of
+/// watched; before that it would have left somebody with nothing at all.
+enum MarkTheBar {
+  filled('Filled'),
+  outlined('Outlined'),
+  off('Nothing');
+
+  const MarkTheBar(this.label);
+
+  final String label;
+
+  /// Whether the bar is tinted, rather than only ruled round.
+  bool get fills => this == filled;
+
+  /// Whether anything marks it at all.
+  bool get marks => this != off;
+}
+
 /// App-wide preferences, saved on the device so they survive restarts.
 class AppSettings extends ChangeNotifier {
   AppSettings._(
@@ -162,6 +190,7 @@ class AppSettings extends ChangeNotifier {
     this._takesWithBand,
     this._chordAid,
     this._feelTheBeat,
+    this._markTheBar,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -182,6 +211,7 @@ class AppSettings extends ChangeNotifier {
     this._colourKeys = true,
     this._splitMinorKeys = false,
     this._feelTheBeat = FeelTheBeat.off,
+    this._markTheBar = MarkTheBar.filled,
   ]) : _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -217,6 +247,7 @@ class AppSettings extends ChangeNotifier {
   static const _metronomeDropoutKey = 'metronomeDropout';
   static const _chordAidKey = 'chordAid';
   static const _feelTheBeatKey = 'feelTheBeat';
+  static const _markTheBarKey = 'markTheBar';
   static const _fadeChartKey = 'fadeChart';
 
   /// Reads saved settings. Falls back to defaults if storage is unavailable.
@@ -246,6 +277,7 @@ class AppSettings extends ChangeNotifier {
     var metronomeDropout = Dropout.none;
     var chordAid = ChordAid.off;
     var feelTheBeat = FeelTheBeat.off;
+    var markTheBar = MarkTheBar.filled;
     var fadeChart = FadeChart.never;
     try {
       final savedAid = await storage.getString(_chordAidKey);
@@ -257,6 +289,11 @@ class AppSettings extends ChangeNotifier {
       feelTheBeat = FeelTheBeat.values.firstWhere(
         (value) => value.name == savedFeel,
         orElse: () => FeelTheBeat.off,
+      );
+      final savedMark = await storage.getString(_markTheBarKey);
+      markTheBar = MarkTheBar.values.firstWhere(
+        (value) => value.name == savedMark,
+        orElse: () => MarkTheBar.filled,
       );
       metronomeTempo = await storage.getInt(_metronomeTempoKey) ?? 120;
       metronomeBeats = await storage.getInt(_metronomeBeatsKey) ?? 4;
@@ -369,6 +406,7 @@ class AppSettings extends ChangeNotifier {
       takesWithBand,
       chordAid,
       feelTheBeat,
+      markTheBar,
     );
   }
 
@@ -784,6 +822,21 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_feelTheBeatKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// How the bar being played is marked.
+  MarkTheBar get markTheBar => _markTheBar;
+  MarkTheBar _markTheBar;
+
+  Future<void> setMarkTheBar(MarkTheBar value) async {
+    if (value == _markTheBar) return;
+    _markTheBar = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_markTheBarKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }
