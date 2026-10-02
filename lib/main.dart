@@ -18,7 +18,7 @@ import 'screens/home_screen.dart';
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
 import 'practice/part_store.dart';
-import 'practice/lick_store.dart';
+import 'practice/phrase_store.dart';
 import 'practice/soundfont_store.dart';
 import 'practice/recording_store.dart';
 import 'settings/progression_store.dart';
@@ -36,7 +36,9 @@ Future<void> main() async {
   final recordingStore = await RecordingStore.load(
     files: DeviceRecordingFiles(),
   );
-  final licks = await LickStore.load(files: DeviceRecordingFiles('licks'));
+  final phrases = await PhraseStore.load(
+    files: DeviceRecordingFiles('phrases'),
+  );
   final soundFont = await SoundFontStore.load(
     files: DeviceRecordingFiles('soundfont'),
   );
@@ -57,7 +59,7 @@ Future<void> main() async {
       takes: takes,
       partStore: partStore,
       recordingStore: recordingStore,
-      licks: licks,
+      phrases: phrases,
       soundFont: soundFont,
       audioError: audioError,
     ),
@@ -104,7 +106,7 @@ class TheChangesApp extends StatelessWidget {
     required this.takes,
     required this.partStore,
     required this.recordingStore,
-    required this.licks,
+    required this.phrases,
     required this.soundFont,
     this.audioError,
   });
@@ -118,7 +120,7 @@ class TheChangesApp extends StatelessWidget {
 
   /// Where recordings of real players are kept.
   final RecordingStore recordingStore;
-  final LickStore licks;
+  final PhraseStore phrases;
 
   /// The SoundFont somebody imported, if any.
   final SoundFontStore soundFont;
@@ -146,7 +148,7 @@ class TheChangesApp extends StatelessWidget {
           takes: takes,
           partStore: partStore,
           recordingStore: recordingStore,
-          licks: licks,
+          phrases: phrases,
           soundFont: soundFont,
           audioError: audioError,
         ),

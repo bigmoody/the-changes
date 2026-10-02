@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/theme.dart';
 import 'package:play_along/audio/pitch_detector.dart';
 import 'package:play_along/audio/practice_player.dart';
+import 'package:play_along/music/recorded_take.dart' show TakeShift;
 import 'package:play_along/audio/sample_bank.dart';
 
 import 'fake_listener.dart';
@@ -23,7 +24,8 @@ class _FakePlayer extends PracticePlayer {
   Future<void> stop() async => stoppedBand = true;
 
   @override
-  Future<void> playSnippet(Uint8List wav) async => played.add(wav);
+  Future<void> playSnippet(Uint8List wav, {TakeShift? shift}) async =>
+      played.add(wav);
 
   @override
   Future<void> restoreAudioSession() async => restored = true;

@@ -35,6 +35,13 @@ abstract interface class RecordingFiles {
   /// The full path of a kept file, or null if it has gone.
   Future<String?> pathOf(String name);
 
+  /// Where a file of this name would go, whether or not it is there yet.
+  ///
+  /// Separate from [pathOf], which answers about a file that exists: a
+  /// recorder needs somewhere to write to before there is anything to
+  /// ask about.
+  Future<String> pathFor(String name);
+
   /// What is in a kept file, or null if it has gone.
   Future<Uint8List?> read(String name);
 
@@ -55,6 +62,9 @@ class NoRecordingFiles implements RecordingFiles {
   @override
   Future<String?> pathOf(String name) async =>
       saved.containsKey(name) ? '/recordings/$name' : null;
+
+  @override
+  Future<String> pathFor(String name) async => '/recordings/$name';
 
   @override
   Future<Uint8List?> read(String name) async => saved[name];

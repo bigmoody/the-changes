@@ -35,6 +35,12 @@ class DeviceRecordingFiles implements RecordingFiles {
   }
 
   @override
+  Future<String> pathFor(String name) async {
+    final folder = await _folder();
+    return '${folder.path}/$name';
+  }
+
+  @override
   Future<String?> pathOf(String name) async {
     final folder = await _folder();
     final file = File('${folder.path}/$name');

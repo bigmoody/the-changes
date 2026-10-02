@@ -16,8 +16,8 @@
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
-import '../music/lick.dart';
-import '../music/lick_contexts.dart';
+import '../music/key_order.dart';
+import '../music/changes_to_run.dart';
 import '../music/tune.dart';
 import '../music/user_progression.dart';
 import '../practice/practice_controller.dart';

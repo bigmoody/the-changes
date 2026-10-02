@@ -17,7 +17,7 @@ import '../library/library_store.dart';
 import '../settings/app_settings.dart';
 import '../practice/take_store.dart';
 import '../practice/part_store.dart';
-import '../practice/lick_store.dart';
+import '../practice/phrase_store.dart';
 import '../practice/soundfont_store.dart';
 import '../practice/recording_store.dart';
 import '../settings/progression_store.dart';
@@ -38,7 +38,7 @@ class HomeScreen extends StatefulWidget {
     required this.takes,
     required this.partStore,
     required this.recordingStore,
-    required this.licks,
+    required this.phrases,
     required this.soundFont,
     this.audioError,
     this.initialTab = HomeTab.tunes,
@@ -54,8 +54,8 @@ class HomeScreen extends StatefulWidget {
   /// Where recordings of real players are kept.
   final RecordingStore recordingStore;
 
-  /// Somebody's own book of licks.
-  final LickStore licks;
+  /// Somebody's own book of phrases.
+  final PhraseStore phrases;
 
   /// The SoundFont somebody imported, if any.
   final SoundFontStore soundFont;
@@ -99,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
           LearnPage(
             player: widget.player,
             settings: widget.settings,
-            licks: widget.licks,
+            phrases: widget.phrases,
           ),
           SettingsPage(
             player: widget.player,

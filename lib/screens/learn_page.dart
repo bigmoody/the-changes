@@ -6,7 +6,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
-import '../practice/lick_store.dart';
+import '../practice/phrase_store.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chord_identifier_screen.dart';
@@ -17,7 +17,7 @@ import 'chord_tones_screen.dart';
 import 'walking_bass_screen.dart';
 import 'ear_training_screen.dart';
 import 'scale_patterns_screen.dart';
-import 'licks_screen.dart';
+import 'phrases_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
@@ -48,15 +48,15 @@ class LearnPage extends StatelessWidget {
     super.key,
     required this.player,
     required this.settings,
-    this.licks,
+    this.phrases,
   });
 
   final PracticePlayer player;
   final AppSettings settings;
 
-  /// Where somebody's own licks are kept. Without it there is nowhere to
-  /// put one, so the row is not offered.
-  final LickStore? licks;
+  /// Where somebody's own phrases are kept. Without it there is nowhere
+  /// to put one, so the row is not offered.
+  final PhraseStore? phrases;
 
   @override
   Widget build(BuildContext context) {
@@ -110,16 +110,20 @@ class LearnPage extends StatelessWidget {
             onTap: () =>
                 open(ChangesInKeysScreen(player: player, settings: settings)),
           ),
-          if (licks case final store?)
+          if (phrases case final store?)
             _LearnCard(
-              key: const ValueKey('learn-licks'),
-              icon: Icons.auto_awesome_motion_outlined,
-              title: 'Licks',
+              key: const ValueKey('learn-phrases'),
+              icon: Icons.graphic_eq,
+              title: 'Phrases',
               subtitle:
-                  'Play a line over some changes and the app writes it '
-                  'down, then take it round all twelve keys',
+                  'Record something worth keeping and hear it back in any '
+                  'key: your playing, moved, not written down',
               onTap: () => open(
-                LicksScreen(licks: store, player: player, settings: settings),
+                PhrasesScreen(
+                  phrases: store,
+                  player: player,
+                  settings: settings,
+                ),
               ),
             ),
           _LearnCard(

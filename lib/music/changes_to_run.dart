@@ -1,14 +1,12 @@
-// The changes a lick is usually played over.
+// The handful of changes worth running round all twelve keys.
 //
-// Somebody saving a lick has to say what it is a lick over, and asking
-// them to write out a ii-V every time would mean nobody saved anything.
-// So these are here to be picked in one tap, and anything they do not
-// cover can be written in the progression editor and picked from there
-// instead.
+// A ii-V, a turnaround, a blues, rhythm changes: the shapes that come up
+// often enough that playing them in every key is the work rather than an
+// exercise. Anything they do not cover can be written in the progression
+// editor and played from there instead.
 //
-// All in C, because the lick is taken round the keys afterwards and C is
-// where the app can spell everything plainly. The key a lick was caught
-// in is not worth preserving: what matters is the shape.
+// All in C, because they are moved to each key afterwards and C is where
+// the app can spell everything plainly.
 
 import 'tune.dart';
 import 'tune_library.dart';
@@ -30,7 +28,7 @@ UserProgression lickContext({
 );
 
 /// The contexts offered when a lick is saved, commonest first.
-List<UserProgression> get lickContexts => [
+List<UserProgression> get shortChanges => [
   lickContext(
     id: 'ctx-ii-v-i',
     title: 'ii V I',
@@ -72,7 +70,7 @@ List<UserProgression> get lickContexts => [
 /// The changes offered for running round the twelve keys.
 ///
 /// Everything a lick can be saved over, and then the two whole forms:
-/// the blues and rhythm changes. Those are not in [lickContexts] because
+/// the blues and rhythm changes. Those are not in [shortChanges] because
 /// they are the wrong size for catching a lick. A chorus of rhythm
 /// changes is thirty-two bars, which is the best part of a minute to
 /// wait for the two bars you wanted to keep.
@@ -83,7 +81,7 @@ List<UserProgression> get lickContexts => [
 /// for the blues and B flat for rhythm changes, which is where anybody
 /// would start them.
 List<UserProgression> get changesToRun => [
-  ...lickContexts,
+  ...shortChanges,
   _wholeForm('Jazz blues in F', id: 'ctx-blues-12', called: 'Blues'),
   _wholeForm(
     'Rhythm changes in B♭',

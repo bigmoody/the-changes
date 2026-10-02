@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/practice_player.dart';
-import 'package:play_along/music/lick_contexts.dart';
+import 'package:play_along/music/changes_to_run.dart';
 import 'package:play_along/screens/changes_in_keys_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
@@ -143,10 +143,10 @@ void main() {
       // Thirty-two bars is the best part of a minute to wait for the two
       // you wanted to keep.
       expect(
-        lickContexts.map((one) => one.title),
+        shortChanges.map((one) => one.title),
         isNot(contains('Rhythm changes')),
       );
-      expect(changesToRun.length, lickContexts.length + 2);
+      expect(changesToRun.length, shortChanges.length + 2);
     });
   });
 

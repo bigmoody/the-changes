@@ -561,13 +561,27 @@ class PracticePlayer {
 
   /// Plays a short WAV once, over anything else: the drills' "hear it".
   /// Each new one replaces the last, so tapping twice doesn't pile them up.
-  Future<void> playSnippet(Uint8List wav) async {
+  ///
+  /// With a [shift] it is moved in pitch, in tempo, or both, by the same
+  /// two knobs the recorded band is moved with: the speed resamples,
+  /// which is exact, and the filter puts back whatever pitch that dragged
+  /// along with it.
+  Future<void> playSnippet(Uint8List wav, {TakeShift? shift}) async {
     final previous = _snippet;
     _snippet = null;
     if (previous != null) await _soloud.disposeSource(previous);
     final source = await _soloud.loadMem('snippet.wav', wav);
     _snippet = source;
-    _soloud.play(source);
+    if (shift == null || (shift.speed == 1 && shift.shift == 1)) {
+      _soloud.play(source);
+      return;
+    }
+    // Paused first, so the first few milliseconds are not heard at the
+    // wrong pitch while the filter is being set.
+    source.filters.pitchShiftFilter.activate();
+    final handle = _soloud.play(source, paused: true);
+    _applyShift(source, handle, shift);
+    _soloud.setPause(handle, false);
   }
 
   /// Plays [wav] over and over until [stopLoop]: the metronome's bar of

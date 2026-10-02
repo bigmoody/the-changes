@@ -7,7 +7,7 @@
 
 import 'package:flutter/material.dart';
 
-import '../music/lick.dart';
+import '../music/key_order.dart';
 
 /// The twelve keys, in the order they are coming, with the ones already
 /// played marked.

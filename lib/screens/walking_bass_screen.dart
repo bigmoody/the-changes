@@ -22,7 +22,7 @@ import '../audio/practice_player.dart';
 import '../audio/walking_bass.dart';
 import '../music/bass_moves.dart';
 import '../music/chord.dart';
-import '../music/lick.dart' show KeyOrder, nameInKey;
+import '../music/key_order.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'key_round.dart';

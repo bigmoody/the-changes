@@ -19,7 +19,7 @@ import '../audio/backing_synth.dart';
 import '../audio/drill_sounds.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
-import '../music/lick.dart' show KeyOrder;
+import '../music/key_order.dart' show KeyOrder;
 import '../music/scale_patterns.dart';
 import '../music/scales.dart';
 import '../settings/app_settings.dart';
