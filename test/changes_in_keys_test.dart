@@ -58,8 +58,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  String textOf(Key key) =>
-      (find.byKey(key).evaluate().single.widget as Text).data!;
+  String textOf(Key key) {
+    final widget = find.byKey(key).evaluate().single.widget;
+    if (widget is Text) return widget.data!;
+    // A key written in its own colour is a KeyText, which draws a Text of
+    // its own underneath.
+    return (find
+                .descendant(of: find.byKey(key), matching: find.byType(Text))
+                .evaluate()
+                .single
+                .widget
+            as Text)
+        .data!;
+  }
 
   group('nothing to set up', () {
     testWidgets('it opens on a ii-V-I in C, written out', (tester) async {

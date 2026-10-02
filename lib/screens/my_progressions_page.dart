@@ -17,6 +17,7 @@ import 'practice_screen.dart';
 import 'progression_editor_screen.dart';
 import 'star_button.dart';
 import 'tunes_page.dart' show TuneListControls;
+import 'note_ink.dart';
 
 /// The My changes tab: progressions the player has written, to play, edit,
 /// filter by genre and delete: one at a time or several at once.
@@ -295,7 +296,7 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
         onChanged: (_) => _toggle(progression.id),
         controlAffinity: ListTileControlAffinity.leading,
         title: Text(progression.displayTitle),
-        subtitle: Text('$key · ${tune.barCount} bars'),
+        subtitle: DetailLine([key, '${tune.barCount} bars']),
       );
     }
     final tile = ListTile(
@@ -308,18 +309,16 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
         title: progression.displayTitle,
       ),
       title: Text(progression.displayTitle),
-      subtitle: Text(
-        [
-          // Only while the list is sorted by it: otherwise the line is
-          // already long enough, and most of your own have nobody named.
-          if (_order == TuneOrder.composer && progression.composer != null)
-            indexName(progression.composer),
-          key,
-          '${tune.barCount} bars',
-          '${style.drums.label} drums, ${style.bass.label.toLowerCase()} '
-              'bass, ${style.piano.label.toLowerCase()}',
-        ].join(' · '),
-      ),
+      subtitle: DetailLine([
+        // Only while the list is sorted by it: otherwise the line is
+        // already long enough, and most of your own have nobody named.
+        if (_order == TuneOrder.composer && progression.composer != null)
+          indexName(progression.composer),
+        key,
+        '${tune.barCount} bars',
+        '${style.drums.label} drums, ${style.bass.label.toLowerCase()} '
+            'bass, ${style.piano.label.toLowerCase()}',
+      ]),
       onTap: () {
         widget.library.justPlayed(TuneRef.mine(progression.id));
         Navigator.of(context).push(

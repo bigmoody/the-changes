@@ -25,6 +25,7 @@ import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'key_round.dart';
 import 'transport.dart';
+import 'note_ink.dart';
 
 class ChangesInKeysScreen extends StatefulWidget {
   const ChangesInKeysScreen({
@@ -185,8 +186,9 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Expanded(
-                        child: Text(
+                        child: KeyText(
                           'Key of ${_keyName(move)}',
+                          name: _keyName(move),
                           key: const ValueKey('round-key'),
                           style: theme.textTheme.titleLarge,
                         ),

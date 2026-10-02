@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import 'chord_colours.dart';
+import 'key_colours.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -145,6 +146,9 @@ class AppSettings extends ChangeNotifier {
     this._chordColours,
     this._colourChords,
     this._splitEnharmonics,
+    this._keyColours,
+    this._colourKeys,
+    this._splitMinorKeys,
     this._paper,
     this._arpeggioSound,
     this._arpeggioStart,
@@ -172,6 +176,9 @@ class AppSettings extends ChangeNotifier {
     this._arpeggioSound = Comping.piano,
     this._arpeggioStart = ArpeggioStart.root,
     this._splitEnharmonics = false,
+    this._keyColours = const KeyColours(),
+    this._colourKeys = true,
+    this._splitMinorKeys = false,
   ]) : _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -194,6 +201,9 @@ class AppSettings extends ChangeNotifier {
   static const _chordColoursKey = 'chordColours';
   static const _colourChordsKey = 'colourChords';
   static const _splitEnharmonicsKey = 'splitEnharmonics';
+  static const _keyColoursKey = 'keyColours';
+  static const _colourKeysKey = 'colourKeys';
+  static const _splitMinorKeysKey = 'splitMinorKeys';
   static const _paperKey = 'paper';
   static const _arpeggioSoundKey = 'arpeggioSound';
   static const _arpeggioStartKey = 'arpeggioStart';
@@ -219,6 +229,9 @@ class AppSettings extends ChangeNotifier {
     var chordColours = const ChordColours();
     var colourChords = true;
     var splitEnharmonics = false;
+    var keyColours = const KeyColours();
+    var colourKeys = true;
+    var splitMinorKeys = false;
     Color? paper;
     var arpeggioSound = Comping.piano;
     var arpeggioStart = ArpeggioStart.root;
@@ -285,6 +298,14 @@ class AppSettings extends ChangeNotifier {
       }
       colourChords = await storage.getBool(_colourChordsKey) ?? true;
       splitEnharmonics = await storage.getBool(_splitEnharmonicsKey) ?? false;
+      final savedKeyColours = await storage.getString(_keyColoursKey);
+      if (savedKeyColours != null) {
+        keyColours = KeyColours.fromJson(
+          jsonDecode(savedKeyColours) as Map<String, Object?>,
+        );
+      }
+      colourKeys = await storage.getBool(_colourKeysKey) ?? true;
+      splitMinorKeys = await storage.getBool(_splitMinorKeysKey) ?? false;
       final savedPaper = await storage.getInt(_paperKey);
       if (savedPaper != null) paper = Color(savedPaper);
       final savedDrums = await storage.getString(_drumSoundKey);
@@ -323,6 +344,9 @@ class AppSettings extends ChangeNotifier {
       chordColours,
       colourChords,
       splitEnharmonics,
+      keyColours,
+      colourKeys,
+      splitMinorKeys,
       paper,
       arpeggioSound,
       arpeggioStart,
@@ -516,6 +540,77 @@ class AppSettings extends ChangeNotifier {
     _chordColours = const ChordColours();
     notifyListeners();
     await _saveChordColours();
+  }
+
+  /// What colour each key looks like, for somebody who sees keys in
+  /// colour. A separate map from the chord colours, because it is a
+  /// separate thing to see: somebody's C major need not be their C.
+  KeyColours get keyColours => _keyColours;
+  KeyColours _keyColours;
+
+  /// Whether to use them.
+  bool get colourKeys => _colourKeys;
+  bool _colourKeys;
+
+  /// Whether a minor key is its own question or takes the major's colour.
+  bool get splitMinorKeys => _splitMinorKeys;
+  bool _splitMinorKeys;
+
+  /// The colour for [key] as it should be drawn, or null when there is
+  /// not one or they are turned off.
+  Color? keyColourFor(KeyOf key) =>
+      _colourKeys ? _keyColours.of(key, split: _splitMinorKeys) : null;
+
+  /// The colour for a key written as a label, e.g. "G minor".
+  Color? keyColourForLabel(String key) => keyColourFor(readKeyLabel(key));
+
+  Future<void> setKeyColour(
+    int pitchClass,
+    Color? colour, {
+    bool minor = false,
+  }) async {
+    _keyColours = _keyColours.set(pitchClass, colour, minor: minor);
+    notifyListeners();
+    await _saveKeyColours();
+  }
+
+  Future<void> setColourKeys(bool value) async {
+    if (value == _colourKeys) return;
+    _colourKeys = value;
+    notifyListeners();
+    try {
+      await _storage?.setBool(_colourKeysKey, value);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  Future<void> setSplitMinorKeys(bool value) async {
+    if (value == _splitMinorKeys) return;
+    _splitMinorKeys = value;
+    notifyListeners();
+    try {
+      await _storage?.setBool(_splitMinorKeysKey, value);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  Future<void> clearKeyColours() async {
+    _keyColours = const KeyColours();
+    notifyListeners();
+    await _saveKeyColours();
+  }
+
+  Future<void> _saveKeyColours() async {
+    try {
+      await _storage?.setString(
+        _keyColoursKey,
+        jsonEncode(_keyColours.toJson()),
+      );
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
   }
 
   Future<void> setColourChords(bool value) async {

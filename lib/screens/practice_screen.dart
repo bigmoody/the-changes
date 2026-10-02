@@ -30,6 +30,7 @@ import 'setlists_screen.dart' show showAddToSetlist;
 import 'share_chart.dart';
 import 'stage_screen.dart';
 import 'transport.dart';
+import 'note_ink.dart';
 
 /// The main practice view: the whole chord chart on one screen, with compact
 /// controls underneath.
@@ -213,7 +214,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
         },
         child: Scaffold(
           appBar: AppBar(
-            title: _TuneTitle(widget.tune.title),
+            // The key from the chart rather than the tune, so a B♭
+            // player gets the colour of the key they are reading.
+            title: _TuneTitle(
+              widget.tune.title,
+              keyName: _controller.chart.key,
+            ),
             actions: [
               if (widget.progression != null && widget.progressions != null)
                 IconButton(
@@ -305,9 +311,14 @@ class _BlankPaper extends StatelessWidget {
 /// either way, so this costs the chart nothing, and a long name stays
 /// readable instead of trailing off or disappearing.
 class _TuneTitle extends StatelessWidget {
-  const _TuneTitle(this.title);
+  const _TuneTitle(this.title, {this.keyName});
 
   final String title;
+
+  /// The key the chart is in, for somebody who sees keys as colours. The
+  /// title is the biggest thing on the screen that belongs to the whole
+  /// tune rather than to one bar of it, so it is where that colour goes.
+  final String? keyName;
 
   /// Tried largest first. The first one that fits is the one used.
   static const _sizes = <double>[26, 24, 22, 20, 18, 16, 14, 13, 12];
@@ -327,9 +338,17 @@ class _TuneTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style =
+    final plain =
         Theme.of(context).appBarTheme.titleTextStyle ??
         Theme.of(context).textTheme.titleLarge!;
+    final ink = keyName == null
+        ? null
+        : inkForKey(
+            context,
+            keyName!,
+            on: Theme.of(context).colorScheme.surface,
+          );
+    final style = ink == null ? plain : plain.copyWith(color: ink);
     final scaler = MediaQuery.textScalerOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {

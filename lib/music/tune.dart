@@ -267,6 +267,29 @@ class BandStyle {
 }
 
 /// A chord chart: a list of bars, each holding one or more chords.
+/// Whether a key label is a minor one.
+///
+/// The modal tunes are counted with the minor keys because that is what
+/// they sound like: D Dorian is a minor tonic with a raised 6th, and
+/// somebody who sees minor keys as their own colour sees that one too.
+bool isMinorKeyLabel(String key) =>
+    key.contains('minor') || key.contains('Dorian');
+
+/// The note a key label is on, e.g. B♭ in "B♭" or C in "C minor".
+///
+/// A tune that moves key is written with the keys in order, so the first
+/// one is the one it is in: "C minor, F minor" is a C minor tune.
+Spelling keyTonicOf(String key) =>
+    parseNoteName(RegExp(r'^[A-G][♭♯b#]?').stringMatch(key) ?? 'C')!;
+
+/// A key, as much of it as a colour cares about: which note it is on, and
+/// whether it is minor.
+typedef KeyOf = ({int pitchClass, bool minor});
+
+/// What key a label such as "G minor", "B♭" or "D Dorian" is naming.
+KeyOf readKeyLabel(String key) =>
+    (pitchClass: pitchClassOf(keyTonicOf(key)), minor: isMinorKeyLabel(key));
+
 class Tune {
   const Tune._({
     required this.title,
@@ -401,11 +424,10 @@ class Tune {
     'C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'G#', 'A', 'Bb', 'B', //
   ];
 
-  bool get _isMinorKey => key.contains('minor') || key.contains('Dorian');
+  bool get _isMinorKey => isMinorKeyLabel(key);
 
   /// The first note name in [key], e.g. B♭ in "B♭" or C in "C minor".
-  Spelling get _tonic =>
-      parseNoteName(RegExp(r'^[A-G][♭♯b#]?').stringMatch(key) ?? 'C')!;
+  Spelling get _tonic => keyTonicOf(key);
 
   /// The key as a pitch class, C being 0, however it is spelled.
   ///

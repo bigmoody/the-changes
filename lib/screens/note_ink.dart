@@ -55,6 +55,14 @@ Color? inkForNote(BuildContext context, Spelling note, {Color? on}) =>
 Color? inkForPitch(BuildContext context, int pitchClass, {Color? on}) =>
     _readable(context, NoteInk.of(context)?.chordColourFor(pitchClass), on);
 
+/// The colour of the key a tune is in, from a label such as "G minor".
+///
+/// The written key, not the sounding one: a B♭ player reading a chart
+/// transposed for them is in the key they are reading, and the colours on
+/// the chart in front of them follow the same rule.
+Color? inkForKey(BuildContext context, String key, {Color? on}) =>
+    _readable(context, NoteInk.of(context)?.keyColourForLabel(key), on);
+
 Color? _readable(BuildContext context, Color? colour, Color? on) {
   if (colour == null) return null;
   return readableOn(colour, on ?? Theme.of(context).colorScheme.surface);
@@ -179,6 +187,95 @@ class NoteNames extends StatelessWidget {
     final note = parseNoteName(written);
     if (note == null) return style;
     final ink = inkForNote(context, note, on: on);
+    return ink == null
+        ? style
+        : (style ?? const TextStyle()).copyWith(color: ink);
+  }
+}
+
+/// A key, written in its colour.
+///
+/// The whole label, tonic and "minor" together, because the key is one
+/// thing and reading half of it in colour would be odd. Falls back to the
+/// surrounding text, so this is safe in place of a plain [Text].
+class KeyText extends StatelessWidget {
+  const KeyText(
+    this.label, {
+    super.key,
+    this.name,
+    this.style,
+    this.on,
+    this.maxLines,
+    this.overflow,
+  });
+
+  /// What to write, e.g. "Key of G minor".
+  final String label;
+
+  /// The key itself, when [label] says more than the key does. Defaults
+  /// to [label], which is already a key in most places.
+  final String? name;
+
+  final TextStyle? style;
+  final Color? on;
+  final int? maxLines;
+  final TextOverflow? overflow;
+
+  @override
+  Widget build(BuildContext context) {
+    final ink = inkForKey(context, name ?? label, on: on);
+    return Text(
+      label,
+      maxLines: maxLines,
+      overflow: overflow,
+      style: ink == null
+          ? style
+          : (style ?? const TextStyle()).copyWith(color: ink),
+    );
+  }
+}
+
+/// A line of details with " · " between them, the key among them in its
+/// own colour and the rest left alone.
+///
+/// Every line of this kind in the app writes its key the same way, "Key
+/// of G minor", so the part that is a key can be found rather than
+/// pointed out at each of the half dozen places that build one.
+class DetailLine extends StatelessWidget {
+  const DetailLine(
+    this.parts, {
+    super.key,
+    this.style,
+    this.on,
+    this.separator = ' · ',
+  });
+
+  final List<String> parts;
+  final TextStyle? style;
+  final Color? on;
+  final String separator;
+
+  /// What a part says the key is, or null when it is not naming one.
+  static String? keyIn(String part) =>
+      part.startsWith('Key of ') ? part.substring(7) : null;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(
+      children: [
+        for (final (index, part) in parts.indexed) ...[
+          if (index > 0) TextSpan(text: separator, style: style),
+          TextSpan(text: part, style: _styleFor(context, part)),
+        ],
+      ],
+    ),
+    style: style,
+  );
+
+  TextStyle? _styleFor(BuildContext context, String part) {
+    final named = keyIn(part);
+    if (named == null) return style;
+    final ink = inkForKey(context, named, on: on);
     return ink == null
         ? style
         : (style ?? const TextStyle()).copyWith(color: ink);

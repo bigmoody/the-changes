@@ -20,6 +20,7 @@ import '../theme.dart';
 import 'practice_screen.dart';
 import 'share_chart.dart';
 import 'tunes_page.dart' show SectionHeader;
+import 'note_ink.dart';
 
 /// Everything a setlist screen needs to open a tune in the practice screen.
 class LibraryContext {
@@ -277,15 +278,13 @@ class SetlistScreen extends StatelessWidget {
             ? TextStyle(color: theme.colorScheme.onSurfaceVariant)
             : null,
       ),
-      subtitle: Text(
-        found == null
-            ? 'Not in the book any more'
-            : [
-                'Key of '
-                    '${found.tune.keyLabelBy(deps.settings.instrument.semitones)}',
-                '${found.tune.defaultTempo} bpm',
-              ].join(' · '),
-      ),
+      subtitle: found == null
+          ? const Text('Not in the book any more')
+          : DetailLine([
+              'Key of '
+                  '${found.tune.keyLabelBy(deps.settings.instrument.semitones)}',
+              '${found.tune.defaultTempo} bpm',
+            ]),
       onTap: found == null ? null : () => deps.play(context, found),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -388,7 +387,7 @@ class _PickTunesScreenState extends State<PickTunesScreen> {
           (
             ref: TuneRef.mine(progression.id),
             title: progression.displayTitle,
-            below: 'Key of ${progression.key} · yours',
+            below: ['Key of ${progression.key}', 'yours'],
           ),
     ];
     final book = [
@@ -397,7 +396,7 @@ class _PickTunesScreenState extends State<PickTunesScreen> {
           (
             ref: TuneRef.of(tune),
             title: tune.title,
-            below: [?tune.composer, 'Key of ${tune.key}'].join(' · '),
+            below: [?tune.composer, 'Key of ${tune.key}'],
           ),
     ];
     return Scaffold(
@@ -452,7 +451,12 @@ class _PickTunesScreenState extends State<PickTunesScreen> {
     );
   }
 
-  Widget _pick(TuneRef ref, String title, String below, Set<TuneRef> already) {
+  Widget _pick(
+    TuneRef ref,
+    String title,
+    List<String> below,
+    Set<TuneRef> already,
+  ) {
     final inIt = already.contains(ref);
     return CheckboxListTile(
       key: ValueKey('pick-${ref.value}'),
@@ -465,7 +469,9 @@ class _PickTunesScreenState extends State<PickTunesScreen> {
             ),
       controlAffinity: ListTileControlAffinity.leading,
       title: Text(title),
-      subtitle: Text(inIt ? 'Already in this setlist' : below),
+      subtitle: inIt
+          ? const Text('Already in this setlist')
+          : DetailLine(below),
     );
   }
 }

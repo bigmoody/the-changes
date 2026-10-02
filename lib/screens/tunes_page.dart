@@ -18,6 +18,7 @@ import 'star_button.dart';
 import 'tuner_screen.dart';
 import 'tuning_fork_icon.dart';
 import '../theme.dart';
+import 'note_ink.dart';
 
 /// The Tunes tab: the standards and practice progressions, to search, star,
 /// filter by genre and put in order.
@@ -345,7 +346,7 @@ class _TunesPageState extends State<TunesPage> {
         title: tune.title,
       ),
       title: Text(tune.title),
-      subtitle: Text(details.join(' · ')),
+      subtitle: DetailLine(details),
       trailing: const Icon(Icons.chevron_right),
       // A long press puts it on a setlist without opening it, which is how
       // you'd build one: straight down the list.
@@ -363,8 +364,9 @@ class _TunesPageState extends State<TunesPage> {
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     ),
     title: Text(found.tune.title),
-    subtitle: Text(
+    subtitle: KeyText(
       'Key of ${found.tune.keyLabelBy(widget.settings.instrument.semitones)}',
+      name: found.tune.keyLabelBy(widget.settings.instrument.semitones),
     ),
     trailing: const Icon(Icons.chevron_right),
     onTap: () => _deps.play(context, found),

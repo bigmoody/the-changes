@@ -13,6 +13,7 @@ import 'backup_screen.dart';
 import 'imported_sounds_screen.dart';
 import 'chart_instrument_button.dart';
 import 'chord_colours_screen.dart';
+import 'key_colours_screen.dart';
 import 'paper_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
@@ -128,6 +129,27 @@ class SettingsPage extends StatelessWidget {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) => ChordColoursScreen(settings: settings),
+                ),
+              ),
+            ),
+            ListTile(
+              key: const ValueKey('key-colours'),
+              leading: const Icon(Icons.library_music_outlined),
+              title: const Text('Key Colours'),
+              subtitle: Text(switch ((
+                settings.keyColours.chosen,
+                settings.colourKeys,
+                settings.splitMinorKeys,
+              )) {
+                (0, _, _) => 'If you see keys as colours, set yours here',
+                (final set, false, _) => '$set set, and turned off',
+                (final set, _, true) => '$set of 24 set',
+                (final set, _, _) => '$set of 12 set',
+              }),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => KeyColoursScreen(settings: settings),
                 ),
               ),
             ),
