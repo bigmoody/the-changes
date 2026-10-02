@@ -233,7 +233,20 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
       _isDominant(next) &&
       _resolvesTo(chord, next)) {
     final lands = after != null && _resolvesTo(next, after);
-    final into = lands ? after.rootName : _nameOf((next.root + 5) % 12);
+    // Named with its quality where the chord it lands on is actually
+    // there to be read. A minor ii-V is a different phrase from a major
+    // one, played with a different scale on every chord of it, and
+    // calling both of them "into D" hides the only thing you needed to
+    // know: Eø7 A7 going to Dm is not Em7 A7 going to D.
+    final into = lands
+        ? after.rootName + (_kindOf(after) == _Kind.minor ? 'm' : '')
+        : _nameOf((next.root + 5) % 12);
+    // Whether the chord it lands on is itself leaning somewhere, which is
+    // what a run of ii-Vs is and what makes a bare "into D" look like it
+    // has wandered off into the wrong key. Read from the chords, not from
+    // any idea of what key the tune is in.
+    final onwards =
+        lands && afterAt != null && _startsAnApproach(chords, afterAt);
     return (
       job: ChordJob.approach,
       tag: 'ii of $into',
@@ -243,6 +256,9 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
                 'this music is built out of. The three roots fall a fourth '
                 'each time, and the 3rds and 7ths of the three chords move '
                 'by a semitone or not at all.'
+                '${onwards ? ' And $into does not stop there: it is the '
+                          'start of the next ii-V, so this is one ii-V handing '
+                          'over to another rather than an arrival.' : ''}'
           : 'A ii-V leaning on $into that never gets there. The pair is '
                 'the gesture; where it goes instead is the tune making its '
                 'own mind up.',
@@ -285,6 +301,21 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
   }
 
   return null;
+}
+
+/// Whether the chord at [at] is itself the start of a ii-V: a minor or
+/// half-diminished chord with its own dominant a fourth above it next.
+///
+/// This is what tells a run of ii-Vs apart from an arrival. St Thomas is
+/// in C and goes Eø7 A7 | Dm7 G7 | C: the first pair lands on Dm, which
+/// is not where the tune is going, it is the start of the pair that is.
+bool _startsAnApproach(List<Chord> chords, int at) {
+  final kind = _kindOf(chords[at]);
+  if (kind != _Kind.minor && kind != _Kind.halfDiminished) return false;
+  final nextAt = _nextChange(chords, at);
+  if (nextAt == null) return false;
+  final next = chords[nextAt];
+  return _isDominant(next) && _resolvesTo(chords[at], next);
 }
 
 /// Whether two chords are the same chord, as a chart would mean it: a bar

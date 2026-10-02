@@ -40,7 +40,11 @@ void main() {
       const line = 'Dh7 G7 Cm7';
       expect(jobAt(line, 0), ChordJob.approach);
       expect(jobAt(line, 1), ChordJob.dominant);
-      expect(at(line, 0)!.short, 'ii of a ii-V-I into C');
+      expect(
+        at(line, 0)!.short,
+        'ii of a ii-V-I into Cm',
+        reason: 'the minor target is named as minor',
+      );
     });
 
     test('a ii-V that never lands is still a ii-V, and says so', () {
@@ -50,6 +54,25 @@ void main() {
       expect(jobAt(line, 0), ChordJob.approach);
       expect(at(line, 0)!.short, 'ii of a ii-V into C');
       expect(jobAt(line, 1), ChordJob.deceptive);
+    });
+
+    test('the chord it lands on is named with its quality', () {
+      // Eø7 A7 into Dm is a different phrase from Em7 A7 into D: a
+      // different scale on every chord of it. "into D" for both hid the
+      // one thing somebody needed off the line.
+      expect(at('Eh7 A7 Dm7', 0)!.tag, 'ii of Dm');
+      expect(at('Em7 A7 D^7', 0)!.tag, 'ii of D');
+    });
+
+    test('a ii-V landing on another ii-V says it is handing over', () {
+      // The question this answers: St Thomas is in C, so why does a line
+      // under its second bar say D? Because Eø7 A7 goes to Dm, and Dm is
+      // not where the tune is going, it is the start of the pair that is.
+      final doing = at('Eh7 A7 Dm7 G7 C^7', 0)!;
+      expect(doing.tag, 'ii of Dm');
+      expect(doing.long, contains('handing over'));
+      // And where it really is an arrival, it does not say that.
+      expect(at('Em7 A7 D^7', 0)!.long, isNot(contains('handing over')));
     });
 
     test('a minor chord not in front of a dominant is left alone', () {
