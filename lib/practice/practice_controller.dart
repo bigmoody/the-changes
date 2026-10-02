@@ -12,6 +12,7 @@ import '../audio/sample_bank.dart';
 
 import '../audio/arpeggios.dart';
 import '../audio/backing_synth.dart';
+import '../audio/felt_beat.dart';
 import '../audio/practice_player.dart';
 import '../audio/export_track.dart';
 import '../audio/take_recorder.dart';
@@ -351,8 +352,18 @@ class PracticeController extends ChangeNotifier {
     _chart = originalTune.transposed(
       _semitones + settings.instrument.semitones,
     );
+    // Turning the beat on or off changes how often the clock is read, and
+    // somebody who turns it on while the band is going should feel it on
+    // the next beat rather than the next tune.
+    final wanted = settings.feelTheBeat == FeelTheBeat.off ? 30 : 10;
+    // Only while the band is actually going: the ticker is cancelled on
+    // stop but not thrown away, so it being non-null proves nothing.
+    if (_isPlaying && _tickEvery != wanted) _startTicker();
     notifyListeners();
   }
+
+  /// How often the clock is being read, so a change can be noticed.
+  int? _tickEvery;
 
   // ── Tempo ──────────────────────────────────────────────────────────────
 
@@ -1203,10 +1214,18 @@ class PracticeController extends ChangeNotifier {
     _restartTimer = Timer(delay, () => play(withCountIn: false));
   }
 
-  /// Checks the playback position ~30 times a second to move the highlight.
+  /// Checks the playback position often enough to move the highlight, and
+  /// faster than that when the beat is being felt as well.
+  ///
+  /// The highlight is forgiving about arriving a frame late; a tap on the
+  /// wrist is not, because a pulse you cannot trust is worse than none.
+  /// This is the only beat signal there is on the Dart side, so when
+  /// somebody is feeling the beat it is worth looking more often.
   void _startTicker() {
     _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(milliseconds: 30), (_) {
+    final every = settings.feelTheBeat == FeelTheBeat.off ? 30 : 10;
+    _tickEvery = every;
+    _ticker = Timer.periodic(Duration(milliseconds: every), (_) {
       final position = player.position();
       if (position == null) return;
       // The last chorus has gone by: let the final chord ring, then stop.
@@ -1225,6 +1244,18 @@ class PracticeController extends ChangeNotifier {
       if (position.tuneBeat != _currentBeat ||
           position.countInBeat != _countInBeat ||
           position.chorus != _chorus) {
+        // Felt before anything is rebuilt, because the tap is the thing
+        // with a deadline on it.
+        if (position.tuneBeat case final beat? when beat != _currentBeat) {
+          feelBeat(
+            settings.feelTheBeat,
+            beat: beat,
+            beatsPerBar: chart.beatsPerBar,
+          );
+        } else if (position.countInBeat case final beat?
+            when beat != _countInBeat) {
+          feelCountIn(settings.feelTheBeat);
+        }
         _currentBeat = position.tuneBeat;
         _countInBeat = position.countInBeat;
         _chorus = position.chorus;

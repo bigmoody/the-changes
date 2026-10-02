@@ -21,6 +21,7 @@ import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
+import '../audio/felt_beat.dart';
 
 class MetronomeScreen extends StatefulWidget {
   const MetronomeScreen({
@@ -94,10 +95,20 @@ class _MetronomeScreenState extends State<MetronomeScreen> {
       ..start();
     _ticker?.cancel();
     // Often enough that the dot lands with the click.
-    _ticker = Timer.periodic(
-      const Duration(milliseconds: 16),
-      (_) => _beatNow.value = _beat,
-    );
+    _ticker = Timer.periodic(const Duration(milliseconds: 16), (_) {
+      final beat = _beat;
+      // A bar the click is sitting out is -1, so the tap sits that bar
+      // out with it. Dropping the click to test your own time and then
+      // being handed the beat through your hand would be no test at all.
+      if (beat >= 0 && beat != _beatNow.value) {
+        feelBeat(
+          widget.settings.feelTheBeat,
+          beat: beat,
+          beatsPerBar: _beatsPerBar,
+        );
+      }
+      _beatNow.value = beat;
+    });
     setState(() => _playing = true);
   }
 

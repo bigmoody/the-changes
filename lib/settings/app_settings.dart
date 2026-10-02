@@ -14,6 +14,7 @@ import '../music/chord_drill.dart';
 import '../practice/hiding_the_chart.dart';
 import '../music/tune.dart';
 import '../audio/backing_synth.dart';
+import '../audio/felt_beat.dart';
 
 /// Which instrument the charts are written for.
 ///
@@ -160,6 +161,7 @@ class AppSettings extends ChangeNotifier {
     this._fadeChart,
     this._takesWithBand,
     this._chordAid,
+    this._feelTheBeat,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -179,6 +181,7 @@ class AppSettings extends ChangeNotifier {
     this._keyColours = const KeyColours(),
     this._colourKeys = true,
     this._splitMinorKeys = false,
+    this._feelTheBeat = FeelTheBeat.off,
   ]) : _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -213,6 +216,7 @@ class AppSettings extends ChangeNotifier {
   static const _metronomeClickOnKey = 'metronomeClickOn';
   static const _metronomeDropoutKey = 'metronomeDropout';
   static const _chordAidKey = 'chordAid';
+  static const _feelTheBeatKey = 'feelTheBeat';
   static const _fadeChartKey = 'fadeChart';
 
   /// Reads saved settings. Falls back to defaults if storage is unavailable.
@@ -241,12 +245,18 @@ class AppSettings extends ChangeNotifier {
     var metronomeClickOn = ClickOn.everyBeat;
     var metronomeDropout = Dropout.none;
     var chordAid = ChordAid.off;
+    var feelTheBeat = FeelTheBeat.off;
     var fadeChart = FadeChart.never;
     try {
       final savedAid = await storage.getString(_chordAidKey);
       chordAid = ChordAid.values.firstWhere(
         (value) => value.name == savedAid,
         orElse: () => ChordAid.off,
+      );
+      final savedFeel = await storage.getString(_feelTheBeatKey);
+      feelTheBeat = FeelTheBeat.values.firstWhere(
+        (value) => value.name == savedFeel,
+        orElse: () => FeelTheBeat.off,
       );
       metronomeTempo = await storage.getInt(_metronomeTempoKey) ?? 120;
       metronomeBeats = await storage.getInt(_metronomeBeatsKey) ?? 4;
@@ -358,6 +368,7 @@ class AppSettings extends ChangeNotifier {
       fadeChart,
       takesWithBand,
       chordAid,
+      feelTheBeat,
     );
   }
 
@@ -755,6 +766,24 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_chordAidKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// Where the beat is tapped out on the phone, if at all.
+  ///
+  /// Off until somebody asks for it: a phone that starts buzzing when the
+  /// band starts would be a surprise, and not a welcome one on a stand.
+  FeelTheBeat get feelTheBeat => _feelTheBeat;
+  FeelTheBeat _feelTheBeat;
+
+  Future<void> setFeelTheBeat(FeelTheBeat value) async {
+    if (value == _feelTheBeat) return;
+    _feelTheBeat = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_feelTheBeatKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../audio/felt_beat.dart';
 import '../audio/practice_player.dart';
 import '../library/library_store.dart';
 import '../music/chord_drill.dart';
@@ -83,6 +84,20 @@ class SettingsPage extends StatelessWidget {
               'what the chord is in the key, so you learn the shape of a '
               'tune rather than a list of names; the guide tones are the '
               '3rd and 7th, the notes that move least between changes.',
+            ),
+            _ChoiceTile<FeelTheBeat>(
+              icon: Icons.vibration,
+              title: 'Feel the Beat',
+              value: settings.feelTheBeat,
+              options: FeelTheBeat.values,
+              label: (feel) => feel.label,
+              onChanged: settings.setFeelTheBeat,
+            ),
+            const _Note(
+              'A tap on the phone on the beat, from the band and from the '
+              'metronome. It runs beside the click rather than instead of '
+              'it, so you can have either or both. A count-in is always '
+              'tapped out in full, whichever beats you have chosen.',
             ),
             _ChoiceTile<DrillTarget?>(
               icon: Icons.gps_fixed,
