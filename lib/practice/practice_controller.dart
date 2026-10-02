@@ -359,8 +359,22 @@ class PracticeController extends ChangeNotifier {
     // Only while the band is actually going: the ticker is cancelled on
     // stop but not thrown away, so it being non-null proves nothing.
     if (_isPlaying && _tickEvery != wanted) _startTicker();
+    // A drum's level is baked into the rendered stem rather than set on a
+    // playing one, so the only way to hear a change is to render again.
+    // Compared against what was last rendered rather than restarting on
+    // every settings change, most of which the band does not care about.
+    final levels = settings.drumLevels.toJson().toString();
+    if (_renderedLevels != null && _renderedLevels != levels) {
+      // Enough of a wait that dragging a slider does not re-render on
+      // every pixel of it.
+      _restartIfPlaying(delay: const Duration(milliseconds: 400));
+    }
+    _renderedLevels = levels;
     notifyListeners();
   }
+
+  /// The drum levels the band was last built with.
+  String? _renderedLevels;
 
   /// How often the clock is being read, so a change can be noticed.
   int? _tickEvery;
@@ -882,6 +896,7 @@ class PracticeController extends ChangeNotifier {
         arpeggioStart: settings.arpeggioStart,
         arrangement: arrangement ?? take.arrangement,
         imported: _imported?.transposedBy(take.semitones),
+        drumLevels: settings.drumLevels,
       );
 
   BackingRequest _exportRequest({Arrangement? arrangement}) => BackingRequest(
@@ -899,6 +914,7 @@ class PracticeController extends ChangeNotifier {
     arpeggioStart: settings.arpeggioStart,
     arrangement: arrangement ?? _arrangement,
     imported: _imported?.transposedBy(_semitones),
+    drumLevels: settings.drumLevels,
   );
 
   /// Writes the band out as a WAV and hands it to the share sheet. With
@@ -1074,6 +1090,7 @@ class PracticeController extends ChangeNotifier {
           arpeggioStart: settings.arpeggioStart,
           arrangement: _arrangement,
           imported: _imported?.transposedBy(_semitones),
+          drumLevels: settings.drumLevels,
         ),
         alongside: takePath,
         recording: recording,

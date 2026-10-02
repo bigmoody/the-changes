@@ -14,6 +14,7 @@ import 'backup_screen.dart';
 import 'imported_sounds_screen.dart';
 import 'chart_instrument_button.dart';
 import 'chord_colours_screen.dart';
+import 'drum_levels_screen.dart';
 import 'key_colours_screen.dart';
 import 'paper_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
@@ -216,6 +217,23 @@ class SettingsPage extends StatelessWidget {
               options: DrumSound.values,
               label: (sound) => sound.label,
               onChanged: settings.setDrumSound,
+            ),
+            ListTile(
+              key: const ValueKey('drum-levels'),
+              leading: const Icon(Icons.tune),
+              title: const Text('Drum Levels'),
+              subtitle: Text(
+                settings.drumLevels.isEmpty
+                    ? 'Turn the cymbals down, or any drum on its own'
+                    : '${settings.drumLevels.moved} moved',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) =>
+                      DrumLevelsScreen(settings: settings, player: player),
+                ),
+              ),
             ),
             // One row and not three. Which parts come out of a SoundFont
             // is a question about the band, not three separate errands,

@@ -20,6 +20,7 @@ import '../music/swing.dart';
 import '../music/tune.dart';
 import '../music/imported_part.dart';
 import 'arpeggios.dart';
+import 'drum_levels.dart';
 import 'drum_patterns.dart';
 import 'guitar_comping.dart';
 import 'instruments.dart';
@@ -122,6 +123,7 @@ class BackingRequest {
     this.arpeggioStart = ArpeggioStart.root,
     this.arrangement = Arrangement.keepGoing,
     this.imported,
+    this.drumLevels = const DrumLevels(),
   });
 
   final Tune tune;
@@ -147,6 +149,10 @@ class BackingRequest {
 
   /// Who plays the drums.
   final DrumSound drumSound;
+
+  /// How loud each drum is on its own. Empty renders the kit as it was
+  /// recorded, which is what it does for everybody who never asks.
+  final DrumLevels drumLevels;
 
   /// Whether to add a part playing each chord as a broken chord.
   final bool arpeggios;
@@ -336,10 +342,15 @@ RenderedBacking renderBacking(BackingRequest request) {
   // Scale everything by the same amount, based on the loudest moment of the
   // whole band, so the balance between instruments is preserved.
   var peak = 0.0;
+  final asRecorded = parts.drumsAsRecorded;
   for (var i = 0; i < parts.length; i++) {
     var sum = parts.clicks.buffer[i];
-    for (final mix in parts.mixes.values) {
-      sum += mix.buffer[i];
+    for (final entry in parts.mixes.entries) {
+      // The drums at the level they were recorded at, where somebody has
+      // moved one: see [_Parts.drumsAsRecorded].
+      sum += entry.key == Instrument.drums && asRecorded != null
+          ? asRecorded.buffer[i]
+          : entry.value.buffer[i];
     }
     peak = math.max(peak, sum.abs());
   }
@@ -413,6 +424,7 @@ BackingBatch renderBatch(
 class _Parts {
   _Parts({
     required this.mixes,
+    required this.drumsAsRecorded,
     required this.clicks,
     required this.length,
     required this.offset,
@@ -421,6 +433,19 @@ class _Parts {
   });
 
   final Map<Instrument, _Mix> mixes;
+
+  /// The drums as the kit was recorded, ignoring any levels somebody has
+  /// set, or null when they have set none.
+  ///
+  /// The whole band is scaled by one number worked out from its loudest
+  /// moment, which is what keeps the balance between the instruments. Left
+  /// alone, that means turning a drum down lowers the peak, which raises
+  /// the gain, which makes the piano and the bass come out louder. For
+  /// somebody who turned the cymbals down because the band was too much,
+  /// getting more of everything else back is precisely the wrong answer.
+  /// So the gain is worked out from this instead, and turning a drum down
+  /// takes it off what you hear rather than trading it for something else.
+  final _Mix? drumsAsRecorded;
   final _Mix clicks;
 
   /// Samples of actual playing; anything past this is the ringing tail.
@@ -518,6 +543,11 @@ _Parts _renderParts(
   final piano = mixes[Instrument.chords]!;
   final bass = mixes[Instrument.bass]!;
   final drums = mixes[Instrument.drums]!;
+  // The same drums at the level the kit was recorded at, kept only so the
+  // whole band's gain can be worked out from a kit nobody has turned
+  // down. See [_Parts.drumsAsRecorded]. Not built at all when there are
+  // no levels set, so the usual render costs nothing for this.
+  final drumsAsRecorded = request.drumLevels.isEmpty ? null : newMix();
 
   // Each batch gets its own random choices, so nothing ever repeats.
   final seed = request.seed * 31 + batch * 7919;
@@ -1061,15 +1091,28 @@ _Parts _renderParts(
           // Deciding the level by which layer was picked is what made the
           // odd beat jump 12 dB out of the groove.
           final layer = (hit.hard ? samples.length - 1 : 0);
+          final take = pickTake(samples.layers[layer]);
+          final asRecorded =
+              _drumLevel * hit.velocity * samples.levelling[layer];
           drums.addRecording(
             at(beat),
-            pickTake(samples.layers[layer]),
-            _drumLevel * hit.velocity * samples.levelling[layer],
+            take,
+            asRecorded * request.drumLevels.of(hit.drum),
           );
+          // The same hit where it was, for the gain. The take is picked
+          // once and used for both, so the second copy is the same drum
+          // and not another one out of the same bag.
+          drumsAsRecorded?.addRecording(at(beat), take, asRecorded);
         } else {
           final sound = synthesisedDrum(hit.drum);
           if (sound != null) {
-            drums.addSamples(at(beat), sound, hit.velocity * 0.35);
+            final asRecorded = hit.velocity * 0.35;
+            drums.addSamples(
+              at(beat),
+              sound,
+              asRecorded * request.drumLevels.of(hit.drum),
+            );
+            drumsAsRecorded?.addSamples(at(beat), sound, asRecorded);
           }
         }
       }
@@ -1127,6 +1170,7 @@ _Parts _renderParts(
 
   return _Parts(
     mixes: mixes,
+    drumsAsRecorded: drumsAsRecorded,
     clicks: clicks,
     length: length,
     offset: offset,

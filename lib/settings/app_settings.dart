@@ -14,6 +14,8 @@ import '../music/chord_drill.dart';
 import '../practice/hiding_the_chart.dart';
 import '../music/tune.dart';
 import '../audio/backing_synth.dart';
+import '../audio/drum_levels.dart';
+import '../audio/drum_patterns.dart';
 import '../audio/felt_beat.dart';
 
 /// Which instrument the charts are written for.
@@ -191,6 +193,7 @@ class AppSettings extends ChangeNotifier {
     this._chordAid,
     this._feelTheBeat,
     this._markTheBar,
+    this._drumLevels,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -212,6 +215,7 @@ class AppSettings extends ChangeNotifier {
     this._splitMinorKeys = false,
     this._feelTheBeat = FeelTheBeat.off,
     this._markTheBar = MarkTheBar.filled,
+    this._drumLevels = const DrumLevels(),
   ]) : _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -248,6 +252,7 @@ class AppSettings extends ChangeNotifier {
   static const _chordAidKey = 'chordAid';
   static const _feelTheBeatKey = 'feelTheBeat';
   static const _markTheBarKey = 'markTheBar';
+  static const _drumLevelsKey = 'drumLevels';
   static const _fadeChartKey = 'fadeChart';
 
   /// Reads saved settings. Falls back to defaults if storage is unavailable.
@@ -278,6 +283,7 @@ class AppSettings extends ChangeNotifier {
     var chordAid = ChordAid.off;
     var feelTheBeat = FeelTheBeat.off;
     var markTheBar = MarkTheBar.filled;
+    var drumLevels = const DrumLevels();
     var fadeChart = FadeChart.never;
     try {
       final savedAid = await storage.getString(_chordAidKey);
@@ -295,6 +301,12 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedMark,
         orElse: () => MarkTheBar.filled,
       );
+      final savedLevels = await storage.getString(_drumLevelsKey);
+      if (savedLevels != null) {
+        drumLevels = DrumLevels.fromJson(
+          jsonDecode(savedLevels) as Map<String, Object?>,
+        );
+      }
       metronomeTempo = await storage.getInt(_metronomeTempoKey) ?? 120;
       metronomeBeats = await storage.getInt(_metronomeBeatsKey) ?? 4;
       final savedClick = await storage.getString(_metronomeClickKey);
@@ -407,6 +419,7 @@ class AppSettings extends ChangeNotifier {
       chordAid,
       feelTheBeat,
       markTheBar,
+      drumLevels,
     );
   }
 
@@ -837,6 +850,34 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_markTheBarKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// How loud each drum is on its own, for somebody who cannot take the
+  /// cymbals at the level the kit was recorded at.
+  DrumLevels get drumLevels => _drumLevels;
+  DrumLevels _drumLevels;
+
+  Future<void> setDrumLevel(Drum drum, double level) async {
+    _drumLevels = _drumLevels.set(drum, level);
+    notifyListeners();
+    await _saveDrumLevels();
+  }
+
+  Future<void> clearDrumLevels() async {
+    _drumLevels = const DrumLevels();
+    notifyListeners();
+    await _saveDrumLevels();
+  }
+
+  Future<void> _saveDrumLevels() async {
+    try {
+      await _storage?.setString(
+        _drumLevelsKey,
+        jsonEncode(_drumLevels.toJson()),
+      );
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }
