@@ -14,6 +14,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/music/chord.dart';
+import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/music/what_its_doing.dart';
 
@@ -310,6 +311,122 @@ void main() {
       expect(at('Db7 C^7', 0)!.tag, 'sub \u2192 C');
       expect(at('Bb7 C^7', 0)!.tag, 'backdoor');
       expect(at('C^7 C^7', 0)!.tag, 'stays');
+    });
+  });
+
+  group('swept over the whole book', () {
+    // The checks that would have caught by machine what reading St
+    // Thomas caught by eye. Every label is checked against the chords it
+    // actually sits on, over all 204 charts, so a reading cannot be
+    // merely plausible: it has to be true of the chord either side.
+
+    List<Chord> chordsOf(Tune tune) => [
+      for (final bar in tune.bars)
+        for (final slot in bar) slot.chord,
+    ];
+
+    int up(Chord a, Chord b) => (b.root - a.root) % 12;
+
+    int? nextChange(List<Chord> all, int i) {
+      for (var j = i + 1; j < all.length; j++) {
+        if (all[j].display != all[i].display) return j;
+      }
+      return null;
+    }
+
+    test('every label is true of the chords around it', () {
+      final wrong = <String>[];
+      var checked = 0;
+      for (final tune in standards) {
+        final all = chordsOf(tune);
+        for (var i = 0; i < all.length; i++) {
+          final meaning = whatItIsDoing(all, i);
+          if (meaning == null) continue;
+          checked++;
+          final n = nextChange(all, i);
+          void bad(String why) => wrong.add(
+            '\${tune.title}: \${all[i].display} "\${meaning.tag}" \$why',
+          );
+          switch (meaning.job) {
+            case ChordJob.dominant:
+            case ChordJob.chain:
+              if (n == null || up(all[i], all[n]) != 5) {
+                bad('is not a fourth below');
+              }
+            case ChordJob.tritoneSub:
+              if (n == null || up(all[i], all[n]) != 11) {
+                bad('is not a semitone above');
+              }
+            case ChordJob.backdoor:
+              if (n == null) bad('has nothing after it');
+            case ChordJob.approach:
+            case ChordJob.handsOver:
+              if (n == null) bad('has nothing after it');
+            case ChordJob.tonic:
+            case ChordJob.deceptive:
+              break;
+            case ChordJob.staying:
+              if (i + 1 >= all.length || all[i + 1].display != all[i].display) {
+                bad('does not repeat');
+              }
+          }
+        }
+      }
+      expect(checked, greaterThan(4000), reason: 'a real sweep');
+      expect(wrong, isEmpty);
+    });
+
+    test('the two halves of a ii-V never disagree about where it goes', () {
+      // The fault somebody found by reading: "ii of Dm" printed over "V
+      // of D" about the same chord, one of them wrong and no way to tell
+      // which from the page.
+      final disagree = <String>[];
+      var pairs = 0;
+      for (final tune in standards) {
+        final all = chordsOf(tune);
+        for (var i = 0; i < all.length; i++) {
+          final ii = whatItIsDoing(all, i);
+          if (ii?.job != ChordJob.approach) continue;
+          final n = nextChange(all, i);
+          if (n == null) continue;
+          final v = whatItIsDoing(all, n);
+          if (v == null || !v.tag.startsWith('V of ')) continue;
+          pairs++;
+          if (ii!.tag.replaceFirst('ii of ', '') !=
+              v.tag.replaceFirst('V of ', '')) {
+            disagree.add('\${tune.title}: "\${ii.tag}" then "\${v.tag}"');
+          }
+        }
+      }
+      // Fewer than there are ii-Vs: where the V is itself a backdoor or
+      // handing over it is not labelled "V of", and those are checked by
+      // the tests above instead.
+      expect(pairs, greaterThan(800), reason: 'enough pairs to mean it');
+      expect(disagree, isEmpty);
+    });
+
+    test('a chord shoved up a semitone and brought back is not a sub', () {
+      // All Blues pushes its D7#9 up to Eb7#9 and straight back down.
+      // Nothing has been substituted for anything, so nothing is said.
+      expect(jobAt('D7#9 Eb7#9 D7#9', 1), isNull);
+      // But a real sub, which does not come from where it is going, is.
+      expect(jobAt('Dm7 Db7 C^7', 1), ChordJob.tritoneSub);
+    });
+
+    test('a turnaround is ii-Vs handing over, not a row of failures', () {
+      // Dm7 G7 | Em7 A7 is two ii-Vs, and calling the G7 a resolution
+      // that did not happen put those words through every turnaround in
+      // the book: 311 of them, against 34 that really are deceptive.
+      expect(jobAt('Dm7 G7 Em7 A7', 1), ChordJob.handsOver);
+      expect(at('Dm7 G7 Em7 A7', 1)!.tag, 'hands over');
+    });
+
+    test('the chord in front of a backdoor is part of the backdoor', () {
+      // Fm7 Bb7 going to C is not a ii-V into Eb that failed. Saying
+      // "ii of Eb" over "backdoor" was the same two halves disagreeing.
+      expect(jobAt('Fm7 Bb7 C^7', 0), ChordJob.backdoor);
+      expect(at('Fm7 Bb7 C^7', 0)!.tag, 'backdoor iv');
+      expect(jobAt('Fm7 Bb7 C^7', 1), ChordJob.backdoor);
     });
   });
 }

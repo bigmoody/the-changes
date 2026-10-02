@@ -53,6 +53,9 @@ enum ChordJob {
   /// A chord repeated or held while nothing moves under it.
   staying,
 
+  /// A dominant whose resolution is taken over by the next ii-V.
+  handsOver,
+
   /// One chord of a run of dominants, each a fourth above the next.
   chain,
 }
@@ -178,7 +181,12 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
       }
       // Down a semitone is the tritone sub's giveaway: the bass walks
       // down by step where a plain dominant would have leapt a fourth.
-      if (_up(chord, next) == 11) {
+      //
+      // Unless it came from the chord it is going back to, in which case
+      // it is a neighbour and not a substitution: All Blues shoves its
+      // D7♯9 up a semitone and brings it straight back, and nothing has
+      // been substituted for anything.
+      if (_up(chord, next) == 11 && !(before != null && _same(before, next))) {
         return (
           job: ChordJob.tritoneSub,
           tag: 'sub → ${_targetName(next)}',
@@ -208,6 +216,24 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
           learn: 'Passing Chords',
         );
       }
+      // Handing over rather than failing: the chord it goes to is the
+      // start of the next ii-V. A turnaround is three of these in a row,
+      // and calling each one a resolution that did not happen was the
+      // same mistake as reading St Thomas's second bar as a trip to D.
+      if (nextAt != null && _startsAnApproach(chords, nextAt)) {
+        return (
+          job: ChordJob.handsOver,
+          tag: 'hands over',
+          short: 'Handing over to the next ii-V',
+          long:
+              'This does not land: ${next.display} is the start of another '
+              'ii-V rather than the chord this was leaning on. One ii-V '
+              'giving way to the next is how a turnaround keeps a tune '
+              'moving through the bars where nothing else is happening.',
+          learn: 'Changes in Twelve Keys',
+        );
+      }
+
       // Anywhere else, and only when the ii in front of it had set the
       // resolution up. Without that there is no expectation to thwart:
       // most of the dominants in a blues go somewhere other than up a
@@ -242,6 +268,25 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
       next != null &&
       _isDominant(next) &&
       _resolvesTo(chord, next)) {
+    // Where the dominant it leans on is a backdoor, this is the iv in
+    // front of it and the pair is going somewhere else entirely. Saying
+    // "ii of E♭" over "backdoor" would be the two halves of one phrase
+    // disagreeing about where it is headed.
+    if (after != null &&
+        _up(next, after) == 2 &&
+        _kindOf(after) == _Kind.major) {
+      return (
+        job: ChordJob.backdoor,
+        tag: 'backdoor iv',
+        short: 'The iv in front of a backdoor into ${after.rootName}',
+        long:
+            'Not the ii-V it looks like. The dominant after this one goes '
+            'up a whole tone to ${after.rootName} rather than down a '
+            'fourth, so the pair comes home from underneath instead of '
+            'falling into place.',
+        learn: 'Passing Chords',
+      );
+    }
     final lands = after != null && _resolvesTo(next, after);
     // Named with its quality where the chord it lands on is actually
     // there to be read. A minor ii-V is a different phrase from a major
