@@ -50,9 +50,11 @@ Future<void> showImportRecording(
   BuildContext context,
   PracticeController controller, {
   RunTimingCheck measure = _inItsOwnIsolate,
+  List<({String name, Uint8List bytes})>? first,
 }) => practiceSheet(
   context,
-  (context) => _ImportRecording(controller: controller, measure: measure),
+  (context) =>
+      _ImportRecording(controller: controller, measure: measure, first: first),
 );
 
 /// A stem that has been chosen but not yet put in.
@@ -68,7 +70,15 @@ class _Chosen {
 }
 
 class _ImportRecording extends StatefulWidget {
-  const _ImportRecording({required this.controller, required this.measure});
+  const _ImportRecording({
+    required this.controller,
+    required this.measure,
+    this.first,
+  });
+
+  /// Files already chosen elsewhere, taken in as soon as the sheet opens.
+  /// Somebody who has just picked a file should not be asked for one.
+  final List<({String name, Uint8List bytes})>? first;
 
   final PracticeController controller;
   final RunTimingCheck measure;
@@ -97,6 +107,12 @@ class _ImportRecordingState extends State<_ImportRecording> {
   void initState() {
     super.initState();
     _key = _controller.tune.keyPitchClass;
+    // Already chosen somewhere else: take them in rather than asking
+    // again. After the first frame, so the sheet is on screen while the
+    // reading happens.
+    if (widget.first case final first? when first.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _take(first));
+    }
   }
 
   @override
@@ -193,10 +209,28 @@ class _ImportRecordingState extends State<_ImportRecording> {
         setState(() => _reading = false);
         return;
       }
+      await _take([
+        for (final file in picked.files)
+          if (file.bytes case final bytes?) (name: file.name, bytes: bytes),
+      ]);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _reading = false;
+        _problem = 'Could not read that: $e';
+      });
+    }
+  }
+
+  Future<void> _take(List<({String name, Uint8List bytes})> files) async {
+    setState(() {
+      _reading = true;
+      _problem = null;
+    });
+    try {
       final problems = <String>[];
-      for (final file in picked.files) {
+      for (final file in files) {
         final bytes = file.bytes;
-        if (bytes == null) continue;
         final read = readTakeName(file.name);
         // Named rather than refused, and per file, because several come
         // in at once and one stray should not be a mystery.

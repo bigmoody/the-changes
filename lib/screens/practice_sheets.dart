@@ -22,7 +22,7 @@ import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
-import 'import_part_sheet.dart';
+import 'bring_in_sheet.dart';
 import 'import_recording_sheet.dart';
 
 /// The practice screen's sheets, all opened the same way.
@@ -483,19 +483,24 @@ void showMixer(BuildContext context, PracticeController controller) {
                 value: controller.useRecording,
                 onChanged: controller.setUseRecording,
               ),
+            // One way in. The file says what it is, so nobody has to
+            // decide whether theirs is a "part" or a "recording" before
+            // the app will look at it. The rows above and below stay for
+            // what is already in, which is a different question.
             ListTile(
-              key: const ValueKey('import-part'),
+              key: const ValueKey('bring-in'),
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.file_open_outlined),
-              title: const Text('Imported Part'),
+              title: const Text('Bring Something In'),
               subtitle: Text(
                 controller.importedPart == null
-                    ? 'Play a MIDI file alongside the band'
+                    ? 'A MIDI part to play alongside, or real players to '
+                          'take over'
                     : '${controller.importedPart!.name}, on the '
                           '${controller.importedPart!.voice.label.toLowerCase()}',
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => showImportPart(context, controller),
+              onTap: () => bringSomethingIn(context, controller),
             ),
             for (final instrument in controller.parts)
               _MixerChannel(controller: controller, instrument: instrument),

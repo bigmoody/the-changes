@@ -9,6 +9,8 @@
 // notes are in beats, so the tempo is the tempo you are playing at, and
 // the key is the key you have transposed to.
 
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -21,13 +23,21 @@ import 'practice_sheets.dart';
 /// The sheet for choosing a file and a part out of it.
 Future<void> showImportPart(
   BuildContext context,
-  PracticeController controller,
-) => practiceSheet(context, (context) => _ImportPart(controller: controller));
+  PracticeController controller, {
+  ({String name, Uint8List bytes})? first,
+}) => practiceSheet(
+  context,
+  (context) => _ImportPart(controller: controller, first: first),
+);
 
 class _ImportPart extends StatefulWidget {
-  const _ImportPart({required this.controller});
+  const _ImportPart({required this.controller, this.first});
 
   final PracticeController controller;
+
+  /// A file already chosen elsewhere, read as soon as the sheet opens.
+  /// Somebody who has just picked a file should not be asked for one.
+  final ({String name, Uint8List bytes})? first;
 
   @override
   State<_ImportPart> createState() => _ImportPartState();
@@ -49,23 +59,42 @@ class _ImportPartState extends State<_ImportPart> {
   double get _formBeats =>
       (_controller.tune.barCount * _beatsPerBar).toDouble();
 
+  @override
+  void initState() {
+    super.initState();
+    // Already chosen somewhere else: read it rather than asking again.
+    if (widget.first case final first?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _read(first));
+    }
+  }
+
   Future<void> _choose() async {
     setState(() {
       _reading = true;
       _problem = null;
     });
+    // Any file rather than only .mid: the extension is not reliable on
+    // every platform, and saying what a file actually is beats a picker
+    // that silently offers nothing to choose.
+    final picked = await FilePicker.platform.pickFiles(withData: true);
+    final file = picked?.files.singleOrNull;
+    final bytes = file?.bytes;
+    if (!mounted) return;
+    if (bytes == null) {
+      setState(() => _reading = false);
+      return;
+    }
+    await _read((name: file!.name, bytes: bytes));
+  }
+
+  Future<void> _read(({String name, Uint8List bytes}) chosen) async {
+    setState(() {
+      _reading = true;
+      _problem = null;
+    });
     try {
-      // Any file rather than only .mid: the extension is not reliable on
-      // every platform, and the reader says what is wrong far better than
-      // a picker that silently offers nothing to choose.
-      final picked = await FilePicker.platform.pickFiles(withData: true);
-      final file = picked?.files.singleOrNull;
-      final bytes = file?.bytes;
-      if (!mounted) return;
-      if (bytes == null) {
-        setState(() => _reading = false);
-        return;
-      }
+      final bytes = chosen.bytes;
+      final file = chosen;
       // Named rather than refused: somebody who has brought a SoundFont
       // here has the right file and the wrong door.
       final kind = whatIsThisFile(bytes);
@@ -91,7 +120,7 @@ class _ImportPartState extends State<_ImportPart> {
       setState(() {
         _reading = false;
         _file = read;
-        _fileName = file?.name;
+        _fileName = file.name;
         _problem = read.pitched.isEmpty
             ? 'There is nothing in this file the app can play. It may hold '
                   'only drums, or only tempo and time signature.'
