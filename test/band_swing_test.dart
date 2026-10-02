@@ -11,7 +11,10 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/arpeggios.dart';
+import 'package:play_along/audio/drum_levels.dart';
 import 'package:play_along/audio/drum_patterns.dart';
+import 'package:play_along/music/arrangement.dart';
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/music/loop_range.dart';
 import 'package:play_along/music/swing.dart';
@@ -154,6 +157,66 @@ void main() {
           ).map((h) => '${h.drum.name}@${h.beat}').toSet(),
       };
       expect(hits[straight], isNot(hits[widestSwing]));
+    });
+  });
+
+  group('the step between the app and the renderer', () {
+    // Where this was lost. The player puts the sample bank into the
+    // request on its way to the isolate, by writing out a copy field by
+    // field, and the swing was not in the list. Every test called the
+    // renderer directly and so none of them crossed this one line.
+    BackingRequest full(SampleBank? bank) {
+      final tune = standards.first;
+      return BackingRequest(
+        tune: tune,
+        loop: LoopRange(startBeat: 0, lengthBeats: 4 * tune.beatsPerBar),
+        tempo: 140,
+        countInBars: 0,
+        sampleRate: 22050,
+        seed: 9,
+        samples: bank,
+        comping: Comping.guitar,
+        bassSound: BassSound.imported,
+        drumSound: DrumSound.imported,
+        arpeggios: true,
+        arpeggioSound: Comping.guitar,
+        arpeggioStart: ArpeggioStart.third,
+        arrangement: const Arrangement(choruses: 3),
+        drumLevels: const DrumLevels().set(Drum.ride, 0.25),
+        swing: dottedSwing,
+      );
+    }
+
+    test('putting the samples in keeps everything else', () {
+      // Field by field, so the next one added to the request and
+      // forgotten here fails this rather than going quiet on a phone.
+      final was = full(null);
+      final now = was.withSamples(null);
+      expect(now.tempo, was.tempo);
+      expect(now.loop.startBeat, was.loop.startBeat);
+      expect(now.countInBars, was.countInBars);
+      expect(now.sampleRate, was.sampleRate);
+      expect(now.seed, was.seed);
+      expect(now.comping, was.comping);
+      expect(now.bassSound, was.bassSound);
+      expect(now.drumSound, was.drumSound);
+      expect(now.arpeggios, was.arpeggios);
+      expect(now.arpeggioSound, was.arpeggioSound);
+      expect(now.arpeggioStart, was.arpeggioStart);
+      expect(now.arrangement.choruses, was.arrangement.choruses);
+      expect(now.swing, was.swing, reason: 'the one that was being lost');
+      expect(
+        now.drumLevels.of(Drum.ride),
+        was.drumLevels.of(Drum.ride),
+        reason: 'and this one with it',
+      );
+    });
+
+    test('and the band it renders is the band that was asked for', () {
+      // The end of the chain: what the player actually plays has to be
+      // what the request said, not a copy of it with pieces missing.
+      final straightened = full(null).withSamples(null);
+      expect(swingForPass(straightened, 0), dottedSwing);
     });
   });
 

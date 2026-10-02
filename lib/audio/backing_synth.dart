@@ -178,6 +178,15 @@ class BackingRequest {
   /// key being played. Null when there isn't one, which is the usual case.
   final ImportedPart? imported;
 
+  /// The same request with the sample bank put in, which is how the
+  /// player hands the band its sounds on the way to the isolate.
+  ///
+  /// Every field has to be named here, and that is the trouble with it:
+  /// it is a copy written out by hand, so a field added to the request
+  /// and forgotten here is silently dropped on every single play. The
+  /// swing and the drum levels were both lost this way, and no test
+  /// caught it because the tests call the renderer directly and this is
+  /// the one step between the app and the renderer.
   BackingRequest withSamples(SampleBank? samples) => BackingRequest(
     tune: tune,
     loop: loop,
@@ -194,6 +203,8 @@ class BackingRequest {
     arpeggioStart: arpeggioStart,
     arrangement: arrangement,
     imported: imported,
+    drumLevels: drumLevels,
+    swing: swing,
   );
 }
 
