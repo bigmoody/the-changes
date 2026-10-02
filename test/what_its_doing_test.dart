@@ -162,6 +162,29 @@ void main() {
       expect(jobAt(bridge, 3), ChordJob.dominant);
     });
 
+    test('two dominants are a V of a V, not a run', () {
+      // 28 of the runs in the book are pairs: E7 A7 in All of Me is a
+      // dominant reaching for a chord outside the key, not the bridge of
+      // rhythm changes, and calling both of them a run flattered the one
+      // and undersold the other.
+      expect(jobAt('E7 A7 Dm7', 0), ChordJob.chain);
+      expect(at('E7 A7 Dm7', 0)!.short, 'The dominant of a dominant');
+    });
+
+    test('a chord in the middle of a run knows the whole run', () {
+      // Counting only forwards called the third chord of a four-run a
+      // pair, because only two were left in front of it.
+      const bridge = 'D7 G7 C7 F7 Bb^7';
+      for (final at in [0, 1, 2]) {
+        expect(
+          at < 3 ? whatItIsDoing(chords(bridge), at)!.short : '',
+          'One of a run of dominants',
+          reason: 'chord $at',
+        );
+      }
+      expect(at(bridge, 0)!.long, contains('run of 4 dominants'));
+    });
+
     test('a 7sus counts as a dominant, because it goes to the same place', () {
       expect(jobAt('G7sus4 C^7', 0), ChordJob.dominant);
     });

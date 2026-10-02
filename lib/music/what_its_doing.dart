@@ -153,16 +153,27 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
         // arrival: the run of dominants round the bridge of rhythm
         // changes is six of these, not three cadences.
         if (_isDominant(next) && after != null && _resolvesTo(next, after)) {
+          // How far the run of dominants goes on from here. Two of them
+          // is a dominant of a dominant and nothing grander; four is the
+          // bridge of rhythm changes, and calling those the same thing
+          // flattered the one and undersold the other.
+          final run = _runLength(chords, at);
           return (
             job: ChordJob.chain,
-            tag: 'V of ${next.rootName}',
-            short: 'One of a run of dominants',
-            long:
-                'Each of these is the dominant of the next, a fourth up '
-                'every time. Nothing lands until the end of the run, which '
-                'is what makes a bridge built this way feel like it is '
-                'being pulled along.',
-            learn: 'Rhythm Changes',
+            tag: 'V of ${_targetName(next)}',
+            short: run > 2
+                ? 'One of a run of dominants'
+                : 'The dominant of a dominant',
+            long: run > 2
+                ? 'A run of $run dominants, each the V of the next, a '
+                      'fourth up every time. Nothing lands until the end '
+                      'of it, which is what makes a bridge built this way '
+                      'feel like it is being pulled along.'
+                : '${next.display} is a dominant too, so this is leaning '
+                      'on something that is itself leaning somewhere. Two '
+                      'steps from home rather than one, and the usual way '
+                      'a tune reaches for a chord that is not in the key.',
+            learn: run > 2 ? 'Rhythm Changes' : 'Passing Chords',
           );
         }
         final home = _kindOf(next);
@@ -379,6 +390,39 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
   }
 
   return null;
+}
+
+/// How long the run of dominants that [at] belongs to is, each a fourth
+/// above the last.
+///
+/// Both ways from here, not just forwards: the third chord of the rhythm
+/// changes bridge is in a run of four whatever is left in front of it,
+/// and counting only what came after it called that one a pair.
+int _runLength(List<Chord> chords, int at) {
+  var count = 1;
+  var here = at;
+  while (true) {
+    final next = _nextChange(chords, here);
+    if (next == null) break;
+    if (!_isDominant(chords[next]) ||
+        !_resolvesTo(chords[here], chords[next])) {
+      break;
+    }
+    count++;
+    here = next;
+  }
+  here = at;
+  while (true) {
+    final back = _lastChange(chords, here);
+    if (back == null) break;
+    if (!_isDominant(chords[back]) ||
+        !_resolvesTo(chords[back], chords[here])) {
+      break;
+    }
+    count++;
+    here = back;
+  }
+  return count;
 }
 
 /// Whether the chord at [at] is itself the start of a ii-V: a minor or
