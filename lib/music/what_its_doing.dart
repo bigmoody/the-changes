@@ -364,8 +364,13 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
   //
   // Asked last: a dominant held for four bars is still the V of wherever
   // it goes, and that is worth more than its length.
+  // Only where the stretch starts. A chart writes a repeated bar as % but
+  // never at the start of a row, so a run of eight has its chord written
+  // out twice, and saying "8 bars" under both of them reads as sixteen.
+  // The stretch is one thing and is claimed once.
+  final starts = at == 0 || !_same(chords[at - 1], chord);
   final held = _runOfTheSame(chords, at);
-  if (held >= 4) {
+  if (starts && held >= 4) {
     return (
       job: ChordJob.staying,
       tag: '$held bars',

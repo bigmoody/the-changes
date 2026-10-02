@@ -209,7 +209,11 @@ void main() {
       // have to make up a line over.
       expect(jobAt('C^7 C^7 C^7 C^7', 0), ChordJob.staying);
       expect(at('C^7 C^7 C^7 C^7', 0)!.tag, '4 bars');
-      expect(at('C^7 C^7 C^7 C^7', 2)!.tag, '4 bars', reason: 'anywhere in it');
+      // And only at the start of it. A chart writes a repeated bar as %
+      // but never at the start of a row, so a run of eight has its chord
+      // written out twice; "8 bars" under both of them reads as sixteen.
+      expect(jobAt('C^7 C^7 C^7 C^7', 1), isNull);
+      expect(jobAt('C^7 C^7 C^7 C^7', 2), isNull);
     });
 
     test('a dominant held that long is a stretch too', () {
@@ -236,8 +240,9 @@ void main() {
       // Landing happens once.
       expect(jobAt('Dm7 Db7 C6 C6 C6 C6', 2), ChordJob.tonic);
       // The bars after it are the chord being held, not another arrival.
-      expect(jobAt('Dm7 Db7 C6 C6 C6 C6', 3), ChordJob.staying);
-      expect(at('Dm7 Db7 C6 C6 C6 C6', 3)!.tag, '4 bars');
+      // The bar it arrives in says it landed; the stretch is claimed at
+      // its start, which is that same bar, and landing wins there.
+      expect(jobAt('Dm7 Db7 C6 C6 C6 C6', 3), isNull);
     });
 
     test('a dominant held for a bar is the V of where it goes, both bars', () {
@@ -451,7 +456,11 @@ void main() {
           }
         }
       }
-      expect(checked, greaterThan(4000), reason: 'a real sweep');
+      // That the sweep covers enough to mean something, not a bar for
+      // how much it should say: the number falls every time the analysis
+      // stops repeating what the page already shows, and that is the
+      // work going well rather than badly.
+      expect(checked, greaterThan(3000), reason: 'a real sweep');
       expect(wrong, isEmpty);
     });
 
