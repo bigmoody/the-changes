@@ -319,8 +319,14 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
     );
   }
 
-  // The chord a ii-V was heading for.
+  // The chord a ii-V was heading for, and only on the bar it actually
+  // arrives in. Reading backwards past the repeats, as everything else
+  // here does, had three bars of a held C6 each announcing the same
+  // arrival. Landing happens once; the bars after it are the chord being
+  // held, which is what they now say.
   if (before != null &&
+      at > 0 &&
+      !_same(chords[at - 1], chord) &&
       _isDominant(before) &&
       _resolvesTo(before, chord) &&
       (kind == _Kind.major || kind == _Kind.minor)) {

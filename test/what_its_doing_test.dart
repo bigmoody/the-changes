@@ -160,6 +160,15 @@ void main() {
       expect(jobAt('C^7 C^7', 0), ChordJob.staying);
     });
 
+    test('a chord lands once, however many bars it is held for', () {
+      // Reading backwards past repeats, as everything else here does,
+      // had three bars of a held C6 each announcing the same arrival.
+      // Landing happens once.
+      expect(jobAt('Dm7 G7 C6 C6 C6', 2), ChordJob.tonic);
+      expect(jobAt('Dm7 G7 C6 C6 C6', 3), ChordJob.staying);
+      expect(jobAt('Dm7 G7 C6 C6 C6', 4), isNull);
+    });
+
     test('a dominant held for a bar is the V of where it goes, both bars', () {
       // A chart writes the second bar as %. Reading that as a resolution
       // that did not happen put "V, no land" under half the bars of a
