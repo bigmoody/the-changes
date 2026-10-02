@@ -15,6 +15,7 @@ import 'audio/take_recorder.dart';
 import 'audio/sample_bank.dart';
 import 'library/library_store.dart';
 import 'screens/home_screen.dart';
+import 'screens/note_ink.dart';
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
 import 'practice/part_store.dart';
@@ -140,6 +141,11 @@ class TheChangesApp extends StatelessWidget {
         // sun went down.
         theme: appTheme(Brightness.light, paper: settings.paper),
         darkTheme: appTheme(Brightness.dark, paper: settings.paper),
+        // Above the navigator rather than around the home screen, so that
+        // a chord tone named three pushes deep is still in the colour its
+        // reader sees it in.
+        builder: (context, child) =>
+            NoteInk(settings: settings, child: child ?? const SizedBox()),
         home: HomeScreen(
           player: player,
           settings: settings,

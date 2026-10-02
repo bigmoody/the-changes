@@ -19,6 +19,7 @@ import '../music/tuning.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
+import 'note_ink.dart';
 
 /// Within this many cents counts as in tune: closer than most ears can tell.
 const inTuneCents = 5.0;
@@ -232,10 +233,7 @@ class _Reading extends StatelessWidget {
             if (target != null) ...[
               Text('Aim For', style: theme.textTheme.titleMedium),
               Flexible(
-                child: _BigNote(
-                  name: pitchClassName(target),
-                  colour: scheme.primary,
-                ),
+                child: _BigNote(pitchClass: target, colour: scheme.primary),
               ),
               const SizedBox(height: 8),
             ] else
@@ -292,7 +290,7 @@ class _Reading extends StatelessWidget {
         // The letter gives way first when the screen is short.
         Flexible(
           child: _BigNote(
-            name: target == null ? playedName : pitchClassName(target),
+            pitchClass: target ?? nearest.midi % 12,
             colour: inTune ? colour : scheme.onSurface,
           ),
         ),
@@ -321,18 +319,27 @@ class _Reading extends StatelessWidget {
   }
 }
 
+/// The note, as big as the screen will take it.
+///
+/// [colour] is what the tuner wants to say: green for in tune, plain
+/// otherwise. Somebody who sees the pitch as a colour gets that instead,
+/// because it is the stronger fact about the note and the tuning is
+/// already being said by the needle, the advice and the cents. Both
+/// spellings are shown, and if they are being kept apart the two halves
+/// are coloured apart, since a heard pitch could honestly be either.
 class _BigNote extends StatelessWidget {
-  const _BigNote({required this.name, required this.colour});
+  const _BigNote({required this.pitchClass, required this.colour});
 
-  final String name;
+  final int pitchClass;
   final Color colour;
 
   @override
   Widget build(BuildContext context) => FittedBox(
     fit: BoxFit.scaleDown,
-    child: Text(
-      name,
+    child: NoteText.pitchClass(
+      pitchClass,
       key: const ValueKey('tuner-note'),
+      on: Theme.of(context).colorScheme.surface,
       style: Theme.of(context).textTheme.displayLarge?.copyWith(
         fontSize: 110,
         fontWeight: FontWeight.w800,
@@ -472,9 +479,13 @@ class _NotePad extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Text(
-                              pitchClassName(note, separator: '\n'),
+                            child: NoteText.pitchClass(
+                              note,
+                              separator: '\n',
                               textAlign: TextAlign.center,
+                              on: target == note
+                                  ? scheme.primary
+                                  : scheme.surfaceContainerHigh,
                               style: TextStyle(
                                 fontSize: 18,
                                 height: 1.1,

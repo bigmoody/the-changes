@@ -124,8 +124,18 @@ void main() {
     tester,
   ) async {
     final (listener, player) = await open(tester);
-    String shown() =>
-        tester.widget<Text>(find.byKey(const ValueKey('tuner-note'))).data!;
+    // The note is written as a span per spelling now, so that somebody
+    // who sees C♯ and D♭ as different colours gets them in different
+    // colours. Read it back as the plain text it draws.
+    String shown() {
+      final text = tester.widget<Text>(
+        find.descendant(
+          of: find.byKey(const ValueKey('tuner-note')),
+          matching: find.byType(Text),
+        ),
+      );
+      return text.data ?? text.textSpan!.toPlainText();
+    }
 
     // A concert B♭, heard in each key.
     listener.hear(midiToHz(58));

@@ -14,6 +14,7 @@ import '../music/barre_chords.dart';
 import '../music/fretboard_arpeggio.dart';
 import '../music/guitar_voicing.dart';
 import '../settings/app_settings.dart';
+import 'note_ink.dart';
 
 /// Whichever [diagram] the player chose, drawn [height] tall at its own
 /// proportions. Nothing at all for [ChordDiagram.none].
@@ -144,6 +145,18 @@ class KeyboardDiagram extends StatelessWidget {
     return CustomPaint(
       painter: _KeyboardPainter(
         notes: keyboardNotes(chord),
+        // A key is a pitch rather than a written note: the black one
+        // between C and D is honestly both C♯ and D♭, and nothing about
+        // a keyboard says which of them you meant. So these take the
+        // colour of the pitch, as the tuner does.
+        inks: {
+          for (final note in keyboardNotes(chord))
+            note.semitone: inkForPitch(
+              context,
+              note.semitone % 12,
+              on: scheme.surface,
+            ),
+        },
         marked: scheme.tertiary,
         hole: scheme.surface,
         outline: scheme.outlineVariant,
@@ -211,6 +224,14 @@ class VoicingKeyboard extends StatelessWidget {
     return CustomPaint(
       painter: _KeyboardPainter(
         notes: _notes,
+        inks: {
+          for (final note in _notes)
+            note.semitone: inkForPitch(
+              context,
+              note.semitone % 12,
+              on: scheme.surface,
+            ),
+        },
         marked: scheme.tertiary,
         hole: scheme.surface,
         outline: scheme.outlineVariant,
@@ -264,6 +285,14 @@ class ScaleKeyboard extends StatelessWidget {
     return CustomPaint(
       painter: _KeyboardPainter(
         notes: _notes,
+        inks: {
+          for (final note in _notes)
+            note.semitone: inkForPitch(
+              context,
+              note.semitone % 12,
+              on: scheme.surface,
+            ),
+        },
         marked: scheme.tertiary,
         hole: scheme.surface,
         outline: scheme.outlineVariant,
@@ -277,6 +306,7 @@ class ScaleKeyboard extends StatelessWidget {
 class _KeyboardPainter extends CustomPainter {
   _KeyboardPainter({
     required this.notes,
+    required this.inks,
     required this.marked,
     required this.hole,
     required this.outline,
@@ -285,6 +315,10 @@ class _KeyboardPainter extends CustomPainter {
   });
 
   final List<({int semitone, KeyRole role})> notes;
+
+  /// What to mark each note in, where its reader sees that pitch as a
+  /// colour. Empty of colours otherwise, and then the accent is used.
+  final Map<int, Color?> inks;
   final Color marked;
   final Color hole;
   final Color outline;
@@ -312,6 +346,7 @@ class _KeyboardPainter extends CustomPainter {
           Offset(rect.center.dx, size.height * 0.82),
           keyWidth * 0.3,
           role,
+          whites[i],
         );
       }
     }
@@ -335,12 +370,20 @@ class _KeyboardPainter extends CustomPainter {
           Offset(rect.center.dx, blackHeight * 0.76),
           blackWidth * 0.34,
           role,
+          semitone,
         );
       }
     }
   }
 
-  void _mark(Canvas canvas, Offset centre, double radius, KeyRole role) {
+  void _mark(
+    Canvas canvas,
+    Offset centre,
+    double radius,
+    KeyRole role,
+    int semitone,
+  ) {
+    final colour = inks[semitone] ?? marked;
     if (role == KeyRole.extension) {
       // Extensions as rings: part of the sound, not of the basic shape.
       canvas.drawCircle(
@@ -349,11 +392,11 @@ class _KeyboardPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = math.max(1.5, radius * 0.35)
-          ..color = marked,
+          ..color = colour,
       );
       return;
     }
-    canvas.drawCircle(centre, radius, Paint()..color = marked);
+    canvas.drawCircle(centre, radius, Paint()..color = colour);
     if (role == KeyRole.root) {
       // A hole through the middle of the root, so which note is which reads
       // at a glance.
@@ -363,7 +406,9 @@ class _KeyboardPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_KeyboardPainter old) =>
-      old.notes.toString() != notes.toString() || old.marked != marked;
+      old.notes.toString() != notes.toString() ||
+      old.marked != marked ||
+      old.inks.toString() != inks.toString();
 }
 
 /// A guitar chord grid: four frets, six strings, a dot where a finger goes.
@@ -400,6 +445,19 @@ class GuitarDiagram extends StatelessWidget {
       painter: _GuitarPainter(
         voicing: voicing,
         dot: scheme.primary,
+        // A fretted string is a pitch: the string's open note plus the
+        // fret. Which written note that is depends on the chord around
+        // it, and the grid is not showing a chord's spelling, so these
+        // take the colour of the pitch.
+        inks: {
+          for (final (string, fret) in voicing.frets.indexed)
+            if (fret != null)
+              string: inkForPitch(
+                context,
+                (guitarTuning[string] + fret) % 12,
+                on: scheme.surface,
+              ),
+        },
         line: scheme.outline,
         label: scheme.onSurfaceVariant,
       ),
@@ -411,12 +469,17 @@ class _GuitarPainter extends CustomPainter {
   _GuitarPainter({
     required this.voicing,
     required this.dot,
+    required this.inks,
     required this.line,
     required this.label,
   });
 
   final GuitarVoicing voicing;
   final Color dot;
+
+  /// What each string's dot is drawn in, by string, where its reader sees
+  /// that pitch as a colour.
+  final Map<int, Color?> inks;
   final Color line;
   final Color label;
 
@@ -501,7 +564,7 @@ class _GuitarPainter extends CustomPainter {
       canvas.drawCircle(
         Offset(x, top + (row + 0.5) * fretGap),
         radius,
-        Paint()..color = dot,
+        Paint()..color = inks[string] ?? dot,
       );
     }
   }
@@ -524,7 +587,8 @@ class _GuitarPainter extends CustomPainter {
   bool shouldRepaint(_GuitarPainter old) =>
       old.voicing.frets.toString() != voicing.frets.toString() ||
       old.voicing.barre != voicing.barre ||
-      old.dot != dot;
+      old.dot != dot ||
+      old.inks.toString() != inks.toString();
 }
 
 /// A bass fingerboard in one hand position, with every chord tone within

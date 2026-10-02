@@ -10,6 +10,7 @@ import '../theme.dart';
 import 'chart_instrument_button.dart';
 import 'chord_diagram.dart';
 import 'stave.dart';
+import 'note_ink.dart';
 
 /// The notes in every kind of chord, in any key: each chord tone lined up
 /// under its degree (1 3 5 7), the extensions players add, and where they
@@ -489,8 +490,9 @@ class _Tone extends StatelessWidget {
               color: scheme.onSurfaceVariant,
             ),
           ),
-          Text(
+          NoteText(
             note,
+            on: strong ? scheme.secondaryContainer : scheme.surface,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: strong ? scheme.onSecondaryContainer : scheme.onSurface,

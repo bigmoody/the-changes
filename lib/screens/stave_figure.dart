@@ -87,6 +87,11 @@ abstract final class Smufl {
 /// on. [marked] draws it in the accent colour; [ledgers] gives it the short
 /// lines it needs to reach the stave.
 ///
+/// [ink] overrides the colour: what a notehead is drawn in for somebody
+/// who sees that pitch as a colour. [marked] still wins, because being
+/// told which note to aim for is the point of the figure and there is
+/// nothing else on a stave saying it.
+///
 /// [scale] is how big to draw it against the stave, where 1 is the font's
 /// own idea. Petaluma draws a few symbols for somewhere other than a single
 /// stave (a time signature digit is four spaces tall on its own) and this
@@ -100,6 +105,7 @@ typedef Sym = ({
   bool ledgers,
   double scale,
   double dx,
+  Color? ink,
 });
 
 Sym sym(
@@ -109,6 +115,7 @@ Sym sym(
   bool ledgers = false,
   double scale = 1,
   double dx = 0,
+  Color? ink,
 }) => (
   code: code,
   step: step,
@@ -116,6 +123,7 @@ Sym sym(
   ledgers: ledgers,
   scale: scale,
   dx: dx,
+  ink: ink,
 );
 
 /// Symbols at the same place along the stave (a time signature's two
@@ -137,6 +145,7 @@ class StaveColumn {
     bool marked = false,
     bool ledgers = false,
     double scale = 1,
+    Color? ink,
     this.label,
     this.over,
     this.gap = 1.2,
@@ -149,6 +158,7 @@ class StaveColumn {
          ledgers: ledgers,
          scale: scale,
          dx: 0,
+         ink: ink,
        );
 
   final List<Sym>? _symbols;
@@ -467,7 +477,7 @@ class _FigurePainter extends CustomPainter {
       final x = layout.xs[i];
       for (final symbol in column.symbols) {
         final at = x + symbol.dx * space;
-        final colour = symbol.marked ? marked : ink;
+        final colour = symbol.marked ? marked : (symbol.ink ?? ink);
         final glyph = _Glyph(
           symbol.code,
           layout.fontSize * symbol.scale,

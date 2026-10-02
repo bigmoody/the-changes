@@ -112,12 +112,17 @@ class SettingsPage extends StatelessWidget {
               leading: const Icon(Icons.palette_outlined),
               title: const Text('Chord Colours'),
               subtitle: Text(switch ((
-                settings.chordColours.byPitchClass.length,
+                settings.chordColours.chosen,
                 settings.colourChords,
+                settings.splitEnharmonics,
               )) {
-                (0, _) => 'If you see pitches as colours, set yours here',
-                (final set, false) => '$set set, and turned off',
-                (final set, _) => '$set of 12 set',
+                (0, _, _) => 'If you see pitches as colours, set yours here',
+                (final set, false, _) => '$set set, and turned off',
+                // Seventeen questions once the sharps and flats are
+                // apart, so counting against twelve would read as a
+                // mistake the moment somebody answered a thirteenth.
+                (final set, _, true) => '$set of 17 set',
+                (final set, _, _) => '$set of 12 set',
               }),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(

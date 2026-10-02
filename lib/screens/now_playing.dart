@@ -13,6 +13,7 @@ import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chord_diagram.dart';
 import 'chord_reference_screen.dart';
+import 'note_ink.dart';
 
 /// A large readout of the chord being played (or the loop's first chord),
 /// with its name and notes beside it. Tap for the full explanation.
@@ -152,8 +153,9 @@ class NowPlaying extends StatelessWidget {
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
-                          child: Text(
-                            chord.noteNames.join(' '),
+                          child: NoteNames(
+                            chord.noteNames,
+                            separator: ' ',
                             maxLines: 1,
                             style: detailStyle,
                           ),

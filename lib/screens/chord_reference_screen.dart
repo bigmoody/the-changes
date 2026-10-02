@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../music/chord.dart';
+import 'note_ink.dart';
 
 /// A searchable index of chord symbols: what Δ, ø, °, − and friends mean.
 class ChordReferenceScreen extends StatefulWidget {
@@ -102,7 +103,7 @@ class ChordQualityDetails extends StatelessWidget {
           label: 'Formula',
           value: quality.formula.map(prettyDegree).join('  '),
         ),
-        _LabelledRow(label: 'Chord Tones', value: chord.noteNames.join('  ')),
+        _LabelledRow(label: 'Chord Tones', notes: chord.noteNames),
         if (chord.extensionNotes.isNotEmpty)
           _LabelledRow(
             label: 'Extensions',
@@ -118,10 +119,15 @@ class ChordQualityDetails extends StatelessWidget {
 }
 
 class _LabelledRow extends StatelessWidget {
-  const _LabelledRow({required this.label, required this.value});
+  const _LabelledRow({required this.label, this.value, this.notes})
+    : assert(value != null || notes != null, 'a row needs something in it');
 
   final String label;
-  final String value;
+  final String? value;
+
+  /// Note names instead of a line of text, so each one can be written in
+  /// the colour its reader sees it in.
+  final List<String>? notes;
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +147,11 @@ class _LabelledRow extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(child: Text(value, style: theme.textTheme.titleMedium)),
+          Expanded(
+            child: notes == null
+                ? Text(value!, style: theme.textTheme.titleMedium)
+                : NoteNames(notes!, style: theme.textTheme.titleMedium),
+          ),
         ],
       ),
     );

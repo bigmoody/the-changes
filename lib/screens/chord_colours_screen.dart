@@ -6,17 +6,20 @@
 // from: the colours belong to the person and ours would be somebody
 // else's guess at them.
 //
-// So a hue, a depth and a brightness, with the chord shown as it will
-// actually appear on the paper while the sliders move. Three numbers is
-// not as nice as pointing at the colour you mean, but it does reach every
-// colour, which a grid of swatches does not, and that is the whole point.
+// So a colour picker, with the chord shown as it will actually appear on
+// the paper while the colour moves. Pointing at the colour you mean is
+// the whole idea.
 //
-// Twelve roots, not twenty-one: C♯ and D♭ are one pitch and share an
-// entry. Somebody who sees those two differently has a real complaint and
-// it would be a second map rather than a different idea.
+// Twelve roots to begin with, because twelve is what most people have and
+// seventeen questions is a lot to ask to find out. But plenty of people do
+// see C♯ and D♭ apart, since what they see is attached to the written
+// letter as much as to the sound, so there is a switch that splits them.
+// An unanswered spelling follows the pitch under it, which means the
+// switch costs nothing to try and nothing to undo.
 
 import 'package:flutter/material.dart';
 
+import '../music/chord.dart';
 import '../settings/app_settings.dart';
 import '../settings/chord_colours.dart';
 import '../theme.dart';
@@ -57,8 +60,9 @@ class ChordColoursScreen extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: Text(
                 'If you see pitches as colours, say what yours are and the '
-                'chart will use them. A chord takes the colour of its root, '
-                'so a D7 and a Dm9 are both D.',
+                'app will use them: on the chart, on the tuner, on the '
+                'stave and wherever a note is named. A chord takes the '
+                'colour of its root, so a D7 and a Dm9 are both D.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -74,20 +78,38 @@ class ChordColoursScreen extends StatelessWidget {
               value: settings.colourChords,
               onChanged: settings.setColourChords,
             ),
+            SwitchListTile(
+              key: const ValueKey('split-enharmonics'),
+              secondary: const Icon(Icons.call_split),
+              title: const Text('Sharps and Flats Apart'),
+              subtitle: const Text(
+                'Give C♯ and D♭ their own colours, if you see them apart',
+              ),
+              value: settings.splitEnharmonics,
+              onChanged: settings.setSplitEnharmonics,
+            ),
             const Divider(height: 1),
-            for (var pitch = 0; pitch < 12; pitch++)
+            for (final entry in _rows(settings.splitEnharmonics))
               _RootRow(
-                pitch: pitch,
-                colour: colours.of(pitch),
+                entry: entry,
+                colours: colours,
+                split: settings.splitEnharmonics,
                 on: settings.colourChords,
-                onTap: () => _pick(context, pitch),
+                onTap: () => _pick(context, entry),
               ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Text(
-                'A colour is lifted or dropped only as far as it has to be '
-                'to be read on the paper, which leaves the hue alone. That '
-                'is why a very dark one looks lighter in the dark theme.',
+                settings.splitEnharmonics
+                    ? 'A spelling with no colour of its own follows the '
+                          'pitch under it, so nothing goes black while you '
+                          'fill these in. A colour is lifted or dropped only '
+                          'as far as it has to be to be read on the paper, '
+                          'which leaves the hue alone.'
+                    : 'A colour is lifted or dropped only as far as it has '
+                          'to be to be read on the paper, which leaves the '
+                          'hue alone. That is why a very dark one looks '
+                          'lighter in the dark theme.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -105,8 +127,8 @@ class ChordColoursScreen extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: const Text('Clear Every Colour?'),
         content: const Text(
-          'All twelve go back to the chart\'s own ink. Nothing else '
-          'changes.',
+          'Every one goes back to the chart\'s own ink, spellings '
+          'included. Nothing else changes.',
         ),
         actions: [
           TextButton(
@@ -124,13 +146,20 @@ class ChordColoursScreen extends StatelessWidget {
     if (sure == true) await settings.clearChordColours();
   }
 
-  Future<void> _pick(BuildContext context, int pitch) async {
+  Future<void> _pick(BuildContext context, _Row row) async {
     final scheme = Theme.of(context).colorScheme;
+    final colours = settings.chordColours;
+    final inherited = row.note == null
+        ? null
+        : colours.of(pitchClassOf(row.note!));
     final chosen = await pickColour(
       context,
-      title: pitchClassNames[pitch],
-      start: settings.chordColours.of(pitch),
-      clearLabel: 'No Colour',
+      title: row.title,
+      start: row.colourIn(colours, split: settings.splitEnharmonics),
+      // On a spelling that has none of its own, clearing is not asking for
+      // no colour, it is asking to go back to the pitch underneath. Saying
+      // "No Colour" there would be a lie about what the button does.
+      clearLabel: inherited == null ? 'No Colour' : 'Follow the Pitch',
       // On the paper, at the size a chart draws it, because the only
       // questions are whether it is your colour and whether you can read
       // it.
@@ -143,7 +172,7 @@ class ChordColoursScreen extends StatelessWidget {
           border: Border.all(color: scheme.outlineVariant),
         ),
         child: Text(
-          handSymbol('${roots[pitch]}Δ7'),
+          handSymbol('${row.root}Δ7'),
           style: handLettered(
             TextStyle(fontSize: 34, color: readableOn(colour, scheme.surface)),
           ),
@@ -152,41 +181,117 @@ class ChordColoursScreen extends StatelessWidget {
     );
     // Null is backing out; noColour is asking for none. Different answers.
     if (chosen == null) return;
-    await settings.setChordColour(pitch, chosen == noColour ? null : chosen);
+    final wanted = chosen == noColour ? null : chosen;
+    if (row.note case final note?) {
+      await settings.setChordColourForNote(note, wanted);
+    } else {
+      await settings.setChordColour(row.pitch!, wanted);
+    }
   }
+}
+
+/// One question on this screen: a pitch, or one written spelling of it.
+///
+/// A natural is always a pitch, because it has only the one spelling and
+/// splitting it would be asking the same question twice.
+typedef _Row = ({String title, String root, int? pitch, Spelling? note});
+
+extension on _Row {
+  /// What this row will actually draw with, following the pitch when the
+  /// spelling has nothing of its own.
+  Color? colourIn(ChordColours colours, {required bool split}) => note == null
+      ? colours.of(pitch!)
+      : colours.ofSpelling(note!, split: split);
+
+  /// Whether the colour shown is this row's own answer or borrowed from
+  /// the pitch under it.
+  bool ownIn(ChordColours colours) => note == null
+      ? colours.of(pitch!) != null
+      : colours.bySpelling[note!] != null;
+
+  /// What a test taps, and what a test looks for.
+  ValueKey<String> get key =>
+      ValueKey(note == null ? 'root-$pitch' : 'spelling-$root');
+}
+
+/// Every row, in the order somebody reading a keyboard would meet them.
+List<_Row> _rows(bool split) {
+  if (!split) {
+    return [
+      for (var pitch = 0; pitch < 12; pitch++)
+        (
+          title: pitchClassNames[pitch],
+          root: roots[pitch],
+          pitch: pitch,
+          note: null,
+        ),
+    ];
+  }
+  final rows = <_Row>[];
+  for (var pitch = 0; pitch < 12; pitch++) {
+    final spellings = [
+      for (final note in accidentalSpellings)
+        if (pitchClassOf(note) == pitch) note,
+    ];
+    if (spellings.isEmpty) {
+      // A white key: one name, one question, exactly as before.
+      rows.add((
+        title: pitchClassNames[pitch],
+        root: roots[pitch],
+        pitch: pitch,
+        note: null,
+      ));
+      continue;
+    }
+    for (final note in spellings) {
+      final name = noteNameOf(note);
+      rows.add((title: name, root: name, pitch: null, note: note));
+    }
+  }
+  return rows;
 }
 
 /// One root, with the chord drawn as it will appear.
 class _RootRow extends StatelessWidget {
   const _RootRow({
-    required this.pitch,
-    required this.colour,
+    required this.entry,
+    required this.colours,
+    required this.split,
     required this.on,
     required this.onTap,
   });
 
-  final int pitch;
-  final Color? colour;
+  final _Row entry;
+  final ChordColours colours;
+  final bool split;
   final bool on;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final colour = entry.colourIn(colours, split: split);
     final shown = colour == null || !on
         ? scheme.onSurface
-        : readableOn(colour!, scheme.surface);
+        : readableOn(colour, scheme.surface);
     return ListTile(
-      key: ValueKey('root-$pitch'),
-      title: Text(pitchClassNames[pitch]),
-      subtitle: Text(colour == null ? 'The chart\'s own ink' : 'Yours'),
+      key: entry.key,
+      title: Text(entry.title),
+      subtitle: Text(switch ((colour, entry.ownIn(colours))) {
+        (null, _) => 'The chart\'s own ink',
+        (_, true) => 'Yours',
+        // Borrowed from the pitch, which is worth saying rather than
+        // letting somebody wonder why a row they never answered has a
+        // colour in it.
+        _ => 'Follows the pitch',
+      }),
       leading: SizedBox(
         width: 44,
         child: Center(
           child: Text(
             // The root as a chord, in its colour, which is the only
             // preview worth having.
-            handSymbol('${roots[pitch]}7'),
+            handSymbol('${entry.root}7'),
             style: handLettered(TextStyle(fontSize: 22, color: shown)),
           ),
         ),

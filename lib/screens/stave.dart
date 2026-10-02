@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../music/chord.dart';
 import '../music/clef.dart';
+import 'note_ink.dart';
 import 'stave_figure.dart';
 
 export '../music/clef.dart' show Clef;
@@ -181,6 +182,17 @@ class Stave extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final steps = [for (final n in notes) n.step];
+    // What each note is written as, which the stave already knows: the
+    // step says which line or space, and a line or a space on a given
+    // clef is a letter. So a notehead can be drawn in the colour its
+    // reader sees that note in without anybody having to pass it down.
+    final ink = {
+      for (final note in notes)
+        note: inkForNote(context, (
+          letter: (note.step + clef.bottomLine) % 7,
+          accidental: note.accidental,
+        )),
+    };
     return StaveFigure(
       clef: clef,
       space: space,
@@ -189,38 +201,47 @@ class Stave extends StatelessWidget {
       above: (math.max(steps.fold(8, math.max) + 2, clef.room.high) - 8)
           .toDouble(),
       below: -math.min(steps.fold(0, math.min) - 2, clef.room.low).toDouble(),
-      columns: chord ? _stacked(notes) : _inARow(notes),
+      columns: chord ? _stacked(notes, ink) : _inARow(notes, ink),
       semanticsLabel: semanticsLabel,
     );
   }
 }
 
+/// What each note is drawn in, or nothing when its reader has not said.
+typedef NoteInks = Map<StaveNote, Color?>;
+
 /// One note's head, and the ledger lines it needs to reach the stave.
-StaveColumn _head(StaveNote note, {double gap = 1.1}) => StaveColumn.one(
-  Smufl.noteheadWhole,
-  step: note.step.toDouble(),
-  marked: note.marked,
-  ledgers: true,
-  gap: gap,
-);
+StaveColumn _head(StaveNote note, NoteInks ink, {double gap = 1.1}) =>
+    StaveColumn.one(
+      Smufl.noteheadWhole,
+      step: note.step.toDouble(),
+      marked: note.marked,
+      ink: ink[note],
+      ledgers: true,
+      gap: gap,
+    );
 
 /// The accidental in front of [note], if it has one. It gets a column of
 /// its own so the font's own width decides how much room it takes: a sharp
 /// is nearly twice a flat.
-StaveColumn? _accidental(StaveNote note, {double gap = 0.3}) {
+StaveColumn? _accidental(StaveNote note, NoteInks ink, {double gap = 0.3}) {
   final glyph = _accidentals[note.accidental];
   if (glyph == null) return null;
   return StaveColumn.one(
     glyph,
     step: note.step.toDouble(),
     marked: note.marked,
+    // The accidental belongs to the note, so it takes the note's colour:
+    // a flat left black in front of a blue B♭ would read as a different
+    // thing in front of it rather than part of it.
+    ink: ink[note],
     gap: gap,
   );
 }
 
 /// A scale: one note after another, each behind its own accidental.
-List<StaveColumn> _inARow(List<StaveNote> notes) => [
-  for (final note in notes) ...[?_accidental(note), _head(note)],
+List<StaveColumn> _inARow(List<StaveNote> notes, NoteInks ink) => [
+  for (final note in notes) ...[?_accidental(note, ink), _head(note, ink)],
 ];
 
 /// A chord: the notes stacked at one place along the stave.
@@ -230,7 +251,7 @@ List<StaveColumn> _inARow(List<StaveNote> notes) => [
 /// other don't land on the same spot. And a note only a step above the one
 /// below it can't sit beside it, so it goes in a second column of heads,
 /// one notehead to the right.
-List<StaveColumn> _stacked(List<StaveNote> notes) {
+List<StaveColumn> _stacked(List<StaveNote> notes, NoteInks ink) {
   final byHeight = [for (var i = 0; i < notes.length; i++) i]
     ..sort((a, b) => notes[b].step.compareTo(notes[a].step));
   final column = <int, int>{};
@@ -268,6 +289,7 @@ List<StaveColumn> _stacked(List<StaveNote> notes) {
               _accidentals[notes[i].accidental]!,
               step: notes[i].step.toDouble(),
               marked: notes[i].marked,
+              ink: ink[notes[i]],
             ),
       ], gap: c == 0 ? 0.35 : 0.15),
     StaveColumn(
@@ -278,6 +300,7 @@ List<StaveColumn> _stacked(List<StaveNote> notes) {
               Smufl.noteheadWhole,
               step: notes[i].step.toDouble(),
               marked: notes[i].marked,
+              ink: ink[notes[i]],
               ledgers: true,
             ),
       ],
@@ -294,6 +317,7 @@ List<StaveColumn> _stacked(List<StaveNote> notes) {
             Smufl.noteheadWhole,
             step: notes[i].step.toDouble(),
             marked: notes[i].marked,
+            ink: ink[notes[i]],
             ledgers: true,
           ),
       ], gap: 1.5),

@@ -144,6 +144,7 @@ class AppSettings extends ChangeNotifier {
     this._drumSound,
     this._chordColours,
     this._colourChords,
+    this._splitEnharmonics,
     this._paper,
     this._arpeggioSound,
     this._arpeggioStart,
@@ -170,6 +171,7 @@ class AppSettings extends ChangeNotifier {
     this._paper,
     this._arpeggioSound = Comping.piano,
     this._arpeggioStart = ArpeggioStart.root,
+    this._splitEnharmonics = false,
   ]) : _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -191,6 +193,7 @@ class AppSettings extends ChangeNotifier {
   static const _drumSoundKey = 'drumSound';
   static const _chordColoursKey = 'chordColours';
   static const _colourChordsKey = 'colourChords';
+  static const _splitEnharmonicsKey = 'splitEnharmonics';
   static const _paperKey = 'paper';
   static const _arpeggioSoundKey = 'arpeggioSound';
   static const _arpeggioStartKey = 'arpeggioStart';
@@ -215,6 +218,7 @@ class AppSettings extends ChangeNotifier {
     var drumSound = DrumSound.kit;
     var chordColours = const ChordColours();
     var colourChords = true;
+    var splitEnharmonics = false;
     Color? paper;
     var arpeggioSound = Comping.piano;
     var arpeggioStart = ArpeggioStart.root;
@@ -280,6 +284,7 @@ class AppSettings extends ChangeNotifier {
         );
       }
       colourChords = await storage.getBool(_colourChordsKey) ?? true;
+      splitEnharmonics = await storage.getBool(_splitEnharmonicsKey) ?? false;
       final savedPaper = await storage.getInt(_paperKey);
       if (savedPaper != null) paper = Color(savedPaper);
       final savedDrums = await storage.getString(_drumSoundKey);
@@ -317,6 +322,7 @@ class AppSettings extends ChangeNotifier {
       drumSound,
       chordColours,
       colourChords,
+      splitEnharmonics,
       paper,
       arpeggioSound,
       arpeggioStart,
@@ -459,15 +465,51 @@ class AppSettings extends ChangeNotifier {
   bool get colourChords => _colourChords;
   bool _colourChords;
 
+  /// Whether C♯ and D♭ are two questions or one.
+  ///
+  /// Off by default, because twelve is what most people have and asking
+  /// seventeen questions to find out is a poor trade. On, the five black
+  /// keys split in two and each written note can have its own.
+  bool get splitEnharmonics => _splitEnharmonics;
+  bool _splitEnharmonics;
+
   /// The colour for [pitchClass] as it should be drawn, or null when
   /// there is not one or they are turned off.
-  Color? chordColourFor(int pitchClass) =>
-      _colourChords ? _chordColours.of(pitchClass) : null;
+  ///
+  /// For the places that hear a pitch rather than read a note, where
+  /// there is no spelling to go on: the tuner hears 277 Hz, and whether
+  /// that is a C♯ or a D♭ is not a question sound can answer. Where a
+  /// note is written down, [chordColourForNote] is the one to use.
+  Color? chordColourFor(int pitchClass) => _colourChords
+      ? _chordColours.ofPitch(pitchClass, split: _splitEnharmonics)
+      : null;
+
+  /// The colour for a written note.
+  Color? chordColourForNote(Spelling note) => _colourChords
+      ? _chordColours.ofSpelling(note, split: _splitEnharmonics)
+      : null;
 
   Future<void> setChordColour(int pitchClass, Color? colour) async {
     _chordColours = _chordColours.set(pitchClass, colour);
     notifyListeners();
     await _saveChordColours();
+  }
+
+  Future<void> setChordColourForNote(Spelling note, Color? colour) async {
+    _chordColours = _chordColours.setSpelling(note, colour);
+    notifyListeners();
+    await _saveChordColours();
+  }
+
+  Future<void> setSplitEnharmonics(bool value) async {
+    if (value == _splitEnharmonics) return;
+    _splitEnharmonics = value;
+    notifyListeners();
+    try {
+      await _storage?.setBool(_splitEnharmonicsKey, value);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
   }
 
   Future<void> clearChordColours() async {
