@@ -243,6 +243,67 @@ void main() {
       expect(find.text('F7'), findsWidgets, reason: 'chords, straight away');
     });
 
+    testWidgets('the table moves into whatever key you ask for', (
+      tester,
+    ) async {
+      // The reason to read three blues against each other is usually
+      // that you are about to play one, and the key it reads best in is
+      // not always the key you are about to play it in.
+      await open(tester);
+      expect(
+        find.text(
+          'All in F · 6 of 12 bars differ · play one to hear it '
+          'through',
+        ),
+        findsNothing,
+        reason:
+            'the summary is one line, checked '
+            'by its key below',
+      );
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('All in F'),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('key-B♭')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('All in B♭'),
+      );
+      // And the chords moved with it: a blues in B♭ starts on a B♭.
+      expect(find.textContaining('B♭7'), findsWidgets);
+    });
+
+    testWidgets('the note about the key goes when the key does', (
+      tester,
+    ) async {
+      // It says why this comparison reads best in F. Over a table
+      // somebody has moved to B♭ it would be answering a question that
+      // is no longer being asked.
+      await open(tester);
+      expect(find.textContaining('Why F'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('key-B♭')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Why F'), findsNothing);
+    });
+
+    testWidgets('changing the set goes back to the key it reads best in', (
+      tester,
+    ) async {
+      // Keeping the last key would carry a choice made about one set of
+      // tunes onto another it was never made about.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('key-B♭')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey('set-${comparisons[1].name}')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('All in ${comparisons[1].key}'),
+      );
+    });
+
     testWidgets('why F is asked in one line and answered when tapped', (
       tester,
     ) async {

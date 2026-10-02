@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 
 import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
+import '../settings/key_colours.dart' show majorKeyNames;
 import '../music/arrangement.dart';
 import '../music/loop_range.dart';
 import '../music/side_by_side.dart';
@@ -37,6 +38,14 @@ class SideBySideScreen extends StatefulWidget {
 class _SideBySideScreenState extends State<SideBySideScreen> {
   var _chosen = comparisons.first;
 
+  /// The key the table is written in.
+  ///
+  /// Each comparison carries a key it is best read in, and that is where
+  /// it opens. But the reason to read three blues against each other is
+  /// usually that you are about to play one, and the key you are about to
+  /// play it in is not always the key it reads best in. So it moves.
+  late String _key = _chosen.key;
+
   /// Whether the note about the key is open. Shut to start with: the
   /// table is what the screen is for, and an answer nobody asked for
   /// would push the first bars off the bottom of the phone.
@@ -54,7 +63,7 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
   List<Tune> get _tunes => [
     for (final title in _chosen.titles)
       if (standards.where((t) => t.title == title).firstOrNull case final tune?)
-        tune.transposed(semitonesInto(tune, _chosen.key)),
+        tune.transposed(semitonesInto(tune, _key)),
   ];
 
   @override
@@ -146,6 +155,11 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
                       unawaited(_stop());
                       setState(() {
                         _chosen = comparison;
+                        // Back to the key this one reads best in. Keeping
+                        // the last key would carry a choice made about
+                        // one set of tunes onto another it was never
+                        // made about.
+                        _key = comparison.key;
                         _whyOpen = false;
                       });
                     },
@@ -163,9 +177,28 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final key in majorKeyNames)
+                  ChoiceChip(
+                    key: ValueKey('key-$key'),
+                    label: Text(key),
+                    selected: _key == key,
+                    onSelected: (_) {
+                      unawaited(_stop());
+                      setState(() => _key = key);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Text(
-              'All in ${_chosen.key} · ${barsThatDiffer(rows)} of '
+              'All in $_key · ${barsThatDiffer(rows)} of '
               '${rows.length} bars differ · play one to hear it through',
               key: const ValueKey('summary'),
               style: theme.textTheme.labelMedium?.copyWith(
@@ -173,13 +206,18 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
               ),
             ),
           ),
-          if (whyThisKey(_chosen.key) case final note?)
-            _WhyTheKey(
-              musicKey: _chosen.key,
-              note: note,
-              open: _whyOpen,
-              onToggle: () => setState(() => _whyOpen = !_whyOpen),
-            ),
+          // Only where the table is still in the key the note is about.
+          // It says why this comparison reads best in that key, and over
+          // a table somebody has moved somewhere else it would be
+          // answering a question nobody asked any more.
+          if (_key == _chosen.key)
+            if (whyThisKey(_chosen.key) case final note?)
+              _WhyTheKey(
+                musicKey: _chosen.key,
+                note: note,
+                open: _whyOpen,
+                onToggle: () => setState(() => _whyOpen = !_whyOpen),
+              ),
           _Heading(
             tunes: tunes,
             playing: _playingColumn,
