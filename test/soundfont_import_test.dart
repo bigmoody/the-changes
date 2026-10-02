@@ -19,7 +19,7 @@ import 'package:play_along/practice/recording_store.dart';
 import 'package:play_along/settings/progression_store.dart';
 import 'package:play_along/practice/soundfont_store.dart';
 import 'package:play_along/settings/app_settings.dart';
-import 'package:play_along/screens/import_soundfont_screen.dart';
+import 'package:play_along/screens/imported_sounds_screen.dart';
 import 'package:play_along/screens/settings_page.dart';
 import 'package:play_along/library/library_store.dart';
 import 'package:play_along/audio/practice_player.dart';
@@ -340,9 +340,10 @@ void main() {
       tester,
     ) async {
       final store = SoundFontStore.inMemory();
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             pick: () async => (name: 'piano.sf2', bytes: font),
           ),
@@ -366,9 +367,10 @@ void main() {
       final store = SoundFontStore.inMemory();
       final settings = AppSettings.inMemory();
       expect(settings.comping, Comping.piano);
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             settings: settings,
             pick: () async => (name: 'piano.sf2', bytes: font),
@@ -385,12 +387,40 @@ void main() {
       expect(settings.comping, Comping.imported);
     });
 
+    testWidgets('a MIDI file is named, and sent where it belongs', (
+      tester,
+    ) async {
+      // The point of knowing what a file is: somebody here with a MIDI
+      // file has the right file and the wrong door, and should be told
+      // which door rather than just refused.
+      tallWindow(tester);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ImportedSoundsScreen(
+            store: SoundFontStore.inMemory(),
+            pick: () async => (
+              name: 'part.mid',
+              bytes: Uint8List.fromList([
+                ...'MThd'.codeUnits,
+                ...List.filled(60, 0),
+              ]),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('That is a MIDI file'), findsOneWidget);
+      expect(find.textContaining('as a part'), findsOneWidget);
+    });
+
     testWidgets('says what is wrong with a file it cannot read', (
       tester,
     ) async {
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: SoundFontStore.inMemory(),
             pick: () async => (
               name: 'holiday.jpg',
@@ -410,9 +440,10 @@ void main() {
       // or it could walk, so it is asked rather than assumed.
       final store = SoundFontStore.inMemory();
       final settings = AppSettings.inMemory();
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             settings: settings,
             pick: () async => (name: 'piano.sf2', bytes: font),
@@ -440,9 +471,10 @@ void main() {
     ) async {
       final store = SoundFontStore.inMemory();
       final settings = AppSettings.inMemory();
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             settings: settings,
             pick: () async => (name: 'gm.sf2', bytes: generalMidiKit),
@@ -473,7 +505,7 @@ void main() {
       tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             settings: AppSettings.inMemory(),
             pick: () async => (name: 'band.sf2', bytes: wholeBand),
@@ -514,9 +546,10 @@ void main() {
       tester,
     ) async {
       final store = SoundFontStore.inMemory();
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             settings: AppSettings.inMemory(),
             pick: () async => (name: 'gm.sf2', bytes: generalMidiKit),
@@ -554,7 +587,7 @@ void main() {
       tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             settings: AppSettings.inMemory(),
             pick: () async => (name: 'kit.sf2', bytes: file),
@@ -613,7 +646,7 @@ void main() {
       tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             settings: AppSettings.inMemory(),
             pick: () async => (name: 'gm.sf2', bytes: generalMidiKit),
@@ -645,7 +678,7 @@ void main() {
       tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(store: store, settings: settings),
+          home: ImportedSoundsScreen(store: store, settings: settings),
         ),
       );
 
@@ -675,7 +708,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(store: SoundFontStore.inMemory()),
+          home: ImportedSoundsScreen(store: SoundFontStore.inMemory()),
         ),
       );
       expect(find.byKey(const ValueKey('forget-everything')), findsNothing);
@@ -687,9 +720,10 @@ void main() {
       // Its hits are up at 90, where General MIDI has nothing, so the band
       // would not know what to hit.
       final store = SoundFontStore.inMemory();
+      tallWindow(tester);
       await tester.pumpWidget(
         MaterialApp(
-          home: ImportSoundFontScreen(
+          home: ImportedSoundsScreen(
             store: store,
             pick: () async => (
               name: 'odd.sf2',
@@ -718,18 +752,18 @@ void main() {
       final store = SoundFontStore.inMemory(chords: instrumentIn(font));
       tallWindow(tester);
       await tester.pumpWidget(
-        MaterialApp(home: ImportSoundFontScreen(store: store)),
+        MaterialApp(home: ImportedSoundsScreen(store: store)),
       );
       // The chords and the bass as parts, and then every drum on its own,
       // with the band's own named where nothing has been imported.
       expect(find.byKey(const ValueKey('playing-chords')), findsOneWidget);
       expect(find.byKey(const ValueKey('playing-bass')), findsOneWidget);
-      // The drums as one line, with their detail a tap away: ten rows
-      // here made this page mostly drums.
-      expect(find.byKey(const ValueKey('playing-drums')), findsOneWidget);
-      expect(find.byKey(const ValueKey('playing-kick')), findsNothing);
+      // Every part on one screen, drums included, because the question
+      // somebody arrives with is about a part.
+      expect(find.byKey(const ValueKey('playing-kick')), findsOneWidget);
+      expect(find.byKey(const ValueKey('playing-ride')), findsOneWidget);
       expect(find.text("The band's upright"), findsOneWidget);
-      expect(find.text("The band's own kit"), findsOneWidget);
+      expect(find.text("The band's own"), findsNWidgets(Drum.values.length));
       // Only the imported one can be let go.
       expect(find.byKey(const ValueKey('forget-bass')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('forget-chords')));

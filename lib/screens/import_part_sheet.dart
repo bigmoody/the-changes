@@ -12,6 +12,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../audio/what_file.dart';
 import '../music/imported_part.dart';
 import '../music/midi_file.dart';
 import '../practice/practice_controller.dart';
@@ -63,6 +64,27 @@ class _ImportPartState extends State<_ImportPart> {
       if (!mounted) return;
       if (bytes == null) {
         setState(() => _reading = false);
+        return;
+      }
+      // Named rather than refused: somebody who has brought a SoundFont
+      // here has the right file and the wrong door.
+      final kind = whatIsThisFile(bytes);
+      if (kind != FileKind.midi) {
+        setState(() {
+          _reading = false;
+          _problem = wrongKind(
+            kind,
+            wanted: FileKind.midi,
+            instead: switch (kind) {
+              FileKind.soundFont =>
+                'Sounds for the band go in from Settings, under Imported '
+                    'Sounds.',
+              FileKind.wav =>
+                'Recordings of real players go in from Recorded Band.',
+              _ => null,
+            },
+          );
+        });
         return;
       }
       final read = readMidiFile(bytes);

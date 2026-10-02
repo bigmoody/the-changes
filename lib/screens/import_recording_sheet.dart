@@ -25,6 +25,7 @@ import 'package:flutter/services.dart';
 
 import '../audio/timing_check.dart';
 import '../audio/wav_file.dart';
+import '../audio/what_file.dart';
 import '../music/recorded_take.dart';
 import '../music/tuning.dart';
 import '../practice/practice_controller.dart';
@@ -197,6 +198,20 @@ class _ImportRecordingState extends State<_ImportRecording> {
         final bytes = file.bytes;
         if (bytes == null) continue;
         final read = readTakeName(file.name);
+        // Named rather than refused, and per file, because several come
+        // in at once and one stray should not be a mystery.
+        final kind = whatIsThisFile(bytes);
+        if (kind != FileKind.wav) {
+          problems.add(
+            '${file.name}: ${wrongKind(kind, wanted: FileKind.wav, instead: switch (kind) {
+              FileKind.soundFont => 'Sounds for the band go in from Settings, under Imported '
+                  'Sounds.',
+              FileKind.midi => 'A MIDI file goes in as a part instead.',
+              _ => null,
+            })}',
+          );
+          continue;
+        }
         try {
           final audio = readWav(bytes);
           if (audio.channels > 2) {

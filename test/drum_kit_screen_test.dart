@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/drum_patterns.dart' show Drum;
 import 'package:play_along/music/tune.dart' show DrumSound;
 import 'package:play_along/practice/soundfont_store.dart';
-import 'package:play_along/screens/drum_kit_screen.dart';
+import 'package:play_along/screens/imported_sounds_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 
 import 'soundfont_test.dart' show buildFont, sample, zone, emptyDrum;
@@ -65,7 +65,7 @@ Future<void> openWith(
   tallWindow(tester);
   await tester.pumpWidget(
     MaterialApp(
-      home: DrumKitScreen(
+      home: ImportedSoundsScreen(
         store: store,
         settings: settings,
         pick: file == null
@@ -82,7 +82,7 @@ void main() {
   ) async {
     await openWith(tester, store: SoundFontStore.inMemory());
     for (final drum in Drum.values) {
-      expect(find.byKey(ValueKey('drum-${drum.name}')), findsOneWidget);
+      expect(find.byKey(ValueKey('playing-${drum.name}')), findsOneWidget);
     }
     expect(find.text("The band's own"), findsNWidgets(Drum.values.length));
   });
@@ -93,7 +93,7 @@ void main() {
     final store = SoundFontStore.inMemory();
     final settings = AppSettings.inMemory();
     await openWith(tester, store: store, settings: settings, file: aKit);
-    await tester.tap(find.byKey(const ValueKey('drum-snare')));
+    await tester.tap(find.byKey(const ValueKey('playing-snare')));
     await tester.pumpAndSettle();
     expect(store.hasDrum(Drum.snare), isTrue);
     expect(store.hasDrum(Drum.kick), isFalse);
@@ -104,7 +104,7 @@ void main() {
   testWidgets('with one kit in the file it does not ask which', (tester) async {
     final store = SoundFontStore.inMemory();
     await openWith(tester, store: store, file: aKit);
-    await tester.tap(find.byKey(const ValueKey('drum-ride')));
+    await tester.tap(find.byKey(const ValueKey('playing-ride')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('kit-0')), findsNothing);
     expect(store.hasDrum(Drum.ride), isTrue);
@@ -115,7 +115,7 @@ void main() {
   ) async {
     final store = SoundFontStore.inMemory();
     await openWith(tester, store: store, file: twoKits);
-    await tester.tap(find.byKey(const ValueKey('drum-kick')));
+    await tester.tap(find.byKey(const ValueKey('playing-kick')));
     await tester.pumpAndSettle();
     expect(find.textContaining('kick'), findsWidgets);
     expect(find.byKey(const ValueKey('kit-0')), findsOneWidget);
@@ -131,9 +131,9 @@ void main() {
     // is to say so rather than to offer a kit that cannot supply it.
     final store = SoundFontStore.inMemory();
     await openWith(tester, store: store, file: aKit);
-    await tester.tap(find.byKey(const ValueKey('drum-cowbell')));
+    await tester.tap(find.byKey(const ValueKey('playing-cowbell')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('drum-problem')), findsOneWidget);
+    expect(find.byKey(const ValueKey('soundfont-problem')), findsOneWidget);
     expect(find.textContaining('cowbell'), findsWidgets);
     expect(store.hasDrum(Drum.cowbell), isFalse);
   });
@@ -145,7 +145,7 @@ void main() {
       store: store,
       file: buildFont(samples: [sample()], zones: [zone(0)]),
     );
-    await tester.tap(find.byKey(const ValueKey('drum-snare')));
+    await tester.tap(find.byKey(const ValueKey('playing-snare')));
     await tester.pumpAndSettle();
     expect(find.textContaining('no drum kits'), findsOneWidget);
   });
@@ -163,7 +163,11 @@ void main() {
       settings: AppSettings.inMemory(),
       file: aKit,
     );
-    await tester.tap(find.byKey(const ValueKey('whole-kit')));
+    await tester.tap(find.byKey(const ValueKey('choose-soundfont')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('preset-0')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('take-whole-kit')));
     await tester.pumpAndSettle();
     expect(store.hasDrum(Drum.kick), isTrue);
     expect(store.hasDrum(Drum.snare), isTrue);
@@ -176,7 +180,7 @@ void main() {
       drums: {Drum.kick: emptyDrum, Drum.snare: emptyDrum},
     );
     await openWith(tester, store: store);
-    await tester.tap(find.byKey(const ValueKey('clear-kick')));
+    await tester.tap(find.byKey(const ValueKey('forget-kick')));
     await tester.pumpAndSettle();
     expect(store.hasDrum(Drum.kick), isFalse);
     expect(store.hasDrum(Drum.snare), isTrue);
