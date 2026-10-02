@@ -47,6 +47,7 @@ class PracticeScreen extends StatefulWidget {
     this.recordingStore,
     this.library,
     this.listener,
+    this.startAt,
   });
 
   final Tune tune;
@@ -61,6 +62,13 @@ class PracticeScreen extends StatefulWidget {
   /// screen makes its own.
   @visibleForTesting
   final TunerListener? listener;
+
+  /// A tempo to open at, and a band already counting in.
+  ///
+  /// Set only by the button that picks something to play, which exists to
+  /// take the deciding away: arriving at a chart that is waiting to be
+  /// started would hand one of the decisions straight back.
+  final int? startAt;
 
   /// Set when [tune] is one of the player's own progressions: only those can
   /// be edited from here.
@@ -105,6 +113,14 @@ class _PracticeScreenState extends State<PracticeScreen> {
   void initState() {
     super.initState();
     _controller.addListener(_showScore);
+    if (widget.startAt case final tempo?) {
+      _controller.setTempo(tempo);
+      // After the first frame: the band reads the chart to render itself
+      // and the screen has not been laid out yet.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _controller.play();
+      });
+    }
     // Work out this tune's guitar shapes now rather than on the frame where
     // a chord first comes round: searching the fretboard takes a few
     // milliseconds, and they're cached once found.

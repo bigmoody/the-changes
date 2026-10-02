@@ -45,7 +45,10 @@ class LibraryContext {
   final RecordingStore? recordingStore;
 
   /// Opens [found] full screen, as tapping it in any list does.
-  void play(BuildContext context, FoundTune found) {
+  ///
+  /// [startAt] opens it at that tempo and already counting in, which only
+  /// the button that picks something to play uses.
+  void play(BuildContext context, FoundTune found, {int? startAt}) {
     library.justPlayed(
       found.progression == null
           ? TuneRef.of(found.tune)
@@ -63,6 +66,7 @@ class LibraryContext {
           library: library,
           progression: found.progression,
           progressions: found.progression == null ? null : progressions,
+          startAt: startAt,
         ),
       ),
     );

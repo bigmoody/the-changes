@@ -16,6 +16,7 @@ import 'setlists_screen.dart';
 import 'starting_order_screen.dart';
 import 'star_button.dart';
 import 'tuner_screen.dart';
+import '../library/something_to_play.dart';
 import 'tuning_fork_icon.dart';
 import '../theme.dart';
 import 'note_ink.dart';
@@ -102,6 +103,48 @@ class _TunesPageState extends State<TunesPage> {
   bool get _showRecent =>
       _query.trim().isEmpty && _genre == null && !_starredOnly;
 
+  /// Picks a tune, a key, a feel and a tempo, and goes straight to it
+  /// counting in.
+  ///
+  /// Straight to it on purpose. Showing what it picked and waiting to be
+  /// told to go would hand back the decision this exists to take away,
+  /// and somebody who needed the button is exactly the person that stops.
+  /// What it chose is said on the way past, in a line that can be ignored.
+  void _justPlaySomething(BuildContext context) {
+    final picked = somethingToPlay(
+      [...standards, ...widget.progressions.all.map((p) => p.toTune())],
+      starred: {
+        for (final ref in widget.library.favourites)
+          if (ref.value.startsWith('s:')) ref.value.substring(2),
+      },
+      recent: [
+        for (final played in widget.library.played)
+          if (played.tune.value.startsWith('s:'))
+            played.tune.value.substring(2),
+      ],
+    );
+    if (picked == null) return;
+
+    // A feel this tune has already been given stays: somebody who has
+    // said they play Oleo as a bossa has decided, and a random suggestion
+    // does not get to argue with a decision.
+    final ref = TuneRef.of(picked.tune);
+    final chosen = widget.library.styleFor(ref);
+    var tune = picked.tune.transposed(picked.semitones);
+    if (chosen == null && picked.style != null) {
+      tune = tune.withStyle(picked.style!);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        key: const ValueKey('just-played'),
+        content: Text(describe(picked)),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+    _deps.play(context, FoundTune(tune), startAt: picked.tempo);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -109,6 +152,12 @@ class _TunesPageState extends State<TunesPage> {
       appBar: AppBar(
         title: const Text('The Changes'),
         actions: [
+          IconButton(
+            key: const ValueKey('just-play'),
+            icon: const Icon(Icons.casino_outlined),
+            tooltip: 'Just Play Something',
+            onPressed: () => _justPlaySomething(context),
+          ),
           IconButton(
             key: const ValueKey('where-to-start'),
             icon: const Icon(Icons.signpost_outlined),
