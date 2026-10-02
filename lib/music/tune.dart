@@ -217,6 +217,7 @@ class BandStyle {
     required this.bass,
     required this.piano,
     this.figure,
+    this.swing,
   });
 
   /// The whole band in one [feel], as the standards are played.
@@ -251,8 +252,35 @@ class BandStyle {
   /// Learn screen can only offer it over two bars of a ii-V.
   final CompFigure? figure;
 
-  BandStyle withFigure(CompFigure? figure) =>
-      BandStyle(drums: drums, bass: bass, piano: piano, figure: figure);
+  /// Where the "and" falls, or null to let it follow the tempo.
+  ///
+  /// Null is the usual case and the better one: the short half of a swung
+  /// pair stays about the same length whatever the tempo and the beat
+  /// shrinks around it, so a band left alone swings hard at a ballad and
+  /// nearly straight at a burn-up without being told. A number here holds
+  /// it still, which is what somebody wants when they are working on one
+  /// thing and the swing moving underneath them would make it a different
+  /// exercise.
+  ///
+  /// It sits with the feel rather than in the settings because it is the
+  /// same kind of fact: how this tune is played, not how the app behaves.
+  final double? swing;
+
+  BandStyle withFigure(CompFigure? figure) => BandStyle(
+    drums: drums,
+    bass: bass,
+    piano: piano,
+    figure: figure,
+    swing: swing,
+  );
+
+  BandStyle withSwing(double? swing) => BandStyle(
+    drums: drums,
+    bass: bass,
+    piano: piano,
+    figure: figure,
+    swing: swing,
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -260,10 +288,11 @@ class BandStyle {
       other.drums == drums &&
       other.bass == bass &&
       other.piano == piano &&
-      other.figure == figure;
+      other.figure == figure &&
+      other.swing == swing;
 
   @override
-  int get hashCode => Object.hash(drums, bass, piano, figure);
+  int get hashCode => Object.hash(drums, bass, piano, figure, swing);
 }
 
 /// A chord chart: a list of bars, each holding one or more chords.

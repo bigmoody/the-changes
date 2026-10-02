@@ -4,7 +4,6 @@ import '../audio/felt_beat.dart';
 import '../audio/practice_player.dart';
 import '../library/library_store.dart';
 import '../music/chord_drill.dart';
-import '../music/swing.dart';
 import '../music/tune.dart';
 import '../practice/soundfont_store.dart';
 import '../practice/take_store.dart';
@@ -15,7 +14,6 @@ import 'backup_screen.dart';
 import 'imported_sounds_screen.dart';
 import 'chart_instrument_button.dart';
 import 'chord_colours_screen.dart';
-import 'band_swing_screen.dart';
 import 'drum_levels_screen.dart';
 import 'key_colours_screen.dart';
 import 'paper_screen.dart';
@@ -219,24 +217,6 @@ class SettingsPage extends StatelessWidget {
               options: DrumSound.values,
               label: (sound) => sound.label,
               onChanged: settings.setDrumSound,
-            ),
-            ListTile(
-              key: const ValueKey('band-swing'),
-              leading: const Icon(Icons.show_chart),
-              title: const Text('Swing'),
-              subtitle: Text(
-                settings.swing == null
-                    ? 'Follows the tempo, as a player would'
-                    : '${swingName(settings.swing!)}, '
-                          '${ratioText(settings.swing!)}, at every tempo',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      BandSwingScreen(settings: settings, player: player),
-                ),
-              ),
             ),
             ListTile(
               key: const ValueKey('drum-levels'),

@@ -204,7 +204,6 @@ class AppSettings extends ChangeNotifier {
     this._feelTheBeat,
     this._markTheBar,
     this._drumLevels,
-    this._swing,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -227,7 +226,6 @@ class AppSettings extends ChangeNotifier {
     this._feelTheBeat = FeelTheBeat.off,
     this._markTheBar = MarkTheBar.filled,
     this._drumLevels = const DrumLevels(),
-    this._swing,
   ]) : _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -265,7 +263,6 @@ class AppSettings extends ChangeNotifier {
   static const _feelTheBeatKey = 'feelTheBeat';
   static const _markTheBarKey = 'markTheBar';
   static const _drumLevelsKey = 'drumLevels';
-  static const _swingKey = 'swing';
   static const _fadeChartKey = 'fadeChart';
 
   /// Reads saved settings. Falls back to defaults if storage is unavailable.
@@ -297,7 +294,6 @@ class AppSettings extends ChangeNotifier {
     var feelTheBeat = FeelTheBeat.off;
     var markTheBar = MarkTheBar.filled;
     var drumLevels = const DrumLevels();
-    double? swing;
     var fadeChart = FadeChart.never;
     try {
       final savedAid = await storage.getString(_chordAidKey);
@@ -315,7 +311,6 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedMark,
         orElse: () => MarkTheBar.filled,
       );
-      swing = await storage.getDouble(_swingKey);
       final savedLevels = await storage.getString(_drumLevelsKey);
       if (savedLevels != null) {
         drumLevels = DrumLevels.fromJson(
@@ -435,7 +430,6 @@ class AppSettings extends ChangeNotifier {
       feelTheBeat,
       markTheBar,
       drumLevels,
-      swing,
     );
   }
 
@@ -894,32 +888,6 @@ class AppSettings extends ChangeNotifier {
         _drumLevelsKey,
         jsonEncode(_drumLevels.toJson()),
       );
-    } catch (e) {
-      debugPrint('Could not save settings: $e');
-    }
-  }
-
-  /// Where the "and" falls, or null to let it follow the tempo.
-  ///
-  /// Null by default, and that is the better answer for nearly everybody:
-  /// the short note stays about the same length whatever the tempo and
-  /// the beat shrinks around it, so a band that follows the tempo swings
-  /// the way a player would at that tempo without being told. Setting a
-  /// number holds it still across every tempo, which is what somebody
-  /// wants when they are working on one thing.
-  double? get swing => _swing;
-  double? _swing;
-
-  Future<void> setSwing(double? value) async {
-    if (value == _swing) return;
-    _swing = value;
-    notifyListeners();
-    try {
-      if (value == null) {
-        await _storage?.remove(_swingKey);
-      } else {
-        await _storage?.setDouble(_swingKey, value);
-      }
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

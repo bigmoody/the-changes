@@ -14,7 +14,9 @@ import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/music/loop_range.dart';
 import 'package:play_along/music/swing.dart';
 import 'package:play_along/music/tune_library.dart';
-import 'package:play_along/settings/app_settings.dart';
+import 'package:play_along/library/library_store.dart';
+import 'package:play_along/music/comping.dart';
+import 'package:play_along/music/tune.dart';
 
 int digest(Uint8List bytes) {
   var hash = 0xcbf29ce484222325;
@@ -26,14 +28,93 @@ int digest(Uint8List bytes) {
 }
 
 void main() {
-  group('asking for one', () {
-    test('it follows the tempo until somebody says otherwise', () async {
-      final settings = AppSettings.inMemory();
-      expect(settings.swing, isNull);
-      await settings.setSwing(dottedSwing);
-      expect(settings.swing, dottedSwing);
-      await settings.setSwing(null);
-      expect(settings.swing, isNull, reason: 'and back again');
+  group('kept with the tune', () {
+    test('a style follows the tempo until somebody says otherwise', () {
+      const plain = BandStyle(
+        drums: Feel.swing,
+        bass: BassStyle.walking,
+        piano: PianoStyle.swing,
+      );
+      expect(plain.swing, isNull);
+      expect(plain.withSwing(dottedSwing).swing, dottedSwing);
+      expect(plain.withSwing(dottedSwing).withSwing(null).swing, isNull);
+    });
+
+    test('and changing the feel does not throw it away', () {
+      // The mixer builds a style by hand when a part is changed, and a
+      // swing dropped there would vanish the moment somebody touched the
+      // drums.
+      const style = BandStyle(
+        drums: Feel.swing,
+        bass: BassStyle.walking,
+        piano: PianoStyle.swing,
+      );
+      final swung = style.withSwing(dottedSwing);
+      expect(swung.withFigure(CompFigure.charleston).swing, dottedSwing);
+    });
+
+    test('a feel chip stays chosen when a swing is set', () {
+      // The mixer marks a chip by comparing the style against the plain
+      // one for that feel. A swing set on top made none of them match,
+      // so every chip went unselected the moment the slider moved.
+      const style = BandStyle(
+        drums: Feel.swing,
+        bass: BassStyle.walking,
+        piano: PianoStyle.swing,
+      );
+      expect(
+        style.withSwing(dottedSwing).withFigure(null).withSwing(null),
+        BandStyle.of(Feel.swing),
+      );
+    });
+
+    test('two styles differing only in swing are different styles', () {
+      // Or the controller would decide nothing had changed and not
+      // rebuild the band.
+      const style = BandStyle(
+        drums: Feel.swing,
+        bass: BassStyle.walking,
+        piano: PianoStyle.swing,
+      );
+      expect(style.withSwing(dottedSwing), isNot(style));
+      expect(style.withSwing(dottedSwing), style.withSwing(dottedSwing));
+    });
+
+    test('it is written down with the tune and read back', () {
+      final library = LibraryStore.inMemory();
+      const style = BandStyle(
+        drums: Feel.swing,
+        bass: BassStyle.walking,
+        piano: PianoStyle.swing,
+      );
+      final ref = TuneRef.standard('Oleo');
+      library.setStyle(ref, style.withSwing(dottedSwing));
+      final read = LibraryStore.readStyles(library.toJson());
+      expect(read[ref]?.swing, dottedSwing);
+    });
+
+    test('a style saved before swing existed still reads back', () {
+      // Three parts and no fourth, which is every style anybody has
+      // saved until now.
+      final read = LibraryStore.readStyles({
+        'styles': {
+          's:Oleo': ['swing', 'walking', 'swing'],
+        },
+      });
+      expect(read[TuneRef.standard('Oleo')]?.drums, Feel.swing);
+      expect(read[TuneRef.standard('Oleo')]?.swing, isNull);
+    });
+
+    test('and one saved with a figure and no swing is not confused', () {
+      // The swing is tagged rather than positional for exactly this: a
+      // bare fourth value could be either of them.
+      final read = LibraryStore.readStyles({
+        'styles': {
+          's:Oleo': ['swing', 'walking', 'swing', 'charleston'],
+        },
+      });
+      expect(read[TuneRef.standard('Oleo')]?.figure, CompFigure.charleston);
+      expect(read[TuneRef.standard('Oleo')]?.swing, isNull);
     });
   });
 

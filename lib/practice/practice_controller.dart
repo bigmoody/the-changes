@@ -123,6 +123,25 @@ class PracticeController extends ChangeNotifier {
     _restartIfPlaying(delay: Duration.zero);
   }
 
+  /// Where the "and" falls for this tune, or null to follow the tempo.
+  double? get swing => style.swing;
+
+  /// Sets it, and keeps it with the tune the way the feel is kept.
+  ///
+  /// Its own setter rather than going through [setStyle] for the wait: a
+  /// swing is set by dragging, and restarting the band on every pixel of
+  /// a drag would be unusable.
+  void setSwing(double? swing) {
+    if (swing == style.swing) return;
+    final next = style.withSwing(swing);
+    _style = next;
+    final ref = _ref;
+    if (ref != null) library?.setStyle(ref, next);
+    _tune = originalTune.transposed(_semitones).withStyle(next);
+    notifyListeners();
+    _restartIfPlaying(delay: const Duration(milliseconds: 400));
+  }
+
   /// The tune in the key currently chosen, at concert pitch. The band plays
   /// this.
   Tune get tune => _tune;
@@ -385,7 +404,7 @@ class PracticeController extends ChangeNotifier {
     // playing one, so the only way to hear a change is to render again.
     // Compared against what was last rendered rather than restarting on
     // every settings change, most of which the band does not care about.
-    final levels = '${settings.drumLevels.toJson()} ${settings.swing}';
+    final levels = settings.drumLevels.toJson().toString();
     if (_renderedLevels != null && _renderedLevels != levels) {
       // Enough of a wait that dragging a slider does not re-render on
       // every pixel of it.
@@ -395,9 +414,7 @@ class PracticeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The drum levels and the swing the band was last built with. Both are
-  /// mixed in before a note sounds, so a change to either needs the band
-  /// building again rather than setting on the one that is playing.
+  /// The drum levels the band was last built with.
   String? _renderedLevels;
 
   /// How often the clock is being read, so a change can be noticed.
@@ -952,7 +969,7 @@ class PracticeController extends ChangeNotifier {
         arrangement: arrangement ?? take.arrangement,
         imported: _imported?.transposedBy(take.semitones),
         drumLevels: settings.drumLevels,
-        swing: settings.swing,
+        swing: style.swing,
       );
 
   BackingRequest _exportRequest({Arrangement? arrangement}) => BackingRequest(
@@ -971,7 +988,7 @@ class PracticeController extends ChangeNotifier {
     arrangement: arrangement ?? _arrangement,
     imported: _imported?.transposedBy(_semitones),
     drumLevels: settings.drumLevels,
-    swing: settings.swing,
+    swing: style.swing,
   );
 
   /// Writes the band out as a WAV and hands it to the share sheet. With
@@ -1148,7 +1165,7 @@ class PracticeController extends ChangeNotifier {
           arrangement: _arrangement,
           imported: _imported?.transposedBy(_semitones),
           drumLevels: settings.drumLevels,
-          swing: settings.swing,
+          swing: style.swing,
         ),
         alongside: takePath,
         recording: recording,

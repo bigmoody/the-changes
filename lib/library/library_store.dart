@@ -154,16 +154,22 @@ class LibraryStore extends ChangeNotifier {
       final bass = BassStyle.values.where((b) => b.name == parts[1]);
       final piano = PianoStyle.values.where((p) => p.name == parts[2]);
       if (drums.isEmpty || bass.isEmpty || piano.isEmpty) continue;
-      // The figure came later, so anything written before it has three
-      // parts and no fourth to read.
-      final figure = parts.length > 3
-          ? CompFigure.values.where((f) => f.name == parts[3])
-          : const <CompFigure>[];
+      // The figure came later and the swing later still, so anything
+      // written before either has fewer parts and nothing to read. The
+      // swing is tagged rather than positional: with the figure optional,
+      // a bare fourth value could be either of them.
+      final extra = parts.skip(3);
+      final swung = extra.where((part) => part.startsWith('swing:'));
+      final named = extra.where((part) => !part.startsWith('swing:'));
+      final figure = named.isEmpty
+          ? const <CompFigure>[]
+          : CompFigure.values.where((f) => f.name == named.first);
       styles[TuneRef(entry.key as String)] = BandStyle(
         drums: drums.first,
         bass: bass.first,
         piano: piano.first,
         figure: figure.isEmpty ? null : figure.first,
+        swing: swung.isEmpty ? null : double.tryParse(swung.first.substring(6)),
       );
     }
     return styles;
@@ -398,6 +404,7 @@ class LibraryStore extends ChangeNotifier {
           entry.value.bass.name,
           entry.value.piano.name,
           if (entry.value.figure case final figure?) figure.name,
+          if (entry.value.swing case final swing?) 'swing:$swing',
         ],
     },
   };

@@ -13,6 +13,7 @@ import '../audio/backing_synth.dart';
 import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
 import '../music/comping.dart';
+import '../music/swing.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../practice/hiding_the_chart.dart';
@@ -540,6 +541,88 @@ String _recordedBandSays(PracticeController controller) {
       '${shift.strain.label}, ${shift.cents.round()} cents';
 }
 
+/// How hard the band swings this tune.
+///
+/// Left alone it follows the tempo, which is the better answer for nearly
+/// everybody: the short half of a swung pair stays about the same length
+/// whatever the tempo and the beat shrinks around it, so a ballad swings
+/// hard and a burn-up comes out nearly straight without anybody saying
+/// so. The Swing page in Learn is an argument for that curve.
+///
+/// This is where you disagree with it, and it is in the mixer rather than
+/// in the settings for two reasons. It belongs to the tune, the way the
+/// feel does, and gets saved with it. And the band is usually playing
+/// while this sheet is open, so the slider is its own demonstration:
+/// nobody can choose a swing they have not heard.
+class _BandSwing extends StatelessWidget {
+  const _BandSwing({required this.controller, required this.style});
+
+  final PracticeController controller;
+  final BandStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final follows = style.swing == null;
+    final at = style.swing ?? swingAt(controller.tempo);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 72,
+                child: Text('Swing', style: theme.textTheme.bodyMedium),
+              ),
+              Expanded(
+                child: Slider(
+                  key: const ValueKey('band-swing'),
+                  min: straight,
+                  max: widestSwing,
+                  value: at,
+                  label: ratioText(at),
+                  // Taking hold of it is a way of saying you would rather
+                  // choose, so it stops following. The same gesture means
+                  // the same thing on the Learn page.
+                  onChanged: controller.setSwing,
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 72),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    follows
+                        ? 'Follows the tempo: '
+                              '${swingName(at).toLowerCase()}, '
+                              '${ratioText(at)} at ${controller.tempo}'
+                        : '${swingName(at)}, ${ratioText(at)}, '
+                              'at every tempo',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                if (!follows)
+                  TextButton(
+                    key: const ValueKey('swing-follow-again'),
+                    onPressed: () => controller.setSwing(null),
+                    child: const Text('Follow'),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// How this tune is played: the groove, and what the bass and the chords
 /// do with it.
 ///
@@ -583,11 +666,19 @@ class _TheBand extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 showCheckmark: false,
                 label: Text(feel.label),
-                // The figure is set apart from the groove, so a band
-                // playing the Charleston in B flat bossa is still a bossa.
-                selected: style.withFigure(null) == BandStyle.of(feel),
+                // The figure and the swing are set apart from the groove,
+                // so a band playing the Charleston in B flat bossa is
+                // still a bossa, and a swing somebody has set harder than
+                // the curve is still a swing. Both are kept when the
+                // groove changes, so going away and coming back finds
+                // them where they were.
+                selected:
+                    style.withFigure(null).withSwing(null) ==
+                    BandStyle.of(feel),
                 onSelected: (_) => controller.setStyle(
-                  BandStyle.of(feel).withFigure(style.figure),
+                  BandStyle.of(feel)
+                      .withFigure(style.figure)
+                      .withSwing(style.swing),
                 ),
               ),
           ],
@@ -604,6 +695,7 @@ class _TheBand extends StatelessWidget {
               bass: style.bass,
               piano: style.piano,
               figure: style.figure,
+              swing: style.swing,
             ),
           ),
         ),
@@ -618,6 +710,7 @@ class _TheBand extends StatelessWidget {
               bass: bass,
               piano: style.piano,
               figure: style.figure,
+              swing: style.swing,
             ),
           ),
         ),
@@ -632,9 +725,16 @@ class _TheBand extends StatelessWidget {
               bass: style.bass,
               piano: piano,
               figure: style.figure,
+              swing: style.swing,
             ),
           ),
         ),
+        // Only where it would do anything: the swing value reaches the
+        // swing feel and nothing else. A shuffle is a triplet feel by
+        // definition and a bossa plays even eighths, so a slider on
+        // either would be a control that does nothing.
+        if (style.drums == Feel.swing)
+          _BandSwing(controller: controller, style: style),
         // Only where it would do anything. Held chords and the calypso
         // strum have rhythms of their own, and the guitar borrows these
         // figures in swing and nowhere else.
