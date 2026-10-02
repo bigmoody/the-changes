@@ -241,9 +241,13 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
           learn: null,
         );
       }
-      return null;
     }
-    return null;
+    // Nothing to say about where it goes, which is not the same as
+    // nothing to say. Eight bars of G7 is eight bars of G7 whatever it
+    // does at the end of them, and falling out of here rather than
+    // returning is what lets the stretch below be noticed. All Blues is
+    // the tune that found this: its first eight bars said nothing at all
+    // while the four of Gm7 underneath them were named.
   }
 
   // A minor chord in front of a dominant is the ii of a ii-V, whether or
@@ -344,20 +348,33 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
     }
   }
 
-  // Nothing moving, and nothing else to say about it. Last rather than
-  // first: a dominant held for two bars is still the V of wherever it
-  // goes, and saying where it goes is worth more than saying it is being
-  // held. What this catches is the chord that is held and then does
-  // nothing nameable, which is most of a modal tune.
-  if (at + 1 < chords.length && _same(chord, chords[at + 1])) {
+  // A long stretch of one chord, which is a different situation from a
+  // chord that happens to last two bars.
+  //
+  // Two bars was most of what this fired on: 540 of the 639 runs in the
+  // book, every one of them already written on the chart as a simile
+  // mark, which a reader takes in faster than a word. Saying "stays"
+  // under it told somebody what the % two inches to the right had just
+  // told them.
+  //
+  // Four bars or more is worth saying, and what is worth saying about it
+  // is how long it goes on. That is the one thing the repeat marks do not
+  // give at a glance, and it is the difference between a chord and a
+  // stretch you have to make something of.
+  //
+  // Asked last: a dominant held for four bars is still the V of wherever
+  // it goes, and that is worth more than its length.
+  final held = _runOfTheSame(chords, at);
+  if (held >= 4) {
     return (
       job: ChordJob.staying,
-      tag: 'stays',
-      short: 'Staying put',
+      tag: '$held bars',
+      short: '$held bars of ${chord.display}',
       long:
-          'The same chord again. Nothing is being approached and nothing '
-          'is resolving, so what you play over it has to come from the '
-          'line rather than from the changes.',
+          'Nothing is approached and nothing resolves for $held bars. What '
+          'you play has to come from the line rather than from the '
+          'changes, which is a different kind of playing and the reason '
+          'modal tunes are harder than their chord symbols look.',
       learn: 'Modal Playing',
     );
   }
@@ -411,6 +428,22 @@ bool _startsAnApproach(List<Chord> chords, int at) {
   if (nextAt == null) return false;
   final next = chords[nextAt];
   return isDominant(next) && _resolvesTo(chords[at], next);
+}
+
+/// How many bars of the same chord [at] sits in, counting both ways.
+///
+/// Bars rather than chords: a stretch of one chord is written a bar at a
+/// time, all ninety-odd of them in the book, so counting the changes
+/// counts the bars.
+int _runOfTheSame(List<Chord> chords, int at) {
+  var count = 1;
+  for (var i = at + 1; i < chords.length && _same(chords[at], chords[i]); i++) {
+    count++;
+  }
+  for (var i = at - 1; i >= 0 && _same(chords[at], chords[i]); i--) {
+    count++;
+  }
+  return count;
 }
 
 /// Whether two chords are the same chord, as a chart would mean it: a bar

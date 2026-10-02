@@ -195,17 +195,49 @@ void main() {
   });
 
   group('staying put', () {
-    test('the same chord twice is named as going nowhere', () {
-      expect(jobAt('C^7 C^7', 0), ChordJob.staying);
+    test('a chord lasting two bars is left to the repeat mark', () {
+      // 540 of the 639 runs in the book are this, and the chart already
+      // writes every one of them as a %, which a reader takes in faster
+      // than a word.
+      expect(jobAt('C^7 C^7', 0), isNull);
+      expect(jobAt('C^7 C^7 C^7', 0), isNull);
+    });
+
+    test('but four bars of one chord is a stretch, and says how long', () {
+      // What the repeat marks do not give at a glance is the length, and
+      // the length is the difference between a chord and something you
+      // have to make up a line over.
+      expect(jobAt('C^7 C^7 C^7 C^7', 0), ChordJob.staying);
+      expect(at('C^7 C^7 C^7 C^7', 0)!.tag, '4 bars');
+      expect(at('C^7 C^7 C^7 C^7', 2)!.tag, '4 bars', reason: 'anywhere in it');
+    });
+
+    test('a dominant held that long is a stretch too', () {
+      // All Blues is eight bars of G7 and then four of Gm7. The four said
+      // "4 bars" and the eight said nothing at all, because a dominant
+      // with nothing to say about where it goes was returning early and
+      // never reaching this.
+      final eight = List.filled(8, 'G7').join(' ');
+      expect(jobAt(eight, 0), ChordJob.staying);
+      expect(at(eight, 0)!.tag, '8 bars');
+      // And where it does have somewhere to go, that still wins.
+      expect(jobAt('G7 G7 G7 G7 C^7', 0), ChordJob.dominant);
+    });
+
+    test('and a longer one says how much longer', () {
+      final eight = List.filled(8, 'Dm7').join(' ');
+      expect(at(eight, 0)!.tag, '8 bars');
+      expect(at(eight, 0)!.short, '8 bars of Dm7');
     });
 
     test('a chord lands once, however many bars it is held for', () {
       // Reading backwards past repeats, as everything else here does,
       // had three bars of a held chord each announcing the same arrival.
       // Landing happens once.
-      expect(jobAt('Dm7 Db7 C6 C6 C6', 2), ChordJob.tonic);
-      expect(jobAt('Dm7 Db7 C6 C6 C6', 3), ChordJob.staying);
-      expect(jobAt('Dm7 Db7 C6 C6 C6', 4), isNull);
+      expect(jobAt('Dm7 Db7 C6 C6 C6 C6', 2), ChordJob.tonic);
+      // The bars after it are the chord being held, not another arrival.
+      expect(jobAt('Dm7 Db7 C6 C6 C6 C6', 3), ChordJob.staying);
+      expect(at('Dm7 Db7 C6 C6 C6 C6', 3)!.tag, '4 bars');
     });
 
     test('a dominant held for a bar is the V of where it goes, both bars', () {
@@ -219,8 +251,8 @@ void main() {
       expect(at('C7 C7 F^7', 0)!.tag, 'V of F');
     });
 
-    test('but a held chord with nothing to say is held', () {
-      expect(jobAt('Dm7 Dm7 Dm7', 0), ChordJob.staying);
+    test('but a held chord with nothing else to say is held', () {
+      expect(jobAt('Dm7 Dm7 Dm7 Dm7', 0), ChordJob.staying);
     });
 
     test('a chain of dominants survives being written with repeats', () {
@@ -358,7 +390,7 @@ void main() {
       expect(at('Dm7 G7 C^7', 0)!.tag, 'ii of C');
       expect(at('Db7 C^7', 0)!.tag, 'sub \u2192 C');
       expect(at('Bb7 C^7', 0)!.tag, 'backdoor');
-      expect(at('C^7 C^7', 0)!.tag, 'stays');
+      expect(at('C^7 C^7 C^7 C^7', 0)!.tag, '4 bars');
     });
   });
 
@@ -414,9 +446,8 @@ void main() {
             case ChordJob.deceptive:
               break;
             case ChordJob.staying:
-              if (i + 1 >= all.length || all[i + 1].display != all[i].display) {
-                bad('does not repeat');
-              }
+              final run = int.parse(meaning.tag.split(' ').first);
+              if (run < 4) bad('is not a stretch');
           }
         }
       }
