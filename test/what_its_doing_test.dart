@@ -34,6 +34,7 @@ void main() {
       expect(jobAt(line, 2), ChordJob.tonic);
       expect(at(line, 0)!.short, 'ii of a ii-V-I into C');
       expect(at(line, 1)!.short, 'The V of C');
+      expect(at(line, 1)!.tag, 'V of C');
     });
 
     test('and in a minor key, where the ii is half-diminished', () {
@@ -54,6 +55,15 @@ void main() {
       expect(jobAt(line, 0), ChordJob.approach);
       expect(at(line, 0)!.short, 'ii of a ii-V into C');
       expect(jobAt(line, 1), ChordJob.deceptive);
+    });
+
+    test('both halves of a ii-V name the target the same way', () {
+      // The first fix went into the ii and not the V, so a chart read
+      // "ii of Dm" over "V of D" about the same chord. One of them had
+      // to be wrong and a reader could not tell which.
+      expect(at('Eh7 A7 Dm7', 0)!.tag, 'ii of Dm');
+      expect(at('Eh7 A7 Dm7', 1)!.tag, 'V of Dm');
+      expect(at('Em7 A7 D^7', 1)!.tag, 'V of D');
     });
 
     test('the chord it lands on is named with its quality', () {

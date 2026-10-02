@@ -105,6 +105,16 @@ bool _isDominant(Chord chord) {
 
 bool _resolvesTo(Chord from, Chord to) => (to.root - from.root) % 12 == 5;
 
+/// What to call a chord that something else is leaning on.
+///
+/// With its quality where that is minor, because a minor target is a
+/// different phrase: Eø7 A7 into Dm is played on different scales from
+/// Em7 A7 into D, and the whole use of the line is saying which. Used by
+/// the ii and by the V, so the two halves of a ii-V cannot say different
+/// things about the chord they are both pointing at.
+String _targetName(Chord chord) =>
+    chord.rootName + (_kindOf(chord) == _Kind.minor ? 'm' : '');
+
 /// How far [to] is above [from], in semitones, 0 to 11.
 int _up(Chord from, Chord to) => (to.root - from.root) % 12;
 
@@ -155,8 +165,8 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
         final home = _kindOf(next);
         return (
           job: ChordJob.dominant,
-          tag: 'V of ${next.rootName}',
-          short: 'The V of ${next.rootName}',
+          tag: 'V of ${_targetName(next)}',
+          short: 'The V of ${_targetName(next)}',
           long:
               'A dominant going where it points: up a fourth to '
               '${next.display}. The 3rd and the ♭7 of this chord are a '
@@ -171,8 +181,8 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
       if (_up(chord, next) == 11) {
         return (
           job: ChordJob.tritoneSub,
-          tag: 'sub → ${next.rootName}',
-          short: 'Tritone sub, for the V of ${next.rootName}',
+          tag: 'sub → ${_targetName(next)}',
+          short: 'Tritone sub, for the V of ${_targetName(next)}',
           long:
               'Standing in for the dominant a tritone away, which would '
               'have been ${Chord.parse('${_nameOf((chord.root + 6) % 12)}7').display}. '
@@ -238,9 +248,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
     // one, played with a different scale on every chord of it, and
     // calling both of them "into D" hides the only thing you needed to
     // know: Eø7 A7 going to Dm is not Em7 A7 going to D.
-    final into = lands
-        ? after.rootName + (_kindOf(after) == _Kind.minor ? 'm' : '')
-        : _nameOf((next.root + 5) % 12);
+    final into = lands ? _targetName(after) : _nameOf((next.root + 5) % 12);
     // Whether the chord it lands on is itself leaning somewhere, which is
     // what a run of ii-Vs is and what makes a bare "into D" look like it
     // has wandered off into the wrong key. Read from the chords, not from
