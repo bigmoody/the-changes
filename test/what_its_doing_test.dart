@@ -28,11 +28,15 @@ ChordJob? jobAt(String symbols, int index) => at(symbols, index)?.job;
 
 void main() {
   group('the phrase everything is built from', () {
-    test('a ii-V-I is named at each of its three chords', () {
+    test('a ii-V-I names the two chords that are going somewhere', () {
       const line = 'Dm7 G7 C^7';
       expect(jobAt(line, 0), ChordJob.approach);
       expect(jobAt(line, 1), ChordJob.dominant);
-      expect(jobAt(line, 2), ChordJob.tonic);
+      // And says nothing about the chord they arrive at. "Lands" there
+      // repeats what the two chords in front have already said and what
+      // anybody can see by looking, and it was the second most common
+      // mark on the page.
+      expect(jobAt(line, 2), isNull);
       expect(at(line, 0)!.short, 'ii of a ii-V-I into C');
       expect(at(line, 1)!.short, 'The V of C');
       expect(at(line, 1)!.tag, 'V of C');
@@ -84,6 +88,18 @@ void main() {
       expect(doing.long, contains('handing over'));
       // And where it really is an arrival, it does not say that.
       expect(at('Em7 A7 D^7', 0)!.long, isNot(contains('handing over')));
+    });
+
+    test('landing is only marked where getting there was the point', () {
+      // After a plain V it says nothing. After a tritone sub or a
+      // backdoor it does, because in both of those the arrival is the
+      // part worth noticing: the bass came in by a step instead of the
+      // leap you were expecting.
+      expect(jobAt('Dm7 G7 C^7', 2), isNull);
+      expect(jobAt('Dm7 Db7 C^7', 2), ChordJob.tonic);
+      expect(at('Dm7 Db7 C^7', 2)!.short, 'Where the tritone sub went');
+      expect(jobAt('Fm7 Bb7 C^7', 2), ChordJob.tonic);
+      expect(at('Fm7 Bb7 C^7', 2)!.short, 'Home through the back door');
     });
 
     test('a minor chord not in front of a dominant is left alone', () {
@@ -162,11 +178,11 @@ void main() {
 
     test('a chord lands once, however many bars it is held for', () {
       // Reading backwards past repeats, as everything else here does,
-      // had three bars of a held C6 each announcing the same arrival.
+      // had three bars of a held chord each announcing the same arrival.
       // Landing happens once.
-      expect(jobAt('Dm7 G7 C6 C6 C6', 2), ChordJob.tonic);
-      expect(jobAt('Dm7 G7 C6 C6 C6', 3), ChordJob.staying);
-      expect(jobAt('Dm7 G7 C6 C6 C6', 4), isNull);
+      expect(jobAt('Dm7 Db7 C6 C6 C6', 2), ChordJob.tonic);
+      expect(jobAt('Dm7 Db7 C6 C6 C6', 3), ChordJob.staying);
+      expect(jobAt('Dm7 Db7 C6 C6 C6', 4), isNull);
     });
 
     test('a dominant held for a bar is the V of where it goes, both bars', () {

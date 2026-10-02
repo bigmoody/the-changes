@@ -319,26 +319,45 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
     );
   }
 
-  // The chord a ii-V was heading for, and only on the bar it actually
-  // arrives in. Reading backwards past the repeats, as everything else
-  // here does, had three bars of a held C6 each announcing the same
-  // arrival. Landing happens once; the bars after it are the chord being
-  // held, which is what they now say.
+  // The chord something interesting arrived at.
+  //
+  // Not after a plain V. "lands" under the C of a ii-V-I says what the
+  // two chords in front of it have already said and what anybody can see
+  // by looking, and it was the second most common mark on the page.
+  // After a tritone sub or a backdoor it earns its place, because in
+  // both of those the arrival is the part worth noticing: the bass came
+  // in by a step instead of the leap you were expecting.
   if (before != null &&
       at > 0 &&
       !_same(chords[at - 1], chord) &&
       _isDominant(before) &&
-      _resolvesTo(before, chord) &&
       (kind == _Kind.major || kind == _Kind.minor)) {
-    return (
-      job: ChordJob.tonic,
-      tag: 'lands',
-      short: 'Where the ii-V was going',
-      long:
-          'The chord the dominant in front of it was leaning on. Everything '
-          'before it was movement; this is the bar that stops.',
-      learn: null,
-    );
+    if (_up(before, chord) == 11) {
+      return (
+        job: ChordJob.tonic,
+        tag: 'lands',
+        short: 'Where the tritone sub went',
+        long:
+            'Arrived at from a semitone above. ${before.display} was '
+            'standing in for the dominant a fourth below this, and what '
+            'you hear for it is the bass stepping down into this chord '
+            'rather than leaping up to it.',
+        learn: 'Tritone Subs',
+      );
+    }
+    if (_up(before, chord) == 2 && kind == _Kind.major) {
+      return (
+        job: ChordJob.tonic,
+        tag: 'lands',
+        short: 'Home through the back door',
+        long:
+            'Arrived at from a whole tone below rather than from the '
+            'dominant above it. The ♭7 of ${before.display} is this '
+            "chord's 3rd, which is the note that makes it land, and it "
+            'comes up into place instead of falling into it.',
+        learn: 'Passing Chords',
+      );
+    }
   }
 
   // Nothing moving, and nothing else to say about it. Last rather than
