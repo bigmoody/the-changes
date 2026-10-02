@@ -14,6 +14,7 @@ import '../music/arrangement.dart';
 import '../music/chord_drill.dart';
 import '../music/comping.dart';
 import '../music/swing.dart';
+import 'swing_screen.dart' show ridePattern;
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../practice/hiding_the_chart.dart';
@@ -541,6 +542,23 @@ String _recordedBandSays(PracticeController controller) {
       '${shift.strain.label}, ${shift.cents.round()} cents';
 }
 
+/// Two bars of the ride figure at [at], so a swing can be heard without
+/// waiting for the band to be built again.
+///
+/// The ride alone and nothing under it. The "and" is the whole of what
+/// moves, and it is far easier to hear on its own than inside a band.
+Future<void> _hearSwing(PracticeController controller, double at) async {
+  final bank = controller.player.samples;
+  if (bank == null) return;
+  await controller.player.playSnippet(
+    renderSnippet(
+      bank,
+      const [],
+      drums: ridePattern(tempo: controller.tempo, at: at),
+    ),
+  );
+}
+
 /// How hard the band swings this tune.
 ///
 /// Left alone it follows the tempo, which is the better answer for nearly
@@ -588,6 +606,17 @@ class _BandSwing extends StatelessWidget {
                   // the same thing on the Learn page.
                   onChanged: controller.setSwing,
                 ),
+              ),
+              // Hearing it should not mean dragging, waiting for the band
+              // to build again and trying to remember what the last one
+              // sounded like. This is the ride figure on its own, at the
+              // tempo this tune is set to, the instant it is asked for.
+              IconButton(
+                key: const ValueKey('hear-swing'),
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.volume_up_outlined),
+                tooltip: 'Hear the swing',
+                onPressed: () => _hearSwing(controller, at),
               ),
             ],
           ),

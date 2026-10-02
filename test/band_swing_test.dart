@@ -6,10 +6,12 @@
 // the default by being added.
 
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/drum_patterns.dart';
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/music/loop_range.dart';
 import 'package:play_along/music/swing.dart';
@@ -115,6 +117,43 @@ void main() {
       });
       expect(read[TuneRef.standard('Oleo')]?.figure, CompFigure.charleston);
       expect(read[TuneRef.standard('Oleo')]?.swing, isNull);
+    });
+  });
+
+  group('what the slider actually moves', () {
+    test('the ride "a" and the snare, by the amount asked for', () {
+      // Somebody said they could not hear it, so this says in numbers
+      // what moves: the off-beat ride after 2 and 4, and the snare comp.
+      for (final (at, and) in [(straight, 1.5), (tripletSwing, 1 + 2 / 3)]) {
+        final hits = drumBar(
+          feel: Feel.swing,
+          bar: 0,
+          beatsPerBar: 4,
+          random: Random(1),
+          swing: at,
+        );
+        final offbeat = hits.firstWhere(
+          (h) => h.drum == Drum.ride && h.beat > 1 && h.beat < 2,
+        );
+        expect(offbeat.beat, closeTo(and, 0.001), reason: 'swing $at');
+      }
+    });
+
+    test('and the whole kit measures different for it', () {
+      // Not merely a different render: a quarter of the drums' own level
+      // is how much of the stem changes between straight and hard, which
+      // is not a subtlety.
+      final hits = {
+        for (final at in [straight, widestSwing])
+          at: drumBar(
+            feel: Feel.swing,
+            bar: 0,
+            beatsPerBar: 4,
+            random: Random(1),
+            swing: at,
+          ).map((h) => '${h.drum.name}@${h.beat}').toSet(),
+      };
+      expect(hits[straight], isNot(hits[widestSwing]));
     });
   });
 
