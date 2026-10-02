@@ -226,4 +226,94 @@ void main() {
       expect(find.textContaining('Like Tape'), findsWidgets);
     });
   });
+
+  group('keeping the book tidy', () {
+    Future<PhraseStore> openWith(WidgetTester tester) async {
+      final store = PhraseStore.inMemory([
+        Phrase(
+          id: '1',
+          name: 'Phrase 1',
+          fileName: 'one.wav',
+          key: 0,
+          seconds: 3,
+        ),
+        Phrase(
+          id: '2',
+          name: 'Phrase 2',
+          fileName: 'two.wav',
+          key: 5,
+          seconds: 2,
+        ),
+      ]);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PhrasesScreen(
+            phrases: store,
+            player: FakePlayer(),
+            settings: AppSettings.inMemory(),
+            recorder: FakeRecorder(),
+          ),
+        ),
+      );
+      return store;
+    }
+
+    testWidgets('one can be given a name worth finding it by', (tester) async {
+      final store = await openWith(tester);
+      await tester.tap(find.byKey(const ValueKey('more-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('rename-1')));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.byKey(const ValueKey('phrase-name')),
+        'The one over the bridge',
+      );
+      await tester.tap(find.byKey(const ValueKey('keep-name')));
+      await tester.pumpAndSettle();
+      expect(store.all.first.name, 'The one over the bridge');
+      // And the other is untouched.
+      expect(store.all.last.name, 'Phrase 2');
+    });
+
+    testWidgets('an empty name is not a name, and is refused', (tester) async {
+      final store = await openWith(tester);
+      await tester.tap(find.byKey(const ValueKey('more-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('rename-1')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('phrase-name')), '   ');
+      await tester.tap(find.byKey(const ValueKey('keep-name')));
+      await tester.pumpAndSettle();
+      expect(store.all.first.name, 'Phrase 1');
+    });
+
+    testWidgets('deleting asks first, and backing out keeps it', (
+      tester,
+    ) async {
+      final store = await openWith(tester);
+      await tester.tap(find.byKey(const ValueKey('more-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('delete-1')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('no other copy'), findsOneWidget);
+
+      await tester.tap(find.text('Keep It'));
+      await tester.pumpAndSettle();
+      expect(store.all, hasLength(2));
+    });
+
+    testWidgets('and goes through with it when confirmed', (tester) async {
+      final store = await openWith(tester);
+      await tester.tap(find.byKey(const ValueKey('more-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('delete-1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('really-delete')));
+      await tester.pumpAndSettle();
+      expect(store.all, hasLength(1));
+      // The right one went.
+      expect(store.all.single.id, '2');
+    });
+  });
 }

@@ -121,7 +121,22 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
                     '${nameInKey(phrase.key, key: phrase.key)} · '
                     '${phrase.seconds.toStringAsFixed(1)} s',
                   ),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: PopupMenuButton<void>(
+                    key: ValueKey('more-${phrase.id}'),
+                    icon: const Icon(Icons.more_horiz),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        key: ValueKey('rename-${phrase.id}'),
+                        onTap: () => _rename(phrase),
+                        child: const Text('Rename'),
+                      ),
+                      PopupMenuItem(
+                        key: ValueKey('delete-${phrase.id}'),
+                        onTap: () => _delete(phrase),
+                        child: const Text('Delete'),
+                      ),
+                    ],
+                  ),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => PhraseKeysScreen(
@@ -137,6 +152,50 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
         ),
       ),
     );
+  }
+
+  /// Gives a phrase a name worth finding it by.
+  ///
+  /// They arrive called Phrase 1, which is the only name the app can give
+  /// something it has not heard. A book of eleven of those is a book
+  /// nobody opens.
+  Future<void> _rename(Phrase phrase) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => _RenameDialog(was: phrase.name),
+    );
+    // An empty name is not a name, and would leave a row with nothing in
+    // it; backing out is a null and means the same thing here.
+    if (name == null || name.trim().isEmpty) return;
+    await widget.phrases.rename(phrase, name.trim());
+  }
+
+  /// Throws one away, asked first.
+  ///
+  /// It is a recording of somebody playing and there is no other copy of
+  /// it, which is reason enough to ask even though the row is small.
+  Future<void> _delete(Phrase phrase) async {
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${phrase.name}?'),
+        content: const Text(
+          'The recording goes with it, and there is no other copy.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep It'),
+          ),
+          TextButton(
+            key: const ValueKey('really-delete'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (sure == true) await widget.phrases.remove(phrase);
   }
 
   Future<void> _start() async {
@@ -384,4 +443,55 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
       _ => 'Very far. Like Tape will sound cleaner at this distance.',
     };
   }
+}
+
+/// Asking for a new name.
+///
+/// Its own widget so the field's controller lives exactly as long as the
+/// dialog does. Disposing it as soon as the dialog returned was a use
+/// after dispose: the dialog is still on screen while it animates away.
+class _RenameDialog extends StatefulWidget {
+  const _RenameDialog({required this.was});
+
+  final String was;
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  late final _field = TextEditingController(text: widget.was);
+
+  @override
+  void dispose() {
+    _field.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('Rename'),
+    content: TextField(
+      key: const ValueKey('phrase-name'),
+      controller: _field,
+      autofocus: true,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: const InputDecoration(
+        labelText: 'Name',
+        hintText: 'The one over the bridge',
+      ),
+      onSubmitted: (value) => Navigator.of(context).pop(value),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
+      ),
+      TextButton(
+        key: const ValueKey('keep-name'),
+        onPressed: () => Navigator.of(context).pop(_field.text),
+        child: const Text('Rename'),
+      ),
+    ],
+  );
 }
