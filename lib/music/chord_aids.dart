@@ -13,6 +13,7 @@ import '../settings/app_settings.dart';
 import 'chord_numbers.dart';
 import 'guide_tones.dart';
 import 'tune.dart';
+import 'what_its_doing.dart';
 
 /// The line to write under each chord, bar by bar. A bar's list is in the
 /// same order as its chords, and an entry is null where there's nothing to
@@ -24,6 +25,18 @@ Map<int, List<String?>> aidsFor(Tune tune, ChordAid aid) {
   if (aid == ChordAid.off) return const {};
 
   final lines = <int, List<String?>>{};
+  if (aid == ChordAid.whatItsDoing) {
+    // Read in playing order, because what a chord is doing is decided by
+    // the chords either side of it rather than by the bar it sits in.
+    final slots = tune.slots;
+    final chords = [for (final slot in slots) slot.chord];
+    for (final (index, slot) in slots.indexed) {
+      lines
+          .putIfAbsent(slot.barIndex, () => [])
+          .add(whatItIsDoing(chords, index)?.tag);
+    }
+    return lines;
+  }
   if (aid == ChordAid.guideTones) {
     // The lines run through the tune in playing order, so they're worked
     // out in one pass and then dealt back out to the bars.

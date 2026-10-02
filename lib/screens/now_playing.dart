@@ -64,7 +64,8 @@ class NowPlaying extends StatelessWidget {
     }
 
     return InkWell(
-      onTap: () => showChordDetails(context, chord),
+      onTap: () =>
+          showChordDetails(context, chord, doing: controller.shownChordDoing),
       child: SizedBox(
         height: height,
         child: Padding(

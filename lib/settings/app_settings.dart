@@ -101,7 +101,12 @@ enum ChordAid {
 
   /// The 3rd and the 7th: the notes that make the chord sound like
   /// itself, and the ones that move least between changes.
-  guideTones('Guide Tones');
+  guideTones('Guide Tones'),
+
+  /// What the chord is doing in the tune: the V of something, a tritone
+  /// sub, the ii of a ii-V. Read from the chords around it rather than
+  /// from the key, so it keeps up where a tune changes key.
+  whatItsDoing('What It Is Doing');
 
   const ChordAid(this.label);
 
@@ -114,6 +119,7 @@ enum ChordAid {
     roman => 'I–vi–ii–V',
     nashville => '1-6-2-5',
     guideTones => '3rd & 7th',
+    whatItsDoing => 'V of …',
   };
 
   /// What the small red line under each chord actually is.
@@ -132,6 +138,10 @@ enum ChordAid {
     guideTones =>
       'The small red notes under each chord are its guide tones: the 3rd '
           'and the 7th, the two that move least between changes.',
+    whatItsDoing =>
+      'The small red line under each chord says what that chord is doing '
+          'here. Tap the chord at the bottom of the screen for the longer '
+          'answer. Where there is nothing certain to say, it says nothing.',
   };
 }
 

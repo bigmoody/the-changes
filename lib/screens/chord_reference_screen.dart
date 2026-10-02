@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../music/chord.dart';
+import '../music/what_its_doing.dart';
 import 'note_ink.dart';
 
 /// A searchable index of chord symbols: what Δ, ø, °, − and friends mean.
@@ -159,15 +160,81 @@ class _LabelledRow extends StatelessWidget {
 }
 
 /// Slides up the details for [chord] from the bottom of the screen.
-void showChordDetails(BuildContext context, Chord chord) {
+///
+/// [doing] is what this chord is doing in the tune it was tapped in, when
+/// it was tapped on a chart rather than looked up in the reference. The
+/// reference has no tune around it, so there is nothing to say there.
+void showChordDetails(
+  BuildContext context,
+  Chord chord, {
+  ChordMeaning? doing,
+}) {
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    isScrollControlled: true,
     builder: (context) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: ChordQualityDetails(chord: chord),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ChordQualityDetails(chord: chord),
+              if (doing != null) ...[
+                const SizedBox(height: 20),
+                _WhatItIsDoing(doing: doing),
+              ],
+            ],
+          ),
+        ),
       ),
     ),
   );
+}
+
+/// What this chord is doing here, under the chord's own details.
+///
+/// Under rather than above: what the chord *is* comes first, because that
+/// is the question somebody who tapped a chord symbol is most often
+/// asking. What it is for is the part they did not know to ask.
+class _WhatItIsDoing extends StatelessWidget {
+  const _WhatItIsDoing({required this.doing});
+
+  final ChordMeaning doing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            doing.short,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.tertiary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(doing.long, style: theme.textTheme.bodyMedium),
+          if (doing.learn case final page?) ...[
+            const SizedBox(height: 10),
+            Text(
+              'There is more about this in Learn, under $page.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

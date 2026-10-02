@@ -25,6 +25,7 @@ import '../audio/wav_file.dart';
 import '../music/loop_range.dart';
 import '../music/recorded_take.dart';
 import '../music/tune.dart';
+import '../music/what_its_doing.dart';
 import '../music/tuning.dart';
 import '../settings/app_settings.dart';
 import 'hiding_the_chart.dart';
@@ -230,6 +231,20 @@ class PracticeController extends ChangeNotifier {
 
   /// The chord being played, or the loop's first chord when stopped.
   ChordSlot get shownSlot => currentSlot ?? loop.slotsIn(chart).first;
+
+  /// What the chord on screen is doing in this tune, or null when there
+  /// is nothing certain to say about it.
+  ///
+  /// Read against the whole chart rather than the loop: a ii-V that
+  /// straddles the end of a four-bar loop is still a ii-V, and a player
+  /// looping those four bars is the one who most needs telling so.
+  ChordMeaning? get shownChordDoing {
+    final slots = chart.slots;
+    final shown = shownSlot;
+    final at = slots.indexWhere((s) => s.startBeat == shown.startBeat);
+    if (at < 0) return null;
+    return whatItIsDoing([for (final slot in slots) slot.chord], at);
+  }
 
   /// The next *change* after [shownSlot], skipping bars that just repeat
   /// the same chord, and coming round to the start of the loop at its end.
