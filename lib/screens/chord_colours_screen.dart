@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import '../settings/app_settings.dart';
 import '../settings/chord_colours.dart';
 import '../theme.dart';
+import 'colour_picker.dart';
 
 class ChordColoursScreen extends StatelessWidget {
   const ChordColoursScreen({super.key, required this.settings});
@@ -124,23 +125,36 @@ class ChordColoursScreen extends StatelessWidget {
   }
 
   Future<void> _pick(BuildContext context, int pitch) async {
-    final chosen = await showModalBottomSheet<Color?>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) =>
-          _Picker(pitch: pitch, start: settings.chordColours.of(pitch)),
+    final scheme = Theme.of(context).colorScheme;
+    final chosen = await pickColour(
+      context,
+      title: pitchClassNames[pitch],
+      start: settings.chordColours.of(pitch),
+      clearLabel: 'No Colour',
+      // On the paper, at the size a chart draws it, because the only
+      // questions are whether it is your colour and whether you can read
+      // it.
+      preview: (colour) => Container(
+        height: 76,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Text(
+          handSymbol('${roots[pitch]}Δ7'),
+          style: handLettered(
+            TextStyle(fontSize: 34, color: readableOn(colour, scheme.surface)),
+          ),
+        ),
+      ),
     );
-    // Null is backing out; the sheet says "no colour" by popping the
-    // sentinel below, because a colour and no colour are both answers.
+    // Null is backing out; noColour is asking for none. Different answers.
     if (chosen == null) return;
-    await settings.setChordColour(pitch, chosen == _noColour ? null : chosen);
+    await settings.setChordColour(pitch, chosen == noColour ? null : chosen);
   }
 }
-
-/// What the sheet pops when somebody asks for no colour at all, since a
-/// plain null means they backed out.
-const _noColour = Color(0x00000001);
 
 /// One root, with the chord drawn as it will appear.
 class _RootRow extends StatelessWidget {
@@ -172,7 +186,7 @@ class _RootRow extends StatelessWidget {
           child: Text(
             // The root as a chord, in its colour, which is the only
             // preview worth having.
-            handSymbol('${_roots[pitch]}7'),
+            handSymbol('${roots[pitch]}7'),
             style: handLettered(TextStyle(fontSize: 22, color: shown)),
           ),
         ),
@@ -185,143 +199,4 @@ class _RootRow extends StatelessWidget {
 
 /// How to write each root in the preview: the common spelling, flats
 /// where a chart would use them.
-const _roots = [
-  'C',
-  'D♭',
-  'D',
-  'E♭',
-  'E',
-  'F',
-  'G♭',
-  'G',
-  'A♭',
-  'A',
-  'B♭',
-  'B',
-];
-
-/// Hue, depth and brightness, with the chord shown as it will be.
-class _Picker extends StatefulWidget {
-  const _Picker({required this.pitch, required this.start});
-
-  final int pitch;
-  final Color? start;
-
-  @override
-  State<_Picker> createState() => _PickerState();
-}
-
-class _PickerState extends State<_Picker> {
-  late HSLColor _colour = HSLColor.fromColor(
-    widget.start ?? const Color(0xFFC23B22),
-  );
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final chosen = _colour.toColor();
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              pitchClassNames[widget.pitch],
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            // On the paper, at the size a chart draws it, because that is
-            // the only question: can you read it and is it your colour.
-            Container(
-              height: 76,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: scheme.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: scheme.outlineVariant),
-              ),
-              child: Text(
-                handSymbol('${_roots[widget.pitch]}Δ7'),
-                style: handLettered(
-                  TextStyle(
-                    fontSize: 34,
-                    color: readableOn(chosen, scheme.surface),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            _Slider(
-              name: 'Hue',
-              value: _colour.hue,
-              max: 360,
-              onChanged: (v) => setState(() => _colour = _colour.withHue(v)),
-            ),
-            _Slider(
-              name: 'Depth',
-              value: _colour.saturation,
-              max: 1,
-              onChanged: (v) =>
-                  setState(() => _colour = _colour.withSaturation(v)),
-            ),
-            _Slider(
-              name: 'Brightness',
-              value: _colour.lightness,
-              max: 1,
-              onChanged: (v) =>
-                  setState(() => _colour = _colour.withLightness(v)),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                TextButton(
-                  key: const ValueKey('no-colour'),
-                  onPressed: () => Navigator.of(context).pop(_noColour),
-                  child: const Text('No Colour'),
-                ),
-                const Spacer(),
-                FilledButton(
-                  key: const ValueKey('keep-colour'),
-                  onPressed: () => Navigator.of(context).pop(chosen),
-                  child: const Text('Keep'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Slider extends StatelessWidget {
-  const _Slider({
-    required this.name,
-    required this.value,
-    required this.max,
-    required this.onChanged,
-  });
-
-  final String name;
-  final double value;
-  final double max;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      SizedBox(width: 86, child: Text(name)),
-      Expanded(
-        child: Slider(
-          key: ValueKey('slider-$name'),
-          value: value.clamp(0, max),
-          max: max,
-          onChanged: onChanged,
-        ),
-      ),
-    ],
-  );
-}
+const roots = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];

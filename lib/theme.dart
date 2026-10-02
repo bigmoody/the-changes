@@ -142,9 +142,85 @@ Color cardColour(ColorScheme scheme) => scheme.brightness == Brightness.dark
     ? scheme.surfaceContainerLow
     : scheme.surfaceContainerLowest;
 
+/// The whole scheme, on [paper] instead of the app's own.
+///
+/// Not a seeded Material scheme: those tint every surface with the seed's
+/// hue and would throw away the relationships the two schemes above were
+/// written for. This keeps those relationships and moves them onto the new
+/// paper, so a chart on green paper is the same chart.
+///
+/// Only the paper family moves. Ink, the pencil accent and the error reds
+/// stay as they were, because they are not paper and should not take its
+/// hue; whichever of the two base schemes suits the paper's own lightness
+/// is the one they come from, so dark paper gets light ink without
+/// anything being worked out twice.
+ColorScheme schemeForPaper(Color paper) {
+  final dark = paper.computeLuminance() < 0.4;
+  final base = dark ? _dark : _light;
+  final from = HSLColor.fromColor(base.surface);
+  final to = HSLColor.fromColor(paper);
+
+  /// A paper colour, moved onto the new paper: its hue and depth, and the
+  /// distance it always sat from the paper kept.
+  Color papery(Color colour) {
+    final was = HSLColor.fromColor(colour);
+    // How far this tone sits from the paper, which is the thing to keep:
+    // a card is a little lighter than the page, a rule a little darker.
+    final apart = was.lightness - from.lightness;
+    var lightness = to.lightness + apart;
+    // On white paper a lighter card has nowhere to go and would come out
+    // white as well, which is a card you cannot see. Keep the distance
+    // and turn it round instead.
+    if (lightness > 1 || lightness < 0) lightness = to.lightness - apart;
+    return HSLColor.fromAHSL(
+      was.alpha,
+      to.hue,
+      // Keep a little of the tone's own depth, so a flat grey paper does
+      // not flatten every container to exactly the same colour.
+      (to.saturation * 0.85 + was.saturation * 0.15).clamp(0.0, 1.0),
+      lightness.clamp(0.0, 1.0),
+    ).toColor();
+  }
+
+  final scheme = base.copyWith(
+    surface: paper,
+    surfaceDim: papery(base.surfaceDim),
+    surfaceBright: papery(base.surfaceBright),
+    surfaceContainerLowest: papery(base.surfaceContainerLowest),
+    surfaceContainerLow: papery(base.surfaceContainerLow),
+    surfaceContainer: papery(base.surfaceContainer),
+    surfaceContainerHigh: papery(base.surfaceContainerHigh),
+    surfaceContainerHighest: papery(base.surfaceContainerHighest),
+    outline: papery(base.outline),
+    outlineVariant: papery(base.outlineVariant),
+  );
+  // And the ink has to be readable on it whatever happens, because a
+  // paper nobody can read off is not a choice worth offering.
+  return scheme.copyWith(
+    onSurface: _inkOn(scheme.onSurface, paper),
+    onSurfaceVariant: _inkOn(scheme.onSurfaceVariant, paper, least: 2.5),
+  );
+}
+
+/// [ink] if it reads on [paper], or black or white if it does not.
+Color _inkOn(Color ink, Color paper, {double least = 7}) {
+  double contrast(Color a, Color b) {
+    final x = a.computeLuminance();
+    final y = b.computeLuminance();
+    return x > y ? (x + 0.05) / (y + 0.05) : (y + 0.05) / (x + 0.05);
+  }
+
+  if (contrast(ink, paper) >= least) return ink;
+  final black = contrast(const Color(0xFF000000), paper);
+  final white = contrast(const Color(0xFFFFFFFF), paper);
+  return black > white ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+}
+
 /// [fontFamily] is for tests, which load a real font by name.
-ThemeData appTheme(Brightness brightness, {String? fontFamily}) {
-  final scheme = brightness == Brightness.dark ? _dark : _light;
+ThemeData appTheme(Brightness brightness, {String? fontFamily, Color? paper}) {
+  final scheme = paper != null
+      ? schemeForPaper(paper)
+      : (brightness == Brightness.dark ? _dark : _light);
   final base = ThemeData(
     colorScheme: scheme,
     fontFamily: fontFamily,

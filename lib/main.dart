@@ -126,22 +126,30 @@ class TheChangesApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'The Changes',
-      debugShowCheckedModeBanner: false,
-      theme: appTheme(Brightness.light),
-      darkTheme: appTheme(Brightness.dark),
-      home: HomeScreen(
-        player: player,
-        settings: settings,
-        progressions: progressions,
-        library: library,
-        takes: takes,
-        partStore: partStore,
-        recordingStore: recordingStore,
-        licks: licks,
-        soundFont: soundFont,
-        audioError: audioError,
+    // Rebuilt when the settings change, because the paper is one of them
+    // and a new paper is a new theme for the whole app.
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) => MaterialApp(
+        title: 'The Changes',
+        debugShowCheckedModeBanner: false,
+        // A chosen paper is the paper, in the dark as well: it already has
+        // its own lightness, and a tune does not change colour because the
+        // sun went down.
+        theme: appTheme(Brightness.light, paper: settings.paper),
+        darkTheme: appTheme(Brightness.dark, paper: settings.paper),
+        home: HomeScreen(
+          player: player,
+          settings: settings,
+          progressions: progressions,
+          library: library,
+          takes: takes,
+          partStore: partStore,
+          recordingStore: recordingStore,
+          licks: licks,
+          soundFont: soundFont,
+          audioError: audioError,
+        ),
       ),
     );
   }

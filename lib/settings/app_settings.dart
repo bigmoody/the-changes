@@ -144,6 +144,7 @@ class AppSettings extends ChangeNotifier {
     this._drumSound,
     this._chordColours,
     this._colourChords,
+    this._paper,
     this._arpeggioSound,
     this._arpeggioStart,
     this._metronomeTempo,
@@ -166,6 +167,7 @@ class AppSettings extends ChangeNotifier {
     this._drumSound = DrumSound.kit,
     this._chordColours = const ChordColours(),
     this._colourChords = true,
+    this._paper,
     this._arpeggioSound = Comping.piano,
     this._arpeggioStart = ArpeggioStart.root,
   ]) : _storage = null,
@@ -189,6 +191,7 @@ class AppSettings extends ChangeNotifier {
   static const _drumSoundKey = 'drumSound';
   static const _chordColoursKey = 'chordColours';
   static const _colourChordsKey = 'colourChords';
+  static const _paperKey = 'paper';
   static const _arpeggioSoundKey = 'arpeggioSound';
   static const _arpeggioStartKey = 'arpeggioStart';
   static const _metronomeTempoKey = 'metronomeTempo';
@@ -212,6 +215,7 @@ class AppSettings extends ChangeNotifier {
     var drumSound = DrumSound.kit;
     var chordColours = const ChordColours();
     var colourChords = true;
+    Color? paper;
     var arpeggioSound = Comping.piano;
     var arpeggioStart = ArpeggioStart.root;
     var metronomeTempo = 120;
@@ -276,6 +280,8 @@ class AppSettings extends ChangeNotifier {
         );
       }
       colourChords = await storage.getBool(_colourChordsKey) ?? true;
+      final savedPaper = await storage.getInt(_paperKey);
+      if (savedPaper != null) paper = Color(savedPaper);
       final savedDrums = await storage.getString(_drumSoundKey);
       drumSound = DrumSound.values.firstWhere(
         (value) => value.name == savedDrums,
@@ -311,6 +317,7 @@ class AppSettings extends ChangeNotifier {
       drumSound,
       chordColours,
       colourChords,
+      paper,
       arpeggioSound,
       arpeggioStart,
       metronomeTempo,
@@ -486,6 +493,26 @@ class AppSettings extends ChangeNotifier {
         _chordColoursKey,
         jsonEncode(_chordColours.toJson()),
       );
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// The paper the app is printed on, or null to follow the system's
+  /// light and dark the way it always has.
+  Color? get paper => _paper;
+  Color? _paper;
+
+  Future<void> setPaper(Color? value) async {
+    if (value == _paper) return;
+    _paper = value;
+    notifyListeners();
+    try {
+      if (value == null) {
+        await _storage?.remove(_paperKey);
+      } else {
+        await _storage?.setInt(_paperKey, value.toARGB32());
+      }
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

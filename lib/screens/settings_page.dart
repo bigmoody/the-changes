@@ -15,6 +15,7 @@ import 'drum_kit_screen.dart';
 import 'import_soundfont_screen.dart';
 import 'chart_instrument_button.dart';
 import 'chord_colours_screen.dart';
+import 'paper_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 /// The Settings tab: everything that holds across the whole app, gathered
@@ -91,6 +92,22 @@ class SettingsPage extends StatelessWidget {
               options: [null, ...DrillTarget.values],
               label: (target) => target?.label ?? 'Off',
               onChanged: settings.setAimFor,
+            ),
+            ListTile(
+              key: const ValueKey('paper'),
+              leading: const Icon(Icons.wallpaper_outlined),
+              title: const Text('Paper'),
+              subtitle: Text(
+                settings.paper == null
+                    ? 'Follows the system, light and dark'
+                    : 'Yours',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PaperScreen(settings: settings),
+                ),
+              ),
             ),
             ListTile(
               key: const ValueKey('chord-colours'),
