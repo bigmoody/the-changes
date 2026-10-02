@@ -173,7 +173,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
                       'on something that is itself leaning somewhere. Two '
                       'steps from home rather than one, and the usual way '
                       'a tune reaches for a chord that is not in the key.',
-            learn: run > 2 ? 'Rhythm Changes' : 'Passing Chords',
+            learn: 'Chains of Dominants',
           );
         }
         final home = _kindOf(next);

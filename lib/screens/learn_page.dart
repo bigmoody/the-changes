@@ -47,6 +47,7 @@ import 'number_patterns_screen.dart';
 import 'passing_chords_screen.dart';
 import 'phrasing_screen.dart';
 import 'trading_screen.dart';
+import 'dominant_chains_screen.dart';
 import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
 import 'upper_structures_screen.dart';
@@ -335,6 +336,15 @@ class _LearnPageState extends State<LearnPage> {
             'to play when the chord changes and you are already on one',
         onTap: () =>
             open(ThroughTheChangesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-dominant-chains'),
+        icon: Icons.link,
+        title: 'Chains of Dominants',
+        subtitle:
+            'Dominants leaning on each other, and the chromatic line '
+            'hiding inside a rhythm changes bridge',
+        onTap: () => open(DominantChainsScreen(player: player)),
       ),
       _LearnCard(
         key: const ValueKey('learn-tritone-subs'),

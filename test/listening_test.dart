@@ -212,7 +212,10 @@ void main() {
       final card = find.byKey(const ValueKey('learn-listening'));
       await tester.scrollUntilVisible(
         card,
-        100,
+        // A step, not a nudge: the Learn list grows as pages are added
+        // and a hundred pixels at a time ran out of its scroll budget
+        // the first time one went in above this card.
+        300,
         // The page's own list, not the search box's text field,
         // which is a scrollable too.
         scrollable: find.byType(Scrollable).last,
