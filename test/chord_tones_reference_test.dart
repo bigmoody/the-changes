@@ -28,7 +28,13 @@ void main() {
       ),
     );
     // It's down the Look It Up list, past the end of a phone screen.
-    await tester.scrollUntilVisible(find.text('Chord Tones'), 200);
+    await tester.scrollUntilVisible(
+      find.text('Chord Tones'),
+      200,
+      // The page's own list, not the search box's text field, which
+      // is a scrollable too.
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.ensureVisible(find.text('Chord Tones'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Chord Tones'));

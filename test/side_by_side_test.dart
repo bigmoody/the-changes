@@ -364,7 +364,13 @@ void main() {
         ),
       );
       final card = find.byKey(const ValueKey('learn-side-by-side'));
-      await tester.scrollUntilVisible(card, 100);
+      await tester.scrollUntilVisible(
+        card,
+        100,
+        // The page's own list, not the search box's text field,
+        // which is a scrollable too.
+        scrollable: find.byType(Scrollable).last,
+      );
       await tester.ensureVisible(card);
       await tester.pumpAndSettle();
       await tester.tap(card);

@@ -112,6 +112,9 @@ void main() {
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('learn-guitar-chords')),
       200,
+      // The page's own list, not the search box's text field,
+      // which is a scrollable too.
+      scrollable: find.byType(Scrollable).last,
     );
     await tester.ensureVisible(
       find.byKey(const ValueKey('learn-guitar-chords')),

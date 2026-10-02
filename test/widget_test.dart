@@ -238,14 +238,16 @@ void main() {
       await tester.scrollUntilVisible(
         find.text(page),
         100,
-        scrollable: find.byType(Scrollable).first,
+        // The page's own list, not the search box's text field, which
+        // is a scrollable too.
+        scrollable: find.byType(Scrollable).last,
       );
       expect(find.text(page), findsOneWidget, reason: page);
     }
     await tester.scrollUntilVisible(
       find.text('Chord Symbols'),
       -100,
-      scrollable: find.byType(Scrollable).first,
+      scrollable: find.byType(Scrollable).last,
     );
     // Properly into view rather than merely built: scrolled to the very
     // top of the viewport it sits under the app bar, and the tap lands on
@@ -276,7 +278,9 @@ void main() {
       await tester.scrollUntilVisible(
         find.byKey(const ValueKey('learn-quiz')),
         120,
-        scrollable: find.byType(Scrollable).first,
+        // The page's own list, not the search box's text field, which
+        // is a scrollable too.
+        scrollable: find.byType(Scrollable).last,
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('learn-quiz')));

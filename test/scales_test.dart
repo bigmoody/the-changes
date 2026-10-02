@@ -186,7 +186,13 @@ void main() {
     // The Learn page keeps growing, and this card is near the bottom of
     // it: a hundred pixels at a time ran out of iterations once the page
     // passed five thousand pixels long.
-    await tester.scrollUntilVisible(find.text('Scales & Modes'), 400);
+    await tester.scrollUntilVisible(
+      find.text('Scales & Modes'),
+      400,
+      // The page's own list, not the search box's text field, which
+      // is a scrollable too.
+      scrollable: find.byType(Scrollable).last,
+    );
     // Built is not the same as on screen: it can stop with the card still
     // under the bottom edge, and a tap there lands on nothing.
     await tester.ensureVisible(find.text('Scales & Modes'));

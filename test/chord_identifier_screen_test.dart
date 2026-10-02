@@ -143,7 +143,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     final card = find.byKey(const ValueKey('learn-identify'));
-    await tester.scrollUntilVisible(card, 100);
+    await tester.scrollUntilVisible(
+      card,
+      100,
+      // The page's own list, not the search box's text field,
+      // which is a scrollable too.
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Chord Identifier'), findsOneWidget);
   });
 }

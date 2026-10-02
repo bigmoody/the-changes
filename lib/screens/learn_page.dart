@@ -2,10 +2,15 @@
 // a tune. Each opens full screen and starts fresh every time, so a quiz is
 // always a new round.
 //
-// Three sections, and A to Z inside each. Thirty-odd pages is too many to
-// hold in your head, so the only question worth answering quickly is
-// "where is the one I want", and alphabetical answers it without anybody
-// having to learn an order somebody else chose.
+// Three sections, and A to Z inside each, with a search box over them.
+// Thirty-odd pages is too many to hold in your head, so the only question
+// worth answering quickly is "where is the one I want". Alphabetical
+// answers it when you know the name; search answers it when you know the
+// idea but not what this app decided to call it.
+//
+// Search reads the subtitles as well as the titles, which is most of the
+// use: "drop 2" finds Voicings, which never says so in its name, and
+// "backbeat" finds Swing.
 //
 //   Practise    things you do: drills, rounds, the metronome
 //   Concepts    one idea a page, with the sound and the notation
@@ -54,7 +59,7 @@ import 'swing_screen.dart';
 import 'through_the_changes_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
 
-class LearnPage extends StatelessWidget {
+class LearnPage extends StatefulWidget {
   const LearnPage({
     super.key,
     required this.player,
@@ -70,325 +75,412 @@ class LearnPage extends StatelessWidget {
   final PhraseStore? phrases;
 
   @override
+  State<LearnPage> createState() => _LearnPageState();
+}
+
+class _LearnPageState extends State<LearnPage> {
+  final _search = TextEditingController();
+  var _query = '';
+
+  PracticePlayer get player => widget.player;
+  AppSettings get settings => widget.settings;
+  PhraseStore? get phrases => widget.phrases;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  /// The pages whose title or words match, with the headings of the
+  /// sections that still have something in them.
+  ///
+  /// Searching the subtitle as well as the title is most of the use:
+  /// somebody looking for "tritone" finds the page called Tritone Subs,
+  /// and somebody looking for "drop 2" finds Voicings, which never says
+  /// so in its name.
+  List<Widget> _matching(List<Widget> all) {
+    final words = _query
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .toList();
+    if (words.isEmpty) return all;
+    final out = <Widget>[];
+    var header = <Widget>[];
+    for (final item in all) {
+      if (item is SectionHeader) {
+        header = [item];
+      } else if (item is _LearnCard) {
+        final hay = '${item.title} ${item.subtitle}'.toLowerCase();
+        if (words.every(hay.contains)) {
+          out
+            ..addAll(header)
+            ..add(item);
+          header = [];
+        }
+      }
+    }
+    return out;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     void open(Widget page) =>
         Navigator.of(context)
             .push(MaterialPageRoute<void>(builder: (_) => page));
 
+    final everything = <Widget>[
+      const SectionHeader('Practise'),
+      _LearnCard(
+        key: const ValueKey('learn-changes-in-keys'),
+        icon: Icons.all_inclusive,
+        title: 'Changes in Twelve Keys',
+        subtitle:
+            'The band plays a ii-V-I, a turnaround or a minor ii-V '
+            'round every key, moving on by itself while you play',
+        onTap: () =>
+            open(ChangesInKeysScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-identify'),
+        icon: Icons.hearing,
+        title: 'Chord Identifier',
+        subtitle:
+            'Play a chord on the guitar or the keys and the app '
+            'names it',
+        onTap: () =>
+            open(ChordIdentifierScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-quiz'),
+        icon: Icons.timer_outlined,
+        title: 'Chord Quiz',
+        subtitle:
+            'Spell chords and find their tones against the clock, '
+            'through ii–V–Is or any chord',
+        onTap: () => open(ChordTonesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-metronome'),
+        icon: Icons.av_timer,
+        title: 'Metronome',
+        subtitle:
+            'Any tempo and time signature, and it can click on 2 and '
+            '4, or drop out and leave the time to you',
+        onTap: () => open(MetronomeScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-ear'),
+        icon: Icons.hearing,
+        title: 'Name What You Hear',
+        subtitle:
+            'The app plays a chord or a cadence in a key at random '
+            'and you say what it was, with why it sounds like that',
+        onTap: () =>
+            open(EarTrainingScreen(player: player, settings: settings)),
+      ),
+      if (phrases case final store?)
+        _LearnCard(
+          key: const ValueKey('learn-phrases'),
+          icon: Icons.graphic_eq,
+          title: 'Phrases',
+          subtitle:
+              'Record something worth keeping and hear it back in any '
+              'key: your playing, moved, not written down',
+          onTap: () => open(
+            PhrasesScreen(phrases: store, player: player, settings: settings),
+          ),
+        ),
+      _LearnCard(
+        key: const ValueKey('learn-scale-patterns'),
+        icon: Icons.stairs_outlined,
+        title: 'Scale Patterns',
+        subtitle:
+            'A scale in 3rds, 4ths, triads or fours, round all twelve '
+            'keys: what lines are made of, rather than up and down',
+        onTap: () =>
+            open(ScalePatternsScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-side-by-side'),
+        icon: Icons.compare_arrows,
+        title: 'Side by Side',
+        subtitle:
+            'Two or three versions of the same form, bar against bar: '
+            'what bebop did to the blues, in one look',
+        onTap: () => open(SideBySideScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-trading'),
+        icon: Icons.swap_vert,
+        title: 'Trading Fours',
+        subtitle:
+            'They play four, you play four, round and round: the '
+            'oldest way of learning this music',
+        onTap: () => open(TradingScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-walking-bass'),
+        icon: Icons.linear_scale,
+        title: 'Walking Bass',
+        subtitle:
+            'How a line gets through a bar and onto the next chord: '
+            'the shapes the band\'s own bassist plays',
+        onTap: () =>
+            open(WalkingBassScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-where-am-i'),
+        icon: Icons.explore_outlined,
+        title: 'Where Am I?',
+        subtitle:
+            'The band plays from the top and cuts out: say which bar '
+            'it stopped in',
+        onTap: () => open(WhereAmIScreen(player: player, settings: settings)),
+      ),
+      const SectionHeader('Concepts'),
+      _LearnCard(
+        key: const ValueKey('learn-bebop-scales'),
+        icon: Icons.stairs,
+        title: 'Bebop Scales',
+        subtitle:
+            'The extra note that keeps the chord tones on the beat, '
+            'and what happens without it',
+        onTap: () =>
+            open(BebopScalesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-passing'),
+        icon: Icons.more_horiz,
+        title: 'Between the Chords',
+        subtitle:
+            'The chords that are not on the chart: what you can put '
+            'in the gap, and why it fits',
+        onTap: () =>
+            open(PassingChordsScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-comping'),
+        icon: Icons.piano,
+        title: 'Comping',
+        subtitle:
+            'When to put the chord down, and when to leave the bar '
+            'alone: the other half of playing changes',
+        onTap: () => open(CompingScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-enclosures'),
+        icon: Icons.all_inclusive,
+        title: 'Enclosures',
+        subtitle:
+            'Going round a note before landing on it: five shapes, on '
+            'the stave and under the fingers',
+        onTap: () => open(EnclosuresScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-guide-tones'),
+        icon: Icons.linear_scale,
+        title: 'Guide Tones',
+        subtitle:
+            'The two notes that make the changes audible, held through '
+            'a progression while everything else moves',
+        onTap: () => open(GuideTonesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-modal'),
+        icon: Icons.blur_on,
+        title: 'Modal',
+        subtitle:
+            'What to do when one chord lasts sixteen bars, and the '
+            'question the chart will not answer',
+        onTap: () => open(ModalScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-number-patterns'),
+        icon: Icons.pin_outlined,
+        title: 'Number Patterns',
+        subtitle:
+            'One shape (1-2-3-5) run through the changes, so your '
+            'hand stays still while the notes move',
+        onTap: () =>
+            open(NumberPatternsScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-rhythm-changes'),
+        icon: Icons.repeat,
+        title: 'Rhythm Changes',
+        subtitle:
+            'The other form worth knowing by heart, and the eight '
+            'bars of it to learn first',
+        onTap: () =>
+            open(RhythmChangesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-swing'),
+        icon: Icons.waves,
+        title: 'Swing',
+        subtitle:
+            'How late the "and" really is, and why it is not the '
+            'triplet you were taught, except at one tempo',
+        onTap: () => open(SwingScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-through-the-changes'),
+        icon: Icons.show_chart,
+        title: 'Through the Changes',
+        subtitle:
+            'Chord tones over a whole chorus, one note at a time: what '
+            'to play when the chord changes and you are already on one',
+        onTap: () =>
+            open(ThroughTheChangesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-tritone-subs'),
+        icon: Icons.swap_horiz,
+        title: 'Tritone Subs',
+        subtitle:
+            'Why one dominant can stand in for another: they are the '
+            'same two notes in the middle',
+        onTap: () =>
+            open(TritoneSubsScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-upper-structures'),
+        icon: Icons.change_history,
+        title: 'Upper Structures',
+        subtitle:
+            'A plain triad on top of a dominant: the altered sound '
+            'without having to spell it',
+        onTap: () =>
+            open(UpperStructuresScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-voicings'),
+        icon: Icons.layers_outlined,
+        title: 'Voicings',
+        subtitle:
+            'The same chord arranged six ways: shells, the rootless '
+            'forms, and what drop 2 actually means',
+        onTap: () => open(VoicingsScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-phrasing'),
+        icon: Icons.graphic_eq,
+        title: 'Where Phrases Start',
+        subtitle:
+            'The same four notes moved around the bar: when a line '
+            'comes in, and which notes get the weight',
+        onTap: () => open(PhrasingScreen(player: player, settings: settings)),
+      ),
+      const SectionHeader('Look It Up'),
+      _LearnCard(
+        // A chord symbol, lettered as on the chart.
+        symbol: 'ø7',
+        title: 'Chord Symbols',
+        subtitle: 'What Δ7, ø, alt and the rest mean',
+        onTap: () => open(const ChordReferenceScreen()),
+      ),
+      _LearnCard(
+        icon: Icons.piano_outlined,
+        title: 'Chord Tones',
+        subtitle:
+            'The notes in every chord, in any key: on the keys, '
+            'guitar and bass',
+        onTap: () =>
+            open(ChordTonesReferenceScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-guitar-chords'),
+        icon: Icons.grid_on,
+        title: 'Guitar Chords',
+        subtitle: 'Every way to play each chord up the neck, to hear',
+        onTap: () =>
+            open(GuitarChordsScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-listening'),
+        icon: Icons.album_outlined,
+        title: 'Listening',
+        subtitle:
+            'The records these tunes come from, because a chart is a '
+            'reminder of a performance and not the tune',
+        onTap: () => open(const ListeningScreen()),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-reading'),
+        music: Clef.treble.glyph,
+        title: 'Reading Music',
+        subtitle:
+            'The stave, the clefs, note values, rests and the rest of '
+            'the marks on the page',
+        onTap: () => open(const ReadingMusicScreen()),
+      ),
+      _LearnCard(
+        icon: Icons.stairs_outlined,
+        title: 'Scales & Modes',
+        subtitle: 'Every mode, in any key, to hear',
+        onTap: () =>
+            open(ScalesReferenceScreen(player: player, settings: settings)),
+      ),
+    ];
+
+    final shown = _matching(everything);
     return Scaffold(
       appBar: AppBar(title: const Text('Learn')),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          const SectionHeader('Practise'),
-          _LearnCard(
-            key: const ValueKey('learn-changes-in-keys'),
-            icon: Icons.all_inclusive,
-            title: 'Changes in Twelve Keys',
-            subtitle:
-                'The band plays a ii-V-I, a turnaround or a minor ii-V '
-                'round every key, moving on by itself while you play',
-            onTap: () =>
-                open(ChangesInKeysScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-identify'),
-            icon: Icons.hearing,
-            title: 'Chord Identifier',
-            subtitle:
-                'Play a chord on the guitar or the keys and the app '
-                'names it',
-            onTap: () =>
-                open(ChordIdentifierScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-quiz'),
-            icon: Icons.timer_outlined,
-            title: 'Chord Quiz',
-            subtitle:
-                'Spell chords and find their tones against the clock, '
-                'through ii–V–Is or any chord',
-            onTap: () =>
-                open(ChordTonesScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-metronome'),
-            icon: Icons.av_timer,
-            title: 'Metronome',
-            subtitle:
-                'Any tempo and time signature, and it can click on 2 and '
-                '4, or drop out and leave the time to you',
-            onTap: () =>
-                open(MetronomeScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-ear'),
-            icon: Icons.hearing,
-            title: 'Name What You Hear',
-            subtitle:
-                'The app plays a chord or a cadence in a key at random '
-                'and you say what it was, with why it sounds like that',
-            onTap: () =>
-                open(EarTrainingScreen(player: player, settings: settings)),
-          ),
-          if (phrases case final store?)
-            _LearnCard(
-              key: const ValueKey('learn-phrases'),
-              icon: Icons.graphic_eq,
-              title: 'Phrases',
-              subtitle:
-                  'Record something worth keeping and hear it back in any '
-                  'key: your playing, moved, not written down',
-              onTap: () => open(
-                PhrasesScreen(
-                  phrases: store,
-                  player: player,
-                  settings: settings,
-                ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Pinned rather than scrolling away with the list: it is for
+            // getting somewhere, and thirty-one pages is a long way to
+            // scroll back to change what you typed.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: SearchBar(
+                key: const ValueKey('search-learn'),
+                controller: _search,
+                hintText: 'Search Learn',
+                leading: const Icon(Icons.search),
+                trailing: [
+                  if (_query.isNotEmpty)
+                    IconButton(
+                      key: const ValueKey('clear-search'),
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _search.clear();
+                        setState(() => _query = '');
+                      },
+                    ),
+                ],
+                onChanged: (value) => setState(() => _query = value),
               ),
             ),
-          _LearnCard(
-            key: const ValueKey('learn-scale-patterns'),
-            icon: Icons.stairs_outlined,
-            title: 'Scale Patterns',
-            subtitle:
-                'A scale in 3rds, 4ths, triads or fours, round all twelve '
-                'keys: what lines are made of, rather than up and down',
-            onTap: () =>
-                open(ScalePatternsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-side-by-side'),
-            icon: Icons.compare_arrows,
-            title: 'Side by Side',
-            subtitle:
-                'Two or three versions of the same form, bar against bar: '
-                'what bebop did to the blues, in one look',
-            onTap: () =>
-                open(SideBySideScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-trading'),
-            icon: Icons.swap_vert,
-            title: 'Trading Fours',
-            subtitle:
-                'They play four, you play four, round and round: the '
-                'oldest way of learning this music',
-            onTap: () =>
-                open(TradingScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-walking-bass'),
-            icon: Icons.linear_scale,
-            title: 'Walking Bass',
-            subtitle:
-                'How a line gets through a bar and onto the next chord: '
-                'the shapes the band\'s own bassist plays',
-            onTap: () =>
-                open(WalkingBassScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-where-am-i'),
-            icon: Icons.explore_outlined,
-            title: 'Where Am I?',
-            subtitle:
-                'The band plays from the top and cuts out: say which bar '
-                'it stopped in',
-            onTap: () =>
-                open(WhereAmIScreen(player: player, settings: settings)),
-          ),
-          const SectionHeader('Concepts'),
-          _LearnCard(
-            key: const ValueKey('learn-bebop-scales'),
-            icon: Icons.stairs,
-            title: 'Bebop Scales',
-            subtitle:
-                'The extra note that keeps the chord tones on the beat, '
-                'and what happens without it',
-            onTap: () =>
-                open(BebopScalesScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-passing'),
-            icon: Icons.more_horiz,
-            title: 'Between the Chords',
-            subtitle:
-                'The chords that are not on the chart: what you can put '
-                'in the gap, and why it fits',
-            onTap: () =>
-                open(PassingChordsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-comping'),
-            icon: Icons.piano,
-            title: 'Comping',
-            subtitle:
-                'When to put the chord down, and when to leave the bar '
-                'alone: the other half of playing changes',
-            onTap: () =>
-                open(CompingScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-enclosures'),
-            icon: Icons.all_inclusive,
-            title: 'Enclosures',
-            subtitle:
-                'Going round a note before landing on it: five shapes, on '
-                'the stave and under the fingers',
-            onTap: () =>
-                open(EnclosuresScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-guide-tones'),
-            icon: Icons.linear_scale,
-            title: 'Guide Tones',
-            subtitle:
-                'The two notes that make the changes audible, held through '
-                'a progression while everything else moves',
-            onTap: () =>
-                open(GuideTonesScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-modal'),
-            icon: Icons.blur_on,
-            title: 'Modal',
-            subtitle:
-                'What to do when one chord lasts sixteen bars, and the '
-                'question the chart will not answer',
-            onTap: () => open(ModalScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-number-patterns'),
-            icon: Icons.pin_outlined,
-            title: 'Number Patterns',
-            subtitle:
-                'One shape (1-2-3-5) run through the changes, so your '
-                'hand stays still while the notes move',
-            onTap: () =>
-                open(NumberPatternsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-rhythm-changes'),
-            icon: Icons.repeat,
-            title: 'Rhythm Changes',
-            subtitle:
-                'The other form worth knowing by heart, and the eight '
-                'bars of it to learn first',
-            onTap: () =>
-                open(RhythmChangesScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-swing'),
-            icon: Icons.waves,
-            title: 'Swing',
-            subtitle:
-                'How late the "and" really is, and why it is not the '
-                'triplet you were taught, except at one tempo',
-            onTap: () => open(SwingScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-through-the-changes'),
-            icon: Icons.show_chart,
-            title: 'Through the Changes',
-            subtitle:
-                'Chord tones over a whole chorus, one note at a time: what '
-                'to play when the chord changes and you are already on one',
-            onTap: () => open(
-              ThroughTheChangesScreen(player: player, settings: settings),
-            ),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-tritone-subs'),
-            icon: Icons.swap_horiz,
-            title: 'Tritone Subs',
-            subtitle:
-                'Why one dominant can stand in for another: they are the '
-                'same two notes in the middle',
-            onTap: () =>
-                open(TritoneSubsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-upper-structures'),
-            icon: Icons.change_history,
-            title: 'Upper Structures',
-            subtitle:
-                'A plain triad on top of a dominant: the altered sound '
-                'without having to spell it',
-            onTap: () =>
-                open(UpperStructuresScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-voicings'),
-            icon: Icons.layers_outlined,
-            title: 'Voicings',
-            subtitle:
-                'The same chord arranged six ways: shells, the rootless '
-                'forms, and what drop 2 actually means',
-            onTap: () =>
-                open(VoicingsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-phrasing'),
-            icon: Icons.graphic_eq,
-            title: 'Where Phrases Start',
-            subtitle:
-                'The same four notes moved around the bar: when a line '
-                'comes in, and which notes get the weight',
-            onTap: () =>
-                open(PhrasingScreen(player: player, settings: settings)),
-          ),
-          const SectionHeader('Look It Up'),
-          _LearnCard(
-            // A chord symbol, lettered as on the chart.
-            symbol: 'ø7',
-            title: 'Chord Symbols',
-            subtitle: 'What Δ7, ø, alt and the rest mean',
-            onTap: () => open(const ChordReferenceScreen()),
-          ),
-          _LearnCard(
-            icon: Icons.piano_outlined,
-            title: 'Chord Tones',
-            subtitle:
-                'The notes in every chord, in any key: on the keys, '
-                'guitar and bass',
-            onTap: () => open(
-              ChordTonesReferenceScreen(player: player, settings: settings),
-            ),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-guitar-chords'),
-            icon: Icons.grid_on,
-            title: 'Guitar Chords',
-            subtitle: 'Every way to play each chord up the neck, to hear',
-            onTap: () =>
-                open(GuitarChordsScreen(player: player, settings: settings)),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-listening'),
-            icon: Icons.album_outlined,
-            title: 'Listening',
-            subtitle:
-                'The records these tunes come from, because a chart is a '
-                'reminder of a performance and not the tune',
-            onTap: () => open(const ListeningScreen()),
-          ),
-          _LearnCard(
-            key: const ValueKey('learn-reading'),
-            music: Clef.treble.glyph,
-            title: 'Reading Music',
-            subtitle:
-                'The stave, the clefs, note values, rests and the rest of '
-                'the marks on the page',
-            onTap: () => open(const ReadingMusicScreen()),
-          ),
-          _LearnCard(
-            icon: Icons.stairs_outlined,
-            title: 'Scales & Modes',
-            subtitle: 'Every mode, in any key, to hear',
-            onTap: () =>
-                open(ScalesReferenceScreen(player: player, settings: settings)),
-          ),
-        ],
+            if (shown.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Text(
+                      'Nothing in Learn matches "$_query".',
+                      key: const ValueKey('nothing-matches'),
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.only(bottom: 24),
+                  children: shown,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

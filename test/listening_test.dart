@@ -183,7 +183,13 @@ void main() {
       await open(tester);
       final kindOfBlue = listening.firstWhere((r) => r.album == 'Kind of Blue');
       final card = find.byKey(ValueKey('record-${titleOf(kindOfBlue)}'));
-      await tester.scrollUntilVisible(card, 200);
+      await tester.scrollUntilVisible(
+        card,
+        200,
+        // The page's own list, not the search box's text field,
+        // which is a scrollable too.
+        scrollable: find.byType(Scrollable).last,
+      );
       expect(card, findsOneWidget);
       expect(find.text('So What'), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -204,7 +210,13 @@ void main() {
         ),
       );
       final card = find.byKey(const ValueKey('learn-listening'));
-      await tester.scrollUntilVisible(card, 100);
+      await tester.scrollUntilVisible(
+        card,
+        100,
+        // The page's own list, not the search box's text field,
+        // which is a scrollable too.
+        scrollable: find.byType(Scrollable).last,
+      );
       await tester.ensureVisible(card);
       await tester.pumpAndSettle();
       await tester.tap(card);
