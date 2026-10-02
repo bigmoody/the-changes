@@ -32,6 +32,7 @@ import 'hiding_the_chart.dart';
 import 'play_check.dart';
 import 'part_store.dart';
 import 'practice_record.dart';
+import '../settings/progression_store.dart';
 import 'recording_store.dart';
 import 'take_store.dart';
 
@@ -47,6 +48,7 @@ class PracticeController extends ChangeNotifier {
     this.takes,
     this.partStore,
     this.recordingStore,
+    this.progressions,
     this.library,
     TuneRef? ref,
     TakeRecorder? recorder,
@@ -144,6 +146,11 @@ class PracticeController extends ChangeNotifier {
 
   /// Where recordings of real players imported for this tune are kept.
   final RecordingStore? recordingStore;
+
+  /// The player's own progressions, so a take imported against one of
+  /// them can be matched to other tunes. Without it only the book's
+  /// standards are looked at, which is what tests get.
+  final ProgressionStore? progressions;
   TakeRecorder? _recorder;
   TakeRecorder get _tape => _recorder ??= TakeRecorder();
 
@@ -811,7 +818,38 @@ class PracticeController extends ChangeNotifier {
   // ── Real players instead of the generated band ─────────────────────────
 
   /// The recordings imported for this tune, which is usually none.
-  TakeSet get recordedTakes => recordingStore?.forTune(_ref) ?? TakeSet.empty;
+  TakeSet get ownTakes => recordingStore?.forTune(_ref) ?? TakeSet.empty;
+
+  /// Takes imported against another tune whose changes are these changes,
+  /// moved. Worked out from the charts, so a blues played in F backs every
+  /// blues in the book and not only the one it was imported against.
+  List<BorrowedTake> get borrowedTakes =>
+      recordingStore?.fitting(_tune, _ref, progressions: progressions) ??
+      const [];
+
+  /// Everything the band could be played from: this tune's own takes
+  /// first, then anything that fits.
+  TakeSet get recordedTakes => TakeSet([
+    ...ownTakes.takes,
+    for (final borrowed in borrowedTakes) borrowed.take,
+  ]);
+
+  /// Where the take now in use came from, when it was not imported for
+  /// this tune. Null for one of this tune's own.
+  ///
+  /// Said out loud wherever the take is named. Putting another tune's
+  /// players under a chart without saying so is the worst thing this could
+  /// do: it does not sound like the app made a mistake, it sounds like you
+  /// did.
+  BorrowedTake? get borrowedInUse {
+    final take = recordingInUse;
+    if (take == null) return null;
+    if (ownTakes.takes.any((own) => own.name == take.name)) return null;
+    for (final borrowed in borrowedTakes) {
+      if (borrowed.take.name == take.name) return borrowed;
+    }
+    return null;
+  }
 
   /// Whether the band should be real players when there are some.
   bool get useRecording => _useRecording && !recordedTakes.isEmpty;

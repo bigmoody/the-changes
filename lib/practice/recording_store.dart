@@ -23,9 +23,21 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../library/find_tune.dart';
 import '../library/library_store.dart';
 import '../music/recorded_take.dart';
+import '../music/same_changes.dart';
+import '../music/tune.dart';
 import '../settings/progression_store.dart';
+
+/// A take imported against one tune and offered to another, with how far
+/// it has to move to get here and where it came from.
+///
+/// The tune it came from is carried so it can be said out loud. Putting
+/// somebody else's changes under a chart without saying so would be the
+/// worst thing this could do: it does not sound like the app made a
+/// mistake, it sounds like you did.
+typedef BorrowedTake = ({RecordedTake take, String from, int semitones});
 
 /// Somewhere to keep the audio itself.
 abstract interface class RecordingFiles {
@@ -115,6 +127,43 @@ class RecordingStore extends ChangeNotifier {
   /// The takes imported for [ref], which is usually none.
   TakeSet forTune(TuneRef? ref) =>
       ref == null ? TakeSet.empty : _sets[ref] ?? TakeSet.empty;
+
+  /// The takes imported against some other tune whose changes are these
+  /// changes, moved.
+  ///
+  /// This is what makes a recording a band rather than a backing track.
+  /// Three files of people playing a blues in F are not a blues in F, they
+  /// are a blues: they will sit under any blues in the book at any key and
+  /// tempo the audio will stand, and keeping them locked to the one chart
+  /// they were imported against wasted most of what they are.
+  ///
+  /// [tune] is the chart as the band plays it, at concert pitch, not the
+  /// transposed one on screen.
+  List<BorrowedTake> fitting(
+    Tune tune,
+    TuneRef? ref, {
+    ProgressionStore? progressions,
+  }) {
+    final out = <BorrowedTake>[];
+    for (final entry in _sets.entries) {
+      if (entry.key == ref) continue;
+      final from = findTune(entry.key, progressions: progressions);
+      if (from == null) continue;
+      final match = movesOnto(from.tune, tune);
+      if (match == null) continue;
+      for (final take in entry.value.takes) {
+        out.add((
+          take: take,
+          from: from.tune.title,
+          semitones: match.semitones,
+        ));
+      }
+    }
+    // Steadiest first: a borrowed take is already a second choice, so the
+    // one that will sound best is the one worth offering first.
+    out.sort((a, b) => a.take.name.compareTo(b.take.name));
+    return out;
+  }
 
   int get count => _sets.values.fold(0, (all, set) => all + set.length);
 

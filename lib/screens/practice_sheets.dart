@@ -521,11 +521,23 @@ String _recordedBandSays(PracticeController controller) {
   if (takes.isEmpty) return 'Play a recording of real players instead';
   final take = controller.recordingInUse;
   final shift = controller.recordingShift;
+  // Where it came from, always, when it came from somewhere else. A take
+  // imported against another tune is the whole point of this working at
+  // all, and also the one thing nobody should ever discover by ear.
+  final borrowed = controller.borrowedInUse;
+  final from = borrowed == null ? '' : ' Played for ${borrowed.from}.';
   if (take == null || shift == null) {
-    return '${takes.length} ${takes.length == 1 ? 'take' : 'takes'}, '
-        'not being played';
+    final waiting = controller.borrowedTakes.length;
+    final mine = controller.ownTakes.length;
+    final counted = [
+      if (mine > 0) '$mine ${mine == 1 ? 'take' : 'takes'}',
+      if (waiting > 0)
+        '$waiting from ${waiting == 1 ? 'another tune' : 'other tunes'}',
+    ].join(', ');
+    return '$counted, not being played';
   }
-  return '${take.name}. ${shift.strain.label}, ${shift.cents.round()} cents';
+  return '${take.name}.$from '
+      '${shift.strain.label}, ${shift.cents.round()} cents';
 }
 
 /// How this tune is played: the groove, and what the bass and the chords

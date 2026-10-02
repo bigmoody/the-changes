@@ -86,6 +86,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
     takes: widget.takes,
     partStore: widget.partStore,
     recordingStore: widget.recordingStore,
+    progressions: widget.progressions,
     library: widget.library,
     ref: _ref,
     listener: widget.listener,

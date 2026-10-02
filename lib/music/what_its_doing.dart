@@ -29,6 +29,7 @@
 // learning cannot tell which it has done.
 
 import 'chord.dart';
+import 'chord_shape.dart';
 
 /// The jobs a chord can be doing that this can recognise.
 enum ChordJob {
@@ -76,36 +77,8 @@ typedef ChordMeaning = ({
   String? learn,
 });
 
-/// How a chord behaves, which is all the harmony here needs of it.
-enum _Kind { major, minor, dominant, halfDiminished, diminished, suspended }
-
-_Kind _kindOf(Chord chord) {
-  final formula = chord.quality.formula;
-  final third = formula.contains('b3');
-  final flatFive = formula.contains('b5');
-  final seventh = formula.contains('b7');
-  if (formula.contains('4') && !formula.contains('3') && !third) {
-    return _Kind.suspended;
-  }
-  if (formula.contains('bb7')) return _Kind.diminished;
-  if (third && flatFive) {
-    return seventh ? _Kind.halfDiminished : _Kind.diminished;
-  }
-  if (third) return _Kind.minor;
-  if (seventh) return _Kind.dominant;
-  return _Kind.major;
-}
-
-/// Whether [chord] is a dominant 7th of any colour, which is the one
-/// quality the whole of this turns on.
-bool _isDominant(Chord chord) {
-  final kind = _kindOf(chord);
-  // A 7sus is still a dominant for the purposes of where it is going: it
-  // is the same bass and the same destination with the 3rd held back.
-  return kind == _Kind.dominant ||
-      (kind == _Kind.suspended && chord.quality.formula.contains('b7'));
-}
-
+/// Whether [to] is a fourth above [from], which is where a dominant
+/// points.
 bool _resolvesTo(Chord from, Chord to) => (to.root - from.root) % 12 == 5;
 
 /// What to call a chord that something else is leaning on.
@@ -116,7 +89,7 @@ bool _resolvesTo(Chord from, Chord to) => (to.root - from.root) % 12 == 5;
 /// the ii and by the V, so the two halves of a ii-V cannot say different
 /// things about the chord they are both pointing at.
 String _targetName(Chord chord) =>
-    chord.rootName + (_kindOf(chord) == _Kind.minor ? 'm' : '');
+    chord.rootName + (shapeOf(chord) == ChordShape.minor ? 'm' : '');
 
 /// How far [to] is above [from], in semitones, 0 to 11.
 int _up(Chord from, Chord to) => (to.root - from.root) % 12;
@@ -142,17 +115,17 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
   final next = nextAt == null ? null : chords[nextAt];
   final after = afterAt == null ? null : chords[afterAt];
   final before = beforeAt == null ? null : chords[beforeAt];
-  final kind = _kindOf(chord);
+  final kind = shapeOf(chord);
 
   // A dominant, which is where nearly all of the movement in this music
   // comes from. What it is doing is decided by where it goes.
-  if (_isDominant(chord)) {
+  if (isDominant(chord)) {
     if (next != null) {
       if (_resolvesTo(chord, next)) {
         // Landing on another dominant is a link in a chain rather than an
         // arrival: the run of dominants round the bridge of rhythm
         // changes is six of these, not three cadences.
-        if (_isDominant(next) && after != null && _resolvesTo(next, after)) {
+        if (isDominant(next) && after != null && _resolvesTo(next, after)) {
           // How far the run of dominants goes on from here. Two of them
           // is a dominant of a dominant and nothing grander; four is the
           // bridge of rhythm changes, and calling those the same thing
@@ -176,7 +149,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
             learn: 'Chains of Dominants',
           );
         }
-        final home = _kindOf(next);
+        final home = shapeOf(next);
         return (
           job: ChordJob.dominant,
           tag: 'V of ${_targetName(next)}',
@@ -186,7 +159,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
               '${next.display}. The 3rd and the ♭7 of this chord are a '
               'tritone apart, and both of them move by a semitone into '
               '${next.rootName}, which is the whole of why it sounds '
-              'like an arrival${home == _Kind.minor ? ', minor or not' : ''}.',
+              'like an arrival${home == ChordShape.minor ? ', minor or not' : ''}.',
           learn: 'Guide Tones',
         );
       }
@@ -213,7 +186,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
         );
       }
       // A ♭VII7 going to the I, the long way home.
-      if (_up(chord, next) == 2 && _kindOf(next) == _Kind.major) {
+      if (_up(chord, next) == 2 && shapeOf(next) == ChordShape.major) {
         return (
           job: ChordJob.backdoor,
           tag: 'backdoor',
@@ -253,7 +226,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
       // under half the bars of a twelve-bar and told its reader something
       // untrue about all of them.
       if (before != null &&
-          _kindOf(before) == _Kind.minor &&
+          shapeOf(before) == ChordShape.minor &&
           _resolvesTo(before, chord)) {
         return (
           job: ChordJob.deceptive,
@@ -275,9 +248,9 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
 
   // A minor chord in front of a dominant is the ii of a ii-V, whether or
   // not the I ever turns up.
-  if ((kind == _Kind.minor || kind == _Kind.halfDiminished) &&
+  if ((kind == ChordShape.minor || kind == ChordShape.halfDiminished) &&
       next != null &&
-      _isDominant(next) &&
+      isDominant(next) &&
       _resolvesTo(chord, next)) {
     // Where the dominant it leans on is a backdoor, this is the iv in
     // front of it and the pair is going somewhere else entirely. Saying
@@ -285,7 +258,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
     // disagreeing about where it is headed.
     if (after != null &&
         _up(next, after) == 2 &&
-        _kindOf(after) == _Kind.major) {
+        shapeOf(after) == ChordShape.major) {
       return (
         job: ChordJob.backdoor,
         tag: 'backdoor iv',
@@ -341,8 +314,8 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
   if (before != null &&
       at > 0 &&
       !_same(chords[at - 1], chord) &&
-      _isDominant(before) &&
-      (kind == _Kind.major || kind == _Kind.minor)) {
+      isDominant(before) &&
+      (kind == ChordShape.major || kind == ChordShape.minor)) {
     if (_up(before, chord) == 11) {
       return (
         job: ChordJob.tonic,
@@ -356,7 +329,7 @@ ChordMeaning? whatItIsDoing(List<Chord> chords, int at) {
         learn: 'Tritone Subs',
       );
     }
-    if (_up(before, chord) == 2 && kind == _Kind.major) {
+    if (_up(before, chord) == 2 && kind == ChordShape.major) {
       return (
         job: ChordJob.tonic,
         tag: 'lands',
@@ -404,8 +377,7 @@ int _runLength(List<Chord> chords, int at) {
   while (true) {
     final next = _nextChange(chords, here);
     if (next == null) break;
-    if (!_isDominant(chords[next]) ||
-        !_resolvesTo(chords[here], chords[next])) {
+    if (!isDominant(chords[next]) || !_resolvesTo(chords[here], chords[next])) {
       break;
     }
     count++;
@@ -415,8 +387,7 @@ int _runLength(List<Chord> chords, int at) {
   while (true) {
     final back = _lastChange(chords, here);
     if (back == null) break;
-    if (!_isDominant(chords[back]) ||
-        !_resolvesTo(chords[back], chords[here])) {
+    if (!isDominant(chords[back]) || !_resolvesTo(chords[back], chords[here])) {
       break;
     }
     count++;
@@ -432,12 +403,14 @@ int _runLength(List<Chord> chords, int at) {
 /// in C and goes Eø7 A7 | Dm7 G7 | C: the first pair lands on Dm, which
 /// is not where the tune is going, it is the start of the pair that is.
 bool _startsAnApproach(List<Chord> chords, int at) {
-  final kind = _kindOf(chords[at]);
-  if (kind != _Kind.minor && kind != _Kind.halfDiminished) return false;
+  final kind = shapeOf(chords[at]);
+  if (kind != ChordShape.minor && kind != ChordShape.halfDiminished) {
+    return false;
+  }
   final nextAt = _nextChange(chords, at);
   if (nextAt == null) return false;
   final next = chords[nextAt];
-  return _isDominant(next) && _resolvesTo(chords[at], next);
+  return isDominant(next) && _resolvesTo(chords[at], next);
 }
 
 /// Whether two chords are the same chord, as a chart would mean it: a bar
