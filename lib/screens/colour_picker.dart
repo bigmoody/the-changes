@@ -1,9 +1,15 @@
 // Choosing a colour by hand.
 //
-// Hue, depth and brightness, rather than a grid of swatches. Three sliders
-// are not as nice as pointing at the colour you mean, but they reach every
-// colour, which a grid does not, and the people this is for already know
-// which colour they want.
+// A square of one hue with saturation across and brightness up, and a
+// strip of hues under it: the arrangement every colour picker uses, which
+// is the reason to use it. Nobody has to be taught it.
+//
+// It was three sliders for a while. They reached every colour, which a
+// grid of swatches does not, but naming one of the axes "depth" and
+// asking somebody to imagine the result is a strange thing to do when the
+// colours can simply be shown. Pointing at the colour you mean is the
+// whole idea, and for the people this is for, who already see the colour
+// they are looking for, it is the only thing that matters.
 //
 // Whatever is being coloured is shown while the sliders move, drawn the
 // way it will really appear, because that is the only question worth
@@ -58,7 +64,7 @@ class _Picker extends StatefulWidget {
 }
 
 class _PickerState extends State<_Picker> {
-  late HSLColor _colour = HSLColor.fromColor(
+  late HSVColor _colour = HSVColor.fromColor(
     widget.start ?? const Color(0xFFC23B22),
   );
 
@@ -76,28 +82,33 @@ class _PickerState extends State<_Picker> {
             Text(widget.title, style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
             widget.preview(chosen),
-            const SizedBox(height: 8),
-            _Slider(
-              name: 'Hue',
-              value: _colour.hue,
-              max: 360,
-              onChanged: (v) => setState(() => _colour = _colour.withHue(v)),
+            const SizedBox(height: 12),
+            // The square is every colour of one hue: saturation across,
+            // brightness up. The strip underneath picks the hue. It is
+            // the arrangement every colour picker uses, which is the
+            // reason to use it: nobody has to be taught it.
+            SizedBox(
+              height: 170,
+              child: _Field(
+                key: const ValueKey('colour-field'),
+                colour: _colour,
+                onPick: (saturation, value) => setState(
+                  () => _colour = _colour
+                      .withSaturation(saturation)
+                      .withValue(value),
+                ),
+              ),
             ),
-            _Slider(
-              name: 'Depth',
-              value: _colour.saturation,
-              max: 1,
-              onChanged: (v) =>
-                  setState(() => _colour = _colour.withSaturation(v)),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 32,
+              child: _Hues(
+                key: const ValueKey('colour-hues'),
+                hue: _colour.hue,
+                onPick: (hue) => setState(() => _colour = _colour.withHue(hue)),
+              ),
             ),
-            _Slider(
-              name: 'Brightness',
-              value: _colour.lightness,
-              max: 1,
-              onChanged: (v) =>
-                  setState(() => _colour = _colour.withLightness(v)),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 if (widget.clearLabel case final label?)
@@ -121,31 +132,137 @@ class _PickerState extends State<_Picker> {
   }
 }
 
-class _Slider extends StatelessWidget {
-  const _Slider({
-    required this.name,
-    required this.value,
-    required this.max,
-    required this.onChanged,
-  });
+/// Every colour of one hue: saturation left to right, brightness bottom
+/// to top. Drag anywhere in it.
+class _Field extends StatelessWidget {
+  const _Field({super.key, required this.colour, required this.onPick});
 
-  final String name;
-  final double value;
-  final double max;
-  final ValueChanged<double> onChanged;
+  final HSVColor colour;
+  final void Function(double saturation, double value) onPick;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      SizedBox(width: 86, child: Text(name)),
-      Expanded(
-        child: Slider(
-          key: ValueKey('slider-$name'),
-          value: value.clamp(0, max),
-          max: max,
-          onChanged: onChanged,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, size) {
+      void pick(Offset at) => onPick(
+        (at.dx / size.maxWidth).clamp(0.0, 1.0),
+        (1 - at.dy / size.maxHeight).clamp(0.0, 1.0),
+      );
+      // Pointer events rather than a pan gesture: the sheet this sits in
+      // drags to dismiss, and a vertical pan here was being taken by the
+      // sheet. Brightness is the vertical axis, so that is most of the
+      // square not working.
+      return Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (event) => pick(event.localPosition),
+        onPointerMove: (event) => pick(event.localPosition),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Stack(
+            children: [
+              // The hue at full strength, then white washed in from the
+              // left and black from the bottom: saturation and
+              // brightness, drawn rather than computed.
+              Positioned.fill(
+                child: ColoredBox(
+                  color: HSVColor.fromAHSV(1, colour.hue, 1, 1).toColor(),
+                ),
+              ),
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.white, Color(0x00FFFFFF)],
+                    ),
+                  ),
+                ),
+              ),
+              const Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [Colors.black, Color(0x00000000)],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: colour.saturation * size.maxWidth - 11,
+                top: (1 - colour.value) * size.maxHeight - 11,
+                child: const _Spot(),
+              ),
+            ],
+          ),
         ),
-      ),
-    ],
+      );
+    },
+  );
+}
+
+/// The hues, in a strip.
+class _Hues extends StatelessWidget {
+  const _Hues({super.key, required this.hue, required this.onPick});
+
+  final double hue;
+  final void Function(double hue) onPick;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, size) {
+      void pick(Offset at) =>
+          onPick((at.dx / size.maxWidth).clamp(0.0, 1.0) * 360);
+      return Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (event) => pick(event.localPosition),
+        onPointerMove: (event) => pick(event.localPosition),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        for (var stop = 0; stop <= 6; stop++)
+                          HSVColor.fromAHSV(
+                            1,
+                            stop * 60.0 % 360,
+                            1,
+                            1,
+                          ).toColor(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: hue / 360 * size.maxWidth - 11,
+                top: 5,
+                child: const _Spot(),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// Where you are: a ring rather than a dot, so the colour under it is
+/// still the colour you are looking at.
+class _Spot extends StatelessWidget {
+  const _Spot();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 22,
+    height: 22,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: Colors.white, width: 3),
+      boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 3)],
+    ),
   );
 }
