@@ -385,7 +385,7 @@ class PracticeController extends ChangeNotifier {
     // playing one, so the only way to hear a change is to render again.
     // Compared against what was last rendered rather than restarting on
     // every settings change, most of which the band does not care about.
-    final levels = settings.drumLevels.toJson().toString();
+    final levels = '${settings.drumLevels.toJson()} ${settings.swing}';
     if (_renderedLevels != null && _renderedLevels != levels) {
       // Enough of a wait that dragging a slider does not re-render on
       // every pixel of it.
@@ -395,7 +395,9 @@ class PracticeController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// The drum levels the band was last built with.
+  /// The drum levels and the swing the band was last built with. Both are
+  /// mixed in before a note sounds, so a change to either needs the band
+  /// building again rather than setting on the one that is playing.
   String? _renderedLevels;
 
   /// How often the clock is being read, so a change can be noticed.
@@ -950,6 +952,7 @@ class PracticeController extends ChangeNotifier {
         arrangement: arrangement ?? take.arrangement,
         imported: _imported?.transposedBy(take.semitones),
         drumLevels: settings.drumLevels,
+        swing: settings.swing,
       );
 
   BackingRequest _exportRequest({Arrangement? arrangement}) => BackingRequest(
@@ -968,6 +971,7 @@ class PracticeController extends ChangeNotifier {
     arrangement: arrangement ?? _arrangement,
     imported: _imported?.transposedBy(_semitones),
     drumLevels: settings.drumLevels,
+    swing: settings.swing,
   );
 
   /// Writes the band out as a WAV and hands it to the share sheet. With
@@ -1144,6 +1148,7 @@ class PracticeController extends ChangeNotifier {
           arrangement: _arrangement,
           imported: _imported?.transposedBy(_semitones),
           drumLevels: settings.drumLevels,
+          swing: settings.swing,
         ),
         alongside: takePath,
         recording: recording,

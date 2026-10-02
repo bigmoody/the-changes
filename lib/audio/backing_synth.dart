@@ -124,6 +124,7 @@ class BackingRequest {
     this.arrangement = Arrangement.keepGoing,
     this.imported,
     this.drumLevels = const DrumLevels(),
+    this.swing,
   });
 
   final Tune tune;
@@ -153,6 +154,12 @@ class BackingRequest {
   /// How loud each drum is on its own. Empty renders the kit as it was
   /// recorded, which is what it does for everybody who never asks.
   final DrumLevels drumLevels;
+
+  /// Where the "and" falls, when somebody has said rather than letting it
+  /// follow the tempo. Null is the usual case and the better one: the
+  /// band swings the way a player would at whatever tempo it is asked
+  /// for, and a number set here stops that happening.
+  final double? swing;
 
   /// Whether to add a part playing each chord as a broken chord.
   final bool arpeggios;
@@ -286,7 +293,7 @@ class RenderedBacking {
 /// while it speeds up. Each part still decides for itself whether it is
 /// swinging at all: this is only how far.
 double swingForPass(BackingRequest request, int firstChorus) =>
-    swingAt(tempoForChorus(request, firstChorus));
+    request.swing ?? swingAt(tempoForChorus(request, firstChorus));
 
 /// The tempo on a given pass through the form: the tempo asked for, plus
 /// whatever a tempo ramp has added to it by then.
