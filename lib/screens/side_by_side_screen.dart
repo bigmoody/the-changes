@@ -35,29 +35,34 @@ class SideBySideScreen extends StatefulWidget {
   State<SideBySideScreen> createState() => _SideBySideScreenState();
 }
 
+/// "An E♭ instrument", "a B♭ instrument": by how the letter is said, not
+/// by how it is spelled. E and F start with a vowel sound; B and C do not.
+String _article(String symbol) => 'AEF'.contains(symbol[0]) ? 'an' : 'a';
+
 class _SideBySideScreenState extends State<SideBySideScreen> {
   var _chosen = comparisons.first;
 
-  /// The key the table is written in, as the player reads it.
+  /// The key the music is in, as everybody in the room would name it.
   ///
-  /// Each comparison carries a key it is best read in, and that is where
-  /// it opens. But the reason to read three blues against each other is
-  /// usually that you are about to play one, and the key you are about to
-  /// play it in is not always the key it reads best in. So it moves.
+  /// The set's own, which is the key it reads best in and the key the
+  /// note above the table is about. The thing that moves on this screen
+  /// is which edition you read it in, not which key the music is in: a
+  /// chromatic key chooser next to the editions is two key controls on
+  /// one page, and nobody could tell you which of them had done what.
+  String get _concert => _chosen.key;
+
+  /// Which instrument's edition is on the page: C, B♭, E♭ or F.
   ///
-  /// Written rather than sounding, which is what every other key control
-  /// in the app means and what a player wants: the point of the table is
-  /// to be read. A B♭ player reading F here is reading the F they would
-  /// read on a stand, and the band underneath plays the E♭ that makes.
-  late String _key = _asRead(_chosen.key);
+  /// The four transposing groups, the way a fake book is printed in three
+  /// or four editions of the same music. It opens on the player's own
+  /// instrument and can be moved to any of the others, because the other
+  /// reason to look at a table like this is to put it in front of
+  /// somebody whose horn is not the one you play.
+  late ChartInstrument _reading = widget.settings.instrument;
 
-  /// The written name of a key that sounds as [concert].
-  String _asRead(String concert) =>
-      majorKeyNames[(tonicOf(concert) + widget.settings.instrument.semitones) %
-          12];
-
-  /// Whether the table is where this comparison was meant to be read.
-  bool get _inItsOwnKey => _key == _asRead(_chosen.key);
+  /// The key on the page: the concert key as [_reading] writes it.
+  String get _key =>
+      majorKeyNames[(tonicOf(_concert) + _reading.semitones) % 12];
 
   /// Whether the note about the key is open. Shut to start with: the
   /// table is what the screen is for, and an answer nobody asked for
@@ -87,10 +92,7 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
   List<Tune> get _sounding => [
     for (final title in _chosen.titles)
       if (standards.where((t) => t.title == title).firstOrNull case final tune?)
-        tune.transposed(
-          (semitonesInto(tune, _key) - widget.settings.instrument.semitones) %
-              12,
-        ),
+        tune.transposed(semitonesInto(tune, _concert)),
   ];
 
   @override
@@ -184,11 +186,6 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
                       unawaited(_stop());
                       setState(() {
                         _chosen = comparison;
-                        // Back to the key this one reads best in. Keeping
-                        // the last key would carry a choice made about
-                        // one set of tunes onto another it was never
-                        // made about.
-                        _key = _asRead(comparison.key);
                         _whyOpen = false;
                       });
                     },
@@ -205,21 +202,25 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
               ),
             ),
           ),
+          // Which edition is on the page. The four transposing groups,
+          // the way a fake book is printed as a C book, a B♭ book and an
+          // E♭ book of the same music: the table is the same comparison
+          // whichever one you read, and the band plays the same notes.
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-            child: Wrap(
-              spacing: 6,
-              runSpacing: 4,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(
               children: [
-                for (final key in majorKeyNames)
-                  ChoiceChip(
-                    key: ValueKey('key-$key'),
-                    label: Text(key),
-                    selected: _key == key,
-                    onSelected: (_) {
-                      unawaited(_stop());
-                      setState(() => _key = key);
-                    },
+                Text('For', style: theme.textTheme.labelMedium),
+                const SizedBox(width: 10),
+                for (final instrument in ChartInstrument.values)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      key: ValueKey('reads-${instrument.symbol}'),
+                      label: Text(instrument.symbol),
+                      selected: _reading == instrument,
+                      onSelected: (_) => setState(() => _reading = instrument),
+                    ),
                   ),
               ],
             ),
@@ -227,7 +228,10 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Text(
-              'All in $_key · ${barsThatDiffer(rows)} of '
+              '${_reading == ChartInstrument.concert ? 'All in $_key' : 'In $_key, which is the $_concert '
+                        '${_article(_reading.symbol)} '
+                        '${_reading.symbol} instrument reads'} · '
+              '${barsThatDiffer(rows)} of '
               '${rows.length} bars differ · play one to hear it through',
               key: const ValueKey('summary'),
               style: theme.textTheme.labelMedium?.copyWith(
@@ -235,36 +239,15 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
               ),
             ),
           ),
-          // Only where the table is still in the key the note is about.
-          // It says why this comparison reads best in that key, and over
-          // a table somebody has moved somewhere else it would be
-          // answering a question nobody asked any more.
-          // What the key on the page means for somebody whose horn is
-          // not in C. The table moves for them, but nothing on it said
-          // so, and a page that reads D while every other screen calls
-          // the same music F looks like a transposition that was never
-          // applied rather than one that was.
-          if (widget.settings.instrument != ChartInstrument.concert)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-              child: Text(
-                'As an ${widget.settings.instrument.symbol} instrument '
-                'reads it. The band plays the '
-                '${majorKeyNames[(tonicOf(_key) - widget.settings.instrument.semitones) % 12]} that makes.',
-                key: const ValueKey('as-you-read-it'),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+          // Why this set is in the key it is in, where there is anything
+          // to say about it.
+          if (whyThisKey(_chosen.key) case final note?)
+            _WhyTheKey(
+              musicKey: _chosen.key,
+              note: note,
+              open: _whyOpen,
+              onToggle: () => setState(() => _whyOpen = !_whyOpen),
             ),
-          if (_inItsOwnKey)
-            if (whyThisKey(_chosen.key) case final note?)
-              _WhyTheKey(
-                musicKey: _chosen.key,
-                note: note,
-                open: _whyOpen,
-                onToggle: () => setState(() => _whyOpen = !_whyOpen),
-              ),
           _Heading(
             tunes: tunes,
             playing: _playingColumn,
