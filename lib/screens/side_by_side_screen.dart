@@ -38,13 +38,26 @@ class SideBySideScreen extends StatefulWidget {
 class _SideBySideScreenState extends State<SideBySideScreen> {
   var _chosen = comparisons.first;
 
-  /// The key the table is written in.
+  /// The key the table is written in, as the player reads it.
   ///
   /// Each comparison carries a key it is best read in, and that is where
   /// it opens. But the reason to read three blues against each other is
   /// usually that you are about to play one, and the key you are about to
   /// play it in is not always the key it reads best in. So it moves.
-  late String _key = _chosen.key;
+  ///
+  /// Written rather than sounding, which is what every other key control
+  /// in the app means and what a player wants: the point of the table is
+  /// to be read. A B♭ player reading F here is reading the F they would
+  /// read on a stand, and the band underneath plays the E♭ that makes.
+  late String _key = _asRead(_chosen.key);
+
+  /// The written name of a key that sounds as [concert].
+  String _asRead(String concert) =>
+      majorKeyNames[(tonicOf(concert) + widget.settings.instrument.semitones) %
+          12];
+
+  /// Whether the table is where this comparison was meant to be read.
+  bool get _inItsOwnKey => _key == _asRead(_chosen.key);
 
   /// Whether the note about the key is open. Shut to start with: the
   /// table is what the screen is for, and an answer nobody asked for
@@ -59,11 +72,25 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
   int? _playingBar;
   Timer? _ticker;
 
-  /// The versions, all moved into the comparison's key.
+  /// The versions as they are read, all moved into [_key].
   List<Tune> get _tunes => [
     for (final title in _chosen.titles)
       if (standards.where((t) => t.title == title).firstOrNull case final tune?)
         tune.transposed(semitonesInto(tune, _key)),
+  ];
+
+  /// The same versions as they sound, which is what the band is given.
+  ///
+  /// A table written for a B♭ player and handed to the band as written
+  /// would play a tone above what it says, which is the one mistake a
+  /// transposing instrument makes everybody make at least once.
+  List<Tune> get _sounding => [
+    for (final title in _chosen.titles)
+      if (standards.where((t) => t.title == title).firstOrNull case final tune?)
+        tune.transposed(
+          (semitonesInto(tune, _key) - widget.settings.instrument.semitones) %
+              12,
+        ),
   ];
 
   @override
@@ -86,6 +113,8 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
   }
 
   /// Plays one version through, once, with the band.
+  ///
+  /// [tunes] is what sounds, not what is on the page: see [_sounding].
   Future<void> _play(List<Tune> tunes, int column) async {
     if (_playingColumn == column) {
       await _stop();
@@ -159,7 +188,7 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
                         // the last key would carry a choice made about
                         // one set of tunes onto another it was never
                         // made about.
-                        _key = comparison.key;
+                        _key = _asRead(comparison.key);
                         _whyOpen = false;
                       });
                     },
@@ -210,7 +239,7 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
           // It says why this comparison reads best in that key, and over
           // a table somebody has moved somewhere else it would be
           // answering a question nobody asked any more.
-          if (_key == _chosen.key)
+          if (_inItsOwnKey)
             if (whyThisKey(_chosen.key) case final note?)
               _WhyTheKey(
                 musicKey: _chosen.key,
@@ -221,7 +250,7 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
           _Heading(
             tunes: tunes,
             playing: _playingColumn,
-            onPlay: (column) => _play(tunes, column),
+            onPlay: (column) => _play(_sounding, column),
           ),
           for (final row in rows)
             _Row(row: row, playingColumn: _playingColumn, at: _playingBar),

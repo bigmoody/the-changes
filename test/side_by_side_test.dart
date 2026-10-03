@@ -13,6 +13,10 @@ import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
 class _FakePlayer extends PracticePlayer {
+  /// What the band was last asked to play, so a test can tell what is on
+  /// the page from what comes out of the speaker.
+  BackingRequest? asked;
+
   @override
   Future<void> start(
     BackingRequest request, {
@@ -20,7 +24,9 @@ class _FakePlayer extends PracticePlayer {
     Duration leadIn = Duration.zero,
     int pickUpBeats = 0,
     PlayableRecording? recording,
-  }) async {}
+  }) async {
+    asked = request;
+  }
 
   @override
   Future<void> stop() async {}
@@ -241,6 +247,62 @@ void main() {
         );
       }
       expect(find.text('F7'), findsWidgets, reason: 'chords, straight away');
+    });
+
+    testWidgets('a transposing player reads their own key', (tester) async {
+      // Every other key control in the app names the key you read, and
+      // the point of this table is to be read. A B♭ player opening the
+      // blues set, which is meant to be heard in F, reads it in G.
+      tester.view
+        ..physicalSize = const Size(393, 852) * 3
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final settings = AppSettings.inMemory(ChartInstrument.bFlat);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(Brightness.light),
+          home: SideBySideScreen(player: _FakePlayer(), settings: settings),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('All in G'),
+      );
+      expect(find.textContaining('G7'), findsWidgets);
+      // And the note about the key still belongs: this is where the set
+      // was meant to be read, in the only key this player has.
+      expect(find.textContaining('Why F'), findsOneWidget);
+    });
+
+    testWidgets('and the band plays what that sounds, not what it says', (
+      tester,
+    ) async {
+      // The one mistake a transposing instrument makes everybody make at
+      // least once: handing the band the page and hearing it a tone high.
+      tester.view
+        ..physicalSize = const Size(393, 852) * 3
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final player = _FakePlayer();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(Brightness.light),
+          home: SideBySideScreen(
+            player: player,
+            settings: AppSettings.inMemory(ChartInstrument.bFlat),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(IconButton).first);
+      await tester.pumpAndSettle();
+      expect(player.asked, isNotNull);
+      expect(
+        tonicOf(player.asked!.tune.key),
+        tonicOf('F'),
+        reason: 'read in G, sounds in F',
+      );
     });
 
     testWidgets('the table moves into whatever key you ask for', (
