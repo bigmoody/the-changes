@@ -39,6 +39,84 @@ const topPalmNote = 89;
 const _lowestStart = 60;
 const _highestStart = 71;
 
+/// A key the hand holds down to make a palm note.
+///
+/// Only the keys these four notes need, which is why there is no low C♯
+/// or side B♭ in here: this is a palm key page and the list is the palm
+/// keys, the octave key they all sit on, and the one right-hand key that
+/// turns out to be part of the top of the horn.
+enum SaxKey {
+  octave('Octave', 'left thumb'),
+  palmD('D', 'palm'),
+  palmEFlat('E♭', 'palm'),
+  palmF('F', 'palm'),
+
+  /// The upper right-hand side key, pressed with the side of the hand.
+  ///
+  /// The one most people are surprised by, and the reason high E is not
+  /// just high E♭ with something added on the left: the right hand, which
+  /// has nothing else to do up here, comes back for the top three notes.
+  sideE('E', 'right-hand side');
+
+  const SaxKey(this.label, this.where);
+
+  /// What the key is called, which is the note it first gives you.
+  final String label;
+
+  /// Where on the horn it is, in two or three words.
+  final String where;
+
+  /// How to say it in a line of them, which is not how it is labelled on
+  /// the map.
+  ///
+  /// On the map a key is a shape in a place and the letter is enough. In
+  /// a line the places are gone, and "Octave + D + E♭ + F + E" reads as
+  /// five palm keys, of which there are three. So the line says which
+  /// hand is doing what.
+  String get said => switch (this) {
+    SaxKey.octave => 'Octave',
+    SaxKey.sideE => 'side E',
+    _ => 'palm $label',
+  };
+}
+
+/// How one palm note is fingered: every key held down, in the order the
+/// hand takes them.
+typedef PalmFingering = ({int pitch, String name, List<SaxKey> keys});
+
+/// The four notes the palm keys make, and what holds each one down.
+///
+/// Written pitch, so this one list serves alto, tenor, soprano and
+/// baritone: the palm keys are the same written notes on all of them.
+///
+/// F♯ is not here. It is a side key worked by the right hand, a different
+/// problem with a different solution, and the exercises stop at F for the
+/// same reason.
+const palmFingerings = <PalmFingering>[
+  (pitch: 86, name: 'D', keys: [SaxKey.octave, SaxKey.palmD]),
+  (
+    pitch: 87,
+    name: 'E♭',
+    keys: [SaxKey.octave, SaxKey.palmD, SaxKey.palmEFlat],
+  ),
+  (
+    pitch: 88,
+    name: 'E',
+    keys: [SaxKey.octave, SaxKey.palmD, SaxKey.palmEFlat, SaxKey.sideE],
+  ),
+  (
+    pitch: 89,
+    name: 'F',
+    keys: [
+      SaxKey.octave,
+      SaxKey.palmD,
+      SaxKey.palmEFlat,
+      SaxKey.palmF,
+      SaxKey.sideE,
+    ],
+  ),
+];
+
 /// One note of an exercise: what to play and what it is called.
 typedef ExerciseNote = ({int pitch, String name});
 

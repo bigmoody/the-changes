@@ -184,57 +184,145 @@ class _PalmKeysScreenState extends State<PalmKeysScreen> {
   }
 }
 
-/// Where the three palm keys are, and which note each is named for.
+/// Where the three palm keys are, and what is held down for each note.
 ///
-/// A map rather than a fingering chart. Which keys combine for which note
-/// is a thing to be right about or leave out, and this says only what is
-/// certain: there are three, they sit under the side of the left palm in
-/// this order, and each is named for the note it first gives you.
-class _TheKeys extends StatelessWidget {
+/// The map and the fingerings together, because apart they are two half
+/// answers: the map says there are three keys under the side of the left
+/// palm and the fingerings say which of them combine for what. Tapping a
+/// note lights the keys it holds down, so the thing being learned, that
+/// the notes stack rather than replace each other, can be seen happening
+/// rather than read about.
+class _TheKeys extends StatefulWidget {
   const _TheKeys();
+
+  @override
+  State<_TheKeys> createState() => _TheKeysState();
+}
+
+class _TheKeysState extends State<_TheKeys> {
+  /// Which note's fingering is being shown. Starts on F, the one people
+  /// come to this page for.
+  var _showing = palmFingerings.last;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final held = _showing.keys.toSet();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drawn top to bottom as they sit on the horn, the F highest
-          // and furthest from the hand.
-          Column(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (final name in ['F', 'E♭', 'D'])
-                Container(
-                  key: ValueKey('palm-key-$name'),
-                  width: 54,
-                  height: 26,
-                  margin: const EdgeInsets.only(bottom: 5),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHigh,
-                    border: Border.all(color: scheme.outlineVariant),
-                    borderRadius: BorderRadius.circular(13),
+              // Drawn top to bottom as they sit on the horn, the F
+              // highest and furthest from the hand.
+              Column(
+                children: [
+                  for (final key in [
+                    SaxKey.palmF,
+                    SaxKey.palmEFlat,
+                    SaxKey.palmD,
+                  ])
+                    _Key(saxKey: key, down: held.contains(key)),
+                  const SizedBox(height: 6),
+                  // Apart from the three, and below them, because it is
+                  // the other hand entirely.
+                  _Key(saxKey: SaxKey.sideE, down: held.contains(SaxKey.sideE)),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  'Three keys under the side of the left palm, each named '
+                  'for the note it first gives you, and the octave key '
+                  'down for all of them. The hand rolls outwards onto them '
+                  'and back, which is why the join is a movement rather '
+                  'than a finger. The fourth is the upper right-hand side '
+                  'key, taken with the side of the other hand: it is what '
+                  'makes E out of E♭, and the reason the right hand cannot '
+                  'be left behind at the top.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
                   ),
-                  child: Text(name, style: theme.textTheme.labelLarge),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final fingering in palmFingerings)
+                ChoiceChip(
+                  key: ValueKey('fingering-${fingering.name}'),
+                  label: Text(fingering.name),
+                  selected: fingering.name == _showing.name,
+                  onSelected: (_) => setState(() => _showing = fingering),
                 ),
             ],
           ),
-          const SizedBox(width: 14),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Three keys under the side of the left palm, each named for '
-              'the note it first gives you. The octave key is down for all '
-              'of them. The hand rolls outwards onto them and back, which '
-              'is why the join is a movement rather than a finger.',
+              '${_showing.name}: '
+              '${_showing.keys.map((k) => k.said).join(' + ')}',
+              key: const ValueKey('fingering-line'),
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: scheme.tertiary,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Nothing is let go of on the way up: every note keeps what '
+              'the one below it was holding. F♯ is left out, because it is '
+              'a side key worked by the right hand and a different problem '
+              'with a different solution.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// One key on the map, drawn down or up.
+class _Key extends StatelessWidget {
+  const _Key({required this.saxKey, required this.down});
+
+  final SaxKey saxKey;
+  final bool down;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Container(
+      key: ValueKey('palm-key-${saxKey.name}'),
+      width: 54,
+      height: 26,
+      margin: const EdgeInsets.only(bottom: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: down ? scheme.tertiary : scheme.surfaceContainerHigh,
+        border: Border.all(
+          color: down ? scheme.tertiary : scheme.outlineVariant,
+        ),
+        borderRadius: BorderRadius.circular(13),
+      ),
+      child: Text(
+        saxKey.label,
+        style: theme.textTheme.labelLarge?.copyWith(
+          color: down ? scheme.onTertiary : null,
+        ),
       ),
     );
   }
