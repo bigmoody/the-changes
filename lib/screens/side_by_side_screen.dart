@@ -239,6 +239,24 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
           // It says why this comparison reads best in that key, and over
           // a table somebody has moved somewhere else it would be
           // answering a question nobody asked any more.
+          // What the key on the page means for somebody whose horn is
+          // not in C. The table moves for them, but nothing on it said
+          // so, and a page that reads D while every other screen calls
+          // the same music F looks like a transposition that was never
+          // applied rather than one that was.
+          if (widget.settings.instrument != ChartInstrument.concert)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Text(
+                'As an ${widget.settings.instrument.symbol} instrument '
+                'reads it. The band plays the '
+                '${majorKeyNames[(tonicOf(_key) - widget.settings.instrument.semitones) % 12]} that makes.',
+                key: const ValueKey('as-you-read-it'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
           if (_inItsOwnKey)
             if (whyThisKey(_chosen.key) case final note?)
               _WhyTheKey(

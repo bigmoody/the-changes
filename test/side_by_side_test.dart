@@ -275,6 +275,38 @@ void main() {
       expect(find.textContaining('Why F'), findsOneWidget);
     });
 
+    testWidgets('and it says whose key that is', (tester) async {
+      // The table did move for a transposing player and nothing on it
+      // said so, which reads as a transposition that was never applied
+      // rather than one that was.
+      tester.view
+        ..physicalSize = const Size(393, 852) * 3
+        ..devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: appTheme(Brightness.light),
+          home: SideBySideScreen(
+            player: _FakePlayer(),
+            settings: AppSettings.inMemory(ChartInstrument.eFlat),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final said = tester
+          .widget<Text>(find.byKey(const ValueKey('as-you-read-it')))
+          .data!;
+      expect(said, contains('E♭ instrument'));
+      expect(said, contains('F'), reason: 'what the band plays');
+    });
+
+    testWidgets('and says nothing of the sort to a concert player', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(find.byKey(const ValueKey('as-you-read-it')), findsNothing);
+    });
+
     testWidgets('and the band plays what that sounds, not what it says', (
       tester,
     ) async {
