@@ -48,6 +48,7 @@ import 'passing_chords_screen.dart';
 import 'phrasing_screen.dart';
 import 'trading_screen.dart';
 import 'dominant_chains_screen.dart';
+import 'palm_keys_screen.dart';
 import 'tritone_subs_screen.dart';
 import 'side_by_side_screen.dart';
 import 'upper_structures_screen.dart';
@@ -336,6 +337,15 @@ class _LearnPageState extends State<LearnPage> {
             'to play when the chord changes and you are already on one',
         onTap: () =>
             open(ThroughTheChangesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-palm-keys'),
+        icon: Icons.back_hand_outlined,
+        title: 'Palm Keys',
+        subtitle:
+            'For saxophone: scales and arpeggios that run up out of the '
+            'top of the range and back down, in all twelve',
+        onTap: () => open(PalmKeysScreen(player: player)),
       ),
       _LearnCard(
         key: const ValueKey('learn-dominant-chains'),
