@@ -44,12 +44,18 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
 
   /// The key the music is in, as everybody in the room would name it.
   ///
-  /// The set's own, which is the key it reads best in and the key the
-  /// note above the table is about. The thing that moves on this screen
-  /// is which edition you read it in, not which key the music is in: a
-  /// chromatic key chooser next to the editions is two key controls on
-  /// one page, and nobody could tell you which of them had done what.
-  String get _concert => _chosen.key;
+  /// Each comparison carries the key it reads best in, and that is where
+  /// it opens. But the reason to read three blues against each other is
+  /// usually that you are about to play one, and the key a set reads
+  /// best in is not always the key you are about to play it in. So it
+  /// moves, through all twelve.
+  ///
+  /// Kept apart from the edition on purpose, and labelled, because the
+  /// two are easily confused and do completely different things: this
+  /// one changes what the band plays, and the edition changes only whose
+  /// page it is written on. Left unlabelled side by side, both of them
+  /// just look like the chords changing letter.
+  late String _concert = _chosen.key;
 
   /// Which instrument's edition is on the page: C, B♭, E♭ or F.
   ///
@@ -59,6 +65,9 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
   /// reason to look at a table like this is to put it in front of
   /// somebody whose horn is not the one you play.
   late ChartInstrument _reading = widget.settings.instrument;
+
+  /// Whether the table is still in the key this comparison was built for.
+  bool get _inItsOwnKey => _concert == _chosen.key;
 
   /// The key on the page: the concert key as [_reading] writes it.
   String get _key =>
@@ -186,6 +195,12 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
                       unawaited(_stop());
                       setState(() {
                         _chosen = comparison;
+                        // Back to the key this one reads best in. Keeping
+                        // the last key would carry a choice made about
+                        // one set of tunes onto another it was never
+                        // made about. The edition stays: that is about
+                        // who is reading, not about which tunes.
+                        _concert = comparison.key;
                         _whyOpen = false;
                       });
                     },
@@ -202,6 +217,31 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
               ),
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: Row(
+              children: [
+                Text('In the Key Of', style: theme.textTheme.labelMedium),
+                const SizedBox(width: 10),
+                _KeyMenu(
+                  chosen: _concert,
+                  onPick: (key) {
+                    unawaited(_stop());
+                    setState(() => _concert = key);
+                  },
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'what the band plays',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Which edition is on the page. The four transposing groups,
           // the way a fake book is printed as a C book, a B♭ book and an
           // E♭ book of the same music: the table is the same comparison
@@ -210,6 +250,9 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Row(
               children: [
+                // Short, because four chips and a label is all the row
+                // holds: the summary under it says in words what this
+                // one has done, which is where the explaining belongs.
                 Text('For', style: theme.textTheme.labelMedium),
                 const SizedBox(width: 10),
                 for (final instrument in ChartInstrument.values)
@@ -241,13 +284,17 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
           ),
           // Why this set is in the key it is in, where there is anything
           // to say about it.
-          if (whyThisKey(_chosen.key) case final note?)
-            _WhyTheKey(
-              musicKey: _chosen.key,
-              note: note,
-              open: _whyOpen,
-              onToggle: () => setState(() => _whyOpen = !_whyOpen),
-            ),
+          // Only where the table is still in the key the note is about:
+          // over a set somebody has moved somewhere else it would be
+          // answering a question nobody is asking any more.
+          if (_inItsOwnKey)
+            if (whyThisKey(_chosen.key) case final note?)
+              _WhyTheKey(
+                musicKey: _chosen.key,
+                note: note,
+                open: _whyOpen,
+                onToggle: () => setState(() => _whyOpen = !_whyOpen),
+              ),
           _Heading(
             tunes: tunes,
             playing: _playingColumn,
@@ -256,6 +303,53 @@ class _SideBySideScreenState extends State<SideBySideScreen> {
           for (final row in rows)
             _Row(row: row, playingColumn: _playingColumn, at: _playingBar),
         ],
+      ),
+    );
+  }
+}
+
+/// The twelve keys, as a menu rather than a row of chips.
+///
+/// A menu because twelve chips is three rows of them on a phone, and the
+/// table has to be on the screen when the screen opens: that is the whole
+/// of what this page is for. A menu shows all twelve at once and costs
+/// one line.
+class _KeyMenu extends StatelessWidget {
+  const _KeyMenu({required this.chosen, required this.onPick});
+
+  final String chosen;
+  final ValueChanged<String> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PopupMenuButton<String>(
+      key: const ValueKey('concert-key'),
+      initialValue: chosen,
+      tooltip: 'The key the music is in',
+      onSelected: onPick,
+      itemBuilder: (_) => [
+        for (final key in majorKeyNames)
+          PopupMenuItem(
+            key: ValueKey('key-$key'),
+            value: key,
+            child: Text(key),
+          ),
+      ],
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHigh,
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(chosen, style: theme.textTheme.labelLarge),
+            const Icon(Icons.arrow_drop_down, size: 20),
+          ],
+        ),
       ),
     );
   }

@@ -375,7 +375,6 @@ void main() {
     });
 
     testWidgets('the editions leave the music in its own key', (tester) async {
-      // There is one key control on this screen and it is the edition.
       // Reading the F blues out of the E♭ book puts a D on the page and
       // changes nothing about which key the music is in, which is what
       // the note above the table is still answering.
@@ -391,6 +390,82 @@ void main() {
         find.byKey(const ValueKey('reads-E♭')),
       );
       expect(chip.selected, isTrue);
+    });
+
+    testWidgets('the music moves into any of the twelve', (tester) async {
+      // The reason to read three blues against each other is usually
+      // that you are about to play one, and the key a set reads best in
+      // is not always the key you are about to play it in.
+      await open(tester);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('All in F'),
+      );
+      await tester.tap(find.byKey(const ValueKey('concert-key')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('key-B♭')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('All in B♭'),
+      );
+      // And the chords moved with it: a blues in B♭ starts on a B♭.
+      expect(find.textContaining('B♭7'), findsWidgets);
+    });
+
+    testWidgets('the note about the key goes when the key does', (
+      tester,
+    ) async {
+      // It says why this comparison reads best in F. Over a table
+      // somebody has moved to B♭ it would be answering a question that
+      // is no longer being asked.
+      await open(tester);
+      expect(find.textContaining('Why F'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('concert-key')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('key-B♭')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Why F'), findsNothing);
+    });
+
+    testWidgets('changing the set goes back to the key it reads best in', (
+      tester,
+    ) async {
+      // Keeping the last key would carry a choice made about one set of
+      // tunes onto another it was never made about.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('concert-key')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('key-B♭')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(ValueKey('set-${comparisons[1].name}')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('All in ${comparisons[1].key}'),
+      );
+    });
+
+    testWidgets('the key and the edition are two different things', (
+      tester,
+    ) async {
+      // The one thing these two controls must never do is look like each
+      // other's work. Moving the music to B♭ and reading it out of the
+      // E♭ book are different acts with different results, and both of
+      // them land on the summary line.
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('concert-key')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('key-B♭')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('reads-E♭')));
+      await tester.pumpAndSettle();
+      // B♭ read out of the E♭ book is a G on the page.
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('summary'))).data,
+        startsWith('In G, which is the B♭ an E♭ instrument reads'),
+      );
+      expect(find.textContaining('G7'), findsWidgets);
     });
 
     testWidgets('why F is asked in one line and answered when tapped', (
