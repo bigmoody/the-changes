@@ -46,25 +46,30 @@ const _highestStart = 71;
 /// keys, the octave key they all sit on, and the one right-hand key that
 /// turns out to be part of the top of the horn.
 enum SaxKey {
-  octave('Octave', 'left thumb'),
-  palmD('D', 'palm'),
-  palmEFlat('E♭', 'palm'),
-  palmF('F', 'palm'),
+  octave('Octave'),
+  palmD('D'),
+  palmEFlat('E♭'),
+  palmF('F'),
+  lh1('1'),
+  lh2('2'),
+  lh3('3'),
+  rh1('1'),
+  rh2('2'),
+  rh3('3'),
 
   /// The upper right-hand side key, pressed with the side of the hand.
   ///
   /// The one most people are surprised by, and the reason high E is not
   /// just high E♭ with something added on the left: the right hand, which
-  /// has nothing else to do up here, comes back for the top three notes.
-  sideE('E', 'right-hand side');
+  /// has nothing else to do up here, comes back for E and F. It is held
+  /// for the F♯ above them too, which is why it is worth knowing, but
+  /// that note is a side key problem and not this page's.
+  sideE('E');
 
-  const SaxKey(this.label, this.where);
+  const SaxKey(this.label);
 
   /// What the key is called, which is the note it first gives you.
   final String label;
-
-  /// Where on the horn it is, in two or three words.
-  final String where;
 
   /// How to say it in a line of them, which is not how it is labelled on
   /// the map.
@@ -76,6 +81,8 @@ enum SaxKey {
   String get said => switch (this) {
     SaxKey.octave => 'Octave',
     SaxKey.sideE => 'side E',
+    SaxKey.lh1 || SaxKey.lh2 || SaxKey.lh3 => 'left $label',
+    SaxKey.rh1 || SaxKey.rh2 || SaxKey.rh3 => 'right $label',
     _ => 'palm $label',
   };
 }
@@ -84,15 +91,24 @@ enum SaxKey {
 /// hand takes them.
 typedef PalmFingering = ({int pitch, String name, List<SaxKey> keys});
 
-/// The four notes the palm keys make, and what holds each one down.
+/// The notes either side of the join, and what holds each one down.
+///
+/// The three below it as well as the four above, because the join is a
+/// movement between them and a chart of only the destination teaches
+/// half of it: what the hand has to leave is as much the problem as what
+/// it has to arrive at. C♯ in particular is the whole of the difficulty,
+/// being nothing at all held down, so the hand has no shape to move from.
 ///
 /// Written pitch, so this one list serves alto, tenor, soprano and
-/// baritone: the palm keys are the same written notes on all of them.
+/// baritone: these are the same written notes on all of them.
 ///
 /// F♯ is not here. It is a side key worked by the right hand, a different
 /// problem with a different solution, and the exercises stop at F for the
 /// same reason.
-const palmFingerings = <PalmFingering>[
+const joinFingerings = <PalmFingering>[
+  (pitch: 83, name: 'B', keys: [SaxKey.octave, SaxKey.lh1]),
+  (pitch: 84, name: 'C', keys: [SaxKey.octave, SaxKey.lh2]),
+  (pitch: 85, name: 'C♯', keys: [SaxKey.octave]),
   (pitch: 86, name: 'D', keys: [SaxKey.octave, SaxKey.palmD]),
   (
     pitch: 87,
@@ -115,6 +131,19 @@ const palmFingerings = <PalmFingering>[
       SaxKey.sideE,
     ],
   ),
+];
+
+/// The four the palm keys make, which is what the exercises are built to
+/// reach.
+final palmFingerings = [
+  for (final fingering in joinFingerings)
+    if (fingering.pitch >= firstPalmNote) fingering,
+];
+
+/// The three the hand comes from, below the join.
+final approachFingerings = [
+  for (final fingering in joinFingerings)
+    if (fingering.pitch < firstPalmNote) fingering,
 ];
 
 /// One note of an exercise: what to play and what it is called.

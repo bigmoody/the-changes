@@ -1,11 +1,12 @@
-// The palm key diagram: whether it shows a fingering somebody can trust.
+// The palm key fingering diagrams: whether they show something a player
+// can trust.
 //
 // The exercises on this page are a matter of teaching and can be argued
 // about. The fingerings are not: they are either what the horn does or
 // they are wrong, and somebody will trust them and practise them. So
-// these tests check the diagram says the same thing the data says, and
-// that the one surprising part of it, the right hand coming back for the
-// top two notes, actually reaches the screen.
+// these check that every hole and key is drawn in the state the data
+// says, that the surprising parts reach the screen, and that no note is
+// quietly missing from the chart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,110 +47,122 @@ Future<void> open(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-String line(WidgetTester tester) =>
-    tester.widget<Text>(find.byKey(const ValueKey('fingering-line'))).data!;
-
-/// Whether a key on the map is drawn held down.
-bool down(WidgetTester tester, SaxKey key) {
+/// Whether a drawn key or hole is filled in, which is what the diagram
+/// uses to mean held down.
+bool filled(WidgetTester tester, String note, SaxKey key, {bool bar = false}) {
+  final prefix = bar ? 'bar' : 'hole';
   final box = tester.widget<Container>(
-    find.byKey(ValueKey('palm-key-${key.name}')),
+    find.byKey(ValueKey('$prefix-$note-${key.name}')),
   );
-  final theme = appTheme(Brightness.light);
-  final decoration = box.decoration! as BoxDecoration;
-  return decoration.color == theme.colorScheme.tertiary;
+  final ink = (box.decoration! as BoxDecoration).color;
+  return ink == appTheme(Brightness.light).colorScheme.onSurface;
 }
 
+/// Every key the diagram draws, and how it draws it.
+const _holes = [
+  SaxKey.lh1,
+  SaxKey.lh2,
+  SaxKey.lh3,
+  SaxKey.rh1,
+  SaxKey.rh2,
+  SaxKey.rh3,
+];
+const _bars = [
+  SaxKey.octave,
+  SaxKey.palmD,
+  SaxKey.palmEFlat,
+  SaxKey.palmF,
+  SaxKey.sideE,
+];
+
 void main() {
-  group('the fingering diagram', () {
-    testWidgets('it opens on F, which is what people come here for', (
+  group('the fingering diagrams', () {
+    testWidgets('all seven are on the page, either side of the join', (
       tester,
     ) async {
       await open(tester);
-      expect(line(tester), startsWith('F:'));
-      expect(find.byKey(const ValueKey('palm-key-palmF')), findsOneWidget);
-    });
-
-    testWidgets('every fingering can be asked for', (tester) async {
-      await open(tester);
-      for (final fingering in palmFingerings) {
-        await tester.tap(find.byKey(ValueKey('fingering-${fingering.name}')));
-        await tester.pumpAndSettle();
-        expect(line(tester), startsWith('${fingering.name}:'));
-        // Said in words as well as drawn, because a diagram with no
-        // names in it is a thing to be decoded.
-        for (final key in fingering.keys) {
-          expect(
-            line(tester),
-            contains(key.label),
-            reason: '${fingering.name} holds ${key.label}',
-          );
-        }
+      for (final fingering in joinFingerings) {
+        expect(
+          find.byKey(ValueKey('fingering-name-${fingering.name}')),
+          findsOneWidget,
+          reason: fingering.name,
+        );
       }
-    });
-
-    testWidgets('the line says which hand, not just which letter', (
-      tester,
-    ) async {
-      // "Octave + D + E♭ + F + E" reads as five palm keys, of which
-      // there are three. On the map a key is a shape in a place and the
-      // letter is enough; in a line the places are gone.
-      await open(tester);
-      expect(line(tester), 'F: Octave + palm D + palm E♭ + palm F + side E');
-      await tester.tap(find.byKey(const ValueKey('fingering-E')));
-      await tester.pumpAndSettle();
-      expect(line(tester), 'E: Octave + palm D + palm E♭ + side E');
-      await tester.tap(find.byKey(const ValueKey('fingering-D')));
-      await tester.pumpAndSettle();
-      expect(line(tester), 'D: Octave + palm D');
-    });
-
-    testWidgets('the map lights up exactly the keys that are held', (
-      tester,
-    ) async {
-      await open(tester);
-      for (final fingering in palmFingerings) {
-        await tester.tap(find.byKey(ValueKey('fingering-${fingering.name}')));
-        await tester.pumpAndSettle();
-        for (final key in [
-          SaxKey.palmD,
-          SaxKey.palmEFlat,
-          SaxKey.palmF,
-          SaxKey.sideE,
-        ]) {
-          expect(
-            down(tester, key),
-            fingering.keys.contains(key),
-            reason:
-                '${fingering.name}: ${key.label} should be '
-                '${fingering.keys.contains(key) ? 'down' : 'up'}',
-          );
-        }
-      }
-    });
-
-    testWidgets('the right hand is on the page for E and F', (tester) async {
-      // The part everybody is surprised by, and the whole of the
-      // difference between E♭ and E. If it only lived in the data it
-      // would be the one thing the page got wrong by omission.
-      await open(tester);
-      await tester.tap(find.byKey(const ValueKey('fingering-E♭')));
-      await tester.pumpAndSettle();
-      expect(down(tester, SaxKey.sideE), isFalse);
-
-      await tester.tap(find.byKey(const ValueKey('fingering-E')));
-      await tester.pumpAndSettle();
-      expect(down(tester, SaxKey.sideE), isTrue);
-      expect(find.textContaining('right-hand side'), findsWidgets);
-    });
-
-    testWidgets('the diagram is on screen when the screen opens', (
-      tester,
-    ) async {
-      // It is the first thing on the page and the reason somebody came.
-      await open(tester);
-      expect(find.byKey(const ValueKey('palm-key-palmD')), findsOneWidget);
-      expect(find.byKey(const ValueKey('fingering-line')), findsOneWidget);
+      expect(find.text('Up to the Join'), findsOneWidget);
+      expect(find.text('On the Palm Keys'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('every hole and key is drawn as the fingering says', (
+      tester,
+    ) async {
+      // The whole of the claim. A diagram that disagreed with the data
+      // would be the data being right and the player being told wrong.
+      await open(tester);
+      for (final fingering in joinFingerings) {
+        for (final key in _holes) {
+          expect(
+            filled(tester, fingering.name, key),
+            fingering.keys.contains(key),
+            reason: '${fingering.name}: ${key.said}',
+          );
+        }
+        for (final key in _bars) {
+          expect(
+            filled(tester, fingering.name, key, bar: true),
+            fingering.keys.contains(key),
+            reason: '${fingering.name}: ${key.said}',
+          );
+        }
+      }
+    });
+
+    testWidgets('the right hand is drawn on E and F and not on E flat', (
+      tester,
+    ) async {
+      // The part everybody is surprised by, and the whole of the
+      // difference between E♭ and E.
+      await open(tester);
+      expect(filled(tester, 'E♭', SaxKey.sideE, bar: true), isFalse);
+      expect(filled(tester, 'E', SaxKey.sideE, bar: true), isTrue);
+      expect(filled(tester, 'F', SaxKey.sideE, bar: true), isTrue);
+      expect(find.textContaining('right-hand side'), findsOneWidget);
+    });
+
+    testWidgets('C sharp is drawn as nothing held but the octave key', (
+      tester,
+    ) async {
+      // The hard one coming down, because there is no shape to arrive
+      // at, and the diagram has to show that rather than look unfinished.
+      await open(tester);
+      for (final key in _holes) {
+        expect(filled(tester, 'C♯', key), isFalse, reason: key.said);
+      }
+      for (final key in _bars) {
+        expect(
+          filled(tester, 'C♯', key, bar: true),
+          key == SaxKey.octave,
+          reason: key.said,
+        );
+      }
+    });
+
+    testWidgets('the octave key is down on all seven', (tester) async {
+      await open(tester);
+      for (final fingering in joinFingerings) {
+        expect(
+          filled(tester, fingering.name, SaxKey.octave, bar: true),
+          isTrue,
+          reason: fingering.name,
+        );
+      }
+    });
+
+    testWidgets('the chart is on screen when the screen opens', (tester) async {
+      // It is near the top of the page and the reason somebody came.
+      await open(tester);
+      expect(find.byKey(const ValueKey('fingering-name-D')), findsOneWidget);
+      expect(find.byKey(const ValueKey('fingering-name-F')), findsOneWidget);
     });
   });
 }
