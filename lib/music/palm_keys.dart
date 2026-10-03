@@ -47,15 +47,36 @@ const _highestStart = 71;
 /// turns out to be part of the top of the horn.
 enum SaxKey {
   octave('Octave'),
+
+  /// The three under the side of the left palm, each named for the note
+  /// it first gives you. They sit as a cluster above the left hand
+  /// rather than in a line: E♭ topmost, D furthest out, F below them.
   palmD('D'),
   palmEFlat('E♭'),
   palmF('F'),
+
+  /// The top key, reached over by the first finger. Not used by anything
+  /// on this page, and drawn because a saxophone has one.
+  frontF('Front F'),
   lh1('1'),
+
+  /// The small key between the first and second fingers.
+  bis('Bis'),
   lh2('2'),
   lh3('3'),
+
+  /// The left little finger's four, down the side below the hand.
+  lhGSharp('G♯'),
+  lhCSharp('C♯'),
+  lhB('B'),
+  lhBFlat('B♭'),
   rh1('1'),
   rh2('2'),
   rh3('3'),
+
+  /// The right little finger's two.
+  rhEFlat('E♭'),
+  rhC('C'),
 
   /// The upper right-hand side key, pressed with the side of the hand.
   ///
@@ -64,7 +85,13 @@ enum SaxKey {
   /// has nothing else to do up here, comes back for E and F. It is held
   /// for the F♯ above them too, which is why it is worth knowing, but
   /// that note is a side key problem and not this page's.
-  sideE('E');
+  sideE('E'),
+
+  /// The rest of the right-hand side keys, below the E. Nothing on this
+  /// page holds them, and a saxophone has them.
+  sideC('C'),
+  sideBFlat('B♭'),
+  sideFSharp('F♯');
 
   const SaxKey(this.label);
 
@@ -83,7 +110,9 @@ enum SaxKey {
     SaxKey.sideE => 'side E',
     SaxKey.lh1 || SaxKey.lh2 || SaxKey.lh3 => 'left $label',
     SaxKey.rh1 || SaxKey.rh2 || SaxKey.rh3 => 'right $label',
-    _ => 'palm $label',
+    SaxKey.palmD || SaxKey.palmEFlat || SaxKey.palmF => 'palm $label',
+    SaxKey.sideC || SaxKey.sideBFlat || SaxKey.sideFSharp => 'side $label',
+    _ => label,
   };
 }
 

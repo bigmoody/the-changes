@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
 import '../music/palm_keys.dart';
+import 'sax_diagram.dart';
 import 'stave.dart';
 
 /// The twelve, in the order a player would work through them: round the
@@ -184,7 +185,8 @@ class _PalmKeysScreenState extends State<PalmKeysScreen> {
   }
 }
 
-/// The fingerings, drawn the way a fingering chart draws them.
+/// The fingerings, drawn as a saxophone rather than as a column of
+/// holes.
 ///
 /// Seven of them: the four the palm keys make and the three the hand
 /// comes from below the join, because the join is a movement between
@@ -202,19 +204,22 @@ class _TheKeys extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text('The Keys', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 8),
+          const _KeyMap(),
+          const SizedBox(height: 6),
           Text(
-            'Filled is held down. The three keys under the side of the '
-            'left palm are drawn down the left, each named for the note '
-            'it first gives you, and the octave key is down for all of '
-            'these. The one on the right is the upper right-hand side '
-            'key, taken with the side of the other hand: it is what makes '
-            'E out of E♭, and the reason the right hand cannot be left '
-            'behind at the top.',
+            'The whole horn every time, with the keys a note holds filled '
+            'in. The three under the side of the left palm sit above the '
+            'left hand as a cluster rather than in a line, which is how '
+            'the hand meets them: it rolls across that shape. The side E '
+            'is reached with the side of the right hand, and is what '
+            'makes E out of E♭.',
             style: theme.textTheme.bodySmall?.copyWith(
               color: scheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           _Group(title: 'Up to the Join', fingerings: approachFingerings),
           const SizedBox(height: 14),
           _Group(title: 'On the Palm Keys', fingerings: palmFingerings),
@@ -230,6 +235,64 @@ class _TheKeys extends StatelessWidget {
               color: scheme.onSurfaceVariant,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One horn, bigger, with the keys this page is about named.
+///
+/// Only those five. A chart that labels all twenty-two keys is a diagram
+/// of a saxophone, which is a different page: this one is about the top
+/// of the horn, and the rest is drawn so the picture is honest rather
+/// than so it can be read off.
+class _KeyMap extends StatelessWidget {
+  const _KeyMap();
+
+  static const _scale = 1.45;
+  static const _leftPad = 62.0;
+  static const _rightPad = 48.0;
+  static const _width = _leftPad + canvasWidth * _scale + _rightPad;
+
+  /// The named ones, and which side the name goes.
+  static const _names = <SaxKey, bool>{
+    SaxKey.octave: false,
+    SaxKey.palmEFlat: false,
+    SaxKey.palmD: false,
+    SaxKey.palmF: false,
+    SaxKey.sideE: true,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.labelSmall?.copyWith(
+      color: theme.colorScheme.tertiary,
+    );
+    return SizedBox(
+      width: _width,
+      height: canvasHeight * _scale,
+      child: Stack(
+        children: [
+          Positioned(
+            left: _leftPad,
+            child: const SaxDiagram(held: {}, idPrefix: 'map', scale: _scale),
+          ),
+          for (final entry in _names.entries)
+            if (saxLayout[entry.key] case final place?)
+              Positioned(
+                // Named outside the drawing on the side the key is on,
+                // so no name sits over the horn.
+                left: entry.value
+                    ? _leftPad + (place.x + place.w) * _scale + 6
+                    : null,
+                right: entry.value
+                    ? null
+                    : _width - _leftPad - place.x * _scale + 6,
+                top: (place.y + place.h / 2) * _scale - 7,
+                child: Text(entry.key.said, style: style),
+              ),
         ],
       ),
     );
@@ -252,136 +315,28 @@ class _Group extends StatelessWidget {
         Text(title, style: theme.textTheme.titleSmall),
         const SizedBox(height: 8),
         Wrap(
-          spacing: 14,
+          spacing: 16,
           runSpacing: 12,
           children: [
             for (final fingering in fingerings)
-              _Fingering(fingering: fingering),
+              Column(
+                children: [
+                  SaxDiagram(
+                    held: fingering.keys.toSet(),
+                    idPrefix: fingering.name,
+                    scale: 0.74,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    fingering.name,
+                    key: ValueKey('fingering-name-${fingering.name}'),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.tertiary,
+                    ),
+                  ),
+                ],
+              ),
           ],
-        ),
-      ],
-    );
-  }
-}
-
-/// One note, drawn as a fingering.
-///
-/// The octave key at the top left where the thumb is, the palm keys down
-/// the left of the left hand, the side key down the right of the right
-/// hand, and the two hands either side of the break. The same shape a
-/// fingering chart has always used, so somebody who has read one before
-/// does not have to be taught this one.
-class _Fingering extends StatelessWidget {
-  const _Fingering({required this.fingering});
-
-  final PalmFingering fingering;
-
-  static const _hole = 17.0;
-  static const _sideKey = 9.0;
-  static const _gap = 5.0;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final held = fingering.keys.toSet();
-
-    Widget hole(SaxKey key) => Container(
-      key: ValueKey('hole-${fingering.name}-${key.name}'),
-      width: _hole,
-      height: _hole,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: held.contains(key) ? scheme.onSurface : Colors.transparent,
-        border: Border.all(color: scheme.onSurface, width: 1.3),
-      ),
-    );
-
-    // The palm and side keys are drawn as the small rounded bars they
-    // are on the horn, rather than as holes: they are keys the hand
-    // rolls onto, not holes a finger covers, and the picture should not
-    // pretend otherwise.
-    Widget bar(SaxKey? key) => SizedBox(
-      width: _sideKey,
-      height: _hole,
-      child: key == null
-          ? null
-          : Container(
-              key: ValueKey('bar-${fingering.name}-${key.name}'),
-              decoration: BoxDecoration(
-                color: held.contains(key)
-                    ? scheme.onSurface
-                    : Colors.transparent,
-                border: Border.all(color: scheme.onSurface, width: 1.3),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-    );
-
-    Widget row(SaxKey? left, SaxKey finger, [SaxKey? right]) => Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          bar(left),
-          const SizedBox(width: _gap),
-          hole(finger),
-          const SizedBox(width: _gap),
-          bar(right),
-        ],
-      ),
-    );
-
-    return Column(
-      children: [
-        // The octave key, over on the left where the thumb reaches it
-        // from behind the horn.
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                key: ValueKey('bar-${fingering.name}-${SaxKey.octave.name}'),
-                width: _sideKey + 4,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: held.contains(SaxKey.octave)
-                      ? scheme.onSurface
-                      : Colors.transparent,
-                  border: Border.all(color: scheme.onSurface, width: 1.3),
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-              const SizedBox(width: _gap + _hole + _gap + _sideKey - 4),
-            ],
-          ),
-        ),
-        row(SaxKey.palmF, SaxKey.lh1),
-        row(SaxKey.palmEFlat, SaxKey.lh2),
-        row(SaxKey.palmD, SaxKey.lh3),
-        // The break between the hands.
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          child: SizedBox(
-            width: _sideKey * 2 + _gap * 2 + _hole,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (var i = 0; i < 6; i++)
-                  Container(width: 3, height: 1.2, color: scheme.outline),
-              ],
-            ),
-          ),
-        ),
-        row(null, SaxKey.rh1, SaxKey.sideE),
-        row(null, SaxKey.rh2),
-        row(null, SaxKey.rh3),
-        const SizedBox(height: 4),
-        Text(
-          fingering.name,
-          key: ValueKey('fingering-name-${fingering.name}'),
-          style: theme.textTheme.titleSmall?.copyWith(color: scheme.tertiary),
         ),
       ],
     );
