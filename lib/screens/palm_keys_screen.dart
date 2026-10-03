@@ -18,7 +18,6 @@ import 'package:flutter/material.dart';
 import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
 import '../music/palm_keys.dart';
-import 'sax_diagram.dart';
 import 'stave.dart';
 
 /// The twelve, in the order a player would work through them: round the
@@ -85,7 +84,6 @@ class _PalmKeysScreenState extends State<PalmKeysScreen> {
               style: theme.textTheme.bodyMedium,
             ),
           ),
-          const _TheKeys(),
           const Divider(height: 28),
           _Chips(
             values: [for (final shape in PalmShape.values) shape.label],
@@ -181,164 +179,6 @@ class _PalmKeysScreenState extends State<PalmKeysScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// The fingerings, drawn as a saxophone rather than as a column of
-/// holes.
-///
-/// Seven of them: the four the palm keys make and the three the hand
-/// comes from below the join, because the join is a movement between
-/// them and a chart of only the destination teaches half of it. Reading
-/// left to right across the two groups is the movement itself.
-class _TheKeys extends StatelessWidget {
-  const _TheKeys();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('The Keys', style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          const _KeyMap(),
-          const SizedBox(height: 6),
-          Text(
-            'The whole horn every time, with the keys a note holds filled '
-            'in. The three under the side of the left palm sit above the '
-            'left hand as a cluster rather than in a line, which is how '
-            'the hand meets them: it rolls across that shape. The side E '
-            'is reached with the side of the right hand, and is what '
-            'makes E out of E♭.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _Group(title: 'Up to the Join', fingerings: approachFingerings),
-          const SizedBox(height: 14),
-          _Group(title: 'On the Palm Keys', fingerings: palmFingerings),
-          const SizedBox(height: 10),
-          Text(
-            'Nothing is let go of on the way up: every note above the '
-            'join keeps what the one below it was holding. Coming the '
-            'other way, C♯ is the hard one, because it is nothing held '
-            'down at all and the hand has no shape to arrive at. F♯ is '
-            'left out, being a side key worked by the right hand and a '
-            'different problem with a different solution.',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One horn, bigger, with the keys this page is about named.
-///
-/// Only those five. A chart that labels all twenty-two keys is a diagram
-/// of a saxophone, which is a different page: this one is about the top
-/// of the horn, and the rest is drawn so the picture is honest rather
-/// than so it can be read off.
-class _KeyMap extends StatelessWidget {
-  const _KeyMap();
-
-  static const _scale = 1.45;
-  static const _leftPad = 62.0;
-  static const _rightPad = 48.0;
-  static const _width = _leftPad + canvasWidth * _scale + _rightPad;
-
-  /// The named ones, and which side the name goes.
-  static const _names = <SaxKey, bool>{
-    SaxKey.octave: false,
-    SaxKey.palmEFlat: false,
-    SaxKey.palmD: false,
-    SaxKey.palmF: false,
-    SaxKey.sideE: true,
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.labelSmall?.copyWith(
-      color: theme.colorScheme.tertiary,
-    );
-    return SizedBox(
-      width: _width,
-      height: canvasHeight * _scale,
-      child: Stack(
-        children: [
-          Positioned(
-            left: _leftPad,
-            child: const SaxDiagram(held: {}, idPrefix: 'map', scale: _scale),
-          ),
-          for (final entry in _names.entries)
-            if (saxLayout[entry.key] case final place?)
-              Positioned(
-                // Named outside the drawing on the side the key is on,
-                // so no name sits over the horn.
-                left: entry.value
-                    ? _leftPad + (place.x + place.w) * _scale + 6
-                    : null,
-                right: entry.value
-                    ? null
-                    : _width - _leftPad - place.x * _scale + 6,
-                top: (place.y + place.h / 2) * _scale - 7,
-                child: Text(entry.key.said, style: style),
-              ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One side of the join, titled, with its notes in a row.
-class _Group extends StatelessWidget {
-  const _Group({required this.title, required this.fingerings});
-
-  final String title;
-  final List<PalmFingering> fingerings;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: theme.textTheme.titleSmall),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 16,
-          runSpacing: 12,
-          children: [
-            for (final fingering in fingerings)
-              Column(
-                children: [
-                  SaxDiagram(
-                    held: fingering.keys.toSet(),
-                    idPrefix: fingering.name,
-                    scale: 0.74,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    fingering.name,
-                    key: ValueKey('fingering-name-${fingering.name}'),
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      color: theme.colorScheme.tertiary,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ],
     );
   }
 }
