@@ -67,6 +67,8 @@ class FakePlayer implements PracticePlayer {
   Duration? at;
 
   var stopped = false;
+  var paused = false;
+  var resumed = false;
 
   @override
   Future<void> playSnippet(
@@ -87,6 +89,12 @@ class FakePlayer implements PracticePlayer {
 
   @override
   Future<void> stopSnippet() async => stopped = true;
+
+  @override
+  Future<void> pauseSnippet() async => paused = true;
+
+  @override
+  Future<void> resumeSnippet() async => resumed = true;
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -186,6 +194,89 @@ void main() {
       );
       return player;
     }
+
+    testWidgets('play, pause and stop are only offered when they apply', (
+      tester,
+    ) async {
+      await open(tester, key: 0);
+      bool enabled(String key) =>
+          tester.widget<IconButton>(find.byKey(ValueKey(key))).onPressed !=
+          null;
+
+      // Nothing playing: only play.
+      expect(enabled('pause-phrase'), isFalse);
+      expect(enabled('stop-phrase'), isFalse);
+
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      expect(enabled('pause-phrase'), isTrue);
+      expect(enabled('stop-phrase'), isTrue);
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const ValueKey('hear-phrase')))
+            .onPressed,
+        isNull,
+        reason: 'nothing to start while it is already going',
+      );
+    });
+
+    testWidgets('pausing holds it, and carrying on carries on from there', (
+      tester,
+    ) async {
+      // The difference between the two: pausing keeps your place in the
+      // line, stopping gives it back to the point you chose.
+      final player = await open(tester, key: 0);
+      player.at = const Duration(milliseconds: 900);
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+
+      await tester.tap(find.byKey(const ValueKey('pause-phrase')));
+      await tester.pumpAndSettle();
+      expect(player.paused, isTrue);
+      expect(find.text('Carry On'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      expect(player.resumed, isTrue, reason: 'carried on, not restarted');
+    });
+
+    testWidgets('stopping puts the bar back to the point it started from', (
+      tester,
+    ) async {
+      final player = await open(tester, key: 0);
+      await tester.drag(
+        find.byKey(const ValueKey('scrub')),
+        const Offset(60, 0),
+      );
+      await tester.pumpAndSettle();
+      final chosen = tester.widget<Text>(
+        find.byKey(const ValueKey('scrub-at')),
+      );
+
+      player.at = const Duration(milliseconds: 2500);
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+
+      await tester.tap(find.byKey(const ValueKey('stop-phrase')));
+      await tester.pumpAndSettle();
+      expect(player.stopped, isTrue);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('scrub-at'))).data,
+        chosen.data,
+        reason: 'back to where it was told to start, not where it got to',
+      );
+    });
+
+    testWidgets('leaving the screen stops the sound', (tester) async {
+      final player = await open(tester, key: 0);
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpAndSettle();
+      expect(player.stopped, isTrue);
+    });
 
     testWidgets('a phrase that has been read is drawn', (tester) async {
       // The point of the picture: the attacks are visible, so the note

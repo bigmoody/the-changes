@@ -631,6 +631,26 @@ class PracticePlayer {
     }
   }
 
+  /// Holds the snippet where it is, and lets it go again.
+  ///
+  /// Paused rather than stopped, so carrying on means carrying on from
+  /// the note it was on rather than from wherever the bar was set.
+  Future<void> pauseSnippet() async => _setSnippetPaused(true);
+
+  Future<void> resumeSnippet() async => _setSnippetPaused(false);
+
+  Future<void> _setSnippetPaused(bool paused) async {
+    final handle = _snippetHandle;
+    if (handle == null) return;
+    try {
+      if (_soloud.getIsValidVoiceHandle(handle)) {
+        _soloud.setPause(handle, paused);
+      }
+    } catch (e) {
+      debugPrint('Could not hold the snippet: $e');
+    }
+  }
+
   /// Stops the snippet where it is.
   Future<void> stopSnippet() async {
     final handle = _snippetHandle;

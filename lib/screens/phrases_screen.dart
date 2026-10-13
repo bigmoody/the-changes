@@ -286,6 +286,13 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
 }
 
 /// One phrase, round the twelve keys.
+/// What the sound is doing.
+///
+/// Three states rather than a playing flag, because pausing and stopping
+/// are different things to want: one keeps your place in the line and
+/// the other gives it back to the point you chose.
+enum _Doing { stopped, playing, paused }
+
 /// Reading a recording down to the shape of it.
 typedef DrawPhrase = Future<List<double>> Function(Uint8List wav);
 
@@ -329,6 +336,9 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
 
   /// Where it has got to, while something is playing.
   Duration? _playingAt;
+
+  /// What the sound is doing, which is what the three buttons are for.
+  var _doing = _Doing.stopped;
 
   /// True between the finger going down on the bar and coming off it, so
   /// the ticker does not drag the thumb out from under the finger.
@@ -374,6 +384,15 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
       nameInKey(widget.phrase.key + by, key: widget.phrase.key + by);
 
   Future<void> _hear() async {
+    // Held, not stopped: carrying on means carrying on from the note it
+    // was on rather than from wherever the bar was set.
+    if (_doing == _Doing.paused) {
+      await widget.player.resumeSnippet();
+      if (!mounted) return;
+      setState(() => _doing = _Doing.playing);
+      _follow(from: _playingAt ?? _from);
+      return;
+    }
     final audio = await widget.phrases.audioOf(widget.phrase);
     if (audio == null) return;
     await widget.player.playSnippet(
@@ -381,15 +400,39 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
       shift: widget.phrase.shiftBy(_shiftOf(move), _move),
       from: _from,
     );
+    if (!mounted) return;
+    setState(() => _doing = _Doing.playing);
     _follow();
+  }
+
+  Future<void> _pause() async {
+    _ticker?.cancel();
+    await widget.player.pauseSnippet();
+    if (!mounted) return;
+    setState(() => _doing = _Doing.paused);
+  }
+
+  /// Stops, and puts the bar back to the point the play started from.
+  ///
+  /// Which is the difference between this and pausing: stopping is being
+  /// finished with that hearing of it, and the next one begins where you
+  /// chose rather than where you broke off.
+  Future<void> _stop() async {
+    _ticker?.cancel();
+    await widget.player.stopSnippet();
+    if (!mounted) return;
+    setState(() {
+      _doing = _Doing.stopped;
+      _playingAt = null;
+    });
   }
 
   /// Walks the thumb along while it plays, and puts it back to the point
   /// the play started from when the sound runs out.
-  void _follow() {
+  void _follow({Duration? from}) {
     _ticker?.cancel();
     if (!mounted) return;
-    setState(() => _playingAt = _from);
+    setState(() => _playingAt = from ?? _from);
     _ticker = Timer.periodic(const Duration(milliseconds: 40), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -400,7 +443,10 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
         // Over. Back to where it started, so hearing the same four bars
         // again is one tap rather than a drag and a tap.
         timer.cancel();
-        setState(() => _playingAt = null);
+        setState(() {
+          _playingAt = null;
+          _doing = _Doing.stopped;
+        });
         return;
       }
       if (!_dragging) setState(() => _playingAt = at);
@@ -497,25 +543,40 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
                       Expanded(
                         child: FilledButton.icon(
                           key: const ValueKey('hear-phrase'),
-                          onPressed: _hear,
-                          icon: const Icon(Icons.volume_up_outlined),
-                          label: Text(
-                            _from == Duration.zero ? 'Hear It' : 'Play From',
-                          ),
+                          // Nothing to start while it is already going:
+                          // the button for that is the one beside it.
+                          onPressed: _doing == _Doing.playing ? null : _hear,
+                          icon: const Icon(Icons.play_arrow),
+                          label: Text(switch (_doing) {
+                            _Doing.paused => 'Carry On',
+                            _ when _from == Duration.zero => 'Hear It',
+                            _ => 'Play From',
+                          }),
                         ),
                       ),
-                      if (_from > Duration.zero) ...[
-                        const SizedBox(width: 8),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        key: const ValueKey('pause-phrase'),
+                        tooltip: 'Hold it there',
+                        onPressed: _doing == _Doing.playing ? _pause : null,
+                        icon: const Icon(Icons.pause),
+                      ),
+                      IconButton(
+                        key: const ValueKey('stop-phrase'),
+                        tooltip: 'Stop, and back to the point',
+                        onPressed: _doing == _Doing.stopped ? null : _stop,
+                        icon: const Icon(Icons.stop),
+                      ),
+                      if (_from > Duration.zero)
                         IconButton(
                           key: const ValueKey('scrub-to-start'),
                           tooltip: 'Back to the start',
                           onPressed: () => setState(() {
                             _from = Duration.zero;
-                            _playingAt = null;
+                            if (_doing == _Doing.stopped) _playingAt = null;
                           }),
                           icon: const Icon(Icons.first_page),
                         ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 16),
