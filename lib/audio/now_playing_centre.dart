@@ -93,9 +93,8 @@ class NowPlayingCentre {
 
   /// Nothing here is worth an error in front of somebody.
   ///
-  /// A platform with no card at all, which is every platform but iOS so
-  /// far, answers with a missing plugin, and the band plays on exactly as
-  /// it did before any of this existed.
+  /// A platform with no card at all answers with a missing plugin, and
+  /// the band plays on exactly as it did before any of this existed.
   Future<void> _ask(String method, Map<String, Object?> arguments) async {
     try {
       await channel.invokeMethod<void>(method, arguments);

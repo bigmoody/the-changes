@@ -115,9 +115,9 @@ class PracticePlayer {
 
   Future<void> init({bool mixWithOthers = true}) async {
     _session = await AudioSession.instance;
-    // iOS only so far: it is the only side with a card built. Everywhere
-    // else this stays null and nothing asks for one.
-    if (Platform.isIOS) nowPlaying = NowPlayingCentre();
+    // Both phones have a card built. Anywhere else this stays null and
+    // nothing asks for one.
+    if (Platform.isIOS || Platform.isAndroid) nowPlaying = NowPlayingCentre();
     await setMixWithOthers(mixWithOthers);
     if (Platform.isIOS) await _session!.setActive(true);
     await _soloud.init();

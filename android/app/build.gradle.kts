@@ -6,7 +6,11 @@ plugins {
 
 android {
     namespace = "com.yaseminbridges.play_along"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned rather than taken from Flutter's default: file_picker's own
+    // dependency refuses to build against anything older, so the whole
+    // Android build fails at its metadata check before a line of this
+    // app is compiled.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -36,6 +40,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // The media session and the MediaStyle notification the band's
+    // controls are drawn as.
+    implementation("androidx.media:media:1.7.0")
 }
 
 kotlin {
