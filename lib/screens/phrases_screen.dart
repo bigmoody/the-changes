@@ -11,11 +11,14 @@
 // still you playing.
 
 import 'dart:async';
+import 'dart:isolate';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
 import '../audio/take_recorder.dart';
+import '../audio/waveform.dart';
 import '../music/key_order.dart';
 import '../music/phrase.dart';
 import '../music/recorded_take.dart' show TakeShift;
@@ -283,17 +286,31 @@ class _PhrasesScreenState extends State<PhrasesScreen> {
 }
 
 /// One phrase, round the twelve keys.
+/// Reading a recording down to the shape of it.
+typedef DrawPhrase = Future<List<double>> Function(Uint8List wav);
+
+/// Off the main thread: it walks every sample in the file, which is a
+/// few hundred thousand of them, and doing that between frames is how a
+/// screen arrives already stuttering.
+Future<List<double>> _inItsOwnIsolate(Uint8List wav) =>
+    Isolate.run(() => peaksOfWav(wav));
+
 class PhraseKeysScreen extends StatefulWidget {
   const PhraseKeysScreen({
     super.key,
     required this.phrase,
     required this.phrases,
     required this.player,
+    this.draw = _inItsOwnIsolate,
   });
 
   final Phrase phrase;
   final PhraseStore phrases;
   final PracticePlayer player;
+
+  /// Taken rather than called directly so a test can hold it still: an
+  /// isolate cannot be spawned from inside a widget test.
+  final DrawPhrase draw;
 
   @override
   State<PhraseKeysScreen> createState() => _PhraseKeysScreenState();
@@ -318,6 +335,26 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
   var _dragging = false;
 
   Timer? _ticker;
+
+  /// The recording drawn down to one level per column, once, when the
+  /// screen opens. Empty until it is read, and empty for good if the
+  /// file will not decode.
+  var _peaks = const <double>[];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_draw());
+  }
+
+  /// Reads the phrase and works out its shape.
+  Future<void> _draw() async {
+    final audio = await widget.phrases.audioOf(widget.phrase);
+    if (audio == null || !mounted) return;
+    final peaks = await widget.draw(audio);
+    if (!mounted) return;
+    setState(() => _peaks = peaks);
+  }
 
   /// The recording's own length, which the phrase knows without anything
   /// having been played.
@@ -450,6 +487,7 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
                   ScrubBar(
                     at: _playingAt ?? _from,
                     length: _length,
+                    peaks: _peaks,
                     onMoved: _scrubTo,
                     onSettled: _scrubbed,
                   ),

@@ -151,7 +151,11 @@ void main() {
   });
 
   group('taking one round the keys', () {
-    Future<FakePlayer> open(WidgetTester tester, {required int key}) async {
+    Future<FakePlayer> open(
+      WidgetTester tester, {
+      required int key,
+      List<double> peaks = const [],
+    }) async {
       final files = NoRecordingFiles();
       await files.save('one.wav', Uint8List.fromList([1, 2, 3]));
       final phrase = Phrase(
@@ -173,11 +177,40 @@ void main() {
             phrase: phrase,
             phrases: store,
             player: player,
+            // Held still: an isolate cannot be spawned from inside a
+            // widget test, and what the drawing is of is tested where
+            // the peaks are worked out.
+            draw: (wav) async => peaks,
           ),
         ),
       );
       return player;
     }
+
+    testWidgets('a phrase that has been read is drawn', (tester) async {
+      // The point of the picture: the attacks are visible, so the note
+      // you meant is somewhere to aim at rather than something to hunt
+      // for by dragging and listening.
+      await open(tester, key: 0, peaks: const [0.1, 0.9, 0.2, 0.7]);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('waveform')), findsOneWidget);
+    });
+
+    testWidgets('one that cannot be read still scrubs', (tester) async {
+      // The dragging is the feature and the picture is the help, so a
+      // file that will not decode loses the drawing and nothing else.
+      final player = await open(tester, key: 0);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('waveform')), findsNothing);
+      await tester.drag(
+        find.byKey(const ValueKey('scrub')),
+        const Offset(60, 0),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      expect(player.playedFrom, greaterThan(Duration.zero));
+    });
 
     testWidgets('it plays from the start until the bar is moved', (
       tester,
