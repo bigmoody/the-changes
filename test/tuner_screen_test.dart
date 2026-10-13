@@ -24,8 +24,11 @@ class _FakePlayer extends PracticePlayer {
   Future<void> stop() async => stoppedBand = true;
 
   @override
-  Future<void> playSnippet(Uint8List wav, {TakeShift? shift}) async =>
-      played.add(wav);
+  Future<void> playSnippet(
+    Uint8List wav, {
+    TakeShift? shift,
+    Duration from = Duration.zero,
+  }) async => played.add(wav);
 
   @override
   Future<void> restoreAudioSession() async => restored = true;

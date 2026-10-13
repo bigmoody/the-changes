@@ -10,6 +10,8 @@
 // question about sound: the engine moves the pitch, and what you hear is
 // still you playing.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
@@ -20,6 +22,7 @@ import '../music/recorded_take.dart' show TakeShift;
 import '../practice/phrase_store.dart';
 import '../settings/app_settings.dart';
 import 'key_round.dart';
+import 'scrub_bar.dart';
 import 'tunes_page.dart' show SectionHeader;
 
 class PhrasesScreen extends StatefulWidget {
@@ -303,6 +306,31 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
   final _done = <int>{};
   var _move = PhraseMove.inTime;
 
+  /// Where in the recording the next play starts, which is also where a
+  /// finished play comes back to. See [ScrubBar].
+  var _from = Duration.zero;
+
+  /// Where it has got to, while something is playing.
+  Duration? _playingAt;
+
+  /// True between the finger going down on the bar and coming off it, so
+  /// the ticker does not drag the thumb out from under the finger.
+  var _dragging = false;
+
+  Timer? _ticker;
+
+  /// The recording's own length, which the phrase knows without anything
+  /// having been played.
+  Duration get _length =>
+      Duration(milliseconds: (widget.phrase.seconds * 1000).round());
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    unawaited(widget.player.stopSnippet());
+    super.dispose();
+  }
+
   int get move => _moves[_at];
 
   String _keyName(int by) =>
@@ -314,7 +342,51 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
     await widget.player.playSnippet(
       audio,
       shift: widget.phrase.shiftBy(_shiftOf(move), _move),
+      from: _from,
     );
+    _follow();
+  }
+
+  /// Walks the thumb along while it plays, and puts it back to the point
+  /// the play started from when the sound runs out.
+  void _follow() {
+    _ticker?.cancel();
+    if (!mounted) return;
+    setState(() => _playingAt = _from);
+    _ticker = Timer.periodic(const Duration(milliseconds: 40), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      final at = widget.player.snippetPosition();
+      if (at == null) {
+        // Over. Back to where it started, so hearing the same four bars
+        // again is one tap rather than a drag and a tap.
+        timer.cancel();
+        setState(() => _playingAt = null);
+        return;
+      }
+      if (!_dragging) setState(() => _playingAt = at);
+    });
+  }
+
+  /// Moving the thumb. The sound follows it where there is sound to
+  /// follow, and where there is not this is simply choosing where the
+  /// next play begins.
+  void _scrubTo(Duration to) {
+    setState(() {
+      _dragging = true;
+      _from = to;
+      if (_playingAt != null) _playingAt = to;
+    });
+    unawaited(widget.player.seekSnippet(to));
+  }
+
+  void _scrubbed(Duration to) {
+    setState(() {
+      _dragging = false;
+      _from = to;
+    });
   }
 
   /// The shortest way to the key, so a phrase is never dragged up most of
@@ -375,11 +447,38 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  FilledButton.icon(
-                    key: const ValueKey('hear-phrase'),
-                    onPressed: _hear,
-                    icon: const Icon(Icons.volume_up_outlined),
-                    label: const Text('Hear It'),
+                  ScrubBar(
+                    at: _playingAt ?? _from,
+                    length: _length,
+                    onMoved: _scrubTo,
+                    onSettled: _scrubbed,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          key: const ValueKey('hear-phrase'),
+                          onPressed: _hear,
+                          icon: const Icon(Icons.volume_up_outlined),
+                          label: Text(
+                            _from == Duration.zero ? 'Hear It' : 'Play From',
+                          ),
+                        ),
+                      ),
+                      if (_from > Duration.zero) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          key: const ValueKey('scrub-to-start'),
+                          tooltip: 'Back to the start',
+                          onPressed: () => setState(() {
+                            _from = Duration.zero;
+                            _playingAt = null;
+                          }),
+                          icon: const Icon(Icons.first_page),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 16),
                   SegmentedButton<PhraseMove>(

@@ -559,6 +559,14 @@ class PracticePlayer {
 
   AudioSource? _snippet;
 
+  /// The voice the snippet is playing on, kept rather than dropped.
+  ///
+  /// It used to be thrown away the moment it started, which made a
+  /// snippet a thing you could only fire: no position, no seeking, no
+  /// stopping it short. Holding it is the whole of what lets a phrase be
+  /// scrubbed.
+  SoundHandle? _snippetHandle;
+
   /// Plays a short WAV once, over anything else: the drills' "hear it".
   /// Each new one replaces the last, so tapping twice doesn't pile them up.
   ///
@@ -566,22 +574,73 @@ class PracticePlayer {
   /// two knobs the recorded band is moved with: the speed resamples,
   /// which is exact, and the filter puts back whatever pitch that dragged
   /// along with it.
-  Future<void> playSnippet(Uint8List wav, {TakeShift? shift}) async {
+  ///
+  /// [from] starts it part way in, which is what a phrase being scrubbed
+  /// asks for. It is a point in the recording rather than in what you
+  /// hear: played at half speed the same point arrives twice as late, and
+  /// it is still the same note of the line.
+  Future<void> playSnippet(
+    Uint8List wav, {
+    TakeShift? shift,
+    Duration from = Duration.zero,
+  }) async {
     final previous = _snippet;
     _snippet = null;
+    _snippetHandle = null;
     if (previous != null) await _soloud.disposeSource(previous);
     final source = await _soloud.loadMem('snippet.wav', wav);
     _snippet = source;
-    if (shift == null || (shift.speed == 1 && shift.shift == 1)) {
-      _soloud.play(source);
-      return;
-    }
-    // Paused first, so the first few milliseconds are not heard at the
-    // wrong pitch while the filter is being set.
-    source.filters.pitchShiftFilter.activate();
+    // Paused first in every case now, not only for a shift: a seek has
+    // to land before the first sample is heard, or the start of the file
+    // comes out before the point that was asked for.
+    final moved = shift != null && (shift.speed != 1 || shift.shift != 1);
+    if (moved) source.filters.pitchShiftFilter.activate();
     final handle = _soloud.play(source, paused: true);
-    _applyShift(source, handle, shift);
+    _snippetHandle = handle;
+    if (moved) _applyShift(source, handle, shift);
+    if (from > Duration.zero) _soloud.seek(handle, from);
     _soloud.setPause(handle, false);
+  }
+
+  /// How far into the recording the snippet has got, or null when there
+  /// is nothing playing.
+  ///
+  /// In the recording's own time, not the listener's: see [playSnippet].
+  Duration? snippetPosition() {
+    final handle = _snippetHandle;
+    if (handle == null) return null;
+    try {
+      if (!_soloud.getIsValidVoiceHandle(handle)) return null;
+      return _soloud.getPosition(handle);
+    } catch (e) {
+      debugPrint('Could not read the snippet position: $e');
+      return null;
+    }
+  }
+
+  /// Moves the playing snippet to [to]. Does nothing if none is playing,
+  /// which is the case a scrub bar hits every time somebody drags it
+  /// before pressing play.
+  Future<void> seekSnippet(Duration to) async {
+    final handle = _snippetHandle;
+    if (handle == null) return;
+    try {
+      if (_soloud.getIsValidVoiceHandle(handle)) _soloud.seek(handle, to);
+    } catch (e) {
+      debugPrint('Could not move the snippet: $e');
+    }
+  }
+
+  /// Stops the snippet where it is.
+  Future<void> stopSnippet() async {
+    final handle = _snippetHandle;
+    _snippetHandle = null;
+    if (handle == null) return;
+    try {
+      await _soloud.stop(handle);
+    } catch (e) {
+      debugPrint('Could not stop the snippet: $e');
+    }
   }
 
   /// Plays [wav] over and over until [stopLoop]: the metronome's bar of

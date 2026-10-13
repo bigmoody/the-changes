@@ -56,11 +56,37 @@ class FakePlayer implements PracticePlayer {
   Uint8List? played;
   TakeShift? withShift;
 
+  /// Where the last play was asked to start.
+  Duration? playedFrom;
+
+  /// Every place it was asked to move to mid-play, in order.
+  final movedTo = <Duration>[];
+
+  /// What a position read gives back, so a test can put the play part
+  /// way through or say it is over.
+  Duration? at;
+
+  var stopped = false;
+
   @override
-  Future<void> playSnippet(Uint8List wav, {TakeShift? shift}) async {
+  Future<void> playSnippet(
+    Uint8List wav, {
+    TakeShift? shift,
+    Duration from = Duration.zero,
+  }) async {
     played = wav;
     withShift = shift;
+    playedFrom = from;
   }
+
+  @override
+  Duration? snippetPosition() => at;
+
+  @override
+  Future<void> seekSnippet(Duration to) async => movedTo.add(to);
+
+  @override
+  Future<void> stopSnippet() async => stopped = true;
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -152,6 +178,90 @@ void main() {
       );
       return player;
     }
+
+    testWidgets('it plays from the start until the bar is moved', (
+      tester,
+    ) async {
+      final player = await open(tester, key: 0);
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      expect(player.playedFrom, Duration.zero);
+      expect(find.text('Hear It'), findsOneWidget);
+    });
+
+    testWidgets('dragging the bar is where the next play begins', (
+      tester,
+    ) async {
+      // The whole of it: a lick is four bars and the bit you need is
+      // usually not the start, so the point you drag to is the point it
+      // plays from.
+      final player = await open(tester, key: 0);
+      await tester.drag(
+        find.byKey(const ValueKey('scrub')),
+        const Offset(60, 0),
+      );
+      await tester.pumpAndSettle();
+      final from = player.movedTo.isEmpty ? null : player.movedTo.last;
+      expect(from, isNotNull);
+      expect(from!, greaterThan(Duration.zero));
+
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      expect(player.playedFrom, from);
+    });
+
+    testWidgets('the button says what it will do once it has been moved', (
+      tester,
+    ) async {
+      await open(tester, key: 0);
+      expect(find.text('Hear It'), findsOneWidget);
+      await tester.drag(
+        find.byKey(const ValueKey('scrub')),
+        const Offset(60, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Play From'), findsOneWidget);
+    });
+
+    testWidgets('and it can be put back to the start', (tester) async {
+      await open(tester, key: 0);
+      expect(find.byKey(const ValueKey('scrub-to-start')), findsNothing);
+      await tester.drag(
+        find.byKey(const ValueKey('scrub')),
+        const Offset(60, 0),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('scrub-to-start')));
+      await tester.pumpAndSettle();
+      expect(find.text('Hear It'), findsOneWidget);
+      expect(find.byKey(const ValueKey('scrub-to-start')), findsNothing);
+    });
+
+    testWidgets('dragging while it plays moves the sound with the thumb', (
+      tester,
+    ) async {
+      final player = await open(tester, key: 0);
+      player.at = const Duration(milliseconds: 500);
+      await tester.tap(find.byKey(const ValueKey('hear-phrase')));
+      await tester.pump();
+      player.movedTo.clear();
+      await tester.drag(
+        find.byKey(const ValueKey('scrub')),
+        const Offset(40, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        player.movedTo,
+        isNotEmpty,
+        reason: 'the sound should follow the thumb, not wait for it',
+      );
+    });
+
+    testWidgets('the length of the recording is on the bar', (tester) async {
+      await open(tester, key: 0);
+      expect(find.byKey(const ValueKey('scrub-length')), findsOneWidget);
+      expect(find.text('3.0s'), findsOneWidget);
+    });
 
     testWidgets('it plays the audio, not a transcription of it', (
       tester,
