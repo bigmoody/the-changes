@@ -20,6 +20,7 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import '../music/loop_range.dart';
 import '../music/recorded_take.dart';
 import 'backing_synth.dart';
+import 'now_playing_centre.dart';
 import 'sample_bank.dart';
 import 'take_audio.dart';
 import 'wav_file.dart';
@@ -59,6 +60,13 @@ class PlayableRecording {
 class PracticePlayer {
   SoLoud get _soloud => SoLoud.instance;
   AudioSession? _session;
+
+  /// The Control Centre card, where the platform has one.
+  ///
+  /// It lives here because it mirrors the audio session, which lives
+  /// here: the card is the app saying out loud the thing the session
+  /// already asked for, which is to be the only sound playing.
+  NowPlayingCentre? nowPlaying;
 
   /// Recorded instruments; null until loaded (the band then uses synthesis).
   SampleBank? samples;
@@ -107,6 +115,9 @@ class PracticePlayer {
 
   Future<void> init({bool mixWithOthers = true}) async {
     _session = await AudioSession.instance;
+    // iOS only so far: it is the only side with a card built. Everywhere
+    // else this stays null and nothing asks for one.
+    if (Platform.isIOS) nowPlaying = NowPlayingCentre();
     await setMixWithOthers(mixWithOthers);
     if (Platform.isIOS) await _session!.setActive(true);
     await _soloud.init();

@@ -13,6 +13,7 @@ import '../audio/sample_bank.dart';
 import '../audio/arpeggios.dart';
 import '../audio/backing_synth.dart';
 import '../audio/felt_beat.dart';
+import '../audio/now_playing_centre.dart';
 import '../audio/practice_player.dart';
 import '../audio/export_track.dart';
 import '../audio/take_recorder.dart';
@@ -53,6 +54,7 @@ class PracticeController extends ChangeNotifier {
     TuneRef? ref,
     TakeRecorder? recorder,
     TunerListener? listener,
+    this.nowPlaying,
   }) : // A private field can't be a named parameter, so these are assigned
        // rather than taken as initialising formals.
        // ignore: prefer_initializing_formals
@@ -153,6 +155,15 @@ class PracticeController extends ChangeNotifier {
   Tune _chart;
   int _semitones = 0;
   final PracticePlayer player;
+
+  /// The phone's own transport, where there is one.
+  ///
+  /// Taken here so a test can watch it, and otherwise the player's own,
+  /// which is where the running app keeps it. Null in a test that asks
+  /// for neither: nothing here should need a lock screen to be stood up.
+  final NowPlayingCentre? nowPlaying;
+
+  NowPlayingCentre? get _card => nowPlaying ?? player.nowPlaying;
   final AppSettings settings;
 
   /// Where recordings of you are kept. Null when there's nowhere to put
@@ -557,7 +568,41 @@ class PracticeController extends ChangeNotifier {
   Future<void> setMixWithOthers(bool value) async {
     await settings.setMixWithOthers(value);
     await player.setMixWithOthers(value);
+    // The card comes and goes with the switch, mid-run as well as
+    // between them: turning the mixing back on while the band plays has
+    // to hand the lock screen back to whatever else is sounding.
+    await _tellTheSystem();
     notifyListeners();
+  }
+
+  /// Puts the Now Playing card up, takes it down, or changes what it
+  /// says, to match what the band is actually doing.
+  ///
+  /// Only when the app has the sound to itself. Mixing, the card belongs
+  /// to whatever you are playing along to, and taking it would mean the
+  /// pause button on the lock screen stopped pausing them.
+  Future<void> _tellTheSystem() async {
+    final card = _card;
+    if (card == null) return;
+    if (!_isPlaying || settings.mixWithOthers) {
+      await card.hide();
+      return;
+    }
+    card.onPlay = resume;
+    card.onPause = pause;
+    card.onToggle = () {
+      unawaited(togglePlay());
+    };
+    card.onStop = () {
+      unawaited(stop());
+    };
+    await card.show(
+      title: chart.title,
+      // What a sleeve would put the artist on. The two things you would
+      // want to know from a pocket: what key it is in and how fast.
+      line: '${chart.key} · $currentTempo',
+      playing: !_isPaused,
+    );
   }
 
   // ── Mixer ──────────────────────────────────────────────────────────────
@@ -1085,6 +1130,7 @@ class PracticeController extends ChangeNotifier {
     player.pause();
     _isPaused = true;
     _ticker?.cancel(); // the highlight stays on the bar where it stopped
+    unawaited(_tellTheSystem());
     notifyListeners();
   }
 
@@ -1093,6 +1139,7 @@ class PracticeController extends ChangeNotifier {
     player.resume();
     _isPaused = false;
     _startTicker();
+    unawaited(_tellTheSystem());
     notifyListeners();
   }
 
@@ -1111,6 +1158,7 @@ class PracticeController extends ChangeNotifier {
       }
     }
     _isPlaying = true;
+    unawaited(_tellTheSystem());
     _isPaused = false;
     _isPreparing = true;
     _error = null;
@@ -1213,6 +1261,7 @@ class PracticeController extends ChangeNotifier {
     unawaited(_stopListening());
     if (_takePath != null) unawaited(_saveTake());
     _isPlaying = false;
+    unawaited(_card?.hide());
     _isPaused = false;
     _finishing = false;
     _currentBeat = null;
@@ -1370,6 +1419,7 @@ class PracticeController extends ChangeNotifier {
     settings.removeListener(_updateChart);
     recordingStore?.removeListener(_recordingsChanged);
     player.stop();
+    unawaited(_card?.hide());
     super.dispose();
   }
 }
