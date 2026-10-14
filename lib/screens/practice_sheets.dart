@@ -582,7 +582,13 @@ class _BandSwing extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final follows = style.swing == null;
-    final at = style.swing ?? swingAt(controller.tempo);
+    final feel = style.drums;
+    // Where this groove sits when nobody has touched it, which is the
+    // tempo's own swing for the ones that swing and even for the rest.
+    // Reading the swing feel's answer here showed a bossa resting at
+    // "dotted" while the band played it even.
+    final resting = feel.swingBy(controller.tempo);
+    final at = style.swing ?? resting;
     return Padding(
       padding: const EdgeInsets.only(top: 4),
       child: Column(
@@ -626,22 +632,35 @@ class _BandSwing extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    follows
-                        ? 'Follows the tempo: '
-                              '${swingName(at).toLowerCase()}, '
-                              '${ratioText(at)} at ${controller.tempo}'
-                        : '${swingName(at)}, ${ratioText(at)}, '
-                              'at every tempo',
+                    switch ((follows, feel.swings)) {
+                      // Left alone, a swinging feel follows the tempo and
+                      // an even one simply stays even.
+                      (true, true) =>
+                        'Follows the tempo: '
+                            '${swingName(at).toLowerCase()}, '
+                            '${ratioText(at)} at ${controller.tempo}',
+                      (true, false) =>
+                        'Even, as a ${feel.label.toLowerCase()} is played',
+                      // Moved, it is that much at every tempo, and in a
+                      // feel that leans its sixteenths it is those.
+                      (false, _) =>
+                        '${swingName(at)}, ${ratioText(at)}, at every tempo'
+                            '${feel.swingsSixteenths ? ', on the sixteenths' : ''}',
+                    },
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
+                // Only where there is something to put back.
                 if (!follows)
                   TextButton(
                     key: const ValueKey('swing-follow-again'),
                     onPressed: () => controller.setSwing(null),
-                    child: const Text('Follow'),
+                    // What it goes back to, rather than what it stops
+                    // doing: a groove that never followed the tempo
+                    // cannot be told to follow it again.
+                    child: Text(feel.swings ? 'Follow' : 'Even'),
                   ),
               ],
             ),
@@ -758,12 +777,13 @@ class _TheBand extends StatelessWidget {
             ),
           ),
         ),
-        // Only where it would do anything: the swing value reaches the
-        // swing feel and nothing else. A shuffle is a triplet feel by
-        // definition and a bossa plays even eighths, so a slider on
-        // either would be a control that does nothing.
-        if (style.drums == Feel.swing)
-          _BandSwing(controller: controller, style: style),
+        // Every groove, now that the swing reaches every groove. It used
+        // to be here only for the swing feel, which was right when the
+        // value went nowhere else: a shuffle was pinned to the triplet
+        // and an even feel ignored it, so the slider would have been a
+        // control that did nothing. All six lean now, each from its own
+        // resting place, so all six have one.
+        _BandSwing(controller: controller, style: style),
         // Only where it would do anything. Held chords and the calypso
         // strum have rhythms of their own, and the guitar borrows these
         // figures in swing and nowhere else.
