@@ -1135,7 +1135,7 @@ _Parts _renderParts(
           // does not land on the beat is a drummer who is not playing
           // with the band.
           final circle = hit.drum == Drum.swirl
-              ? _swirlFor(samples, samplesPerBeatOf[chorusOf(beat)])
+              ? _swirlFor(samples, samplesPerBeatOf[chorusOf(beat)], hit.beats)
               : null;
           final layer =
               circle?.layer ??
@@ -1279,9 +1279,12 @@ const _swirlOverlap = 1.2;
 /// one is taken and the recording is resampled the rest of the way, which
 /// keeps the stretch small enough that a swirl still sounds like wire on a
 /// drumhead and not like a tape running slow.
-({int layer, double rate}) _swirlFor(DrumSamples swirl, int samplesPerBeat) {
-  // A circle is two beats: half of one to a beat, as it is played.
-  final wanted = 2 * samplesPerBeat * _swirlOverlap;
+({int layer, double rate}) _swirlFor(
+  DrumSamples swirl,
+  int samplesPerBeat,
+  double beats,
+) {
+  final wanted = beats * samplesPerBeat * _swirlOverlap;
   var best = 0;
   var bestOff = double.infinity;
   for (var layer = 0; layer < swirl.length; layer++) {

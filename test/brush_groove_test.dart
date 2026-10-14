@@ -98,11 +98,61 @@ void main() {
     });
   });
 
+  group('a bossa, with the brushes out', () {
+    // The second half of the same mistake. A bossa's pulse is steady
+    // eighths on the hi-hat, and a fan of wire on a closed hi-hat is a
+    // thin scratch, so a brush kit under the stick pattern came out
+    // more metallic than the sticks had been.
+    test('the hi-hat stops keeping the eighths', () {
+      expect(countOf(played(Feel.bossa), Drum.hiHatClosed), greaterThan(0));
+      expect(countOf(played(Feel.bossa, brushes: true), Drum.hiHatClosed), 0);
+    });
+
+    test('and the cymbal is not reached for either', () {
+      // The stick bossa moves to the ride for a section at a time.
+      expect(countOf(played(Feel.bossa), Drum.ride), greaterThan(0));
+      expect(countOf(played(Feel.bossa, brushes: true), Drum.ride), 0);
+    });
+
+    test('a circle keeps them instead, one to a beat', () {
+      // Standing in for the ganza running under the groove, which is
+      // quicker than the arm's circle in a swing feel.
+      final hits = played(Feel.bossa, brushes: true);
+      expect(countOf(hits, Drum.swirl), 4 * 32);
+      for (final hit in hits.where((hit) => hit.drum == Drum.swirl)) {
+        expect(hit.beats, 1);
+      }
+    });
+
+    test('and a swing circle still takes two beats', () {
+      for (final hit in played(
+        Feel.swing,
+        brushes: true,
+      ).where((hit) => hit.drum == Drum.swirl)) {
+        expect(hit.beats, 2);
+      }
+    });
+
+    test('the clave stays on the edge of the drum', () {
+      expect(
+        countOf(played(Feel.bossa, brushes: true), Drum.crossStick),
+        countOf(played(Feel.bossa), Drum.crossStick),
+      );
+    });
+
+    test('and the kick still plays the surdo', () {
+      expect(
+        countOf(played(Feel.bossa, brushes: true), Drum.kick),
+        greaterThan(0),
+      );
+    });
+  });
+
   group('the other grooves are left alone', () {
-    // Brushes belong to a swing feel. A bossa is played with sticks, and
-    // a brush kit under it is a choice somebody made rather than a
-    // pattern that should rewrite itself.
-    for (final feel in [Feel.bossa, Feel.funk, Feel.samba, Feel.calypso]) {
+    // Brushes belong to a swing feel and to a bossa. A funk backbeat is
+    // not played with them, and a brush kit under one is a choice
+    // somebody made rather than a pattern that should rewrite itself.
+    for (final feel in [Feel.funk, Feel.samba, Feel.calypso]) {
       test('${feel.name} plays the same bar either way', () {
         final sticks = played(feel);
         final brushed = played(feel, brushes: true);
@@ -116,7 +166,7 @@ void main() {
 
     test('and none of them reaches for a swirl', () {
       for (final feel in Feel.values) {
-        if (feel == Feel.swing) continue;
+        if (feel == Feel.swing || feel == Feel.bossa) continue;
         expect(countOf(played(feel, brushes: true), Drum.swirl), 0);
       }
     });

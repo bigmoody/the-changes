@@ -71,6 +71,7 @@ class DrumHit {
     required this.beat,
     required this.velocity,
     this.hard = false,
+    this.beats = 2,
   });
 
   final Drum drum;
@@ -78,9 +79,24 @@ class DrumHit {
   final double velocity;
   final bool hard;
 
+  /// How long the sound lasts, in beats. Only the swirl reads it: the arm
+  /// turns one full circle in this many beats, and the band stretches the
+  /// recording to fit. A swing circle takes two beats, half a turn to a
+  /// beat, as it is taught; a bossa's is quicker, because what it is
+  /// standing in for there is a shaker and not a circle.
+  ///
+  /// Every other drum is struck and then left to ring for as long as it
+  /// rings, so for them this says nothing.
+  final double beats;
+
   /// The same hit, moved: how a straight pattern becomes a leaning one.
-  DrumHit at(double beat) =>
-      DrumHit(drum: drum, beat: beat, velocity: velocity, hard: hard);
+  DrumHit at(double beat) => DrumHit(
+    drum: drum,
+    beat: beat,
+    velocity: velocity,
+    hard: hard,
+    beats: beats,
+  );
 }
 
 /// The hits for one bar of [feel]. [bar] counts from the start of the loop,
@@ -109,6 +125,7 @@ List<DrumHit> drumBar({
   for (final hit in switch (feel) {
     Feel.swing when brushes => _swingBrushBar(bar, beatsPerBar, random),
     Feel.swing => _swingBar(bar, beatsPerBar, random),
+    Feel.bossa when brushes => _bossaBrushBar(bar, beatsPerBar, random),
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
     Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
@@ -319,6 +336,72 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
 /// bar 1 → 1, the "and" of 2, 4;  bar 2 → 2, the "and" of 3.
 const _claveBarOne = [0.0, 1.5, 3.0];
 const _claveBarTwo = [1.0, 2.5];
+
+/// A bossa, played with brushes.
+///
+/// The steady eighths come off the hi-hat. They are the pulse of the
+/// groove and they are the one thing a brush cannot do: a fan of wire on
+/// a closed hi-hat is a thin scratch, so leaving them there was the worst
+/// of both, a brush kit sounding more metallic than the sticks it
+/// replaced.
+///
+/// What goes in their place is a circle on the head. That is not a
+/// substitution of convenience: in a bossa the brush is standing in for
+/// the ganza, the shaker running underneath everything, and filling
+/// between the clave is the job it is given. The circle turns once a beat
+/// rather than once in two, because a shaker is quicker than an arm.
+///
+/// Everything else is as it was. The clave stays where every source puts
+/// it, on the edge of the drum, and the surdo-like kick stays on 1 and 3.
+List<DrumHit> _bossaBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.swirl,
+        beat: beat.toDouble(),
+        // Leaning on 1 and 3 the way the hi-hat's eighths leaned on the
+        // beat, so the pulse is still where it was.
+        velocity: (beat.isEven ? 0.46 : 0.38) * _human(random),
+        beats: 1,
+      ),
+    );
+  }
+  for (final beat in (bar.isEven ? _claveBarOne : _claveBarTwo).where(
+    (beat) => beat < beatsPerBar,
+  )) {
+    hits.add(
+      DrumHit(
+        drum: Drum.crossStick,
+        beat: beat,
+        velocity: 0.7 * _human(random),
+      ),
+    );
+  }
+  hits
+    ..add(DrumHit(drum: Drum.kick, beat: 0, velocity: 0.5 * _human(random)))
+    ..add(DrumHit(drum: Drum.kick, beat: 2, velocity: 0.44 * _human(random)));
+  if (random.nextDouble() < 0.2) {
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beatsPerBar - 0.5,
+        velocity: 0.36 * _human(random),
+      ),
+    );
+  }
+  for (final beat in _backbeats(beatsPerBar)) {
+    hits.add(
+      DrumHit(
+        drum: Drum.hiHatPedal,
+        beat: beat.toDouble(),
+        velocity: 0.38 * _human(random),
+        hard: true,
+      ),
+    );
+  }
+  return hits;
+}
 
 List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
