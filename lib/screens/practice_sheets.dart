@@ -652,17 +652,19 @@ class _BandSwing extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Only where there is something to put back.
-                if (!follows)
-                  TextButton(
-                    key: const ValueKey('swing-follow-again'),
-                    onPressed: () => controller.setSwing(null),
-                    // Called what it is. Where it goes back to differs
-                    // by groove, following the tempo in one and sitting
-                    // even in another, and the line beside it says which:
-                    // the button only has to say that it undoes.
-                    child: const Text('Reset'),
-                  ),
+                // Always there, greyed when there is nothing to undo.
+                // Shown only once the fader had been moved, it was a
+                // button you could not find by looking: you had to
+                // already have done the thing you wanted undone.
+                TextButton(
+                  key: const ValueKey('swing-follow-again'),
+                  onPressed: follows ? null : () => controller.setSwing(null),
+                  // Called what it is. Where it goes back to differs by
+                  // groove, following the tempo in one and sitting even
+                  // in another, and the line beside it says which: the
+                  // button only has to say that it undoes.
+                  child: const Text('Reset'),
+                ),
               ],
             ),
           ),

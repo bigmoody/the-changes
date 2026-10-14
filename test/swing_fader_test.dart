@@ -74,9 +74,29 @@ void main() {
   });
 
   group('putting it back', () {
-    testWidgets('nothing to put back until it has been moved', (tester) async {
+    testWidgets('it is there before it is needed, and greyed', (tester) async {
+      // Shown only once the fader had been moved, it was a button you
+      // could not find by looking: you had to already have done the
+      // thing you wanted undone.
       await openMixer(tester, 'Blue Bossa');
-      expect(find.byKey(const ValueKey('swing-follow-again')), findsNothing);
+      final reset = find.byKey(const ValueKey('swing-follow-again'));
+      expect(reset, findsOneWidget);
+      expect(
+        tester.widget<TextButton>(reset).onPressed,
+        isNull,
+        reason: 'nothing to undo yet',
+      );
+    });
+
+    testWidgets('and it wakes up once the fader is moved', (tester) async {
+      await openMixer(tester, 'Blue Bossa');
+      await tester.drag(
+        find.byKey(const ValueKey('band-swing')),
+        const Offset(80, 0),
+      );
+      await tester.pumpAndSettle();
+      final reset = find.byKey(const ValueKey('swing-follow-again'));
+      expect(tester.widget<TextButton>(reset).onPressed, isNotNull);
     });
 
     testWidgets('moved, it offers to go back, and does', (tester) async {
@@ -93,7 +113,11 @@ void main() {
       await tester.tap(back);
       await tester.pumpAndSettle();
       expect(fader(tester).value, straight);
-      expect(back, findsNothing, reason: 'nothing left to put back');
+      expect(
+        tester.widget<TextButton>(back).onPressed,
+        isNull,
+        reason: 'nothing left to put back',
+      );
     });
 
     testWidgets('it is called Reset, on an even groove', (tester) async {
