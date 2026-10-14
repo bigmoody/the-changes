@@ -19,6 +19,7 @@ import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
 import '../music/palm_keys.dart';
 import 'stave.dart';
+import 'stave_figure.dart';
 
 /// The twelve, in the order a player would work through them: round the
 /// flat keys first, which is where the horn lives.
@@ -130,23 +131,23 @@ class _PalmKeysScreenState extends State<PalmKeysScreen> {
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: Stave(
+                child: _ExerciseStave(
                   key: ValueKey('palm-stave-$_key-${_shape.name}'),
-                  notes: lineOnStave(exercise.notes, marked: exercise.palm),
-                  space: 8,
-                  semanticsLabel:
-                      '${_shape.label} in $_key, '
-                      '${exercise.notes.length} notes',
+                  exercise: exercise,
+                  about: '${_shape.label} in $_key',
                 ),
               ),
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Text(
-              'In red: the notes the palm keys make. Up and back down, '
-              'because coming off them is the harder of the two and the '
-              'half everybody leaves out: an exercise that ends on the '
-              'high note ends on the bit that went well.',
+              'Under each note, what it is doing: the 3rd of a chord is '
+              'the 3rd whatever key you are in, and a high F got to by '
+              'feel without knowing that is a stretch learned rather than '
+              'a note. In red: the notes the palm keys make. Up and back '
+              'down, because coming off them is the harder of the two and '
+              'the half everybody leaves out: an exercise that ends on '
+              'the high note ends on the bit that went well.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -225,4 +226,60 @@ class _Chips extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// The exercise on a stave, with what each note is doing written under it.
+///
+/// Built here rather than with [lineOnStave] because that draws notes and
+/// this has to draw what they are as well: the degree is the half of the
+/// lesson that travels to another key.
+class _ExerciseStave extends StatelessWidget {
+  const _ExerciseStave({
+    super.key,
+    required this.exercise,
+    required this.about,
+  });
+
+  final Exercise exercise;
+  final String about;
+
+  @override
+  Widget build(BuildContext context) {
+    final drawn = lineOnStave([
+      for (final note in exercise.notes) (pitch: note.pitch, name: note.name),
+    ], marked: exercise.palm);
+    return StaveFigure(
+      clef: Clef.treble,
+      space: 8,
+      above: 10,
+      below: 6,
+      columns: [
+        for (final (i, note) in drawn.indexed) ...[
+          ?_accidentalFor(note),
+          StaveColumn.one(
+            Smufl.noteheadWhole,
+            step: note.step.toDouble(),
+            marked: note.marked,
+            ledgers: true,
+            gap: 1.1,
+            label: exercise.notes[i].degree,
+          ),
+        ],
+      ],
+      semanticsLabel: '$about, ${exercise.notes.length} notes',
+    );
+  }
+}
+
+/// The accidental in front of a note, where it has one.
+StaveColumn? _accidentalFor(StaveNote note) {
+  final glyph = switch (note.accidental) {
+    -2 => Smufl.doubleFlat,
+    -1 => Smufl.flat,
+    1 => Smufl.sharp,
+    2 => Smufl.doubleSharp,
+    _ => null,
+  };
+  if (glyph == null) return null;
+  return StaveColumn.one(glyph, step: note.step.toDouble(), gap: 0.3);
 }
