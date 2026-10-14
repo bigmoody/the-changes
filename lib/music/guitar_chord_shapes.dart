@@ -149,15 +149,23 @@ GuitarVoicing? _shapeFor(
 
 /// How many fingers the shape takes: one for each fretted note, but a barre
 /// across the lowest fret counts once.
+///
+/// Only where a barre is actually possible. Notes sharing the lowest fret
+/// are one finger when the first finger can lie across them, and are
+/// several fingers when it cannot, which is the case whenever a string
+/// inside them has to stay open or silent: a flat finger would sound it.
+/// Counting those as barred let grips through that need five fingers and
+/// in one case six, which is not a hard chord, it is not a chord.
 int _fingers(GuitarVoicing voicing) {
   final fretted = [
     for (final fret in voicing.frets)
       if (fret != null && fret > 0) fret,
   ];
   if (fretted.isEmpty) return 0;
-  final lowest = fretted.reduce(GuitarVoicing.min);
-  final atLowest = fretted.where((fret) => fret == lowest).length;
-  return fretted.length - (atLowest > 1 ? atLowest - 1 : 0);
+  final barre = _barreOf(voicing.frets);
+  if (barre == null) return fretted.length;
+  final barred = fretted.where((fret) => fret == barre.fret).length;
+  return fretted.length - (barred - 1);
 }
 
 /// The barre, if the first finger lies across the lowest fret. Strings
