@@ -4,6 +4,7 @@
 //  • Bass: Sneakybass by Karoryfer Samples (CC0), a 1958 upright bass.
 //  • Piano: Salamander Grand Piano V3 by Alexander Holm (CC-BY 3.0).
 //  • Drums: Virtuosity Drums by Versilian Studios & Karoryfer (CC0).
+//  • Drums, brushes: Swirly Drums by Karoryfer Samples (CC0).
 //
 // The files were trimmed and converted to mono 16-bit WAV by
 // tool/process_samples.py. Samples are kept as 16-bit integers (half the
@@ -204,6 +205,7 @@ class SampleBank {
     required this.tomLow,
     this.importedChords,
     this.importedBass,
+    this.brushes = const {},
     this.importedDrums = const {},
   });
 
@@ -232,6 +234,11 @@ class SampleBank {
   /// bass would otherwise throw away the piano somebody chose last week.
   final SampledInstrument? importedChords;
   final SampledInstrument? importedBass;
+
+  /// The brush kit, drum by drum. A whole second set of recordings rather
+  /// than the stick kit played quietly, because a brush is not a softer
+  /// stick: it answers with a wash where a stick answers with a crack.
+  final Map<Drum, DrumSamples> brushes;
 
   /// An imported kit, drum by drum. Only the drums the kit actually had:
   /// anything missing keeps the band's own, so a font without a cowbell
@@ -262,6 +269,7 @@ class SampleBank {
     cowbell: cowbell,
     tomHigh: tomHigh,
     tomLow: tomLow,
+    brushes: brushes,
     importedChords: chords,
     importedBass: bass,
     importedDrums: drums,
@@ -281,8 +289,16 @@ class SampleBank {
   };
 
   /// Which recordings to hit for [drum], given what somebody chose.
+  ///
+  /// Both the brush kit and an imported one fall back to the band's own
+  /// drum when they have not got that drum, so a kit missing a cowbell
+  /// costs a cowbell and not a calypso.
   DrumSamples playingDrum(Drum drum, DrumSound sound, DrumSamples ours) =>
-      sound == DrumSound.imported ? importedDrums[drum] ?? ours : ours;
+      switch (sound) {
+        DrumSound.kit => ours,
+        DrumSound.brushes => brushes[drum] ?? ours,
+        DrumSound.imported => importedDrums[drum] ?? ours,
+      };
 
   /// Whether an imported kit has anything in it at all.
   bool get hasImportedDrums => importedDrums.isNotEmpty;
@@ -329,6 +345,19 @@ class SampleBank {
             await wav('drums/${name}_${layer}_$take.wav'),
         ],
     ]);
+
+    // The brush kit: three velocity layers a drum rather than two, and
+    // three takes rather than four. The layer is chosen by how hard the
+    // stroke is, and this library records up to 22 of them, so a third
+    // layer buys more than a fourth take of the same one does.
+    Future<DrumSamples> brush(String name, {int layers = 3}) async =>
+        DrumSamples.plain([
+          for (var layer = 1; layer <= layers; layer++)
+            [
+              for (final take in [1, 2, 3])
+                await wav('drums_brushes/${name}_${layer}_$take.wav'),
+            ],
+        ]);
 
     Future<DrumSamples> toms(String name) async => DrumSamples.plain([
       for (final layer in [1, 2])
@@ -399,6 +428,23 @@ class SampleBank {
       cowbell: await kit('cowbell'),
       tomHigh: await toms('tom_high'),
       tomLow: await toms('tom_low'),
+      brushes: {
+        Drum.ride: await brush('ride'),
+        Drum.hiHatPedal: await brush('hihat_pedal'),
+        Drum.hiHatClosed: await brush('hihat_closed'),
+        Drum.hiHatOpen: await brush('hihat_open'),
+        Drum.kick: await brush('kick'),
+        Drum.snare: await brush('snare'),
+        // Brushes have no cross-stick: the handle would be turned round to
+        // play one, and a drummer with brushes in their hands plays the
+        // clave on the edge of the snare instead. Two layers, because the
+        // library's edge hits run from a tick to a slap and the top of
+        // that range is a different gesture.
+        Drum.crossStick: await brush('cross_stick', layers: 2),
+        Drum.cowbell: await brush('cowbell'),
+        Drum.tomHigh: await brush('tom_high'),
+        Drum.tomLow: await brush('tom_low'),
+      },
     );
   }
 }

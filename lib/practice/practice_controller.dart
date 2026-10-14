@@ -544,6 +544,20 @@ class PracticeController extends ChangeNotifier {
   /// the row out when there is not.
   bool get hasImportedDrums => player.samples?.hasImportedDrums ?? false;
 
+  /// The kits worth offering: both of the band's own, and an imported one
+  /// only once there is one. A segment for a kit nobody has imported is a
+  /// button that can only disappoint.
+  ///
+  /// A sound already chosen is always offered, so somebody whose imported
+  /// kit has not finished loading is not silently moved off it.
+  List<DrumSound> get kitChoices => [
+    for (final sound in DrumSound.values)
+      if (sound != DrumSound.imported ||
+          hasImportedDrums ||
+          settings.drumSound == sound)
+        sound,
+  ];
+
   Future<void> setDrumSound(DrumSound value) async {
     if (value == settings.drumSound) return;
     await settings.setDrumSound(value);

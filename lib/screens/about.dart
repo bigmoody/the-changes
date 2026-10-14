@@ -28,6 +28,8 @@ void showAboutTheChanges(BuildContext context) {
         'Samples (CC0).',
       ),
       const SizedBox(height: 8),
+      const Text('Drums, brushes: Swirly Drums by Karoryfer Samples (CC0).'),
+      const SizedBox(height: 8),
       const Text(
         'Lettering and notation: Petaluma Script and Petaluma by Steinberg '
         'Media Technologies, under the SIL Open Font License 1.1.',

@@ -370,29 +370,31 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ],
               ),
             const SizedBox(height: 8),
-            if (controller.settings.drumSound == DrumSound.imported ||
-                controller.hasImportedDrums)
-              Row(
-                children: [
-                  // "Kit" and not "Drums": there is already a Drums row
-                  // above, and it means the groove rather than the sound.
-                  Text('Kit', style: theme.textTheme.titleSmall),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SegmentedButton<DrumSound>(
-                      key: const ValueKey('drum-sound'),
-                      showSelectedIcon: false,
-                      segments: [
-                        for (final sound in DrumSound.values)
-                          ButtonSegment(value: sound, label: Text(sound.label)),
-                      ],
-                      selected: {controller.settings.drumSound},
-                      onSelectionChanged: (value) =>
-                          controller.setDrumSound(value.first),
-                    ),
+            // Always shown now there are two kits in the app. It used to
+            // appear only once something had been imported, which was
+            // right when the only other choice was a kit you had to go
+            // and find yourself.
+            Row(
+              children: [
+                // "Kit" and not "Drums": there is already a Drums row
+                // above, and it means the groove rather than the sound.
+                Text('Kit', style: theme.textTheme.titleSmall),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SegmentedButton<DrumSound>(
+                    key: const ValueKey('drum-sound'),
+                    showSelectedIcon: false,
+                    segments: [
+                      for (final sound in controller.kitChoices)
+                        ButtonSegment(value: sound, label: Text(sound.label)),
+                    ],
+                    selected: {controller.settings.drumSound},
+                    onSelectionChanged: (value) =>
+                        controller.setDrumSound(value.first),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
             SwitchListTile(
               key: const ValueKey('count-in'),
               contentPadding: EdgeInsets.zero,

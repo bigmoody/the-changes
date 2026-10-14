@@ -214,7 +214,14 @@ enum BassSound {
 
 /// Who plays the drums.
 enum DrumSound {
-  kit('The Band'),
+  /// The band's own kit, played with sticks.
+  kit('Sticks'),
+
+  /// The same grooves played with brushes, on a kit recorded that way
+  /// rather than the stick kit quietened. Brushes are not a softer stick:
+  /// the snare answers with a wash instead of a crack, and the ride loses
+  /// most of its ping.
+  brushes('Brushes'),
 
   /// A drum kit out of an imported SoundFont. Each drum falls back to the
   /// band's own when the kit does not have it, so a font with no cowbell

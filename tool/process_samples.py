@@ -180,3 +180,42 @@ if guitar:
     for out, samples in guitar:
         write(out, samples, 0.89 / peak)
     print(f"guitar: {len(guitar)} files, group peak {peak:.3f}")
+
+# Brushes: a second kit, from Karoryfer's Swirly Drums, where nothing is
+# played with sticks. Three velocity layers a drum rather than the stick
+# kit's two, because the layer is now chosen by how hard the stroke is and
+# this library records up to 22 of them; three takes rather than four, to
+# keep a whole second kit inside a few megabytes.
+#
+# Each drum is brought to the peak of the stick kit's matching drum rather
+# than the group being normalised together. The patterns' velocities were
+# written against the stick kit's balance, which is an overhead's balance:
+# the snare cracks and the kick, heard across the room, is the quietest
+# thing in the kit. Normalising the brushes as a group instead would put
+# their own balance under those velocities and the kick would swamp the
+# ride. This way the kit changes tone and not the arrangement.
+BRUSH_PEAKS = {
+    "snare": 1.0, "hihat_open": 0.9603, "ride": 0.6707, "hihat_closed": 0.4969,
+    "cross_stick": 0.3289, "hihat_pedal": 0.3264, "tom_high": 0.3000,
+    "cowbell": 0.2500, "tom_low": 0.1469, "kick": 0.0774,
+}
+# Trimmed to the same lengths as the stick kit's matching drum.
+BRUSH_TRIM = {
+    "ride": (1.8, 0.5), "hihat_pedal": (0.5, 0.15), "hihat_closed": (0.4, 0.12),
+    "hihat_open": (0.6, 0.2), "kick": (0.7, 0.2), "cross_stick": (0.4, 0.12),
+    "snare": (0.7, 0.2), "tom_high": (0.9, 0.3), "tom_low": (0.9, 0.3),
+    "cowbell": (0.5, 0.15),
+}
+if want("brushes"):
+    by_drum = {}
+    for name in sorted(os.listdir(f"{RAW}/brushes")):
+        m = re.match(r"(.+)_(\d)_(\d)\.wav", name)
+        secs, fd = BRUSH_TRIM[m[1]]
+        by_drum.setdefault(m[1], []).append(
+            (f"{OUT}/drums_brushes/{name}", trim(decode(f"{RAW}/brushes/{name}"), secs, fd)))
+    for drum, files in sorted(by_drum.items()):
+        peak = max(max(abs(x) for x in s) for _, s in files)
+        scale = BRUSH_PEAKS[drum] / peak
+        for out, samples in files:
+            write(out, samples, scale)
+        print(f"brushes {drum}: {len(files)} files, peak {peak:.4f}, gain {scale:.2f}")
