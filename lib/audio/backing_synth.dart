@@ -1114,7 +1114,19 @@ _Parts _renderParts(
           // changes its tone; how loud it comes out is the part's velocity.
           // Deciding the level by which layer was picked is what made the
           // odd beat jump 12 dB out of the groove.
-          final layer = (hit.hard ? samples.length - 1 : 0);
+          //
+          // Taken from the velocity rather than from a flag. A kit's tone
+          // changes all the way up, and reading only the flag put every
+          // ordinary stroke on the quietest recording there is: the ride
+          // on the beat and the lighter one after it came out of the same
+          // microphone at the same stick weight, which is the sound of a
+          // drum machine rather than a drummer.
+          final layer = hit.hard
+              ? samples.length - 1
+              : (hit.velocity * samples.length).floor().clamp(
+                  0,
+                  samples.length - 1,
+                );
           final take = pickTake(samples.layers[layer]);
           final asRecorded =
               _drumLevel * hit.velocity * samples.levelling[layer];
@@ -1190,6 +1202,26 @@ _Parts _renderParts(
   if (bank == null) {
     addRoomReverb(drums.buffer, 0, sampleRate, wet: 0.25);
     addRoomReverb(bass.buffer, 0, sampleRate, wet: 0.08);
+  } else {
+    // The recorded kit used to be the one thing in the band with no room
+    // around it: the piano and the guitar were put in one and the drums
+    // were left where they were, which is close-miked and dead. A kit is
+    // the part of a band you mostly hear through the room, so a dry one
+    // reads as a drum machine however good the samples are. The same room
+    // as everything else, so the band is in one place, and a small amount
+    // of it because the recordings carry their own.
+    //
+    // It also gives the kit a tail: with nothing after the last stroke the
+    // drums stopped dead at the end of a chorus. The mix has a second of
+    // room past the batch and the tail is carried into the next one, so
+    // the ring crosses the loop rather than being cut at it.
+    addRoomReverb(drums.buffer, 0, sampleRate, wet: _drumRoom);
+    // The reference the whole band's gain is worked out from has to be the
+    // same sound, or the peak it reports is of a kit that is not the one
+    // being played.
+    if (drumsAsRecorded != null) {
+      addRoomReverb(drumsAsRecorded.buffer, 0, sampleRate, wet: _drumRoom);
+    }
   }
 
   return _Parts(
@@ -1211,6 +1243,11 @@ _Parts _renderParts(
 /// How loud the recorded drums sit against the bass and piano (cymbals
 /// measure quiet on average but cut through, so this was set by level
 /// matching the stems to a typical trio balance).
+/// How much of the room is heard around the recorded kit. Small: the
+/// samples already have their own, and a drum's transient makes added
+/// reverb obvious long before a sustained instrument's does.
+const _drumRoom = 0.09;
+
 const _drumLevel = 1.7;
 
 /// A drum in a short example: [at] seconds in, how loud, and whether it

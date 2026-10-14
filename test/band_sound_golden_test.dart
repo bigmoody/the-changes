@@ -56,6 +56,10 @@ void main() {
     };
   }
 
+  // All four re-pinned when the recorded kit was given a room and its
+  // layer chosen by how hard the stroke is. Every stem moved, not only the
+  // drums: one gain is worked out from the summed mix and handed to all of
+  // them, so a louder kit moves the bytes of the bass as well.
   test('a swing tune, piano comping', () {
     final tune = tuneNamed('A Foggy Day');
     expect(
@@ -69,9 +73,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 5040630575083807879,
-        'Bass': 2922376460978512219,
-        'Drums': -940317503037627305,
+        'Chords': -6795078518623837668,
+        'Bass': -2338208205621561693,
+        'Drums': -3014582228555834450,
       },
     );
   });
@@ -98,10 +102,10 @@ void main() {
         ),
       ),
       {
-        'Chords': 5578437645964558967,
-        'Bass': 7092445472841818019,
-        'Drums': 826527004456376527,
-        'Arpeggios': -2150519399602963415,
+        'Chords': 3637804339393996240,
+        'Bass': -3609468427492631304,
+        'Drums': 366290961986166608,
+        'Arpeggios': -2306486937325772848,
       },
     );
   });
@@ -127,10 +131,10 @@ void main() {
         ),
       ),
       {
-        'Chords': 9049823189860803042,
-        'Bass': 447999560278910786,
-        'Drums': 8214853811544911010,
-        'Arpeggios': 5589457551407717847,
+        'Chords': -8481698092698815099,
+        'Bass': -8356220928723660125,
+        'Drums': -5286584494442728111,
+        'Arpeggios': -1860957466257339242,
       },
     );
   });
@@ -155,9 +159,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -7215746479613155286,
-        'Bass': -125329865868221911,
-        'Drums': 8622207292756944879,
+        'Chords': 7596816124038297170,
+        'Bass': 599835489253585947,
+        'Drums': 2477951148983821036,
       },
     );
   });
