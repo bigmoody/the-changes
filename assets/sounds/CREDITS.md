@@ -13,6 +13,14 @@ The files were trimmed and converted to mono 16-bit WAV with
 | Drums | [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) | Versilian Studios & Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
 | Drums, brushes | [Swirly Drums](https://github.com/sfzinstruments/karoryfer.swirly-drums) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
 
+The brush swirl is cut from the library's long stirring takes, which run
+6 to 13 seconds and are meant for a sampler to loop. Each slice is one
+circle, two beats, shaped the way the circle is played: the backward half
+long and quiet, the forward half building into the downbeat. It runs 20
+per cent past its circle and decays so that consecutive circles overlap
+rather than butt against each other, and the band stretches it to the
+tempo.
+
 The brush kit is normalised drum by drum to the peak of the stick kit's
 matching drum rather than as one group. The grooves' velocities were
 written against the stick kit's balance, which is what an overhead

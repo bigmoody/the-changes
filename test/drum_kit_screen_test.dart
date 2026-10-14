@@ -9,7 +9,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:play_along/audio/drum_patterns.dart' show Drum;
+import 'package:play_along/audio/drum_patterns.dart' show Drum, importableDrums;
 import 'package:play_along/music/tune.dart' show DrumSound;
 import 'package:play_along/practice/soundfont_store.dart';
 import 'package:play_along/screens/imported_sounds_screen.dart';
@@ -81,10 +81,13 @@ void main() {
     tester,
   ) async {
     await openWith(tester, store: SoundFontStore.inMemory());
-    for (final drum in Drum.values) {
+    // The swirl is not here: it is the brush kit's, and no SoundFont
+    // has a brush circling a drumhead to put in its place.
+    for (final drum in importableDrums) {
       expect(find.byKey(ValueKey('playing-${drum.name}')), findsOneWidget);
     }
-    expect(find.text("The band's own"), findsNWidgets(Drum.values.length));
+    expect(find.byKey(const ValueKey('playing-swirl')), findsNothing);
+    expect(find.text("The band's own"), findsNWidgets(importableDrums.length));
   });
 
   testWidgets('tapping a drum takes that one and no other', (tester) async {

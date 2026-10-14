@@ -219,3 +219,51 @@ if want("brushes"):
         for out, samples in files:
             write(out, samples, scale)
         print(f"brushes {drum}: {len(files)} files, peak {peak:.4f}, gain {scale:.2f}")
+
+# The brush swirl: the left hand's circle on the snare head, which is what
+# makes a brush groove sound played rather than tapped.
+#
+# The library records stirring as long continuous takes, 6 to 13 seconds,
+# meant for a sampler to loop at whatever speed the circle wants. Checked
+# for a circle period and there is none worth speaking of: autocorrelation
+# over the envelope decays from the shortest lag out, so the recordings are
+# even washes. That means slices can be cut from them and shaped here
+# rather than fighting dynamics already in the take.
+#
+# Each slice is one full circle, which is two beats, and it is shaped the
+# way the circle is played: the backward half long and quiet, the forward
+# half building into the downbeat. It runs 20 per cent past its circle and
+# decays, so consecutive circles overlap and the join is a crossfade and
+# not an edge. The band stretches the whole thing to the tempo, so two
+# lengths are enough to keep that stretch near 1.
+SWIRL_PEAK = 0.25
+SWIRL_OVERLAP = 1.2
+if want("swirl"):
+    srcs = ["stir_2_1", "stir_3_1", "stir_3_2"]
+    swirl = []
+    for layer, unit in enumerate([0.75, 1.5], 1):   # two beats at 160 and 80
+        for take, src in enumerate(srcs, 1):
+            a = decode(f"{RAW}/brushes_stir/{src}.wav")
+            n = int(unit * SWIRL_OVERLAP * SR)
+            # Taken from a different place in each recording, so three takes
+            # of one circle are not three copies of one. Kept clear of both
+            # ends: the recordings are 6 to 13 seconds and a slice that
+            # runs off the end is a circle that stops half way round.
+            start = min(int(SR * (1.0 + take * 1.7 + layer * 0.9)), len(a) - n)
+            s = array.array("f", a[start:start + n])
+            assert len(s) == n, f"{src} is too short for a {unit}s circle"
+            circle = int(unit * SR)
+            for i in range(len(s)):
+                if i < circle:
+                    s[i] *= 0.45 + 0.55 * (i / circle) ** 1.6
+                else:
+                    x = (i - circle) / (len(s) - circle)
+                    s[i] *= 0.5 * (1 + math.cos(math.pi * x))
+            fade = int(0.008 * SR)
+            for i in range(fade):
+                s[i] *= i / fade
+            swirl.append((f"{OUT}/drums_brushes/swirl_{layer}_{take}.wav", s))
+    peak = max(max(abs(x) for x in s) for _, s in swirl)
+    for out, s in swirl:
+        write(out, s, SWIRL_PEAK / peak)
+    print(f"swirl: {len(swirl)} files, peak {peak:.4f}, gain {SWIRL_PEAK / peak:.2f}")

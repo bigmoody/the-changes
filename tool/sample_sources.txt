@@ -257,3 +257,7 @@ brushes/cowbell_2_3.wav https://raw.githubusercontent.com/sfzinstruments/karoryf
 brushes/cowbell_3_1.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/cowbell/cowbell_vl8_rr1.wav
 brushes/cowbell_3_2.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/cowbell/cowbell_vl8_rr2.wav
 brushes/cowbell_3_3.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/cowbell/cowbell_vl8_rr3.wav
+brushes_stir/stir_2_1.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/snare_stir/stir_dl2_rr1.wav
+brushes_stir/stir_2_2.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/snare_stir/stir_dl2_rr2.wav
+brushes_stir/stir_3_1.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/snare_stir/stir_dl3_rr1.wav
+brushes_stir/stir_3_2.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/snare_stir/stir_dl3_rr2.wav

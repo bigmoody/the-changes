@@ -30,7 +30,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
-import '../audio/drum_patterns.dart' show Drum;
+import '../audio/drum_patterns.dart' show Drum, importableDrums;
 import '../audio/imported_kit.dart';
 import '../audio/sample_bank.dart';
 import '../audio/soundfont.dart';
@@ -426,7 +426,7 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
                   clearKey: ValueKey('forget-${role.name}'),
                 ),
               const SectionHeader('The Drums'),
-              for (final drum in Drum.values)
+              for (final drum in importableDrums)
                 _PartRow(
                   key: ValueKey('playing-${drum.name}'),
                   title: drum.label,

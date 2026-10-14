@@ -1057,13 +1057,18 @@ _Parts _renderParts(
     return takes[take];
   }
 
-  /// Which recordings to hit for [drum]: the band's own, or an imported
-  /// kit's where somebody chose one and it has that drum.
-  DrumSamples? recordedDrum(Drum drum) {
-    final ours = bank == null ? null : drumIn(bank, drum);
-    if (ours == null) return null;
-    return bank!.playingDrum(drum, request.drumSound, ours);
-  }
+  /// Which recordings to hit for [drum]: the band's own, or the brush or
+  /// imported kit's where somebody chose one and it has that drum.
+  // Whether the brushes are actually out, rather than only chosen: a
+  // groove that moves the time onto the snare head and circles underneath
+  // needs the recordings that make those sounds. Without the bank there
+  // is a synthesised kit standing in, and it has no brushes.
+  final playingBrushes =
+      request.drumSound == DrumSound.brushes &&
+      bank?.brushes.isNotEmpty == true;
+
+  DrumSamples? recordedDrum(Drum drum) =>
+      bank?.playingDrum(drum, request.drumSound, drumIn(bank, drum));
 
   Float32List? synthesisedDrum(Drum drum) => switch (drum) {
     Drum.ride => kit?.ride[takesRandom.nextInt(kit.ride.length)],
@@ -1073,6 +1078,8 @@ _Parts _renderParts(
     // The synthesised kit has no snare; its cross-stick stands in.
     Drum.snare || Drum.crossStick || Drum.cowbell => kit?.crossStick,
     Drum.tomHigh || Drum.tomLow => kit?.kick,
+    // Nothing in the synthesised kit sounds remotely like a brush.
+    Drum.swirl => null,
   };
 
   // The tune bars the loop covers (a loop can start mid-bar).
@@ -1103,6 +1110,7 @@ _Parts _renderParts(
               beatsPerBar: beatsPerBar,
               random: drumRandom,
               swing: swing,
+              brushes: playingBrushes,
             );
       for (final hit in hits) {
         final beatInTune = bars[i] * beatsPerBar + hit.beat;
@@ -1121,12 +1129,22 @@ _Parts _renderParts(
           // on the beat and the lighter one after it came out of the same
           // microphone at the same stick weight, which is the sound of a
           // drum machine rather than a drummer.
-          final layer = hit.hard
-              ? samples.length - 1
-              : (hit.velocity * samples.length).floor().clamp(
-                  0,
-                  samples.length - 1,
-                );
+          // The swirl is the exception: its layers are circle lengths and
+          // not stroke weights, so the tempo picks one and the recording
+          // is stretched the rest of the way onto the beat. A circle that
+          // does not land on the beat is a drummer who is not playing
+          // with the band.
+          final circle = hit.drum == Drum.swirl
+              ? _swirlFor(samples, samplesPerBeatOf[chorusOf(beat)])
+              : null;
+          final layer =
+              circle?.layer ??
+              (hit.hard
+                  ? samples.length - 1
+                  : (hit.velocity * samples.length).floor().clamp(
+                      0,
+                      samples.length - 1,
+                    ));
           final take = pickTake(samples.layers[layer]);
           final asRecorded =
               _drumLevel * hit.velocity * samples.levelling[layer];
@@ -1134,11 +1152,17 @@ _Parts _renderParts(
             at(beat),
             take,
             asRecorded * request.drumLevels.of(hit.drum),
+            rate: circle?.rate ?? 1,
           );
           // The same hit where it was, for the gain. The take is picked
           // once and used for both, so the second copy is the same drum
           // and not another one out of the same bag.
-          drumsAsRecorded?.addRecording(at(beat), take, asRecorded);
+          drumsAsRecorded?.addRecording(
+            at(beat),
+            take,
+            asRecorded,
+            rate: circle?.rate ?? 1,
+          );
         } else {
           final sound = synthesisedDrum(hit.drum);
           if (sound != null) {
@@ -1243,6 +1267,34 @@ _Parts _renderParts(
 /// How loud the recorded drums sit against the bass and piano (cymbals
 /// measure quiet on average but cut through, so this was set by level
 /// matching the stems to a typical trio balance).
+/// How far a swirl recording runs past its own circle, so one circle
+/// overlaps the next and the join between them is a crossfade rather than
+/// an edge. Baked into the files by `tool/process_samples.py`, and needed
+/// here to work out how long the circle inside a recording is.
+const _swirlOverlap = 1.2;
+
+/// Which circle to use for a swirl, and how far to stretch it.
+///
+/// The layers are circle lengths rather than stroke weights. The nearest
+/// one is taken and the recording is resampled the rest of the way, which
+/// keeps the stretch small enough that a swirl still sounds like wire on a
+/// drumhead and not like a tape running slow.
+({int layer, double rate}) _swirlFor(DrumSamples swirl, int samplesPerBeat) {
+  // A circle is two beats: half of one to a beat, as it is played.
+  final wanted = 2 * samplesPerBeat * _swirlOverlap;
+  var best = 0;
+  var bestOff = double.infinity;
+  for (var layer = 0; layer < swirl.length; layer++) {
+    final off = (math.log(swirl.layers[layer].first.samples.length / wanted))
+        .abs();
+    if (off < bestOff) {
+      bestOff = off;
+      best = layer;
+    }
+  }
+  return (layer: best, rate: swirl.layers[best].first.samples.length / wanted);
+}
+
 /// How much of the room is heard around the recorded kit. Small: the
 /// samples already have their own, and a drum's transient makes added
 /// reverb obvious long before a sustained instrument's does.
@@ -1261,7 +1313,12 @@ const _drumLevel = 1.7;
 typedef SnippetDrum = ({double at, Drum drum, double velocity, bool hard});
 
 /// The recordings of [drum] in [bank].
-DrumSamples drumIn(SampleBank bank, Drum drum) => switch (drum) {
+/// The band's own recording of [drum], or null for one it has not got.
+///
+/// Only the swirl, which the stick kit cannot make: a brush circling the
+/// head is not a stroke played softly. A groove only asks for it when the
+/// brushes are out, so the null is a guard rather than a path.
+DrumSamples? drumIn(SampleBank bank, Drum drum) => switch (drum) {
   Drum.ride => bank.ride,
   Drum.hiHatPedal => bank.hiHatPedal,
   Drum.hiHatClosed => bank.hiHatClosed,
@@ -1272,6 +1329,7 @@ DrumSamples drumIn(SampleBank bank, Drum drum) => switch (drum) {
   Drum.cowbell => bank.cowbell,
   Drum.tomHigh => bank.tomHigh,
   Drum.tomLow => bank.tomLow,
+  Drum.swirl => null,
 };
 
 /// One note of a short example: [pitch] (MIDI) from [start] for [length],
@@ -1370,6 +1428,8 @@ Uint8List renderSnippet(
   // The drums last, so they sit on top of whatever else is going on.
   for (final hit in drums) {
     final samples = drumIn(bank, hit.drum);
+    // An example is played on the band's own kit, which has no swirl.
+    if (samples == null) continue;
     final layer = hit.hard ? samples.length - 1 : 0;
     mix.addRecording(
       (hit.at * sampleRate).round(),

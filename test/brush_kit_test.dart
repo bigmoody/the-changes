@@ -46,9 +46,16 @@ void main() {
 
     test('three velocity layers a drum, so the tone moves with the stroke', () {
       for (final drum in Drum.values) {
-        if (drum == Drum.crossStick) continue;
+        // Two apiece, and for their own reasons: see below.
+        if (drum == Drum.crossStick || drum == Drum.swirl) continue;
         expect(bank.brushes[drum]!.length, 3, reason: drum.label);
       }
+    });
+
+    test('and the swirl two, which are circle lengths and not weights', () {
+      // The band picks the nearer one for the tempo and stretches it the
+      // rest of the way onto the beat.
+      expect(bank.brushes[Drum.swirl]!.length, 2);
     });
 
     test('and the cross-stick two, being an edge hit here', () {
@@ -92,6 +99,8 @@ void main() {
         Drum.tomLow: bank.tomLow,
       };
       for (final drum in Drum.values) {
+        // The swirl has nothing to match: the stick kit cannot make one.
+        if (drum == Drum.swirl) continue;
         final brushed = peakOf(bank.brushes[drum]!);
         final struck = peakOf(sticks[drum]!);
         expect(

@@ -31,7 +31,16 @@ enum Drum {
   crossStick('Cross-Stick'),
   cowbell('Cowbell'),
   tomHigh('Tom, High'),
-  tomLow('Tom, Low');
+  tomLow('Tom, Low'),
+
+  /// The brush swirl: the left hand's circle on the snare head, which is
+  /// the sound of a brush groove rather than an ornament on one. Only the
+  /// brush kit has it; with sticks it is never asked for.
+  ///
+  /// Last in the list on purpose. A kit imported from a SoundFont is saved
+  /// by each drum's position here, so a value inserted anywhere else would
+  /// hand somebody's imported ride to their kick.
+  swirl('Brush Swirl');
 
   const Drum(this.label);
 
@@ -40,6 +49,15 @@ enum Drum {
   /// rather than by which hi-hat it is.
   final String label;
 }
+
+/// The drums something imported can stand in for: all of them but the
+/// swirl, which belongs to the brush kit. No SoundFont has a brush
+/// circling a drumhead, and a row offering to replace one would be
+/// offering something nobody can supply.
+final importableDrums = [
+  for (final drum in Drum.values)
+    if (drum != Drum.swirl) drum,
+];
 
 /// One hit: [beat] counts from the start of the bar.
 ///
@@ -73,16 +91,23 @@ class DrumHit {
 /// off-beats are moved once, at the end, so the slider leans a shuffle
 /// and a bossa the same way it leans a swing tune, and a pattern stays a
 /// description of what is played rather than of when.
+/// [brushes] changes what is played and not only what it is played on.
+/// Swapping the kit alone leaves the time on the ride, so a brush groove
+/// would come out as a brushed cymbal, which is the one part of the kit
+/// brushes make sound more metallic rather than less. A brush player
+/// moves the time onto the snare head and circles underneath it.
 List<DrumHit> drumBar({
   required Feel feel,
   required int bar,
   required int beatsPerBar,
   required math.Random random,
   required double swing,
+  bool brushes = false,
 }) => [
   // Figures written for a four-beat bar lose whatever falls past the end
   // of a shorter one (a waltz keeps the first two beats of the clave).
   for (final hit in switch (feel) {
+    Feel.swing when brushes => _swingBrushBar(bar, beatsPerBar, random),
     Feel.swing => _swingBar(bar, beatsPerBar, random),
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
@@ -103,7 +128,12 @@ List<DrumHit> drumBar({
 ///
 /// Nothing is lost where the sixteenths are what lean: these patterns
 /// write the hat in eighths, and an eighth does not move then.
-bool keepsTime(Drum drum) => drum == Drum.hiHatClosed || drum == Drum.hiHatOpen;
+bool keepsTime(Drum drum) =>
+    drum == Drum.hiHatClosed ||
+    drum == Drum.hiHatOpen ||
+    // The circle is one unbroken motion of the arm. Leaning it would be
+    // asking the left hand to hesitate half way round.
+    drum == Drum.swirl;
 
 /// Where a hit lands once the feel's off-beats are leaned.
 double leaned(double beat, Feel feel, double swing) =>
@@ -119,6 +149,92 @@ List<int> _backbeats(int beatsPerBar) => switch (beatsPerBar) {
   <= 2 => const [1],
   _ => [for (var beat = 1; beat < beatsPerBar; beat += 2) beat],
 };
+
+/// Swing, played with brushes.
+///
+/// The same time, moved. The right hand taps the ride's rhythm on the
+/// snare head instead of on the cymbal, and the left hand keeps a circle
+/// going underneath: half a circle to a beat, so one full circle is two
+/// beats, building into the backbeat where the hi-hat closes. The cymbal
+/// is not touched at all, which is what the basic pattern asks for.
+///
+/// The taps are quieter than the ride's numbers look because they are not
+/// the same drum. The kit is balanced as an overhead hears it, where the
+/// snare is the loudest thing and the ride sits 3 dB under it, so the same
+/// velocity on the snare is a harder stroke than it was on the cymbal.
+List<DrumHit> _swingBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  final backbeats = _backbeats(beatsPerBar);
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    final isBackbeat = backbeats.contains(beat);
+    hits.add(
+      DrumHit(
+        drum: Drum.snare,
+        beat: beat.toDouble(),
+        velocity: (isBackbeat ? 0.41 : 0.35) * _human(random),
+      ),
+    );
+    if (isBackbeat) {
+      hits
+        ..add(
+          DrumHit(
+            drum: Drum.snare,
+            beat: beat + 0.5,
+            velocity: 0.27 * _human(random),
+          ),
+        )
+        ..add(
+          DrumHit(
+            drum: Drum.hiHatPedal,
+            beat: beat.toDouble(),
+            velocity: 0.5 * _human(random),
+            hard: true,
+          ),
+        );
+    }
+    // One circle every two beats, started on the beat before the backbeat
+    // so that it builds into it.
+    if (beat.isEven) {
+      hits.add(
+        DrumHit(
+          drum: Drum.swirl,
+          beat: beat.toDouble(),
+          velocity: 0.5 * _human(random),
+        ),
+      );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.16 * _human(random),
+      ),
+    );
+  }
+  // A bar of three leaves a half circle hanging. Better one circle over
+  // the whole bar than two thirds of one.
+  if (beatsPerBar.isOdd) {
+    hits.removeWhere((hit) => hit.drum == Drum.swirl && hit.beat > 0);
+  }
+  // The fills are the stick kit's, which are snare fills already: a brush
+  // plays them with the edge of the fan rather than the tip.
+  if (bar % 8 == 7 && random.nextDouble() < 0.4) {
+    final from = (beatsPerBar - 2).toDouble();
+    hits
+      ..add(
+        DrumHit(drum: Drum.snare, beat: from, velocity: 0.5 * _human(random)),
+      )
+      ..add(DrumHit(drum: Drum.snare, beat: from + 0.5, velocity: 0.4))
+      ..add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: from + 1,
+          velocity: 0.55 * _human(random),
+        ),
+      );
+  }
+  return hits;
+}
 
 List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];

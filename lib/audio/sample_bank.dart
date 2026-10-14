@@ -293,7 +293,7 @@ class SampleBank {
   /// Both the brush kit and an imported one fall back to the band's own
   /// drum when they have not got that drum, so a kit missing a cowbell
   /// costs a cowbell and not a calypso.
-  DrumSamples playingDrum(Drum drum, DrumSound sound, DrumSamples ours) =>
+  DrumSamples? playingDrum(Drum drum, DrumSound sound, DrumSamples? ours) =>
       switch (sound) {
         DrumSound.kit => ours,
         DrumSound.brushes => brushes[drum] ?? ours,
@@ -444,6 +444,10 @@ class SampleBank {
         Drum.cowbell: await brush('cowbell'),
         Drum.tomHigh: await brush('tom_high'),
         Drum.tomLow: await brush('tom_low'),
+        // Two circle lengths rather than two velocities: the band stretches
+        // whichever is nearer to fit the beat, and having two keeps that
+        // stretch close to 1 from a ballad up to a burner.
+        Drum.swirl: await brush('swirl', layers: 2),
       },
     );
   }
