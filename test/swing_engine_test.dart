@@ -45,6 +45,8 @@ BackingRequest _request({required int tempo, TempoRamp ramp = TempoRamp.off}) {
 }
 
 void main() {
+  _theHiHat();
+
   group('the pass decides once', () {
     test('a fast tune swings less than a slow one', () {
       // The whole point of wiring it through. If these came out equal the
@@ -270,6 +272,62 @@ void main() {
         ];
         expect(ride, [0.0, 1.0, 2.0, 3.0], reason: 'at $swing');
       }
+    });
+  });
+}
+
+// The hi-hat holds the pulse of an even groove.
+//
+// Leaning a bossa put its hi-hats at 0.78 instead of 0.5, which is the
+// steady eighths that make it a bossa arriving late and lurching. The
+// pulse does not lean. Funk is the exception, because what leans there
+// is the sixteenths and the hi-hat is where they are.
+void _theHiHat() {
+  List<DrumHit> hits(Feel feel, double swing) => drumBar(
+    feel: feel,
+    bar: 0,
+    beatsPerBar: 4,
+    random: math.Random(1),
+    swing: swing,
+  );
+
+  List<double> hiHats(Feel feel, double swing) => [
+    for (final hit in hits(feel, swing))
+      if (hit.drum == Drum.hiHatClosed || hit.drum == Drum.hiHatOpen) hit.beat,
+  ];
+
+  group('the hi-hat keeps the pulse', () {
+    test('an even groove leans without its hi-hats moving', () {
+      for (final feel in [Feel.bossa, Feel.samba, Feel.calypso]) {
+        expect(
+          hiHats(feel, widestSwing),
+          hiHats(feel, straight),
+          reason: '$feel: the pulse should not lean',
+        );
+      }
+    });
+
+    test('and the rest of the kit still leans', () {
+      // The fader has to do something, or it is a control that lies.
+      final even = [for (final h in hits(Feel.bossa, straight)) h.beat];
+      final leaned = [for (final h in hits(Feel.bossa, widestSwing)) h.beat];
+      expect(leaned, isNot(even));
+    });
+
+    test('funk keeps its hat too, and loses nothing by it', () {
+      // These patterns write the hat in eighths, and an eighth does not
+      // move when it is the sixteenths that lean. What the fader reaches
+      // in a funk tune is the kick that lands on an off sixteenth.
+      expect(hiHats(Feel.funk, widestSwing), hiHats(Feel.funk, straight));
+      expect(
+        [for (final h in hits(Feel.funk, widestSwing)) h.beat],
+        [for (final h in hits(Feel.funk, straight)) h.beat],
+        reason: 'this bar has nothing on a sixteenth to lean',
+      );
+    });
+
+    test('a swing feel is untouched: it rides, it does not use the hat', () {
+      expect(hiHats(Feel.swing, widestSwing), isEmpty);
     });
   });
 }

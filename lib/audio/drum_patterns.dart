@@ -90,8 +90,20 @@ List<DrumHit> drumBar({
     Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
     Feel.samba => _sambaBar(bar, beatsPerBar, random),
   })
-    if (hit.beat < beatsPerBar) hit.at(leaned(hit.beat, feel, swing)),
+    if (hit.beat < beatsPerBar)
+      hit.at(keepsTime(hit.drum) ? hit.beat : leaned(hit.beat, feel, swing)),
 ];
+
+/// Whether this voice holds the pulse rather than leaning with it.
+///
+/// The closed hi-hat is the pulse of an even groove. Steady eighths are
+/// what makes a bossa a bossa, and a pulse that leans is not a pulse:
+/// leaned, its hi-hats lurch, which is the one thing in the kit you
+/// cannot do that to.
+///
+/// Nothing is lost where the sixteenths are what lean: these patterns
+/// write the hat in eighths, and an eighth does not move then.
+bool keepsTime(Drum drum) => drum == Drum.hiHatClosed || drum == Drum.hiHatOpen;
 
 /// Where a hit lands once the feel's off-beats are leaned.
 double leaned(double beat, Feel feel, double swing) =>

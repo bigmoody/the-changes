@@ -304,7 +304,8 @@ class RenderedBacking {
 /// while it speeds up. Each part still decides for itself whether it is
 /// swinging at all: this is only how far.
 double swingForPass(BackingRequest request, int firstChorus) =>
-    request.swing ?? swingAt(tempoForChorus(request, firstChorus));
+    request.swing ??
+    request.tune.style.drums.swingBy(tempoForChorus(request, firstChorus));
 
 /// The tempo on a given pass through the form: the tempo asked for, plus
 /// whatever a tempo ramp has added to it by then.

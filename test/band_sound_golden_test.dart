@@ -106,11 +106,13 @@ void main() {
     );
   });
 
-  // Re-pinned when the swing slider was given every feel to lean. The
-  // bass took the swing with no feel gate and the gate lived further up,
-  // so an even groove was handed the tempo's own swing and leaned its
-  // ghosts and pushes with it: a bossa's bass was swinging. Each feel
-  // now says where its own off-beats sit, and an even one says even.
+  // Back to what they were. These moved once, wrongly: the drum patterns
+  // were changed to write straight and lean afterwards, and the change
+  // that was meant to hand each feel its own resting place never reached
+  // the file, so every even groove was leaned by the swing feel's curve
+  // and a bossa's hi-hats lurched. Re-pinning them hid it. The numbers
+  // here are the ones from before any of that, which is the point of
+  // having them.
   test('a bossa, with the arpeggios on the piano', () {
     final tune = tuneNamed('The Shadow of Your Smile');
     expect(
@@ -125,19 +127,21 @@ void main() {
         ),
       ),
       {
-        'Chords': -4585252244384906865,
-        'Bass': 9099661344215883126,
-        'Drums': 2605525289804525465,
-        'Arpeggios': 7892699036053778399,
+        'Chords': 9049823189860803042,
+        'Bass': 447999560278910786,
+        'Drums': 8214853811544911010,
+        'Arpeggios': 5589457551407717847,
       },
     );
   });
 
-  // Re-pinned when the swing slider was given every feel to lean. The
-  // bass took the swing with no feel gate and the gate lived further up,
-  // so an even groove was handed the tempo's own swing and leaned its
-  // ghosts and pushes with it: a bossa's bass was swinging. Each feel
-  // now says where its own off-beats sit, and an even one says even.
+  // Back to what they were. These moved once, wrongly: the drum patterns
+  // were changed to write straight and lean afterwards, and the change
+  // that was meant to hand each feel its own resting place never reached
+  // the file, so every even groove was leaned by the swing feel's curve
+  // and a bossa's hi-hats lurched. Re-pinning them hid it. The numbers
+  // here are the ones from before any of that, which is the point of
+  // having them.
   test('a funk tune, where the bass stops walking', () {
     final tune = tuneNamed('Freedom Jazz Dance');
     expect(
@@ -151,9 +155,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -4313256893972366484,
-        'Bass': 2299635410489300560,
-        'Drums': 4045192853513715725,
+        'Chords': -7215746479613155286,
+        'Bass': -125329865868221911,
+        'Drums': 8622207292756944879,
       },
     );
   });
