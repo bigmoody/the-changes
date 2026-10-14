@@ -657,10 +657,11 @@ class _BandSwing extends StatelessWidget {
                   TextButton(
                     key: const ValueKey('swing-follow-again'),
                     onPressed: () => controller.setSwing(null),
-                    // What it goes back to, rather than what it stops
-                    // doing: a groove that never followed the tempo
-                    // cannot be told to follow it again.
-                    child: Text(feel.swings ? 'Follow' : 'Even'),
+                    // Called what it is. Where it goes back to differs
+                    // by groove, following the tempo in one and sitting
+                    // even in another, and the line beside it says which:
+                    // the button only has to say that it undoes.
+                    child: const Text('Reset'),
                   ),
               ],
             ),

@@ -96,29 +96,39 @@ void main() {
       expect(back, findsNothing, reason: 'nothing left to put back');
     });
 
-    testWidgets('an even groove is told it goes back to even', (tester) async {
-      // A groove that never followed the tempo cannot be told to follow
-      // it again, so the button says the thing it actually does.
+    testWidgets('it is called Reset, on an even groove', (tester) async {
       await openMixer(tester, 'Blue Bossa');
       await tester.drag(
         find.byKey(const ValueKey('band-swing')),
         const Offset(80, 0),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Even'), findsOneWidget);
-      expect(find.text('Follow'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('swing-follow-again')),
+          matching: find.text('Reset'),
+        ),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('and a swinging one that it goes back to following', (
-      tester,
-    ) async {
+    testWidgets('and on a swinging one', (tester) async {
+      // The same word either way. Where it goes back to differs by
+      // groove and the line beside it says which; the button only has
+      // to say that it undoes.
       await openMixer(tester, 'A Foggy Day');
       await tester.drag(
         find.byKey(const ValueKey('band-swing')),
         const Offset(-80, 0),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Follow'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('swing-follow-again')),
+          matching: find.text('Reset'),
+        ),
+        findsOneWidget,
+      );
     });
   });
 
