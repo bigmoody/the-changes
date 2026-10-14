@@ -2,6 +2,7 @@ package com.yaseminbridges.play_along
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat
@@ -105,8 +106,14 @@ class MainActivity : FlutterActivity() {
   /// the link itself where one was tapped.
   private fun took(intent: Intent?) {
     val text = when (intent?.action) {
+      // A share is either the link as text or a file holding one.
       Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
-      Intent.ACTION_VIEW -> intent.dataString
+        ?: intent.parcelable(Intent.EXTRA_STREAM)?.let { contentsOf(it) }
+      // And an opened file is a file; an opened link is itself.
+      Intent.ACTION_VIEW -> intent.data?.let { uri ->
+        if (uri.scheme == "content" || uri.scheme == "file") contentsOf(uri)
+        else uri.toString()
+      }
       else -> null
     }
     if (text.isNullOrBlank()) return
@@ -117,6 +124,24 @@ class MainActivity : FlutterActivity() {
       waiting = text
     }
   }
+
+  /// The text of a file somebody chose to open here, read for the links
+  /// in it: a page with them in counts.
+  private fun contentsOf(uri: Uri): String? = try {
+    contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+  } catch (e: Exception) {
+    null
+  }
+
+  /// The stream a share carries, without the deprecation on newer
+  /// Android and without losing it on older.
+  private fun Intent.parcelable(name: String): Uri? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      getParcelableExtra(name, Uri::class.java)
+    } else {
+      @Suppress("DEPRECATION")
+      getParcelableExtra(name)
+    }
 
   override fun onDestroy() {
     // Nothing is sent to an engine that has gone away.

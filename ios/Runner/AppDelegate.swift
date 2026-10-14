@@ -61,12 +61,29 @@ import UIKit
   /// never called at all: the URL arrives at the scene, and a handler
   /// written here only looks as though it works.
   func handed(_ url: URL) {
-    let text = url.absoluteString
+    // A file is read for the links in it; a link is itself. Both end up
+    // as text, which is what the import has always taken.
+    guard let text = url.isFileURL ? contentsOf(url) : url.absoluteString
+    else { return }
     if asked, let shared {
       shared.invokeMethod("shared", arguments: text)
     } else {
       waiting = text
     }
+  }
+
+  /// The text of a file somebody chose to open here.
+  ///
+  /// Asked for permission first: a file picked outside the app's own
+  /// folder is handed over on loan, and reading it without saying so
+  /// gets nothing back.
+  private func contentsOf(_ url: URL) -> String? {
+    let borrowed = url.startAccessingSecurityScopedResource()
+    defer {
+      if borrowed { url.stopAccessingSecurityScopedResource() }
+    }
+    guard let data = try? Data(contentsOf: url) else { return nil }
+    return String(decoding: data, as: UTF8.self)
   }
 }
 

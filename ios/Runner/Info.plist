@@ -51,6 +51,27 @@
 	<true/>
 	<!-- A tapped iReal Pro link opens here, where iReal Pro is not
 	     installed to take it first. -->
+	<!-- A playlist exported out of iReal Pro, which is how a chart gets
+	     here when iReal Pro is installed and takes the links itself. The
+	     file is read for the links in it: a page with them in counts. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Chart</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.html</string>
+				<string>public.plain-text</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
