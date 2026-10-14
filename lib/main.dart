@@ -15,6 +15,7 @@ import 'audio/take_recorder.dart';
 import 'audio/sample_bank.dart';
 import 'library/library_store.dart';
 import 'screens/home_screen.dart';
+import 'screens/hush_snippets.dart';
 import 'screens/note_ink.dart';
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
@@ -136,6 +137,8 @@ class TheChangesApp extends StatelessWidget {
       builder: (context, _) => MaterialApp(
         title: 'The Changes',
         debugShowCheckedModeBanner: false,
+        // Leaving a page stops whatever it was playing you.
+        navigatorObservers: [HushSnippets(player)],
         // A chosen paper is the paper, in the dark as well: it already has
         // its own lightness, and a tune does not change colour because the
         // sun went down.
