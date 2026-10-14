@@ -81,6 +81,10 @@
 			<array>
 				<string>irealb</string>
 				<string>irealbook</string>
+				<!-- How the share extension knocks: it cannot hand the
+				     chart over itself, so it leaves it in the group and
+				     opens this. -->
+				<string>thechanges</string>
 			</array>
 		</dict>
 	</array>

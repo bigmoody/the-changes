@@ -61,10 +61,24 @@ import UIKit
   /// never called at all: the URL arrives at the scene, and a handler
   /// written here only looks as though it works.
   func handed(_ url: URL) {
+    // A knock from the share extension, which cannot hand anything over
+    // itself: it leaves the chart in the group and opens this.
+    if url.scheme == "thechanges" {
+      guard
+        let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
+        let text = parts.queryItems?.first(where: { $0.name == "text" })?.value,
+        !text.isEmpty
+      else { return }
+      return pass(text)
+    }
     // A file is read for the links in it; a link is itself. Both end up
     // as text, which is what the import has always taken.
     guard let text = url.isFileURL ? contentsOf(url) : url.absoluteString
     else { return }
+    pass(text)
+  }
+
+  private func pass(_ text: String) {
     if asked, let shared {
       shared.invokeMethod("shared", arguments: text)
     } else {
