@@ -6,6 +6,8 @@
 //   practice/ the practice screen's state
 //   screens/  what you see
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -25,6 +27,8 @@ import 'practice/soundfont_store.dart';
 import 'practice/recording_store.dart';
 import 'settings/progression_store.dart';
 import 'theme.dart';
+import 'library/shared_links.dart';
+import 'screens/import_screen.dart';
 
 Future<void> main() async {
   // Needed before talking to native code (the audio engine) in main().
@@ -139,6 +143,9 @@ class TheChangesApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         // Leaving a page stops whatever it was playing you.
         navigatorObservers: [HushSnippets(player)],
+        // Held so a chart shared from another app can be opened from
+        // above the navigator, where there is no route to push from.
+        navigatorKey: _navigator,
         // A chosen paper is the paper, in the dark as well: it already has
         // its own lightness, and a tune does not change colour because the
         // sun went down.
@@ -147,8 +154,13 @@ class TheChangesApp extends StatelessWidget {
         // Above the navigator rather than around the home screen, so that
         // a chord tone named three pushes deep is still in the colour its
         // reader sees it in.
-        builder: (context, child) =>
-            NoteInk(settings: settings, child: child ?? const SizedBox()),
+        builder: (context, child) => NoteInk(
+          settings: settings,
+          child: _Handover(
+            progressions: progressions,
+            child: child ?? const SizedBox(),
+          ),
+        ),
         home: HomeScreen(
           player: player,
           settings: settings,
@@ -164,4 +176,70 @@ class TheChangesApp extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The navigator, reached from outside any route.
+final _navigator = GlobalKey<NavigatorState>();
+
+/// Opens Import when a chart arrives from another app.
+///
+/// Sits above the navigator rather than on a screen, because a share can
+/// land at any moment, including while the app is starting, and the
+/// screen it should open is not the one you happen to be looking at.
+class _Handover extends StatefulWidget {
+  const _Handover({required this.progressions, required this.child});
+
+  final ProgressionStore progressions;
+  final Widget child;
+
+  @override
+  State<_Handover> createState() => _HandoverState();
+}
+
+class _HandoverState extends State<_Handover> {
+  late final SharedLinks _links;
+
+  /// Whether an import opened by a share is already up. A second share
+  /// while the first is still being chosen from replaces it rather than
+  /// stacking a second one behind it.
+  var _open = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _links = SharedLinks()..onText = _handed;
+    // Whatever opened the app, if a share did. It arrives before any of
+    // this is listening, so the native side holds it until asked.
+    unawaited(
+      _links.whatStartedUs().then((text) {
+        if (text != null) _handed(text);
+      }),
+    );
+  }
+
+  @override
+  void dispose() {
+    _links.dispose();
+    super.dispose();
+  }
+
+  void _handed(String text) {
+    final navigator = _navigator.currentState;
+    if (navigator == null) return;
+    if (_open) navigator.pop();
+    _open = true;
+    unawaited(
+      navigator
+          .push(
+            MaterialPageRoute<int>(
+              builder: (_) =>
+                  ImportScreen(store: widget.progressions, handed: text),
+            ),
+          )
+          .then((_) => _open = false),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

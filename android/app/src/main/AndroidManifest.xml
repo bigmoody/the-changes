@@ -32,6 +32,23 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- A chart shared to the app: an iReal Pro link is not a web
+                 address, so on a phone there is often no way to copy one,
+                 and sharing is the way in. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <!-- And one tapped rather than shared. Android offers a
+                 chooser where iReal Pro is installed too. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="irealb"/>
+                <data android:scheme="irealbook"/>
+            </intent-filter>
         </activity>
         <service
             android:name=".NowPlayingService"

@@ -12,9 +12,13 @@ import '../music/ireal_import.dart';
 import '../settings/progression_store.dart';
 
 class ImportScreen extends StatefulWidget {
-  const ImportScreen({super.key, required this.store});
+  const ImportScreen({super.key, required this.store, this.handed});
 
   final ProgressionStore store;
+
+  /// A link handed to the app from somewhere else, rather than pasted.
+  /// Read on the way in, so the songs are already there to choose from.
+  final String? handed;
 
   @override
   State<ImportScreen> createState() => _ImportScreenState();
@@ -31,6 +35,16 @@ class _ImportScreenState extends State<ImportScreen> {
   late final _existing = {
     for (final p in widget.store.all) p.displayTitle.toLowerCase(),
   };
+
+  @override
+  void initState() {
+    super.initState();
+    final handed = widget.handed;
+    if (handed != null) {
+      _text.text = handed;
+      _read(handed);
+    }
+  }
 
   @override
   void dispose() {
@@ -83,9 +97,10 @@ class _ImportScreenState extends State<ImportScreen> {
           Text('From iReal Pro', style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'In iReal Pro, share a song or a playlist and copy its link. '
-            'Paste it here: every song in it comes in, sections, repeats '
-            'and endings included.',
+            'Share a song or a playlist to The Changes, or tap its link, '
+            'and it opens here. Pasting one still works where you can '
+            'copy it. Every song in it comes in, sections, repeats and '
+            'endings included.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: scheme.onSurfaceVariant,
             ),

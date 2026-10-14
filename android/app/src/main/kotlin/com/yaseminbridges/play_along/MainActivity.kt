@@ -18,9 +18,37 @@ import io.flutter.plugin.common.MethodChannel
 /// decided.
 class MainActivity : FlutterActivity() {
   private var channel: MethodChannel? = null
+  private var shared: MethodChannel? = null
+
+  /// A chart that arrived before Dart was listening, which is every
+  /// share that starts the app rather than arriving at a running one.
+  private var waiting: String? = null
+
+  /// Whether Dart has asked what opened the app. Before it does, a chart
+  /// is held; after, it is sent straight over. Doing both would import
+  /// the same thing twice.
+  private var asked = false
 
   override fun configureFlutterEngine(engine: FlutterEngine) {
     super.configureFlutterEngine(engine)
+    val shared = MethodChannel(
+      engine.dartExecutor.binaryMessenger,
+      "the_changes/shared"
+    )
+    this.shared = shared
+    shared.setMethodCallHandler { call, result ->
+      when (call.method) {
+        // Handed over once and then forgotten, or every trip through the
+        // library would open the same import again.
+        "initial" -> {
+          asked = true
+          result.success(waiting)
+          waiting = null
+        }
+        else -> result.notImplemented()
+      }
+    }
+    took(intent)
     val channel = MethodChannel(
       engine.dartExecutor.binaryMessenger,
       "the_changes/now_playing"
@@ -66,10 +94,35 @@ class MainActivity : FlutterActivity() {
     }
   }
 
+  /// A share arriving at an app that is already running.
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    took(intent)
+  }
+
+  /// The chart in [intent], if it carries one: the text of a share, or
+  /// the link itself where one was tapped.
+  private fun took(intent: Intent?) {
+    val text = when (intent?.action) {
+      Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+      Intent.ACTION_VIEW -> intent.dataString
+      else -> null
+    }
+    if (text.isNullOrBlank()) return
+    val channel = shared
+    if (asked && channel != null) {
+      channel.invokeMethod("shared", text)
+    } else {
+      waiting = text
+    }
+  }
+
   override fun onDestroy() {
     // Nothing is sent to an engine that has gone away.
     NowPlayingService.commands = null
     channel = null
+    shared = null
     super.onDestroy()
   }
 

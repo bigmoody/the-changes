@@ -15,10 +15,57 @@ import UIKit
   /// buttons come back on.
   private var nowPlaying: NowPlayingBridge?
 
+  /// The channel a tapped chart is handed over on.
+  private var shared: FlutterMethodChannel?
+
+  /// A chart that arrived before Dart was listening, which is every link
+  /// that starts the app rather than arriving at a running one.
+  private var waiting: String?
+
+  /// Whether Dart has asked what opened the app. Before it does, a chart
+  /// is held; after, it is sent straight over. Doing both would import
+  /// the same thing twice.
+  private var asked = false
+
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NowPlaying") {
       nowPlaying = NowPlayingBridge(messenger: registrar.messenger())
+    }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SharedCharts") {
+      let shared = FlutterMethodChannel(
+        name: "the_changes/shared",
+        binaryMessenger: registrar.messenger()
+      )
+      self.shared = shared
+      shared.setMethodCallHandler { [weak self] call, result in
+        guard let self else {
+          result(nil)
+          return
+        }
+        if call.method == "initial" {
+          self.asked = true
+          result(self.waiting)
+          self.waiting = nil
+        } else {
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
+  }
+
+  /// A link tapped somewhere else, which iOS hands over whole.
+  ///
+  /// Called from the scene rather than here. This app runs the
+  /// scene-based lifecycle, and under it the application-level open is
+  /// never called at all: the URL arrives at the scene, and a handler
+  /// written here only looks as though it works.
+  func handed(_ url: URL) {
+    let text = url.absoluteString
+    if asked, let shared {
+      shared.invokeMethod("shared", arguments: text)
+    } else {
+      waiting = text
     }
   }
 }
