@@ -10,7 +10,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
-import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/library/library_store.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
@@ -20,6 +19,7 @@ import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
 import 'soundfont_test.dart' show buildFont, sample, zone;
+import 'support/fake_player.dart';
 
 /// A MIDI file with one note in it: enough to be read, which is all the
 /// routing cares about.
@@ -62,7 +62,7 @@ Uint8List wavFile() {
   ]);
 }
 
-class _FakePlayer extends PracticePlayer {
+class _FakePlayer extends FakePlayer {
   @override
   void setVolume(Instrument instrument, double volume) {}
 }

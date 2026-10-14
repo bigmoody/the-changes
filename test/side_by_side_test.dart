@@ -12,7 +12,9 @@ import 'package:play_along/screens/side_by_side_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
-class _FakePlayer extends PracticePlayer {
+import 'support/fake_player.dart';
+
+class _FakePlayer extends FakePlayer {
   /// What the band was last asked to play, so a test can tell what is on
   /// the page from what comes out of the speaker.
   BackingRequest? asked;

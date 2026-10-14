@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
-import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/audio/walking_bass.dart';
 import 'package:play_along/music/bass_moves.dart';
 import 'package:play_along/music/chord.dart';
@@ -16,7 +15,9 @@ import 'package:play_along/screens/walking_bass_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
-class _FakePlayer extends PracticePlayer {
+import 'support/fake_player.dart';
+
+class _FakePlayer extends FakePlayer {
   @override
   void setVolume(Instrument instrument, double volume) {}
 }

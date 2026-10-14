@@ -15,13 +15,13 @@ import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
 import 'fake_listener.dart';
+import 'support/fake_player.dart';
 
 /// A band that starts and stops without any real audio, and can be told
 /// where it has got to.
-class _FakePlayer extends PracticePlayer {
+class _FakePlayer extends FakePlayer {
   /// What the ticker reads. Null is "nothing playing", which is what a
   /// silent test band reports unless it is told otherwise.
-  PlaybackPosition? at;
 
   @override
   Future<void> start(

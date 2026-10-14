@@ -14,11 +14,10 @@ import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
 import 'fake_listener.dart';
+import 'support/fake_player.dart';
 
 /// A band that starts and stops without any real audio.
-class _FakePlayer extends PracticePlayer {
-  var restored = false;
-
+class _FakePlayer extends FakePlayer {
   @override
   Future<void> start(
     BackingRequest request, {

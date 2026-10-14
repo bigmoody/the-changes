@@ -17,7 +17,9 @@ import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/practice/recording_store.dart';
 import 'package:play_along/settings/app_settings.dart';
 
-class _FakePlayer extends PracticePlayer {
+import 'support/fake_player.dart';
+
+class _FakePlayer extends FakePlayer {
   PlayableRecording? given;
   var starts = 0;
 

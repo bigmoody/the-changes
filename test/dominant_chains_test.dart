@@ -15,7 +15,9 @@ import 'package:play_along/music/guide_tones.dart';
 import 'package:play_along/screens/dominant_chains_screen.dart';
 import 'package:play_along/theme.dart';
 
-class _FakePlayer extends PracticePlayer {
+import 'support/fake_player.dart';
+
+class _FakePlayer extends FakePlayer {
   @override
   Future<void> start(
     BackingRequest request, {

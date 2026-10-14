@@ -12,8 +12,10 @@ import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
+import 'support/fake_player.dart';
+
 /// A band that makes no sound but remembers what it was asked for.
-class _FakePlayer extends PracticePlayer {
+class _FakePlayer extends FakePlayer {
   int? askedPickUp;
   var starts = 0;
 

@@ -1,14 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
-import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/settings/app_settings.dart';
 
-/// Records the volumes the controller sends, without real audio.
-class _FakePlayer extends PracticePlayer {
-  final volumes = <Instrument, double>{};
+import 'support/fake_player.dart';
 
+/// Records the volumes the controller sends, without real audio.
+class _FakePlayer extends FakePlayer {
   @override
   void setVolume(Instrument instrument, double volume) =>
       volumes[instrument] = volume;

@@ -1,68 +1,20 @@
 // Pause holds the band's place; Stop goes back to the top.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:play_along/audio/backing_synth.dart';
-import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/settings/app_settings.dart';
 
+import 'support/fake_player.dart';
+
 /// Stands in for the audio engine: records what the controller asks of it.
-class _FakePlayer extends PracticePlayer {
-  final calls = <String>[];
-  var _playing = false;
-  var _paused = false;
-
-  @override
-  bool get isPaused => _paused;
-
-  @override
-  Future<void> start(
-    BackingRequest request, {
-    String? alongside,
-    Duration leadIn = Duration.zero,
-    int pickUpBeats = 0,
-    PlayableRecording? recording,
-  }) async {
-    calls.add('start');
-    _playing = true;
-    _paused = false;
-  }
-
-  @override
-  void pause() {
-    calls.add('pause');
-    _paused = true;
-  }
-
-  @override
-  void resume() {
-    calls.add('resume');
-    _paused = false;
-  }
-
-  @override
-  Future<void> stop() async {
-    calls.add('stop');
-    _playing = false;
-    _paused = false;
-  }
-
-  @override
-  PlaybackPosition? position() => null;
-
-  @override
-  void setVolume(Instrument instrument, double volume) {}
-
-  bool get playing => _playing;
-}
 
 void main() {
-  late _FakePlayer player;
+  late FakePlayer player;
   late PracticeController controller;
 
   setUp(() {
-    player = _FakePlayer();
+    player = FakePlayer();
     controller = PracticeController(
       tune: standards.first,
       player: player,

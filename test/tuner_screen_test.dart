@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/theme.dart';
 import 'package:play_along/audio/pitch_detector.dart';
-import 'package:play_along/audio/practice_player.dart';
-import 'package:play_along/music/recorded_take.dart' show TakeShift;
 import 'package:play_along/audio/sample_bank.dart';
 
 import 'fake_listener.dart';
@@ -15,35 +13,18 @@ import 'package:play_along/music/tuning.dart';
 import 'package:play_along/screens/tuner_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 
-class _FakePlayer extends PracticePlayer {
-  final played = <Uint8List>[];
-  var restored = false;
-  var stoppedBand = false;
-
-  @override
-  Future<void> stop() async => stoppedBand = true;
-
-  @override
-  Future<void> playSnippet(
-    Uint8List wav, {
-    TakeShift? shift,
-    Duration from = Duration.zero,
-  }) async => played.add(wav);
-
-  @override
-  Future<void> restoreAudioSession() async => restored = true;
-}
+import 'support/fake_player.dart';
 
 double cents(double hz, double off) => hz * math.pow(2, off / 1200);
 
 void main() {
-  Future<(FakeListener, _FakePlayer)> open(
+  Future<(FakeListener, FakePlayer)> open(
     WidgetTester tester, {
     bool allowed = true,
     ChartInstrument instrument = ChartInstrument.concert,
   }) async {
     final listener = FakeListener(allowed: allowed);
-    final player = _FakePlayer();
+    final player = FakePlayer();
     await tester.pumpWidget(
       MaterialApp(
         theme: appTheme(Brightness.light),
@@ -63,7 +44,7 @@ void main() {
 
   testWidgets('with no target, names whatever note is played', (tester) async {
     final (listener, player) = await open(tester);
-    expect(player.stoppedBand, isTrue, reason: 'the band stops');
+    expect(player.stopped, isTrue, reason: 'the band stops');
     expect(find.text('Play a note'), findsOneWidget);
 
     listener.hear(midiToHz(69)); // A4
@@ -88,7 +69,7 @@ void main() {
     final (listener, player) = await open(tester);
     await tester.tap(find.byKey(const ValueKey('note-4'))); // E
     await tester.pump();
-    expect(player.played, hasLength(1));
+    expect(player.playedSnippets, hasLength(1));
     expect(find.text('Play or sing E'), findsOneWidget);
 
     // Sung an octave lower, a touch sharp.
@@ -116,7 +97,7 @@ void main() {
       await tester.tap(find.byKey(ValueKey('note-$note')));
       await tester.pump();
     }
-    expect(player.played, hasLength(12));
+    expect(player.playedSnippets, hasLength(12));
     await tester.tap(find.byTooltip('Higher octave'));
     await tester.pump();
     expect(find.text('Octave 5'), findsOneWidget);
@@ -156,10 +137,10 @@ void main() {
     expect(shown(), 'G', reason: "an alto player's written G");
 
     // Tapping the E♭ player's written C plays a concert E♭.
-    player.played.clear();
+    player.playedSnippets.clear();
     await tester.tap(find.byKey(const ValueKey('note-0')));
     await tester.pump();
-    final played = decodeWav(player.played.single);
+    final played = decodeWav(player.playedSnippets.single);
     final window = Float32List.fromList([
       for (final s in played.sublist(4000, 4000 + 4096)) s / 32768,
     ]);
@@ -174,7 +155,7 @@ void main() {
       MaterialApp(
         theme: appTheme(Brightness.light),
         home: TunerScreen(
-          player: _FakePlayer(),
+          player: FakePlayer(),
           settings: settings,
           listener: FakeListener(),
         ),
@@ -191,7 +172,7 @@ void main() {
     expect(find.textContaining('needs the microphone'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('note-0')));
     await tester.pump();
-    expect(player.played, hasLength(1));
+    expect(player.playedSnippets, hasLength(1));
     await tester.pump(const Duration(seconds: 3));
   });
 

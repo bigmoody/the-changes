@@ -15,12 +15,12 @@ import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
+import 'support/fake_player.dart';
+
 /// A band that plays without any audio, remembering what it was asked for.
-class _FakePlayer extends PracticePlayer {
-  BackingRequest? request;
-  String? alongside;
-  Duration? leadIn;
-  double takeVolume = 1;
+class _FakePlayer extends FakePlayer {
+  /// Whether opening the recording to play along to fails, which is a
+  /// thing that happens to a file somebody moved.
   var failOnTake = false;
 
   @override
@@ -34,16 +34,14 @@ class _FakePlayer extends PracticePlayer {
     if (alongside != null && failOnTake) {
       throw StateError('could not open the recording');
     }
-    this.request = request;
-    this.alongside = alongside;
-    this.leadIn = leadIn;
+    return super.start(
+      request,
+      alongside: alongside,
+      leadIn: leadIn,
+      pickUpBeats: pickUpBeats,
+      recording: recording,
+    );
   }
-
-  @override
-  Future<void> stop() async {}
-
-  @override
-  Future<void> restoreAudioSession() async {}
 
   @override
   void setTakeVolume(double volume) => takeVolume = volume;
@@ -208,7 +206,7 @@ void main() {
       final take = await record(controller, store);
       await controller.playTake(take);
       expect(
-        player.leadIn!.inMilliseconds,
+        player.leadIn.inMilliseconds,
         (take.leadIn * 1000).round(),
         reason: 'the recording started before the band did',
       );

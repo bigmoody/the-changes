@@ -12,10 +12,10 @@ import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
-/// A band that makes no sound and is told where it has got to.
-class _FakePlayer extends PracticePlayer {
-  PlaybackPosition? at;
+import 'support/fake_player.dart';
 
+/// A band that makes no sound and is told where it has got to.
+class _FakePlayer extends FakePlayer {
   @override
   Future<void> start(
     BackingRequest request, {

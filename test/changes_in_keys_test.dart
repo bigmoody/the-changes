@@ -14,8 +14,10 @@ import 'package:play_along/screens/changes_in_keys_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
+import 'support/fake_player.dart';
+
 /// A band that plays nothing, but says which chorus it is on when asked.
-class _FakePlayer extends PracticePlayer {
+class _FakePlayer extends FakePlayer {
   int? chorus;
 
   @override

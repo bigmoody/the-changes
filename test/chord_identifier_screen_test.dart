@@ -3,19 +3,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
-import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/screens/chord_identifier_screen.dart';
 import 'package:play_along/screens/learn_page.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
 import 'fake_chord_listener.dart';
+import 'support/fake_player.dart';
 
 /// A band that stops without any real audio.
-class _FakePlayer extends PracticePlayer {
-  var stopped = false;
-  var restored = false;
-
+class _FakePlayer extends FakePlayer {
   @override
   Future<void> stop() async => stopped = true;
 

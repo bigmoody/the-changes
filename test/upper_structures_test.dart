@@ -19,7 +19,9 @@ import 'package:play_along/screens/upper_structures_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
-class _FakePlayer extends PracticePlayer {
+import 'support/fake_player.dart';
+
+class _FakePlayer extends FakePlayer {
   @override
   Future<void> start(
     BackingRequest request, {

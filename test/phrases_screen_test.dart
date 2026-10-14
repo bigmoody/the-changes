@@ -8,15 +8,15 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/audio/take_recorder.dart';
 import 'package:play_along/music/phrase.dart';
-import 'package:play_along/music/recorded_take.dart' show TakeShift;
 import 'package:play_along/practice/phrase_store.dart';
 import 'package:play_along/practice/recording_store.dart';
 import 'package:play_along/screens/phrases_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/settings/progression_store.dart';
+
+import 'support/fake_player.dart';
 
 /// A recorder that writes nothing and says yes.
 class FakeRecorder implements TakeRecorder {
@@ -46,55 +46,6 @@ class FakeRecorder implements TakeRecorder {
 
   @override
   Future<void> dispose() async {}
-
-  @override
-  noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-/// A player that remembers what it was asked to play.
-class FakePlayer implements PracticePlayer {
-  Uint8List? played;
-  TakeShift? withShift;
-
-  /// Where the last play was asked to start.
-  Duration? playedFrom;
-
-  /// Every place it was asked to move to mid-play, in order.
-  final movedTo = <Duration>[];
-
-  /// What a position read gives back, so a test can put the play part
-  /// way through or say it is over.
-  Duration? at;
-
-  var stopped = false;
-  var paused = false;
-  var resumed = false;
-
-  @override
-  Future<void> playSnippet(
-    Uint8List wav, {
-    TakeShift? shift,
-    Duration from = Duration.zero,
-  }) async {
-    played = wav;
-    withShift = shift;
-    playedFrom = from;
-  }
-
-  @override
-  Duration? snippetPosition() => at;
-
-  @override
-  Future<void> seekSnippet(Duration to) async => movedTo.add(to);
-
-  @override
-  Future<void> stopSnippet() async => stopped = true;
-
-  @override
-  Future<void> pauseSnippet() async => paused = true;
-
-  @override
-  Future<void> resumeSnippet() async => resumed = true;
 
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -226,19 +177,23 @@ void main() {
       // The difference between the two: pausing keeps your place in the
       // line, stopping gives it back to the point you chose.
       final player = await open(tester, key: 0);
-      player.at = const Duration(milliseconds: 900);
+      player.snippetAt = const Duration(milliseconds: 900);
       await tester.tap(find.byKey(const ValueKey('hear-phrase')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
 
       await tester.tap(find.byKey(const ValueKey('pause-phrase')));
       await tester.pumpAndSettle();
-      expect(player.paused, isTrue);
+      expect(player.snippetPaused, isTrue);
       expect(find.text('Carry On'), findsOneWidget);
 
       await tester.tap(find.byKey(const ValueKey('hear-phrase')));
       await tester.pump();
-      expect(player.resumed, isTrue, reason: 'carried on, not restarted');
+      expect(
+        player.snippetResumed,
+        isTrue,
+        reason: 'carried on, not restarted',
+      );
     });
 
     testWidgets('stopping puts the bar back to the point it started from', (
@@ -254,14 +209,14 @@ void main() {
         find.byKey(const ValueKey('scrub-at')),
       );
 
-      player.at = const Duration(milliseconds: 2500);
+      player.snippetAt = const Duration(milliseconds: 2500);
       await tester.tap(find.byKey(const ValueKey('hear-phrase')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 60));
 
       await tester.tap(find.byKey(const ValueKey('stop-phrase')));
       await tester.pumpAndSettle();
-      expect(player.stopped, isTrue);
+      expect(player.snippetStopped, isTrue);
       expect(
         tester.widget<Text>(find.byKey(const ValueKey('scrub-at'))).data,
         chosen.data,
@@ -275,7 +230,7 @@ void main() {
       await tester.pump();
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       await tester.pumpAndSettle();
-      expect(player.stopped, isTrue);
+      expect(player.snippetStopped, isTrue);
     });
 
     testWidgets('a phrase that has been read is drawn', (tester) async {
@@ -365,7 +320,7 @@ void main() {
       tester,
     ) async {
       final player = await open(tester, key: 0);
-      player.at = const Duration(milliseconds: 500);
+      player.snippetAt = const Duration(milliseconds: 500);
       await tester.tap(find.byKey(const ValueKey('hear-phrase')));
       await tester.pump();
       player.movedTo.clear();

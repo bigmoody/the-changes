@@ -19,10 +19,10 @@ import 'package:play_along/music/tune.dart';
 import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/settings/app_settings.dart';
 
-/// A band that makes no sound and is told where it has got to.
-class _FakePlayer extends PracticePlayer {
-  PlaybackPosition? at;
+import 'support/fake_player.dart';
 
+/// A band that makes no sound and is told where it has got to.
+class _FakePlayer extends FakePlayer {
   @override
   Future<void> start(
     BackingRequest request, {

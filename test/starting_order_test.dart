@@ -14,7 +14,9 @@ import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/settings/progression_store.dart';
 import 'package:play_along/theme.dart';
 
-class _FakePlayer extends PracticePlayer {
+import 'support/fake_player.dart';
+
+class _FakePlayer extends FakePlayer {
   @override
   Future<void> start(
     BackingRequest request, {

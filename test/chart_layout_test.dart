@@ -11,6 +11,8 @@ import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 
+import 'support/fake_player.dart';
+
 Tune _tune(String title) =>
     [...standards, ...practiceProgressions].firstWhere((t) => t.title == title);
 
@@ -129,7 +131,7 @@ void main() {
   });
 }
 
-class _FixedPlayer extends PracticePlayer {
+class _FixedPlayer extends FakePlayer {
   @override
   Future<void> start(
     BackingRequest request, {
