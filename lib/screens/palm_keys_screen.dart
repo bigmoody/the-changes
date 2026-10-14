@@ -138,6 +138,45 @@ class _PalmKeysScreenState extends State<PalmKeysScreen> {
                 ),
               ),
             ),
+          if (_shape.isProgression) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Text(
+                [for (final chord in twoFiveOneIn(_key)) chord.display]
+                    .join('   '),
+                key: const ValueKey('palm-changes'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.tertiary,
+                ),
+              ),
+            ),
+            _Note(
+              'One line through the three, rather than three arpeggios. '
+              'Each chord takes the nearest note above wherever the line '
+              'has got to, which is why the V begins on its 5th rather '
+              'than its root: that is what anybody does through changes, '
+              'and starting each chord on its root would mean leaping a '
+              'fifth at every one of them. So the degrees differ from key '
+              'to key, because the horn does. There is only so much '
+              'instrument above the ii, and it starts at the bottom of '
+              'the horn for that reason: from halfway up, the ii and the '
+              'V use all of it and the line never reaches the I.',
+            ),
+            _Note(
+              _shape == PalmShape.guideTones
+                  ? 'Only the 3rds and 7ths: the two notes that say what '
+                        'each chord is, and the two that move. The 7th of '
+                        'one falls a semitone to the 3rd of the next, '
+                        'every time. In a few keys neither of them lands '
+                        'inside the palm keys, so the line reaches with '
+                        'another chord tone and the degree under it says '
+                        'which.'
+                  : 'The join lands where the harmony resolves, which is '
+                        'the hardest place to put it and the most useful: '
+                        'it is the moment in a tune when you are thinking '
+                        'about the chord and the hand quietly fails.',
+            ),
+          ],
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
             child: Text(

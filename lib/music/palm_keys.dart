@@ -299,6 +299,12 @@ String? _asSpelled(Chord chord, String wanted) {
   return null;
 }
 
+/// The chords a progression exercise runs through, in order.
+///
+/// Public so the page can name them: an exercise whose degrees say "5"
+/// over a chord nobody has been told about is a riddle.
+List<Chord> twoFiveOneIn(String key) => _twoFiveOne(key);
+
 /// The chords of a ii–V–I in [key], as a player would call them.
 List<Chord> _twoFiveOne(String key) {
   final tonic = Chord.parse(key).root;
