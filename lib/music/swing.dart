@@ -43,6 +43,24 @@ const dottedSwing = 0.75;
 /// players swing harder than the notation admits, but not without limit.
 const widestSwing = 0.78;
 
+/// How far a running line swings against how the ride does.
+///
+/// Half as far. A cymbal and a melody are not played with the same
+/// eighths, even in the same chorus: the ride holds the wide long-short
+/// that carries the time, and a line running through it flattens out,
+/// because nobody plays a stream of eighths as a stream of dotted
+/// quavers. Given one number for both, the arpeggios came out lurching
+/// against a band that was sitting right.
+///
+/// It is a fraction of the band's swing rather than a number of its own,
+/// so a tune moved to a straighter feel, by tempo or by the slider,
+/// takes the line with it. Straight stays straight.
+const _lineSwingsBy = 0.5;
+
+/// Where the "and" falls for a part playing a line, given where it falls
+/// for the band, [at].
+double lineSwing(double at) => straight + (at - straight) * _lineSwingsBy;
+
 /// Where the "and" falls inside the beat at [tempo], as a fraction of the
 /// beat.
 ///

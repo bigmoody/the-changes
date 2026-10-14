@@ -930,7 +930,9 @@ _Parts _renderParts(
     final line = arpeggioLine(
       chords,
       choruses: choruses,
-      swing: tune.style.piano.feel == Feel.swing ? swing : straight,
+      // Flatter than the band: a stream of eighths is not played as a
+      // stream of dotted quavers, whatever the ride is doing.
+      swing: tune.style.piano.feel == Feel.swing ? lineSwing(swing) : straight,
       from: request.arpeggioStart,
       startNote: state.arpeggioRoot,
     );

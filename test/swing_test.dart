@@ -32,6 +32,53 @@ class _FakePlayer extends FakePlayer {
 }
 
 void main() {
+  group('a line against the ride', () {
+    test('it swings half as far as the band does', () {
+      // A cymbal and a melody are not played with the same eighths. The
+      // ride holds the wide long-short; a line running through it
+      // flattens out.
+      expect(lineSwing(widestSwing), closeTo(0.64, 0.001));
+      expect(lineSwing(dottedSwing), closeTo(0.625, 0.001));
+      expect(lineSwing(tripletSwing), closeTo(0.583, 0.001));
+    });
+
+    test('straight stays straight', () {
+      // Nothing to flatten, and a part that crept off the beat in a
+      // bossa would be the whole feel gone.
+      expect(lineSwing(straight), straight);
+    });
+
+    test('it never swings harder than the band, or straighter than even', () {
+      for (var tempo = 60; tempo <= 320; tempo += 5) {
+        final band = swingAt(tempo);
+        final line = lineSwing(band);
+        expect(line, lessThanOrEqualTo(band), reason: '$tempo');
+        expect(line, greaterThanOrEqualTo(straight), reason: '$tempo');
+      }
+    });
+
+    test('a tune moved straighter takes the line with it', () {
+      // It is a fraction of the band's swing rather than a number of its
+      // own, so the slider and the tempo both still reach it.
+      expect(lineSwing(swingAt(120)), lessThan(lineSwing(swingAt(120)) + 0.01));
+      expect(
+        lineSwing(swingAt(260)),
+        lessThan(lineSwing(swingAt(120))),
+        reason: 'faster is straighter, for the line as for the band',
+      );
+    });
+
+    test('the tempos that were pinned at the ceiling are no longer hard', () {
+      // The complaint: below about 132 the band sits at its widest, and
+      // the arpeggios play an unbroken stream of eighths there, so every
+      // off-beat was displaced as far as the app allows.
+      expect(swingName(swingAt(120)), 'Hard');
+      expect(swingName(lineSwing(swingAt(120))), 'Triplet');
+      expect(swingName(swingAt(150)), 'Dotted');
+      expect(swingName(lineSwing(swingAt(150))), 'Light');
+    });
+  });
+
   group('how far the swing opens', () {
     test('it flattens as the tempo climbs, every step of the way', () {
       // The whole claim of the screen. If this were not monotonic the

@@ -76,6 +76,12 @@ void main() {
     );
   });
 
+  // Re-pinned when the arpeggios were given their own, flatter swing:
+  // a running line is not played as a stream of dotted quavers, whatever
+  // the ride is doing. All four stems move rather than the arpeggios
+  // alone, because one gain is worked out from the peak of the summed
+  // mix and applied to every stem, so changing any part changes the
+  // level of all of them.
   test('rhythm changes, guitar comping and arpeggios', () {
     final tune = tuneNamed('Cotton Tail');
     expect(
@@ -92,10 +98,10 @@ void main() {
         ),
       ),
       {
-        'Chords': 8416574114384651097,
-        'Bass': -8428501499733174900,
-        'Drums': 6155078671616695515,
-        'Arpeggios': -6529522868437472996,
+        'Chords': 5578437645964558967,
+        'Bass': 7092445472841818019,
+        'Drums': 826527004456376527,
+        'Arpeggios': -2150519399602963415,
       },
     );
   });
