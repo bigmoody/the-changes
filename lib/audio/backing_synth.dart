@@ -932,7 +932,10 @@ _Parts _renderParts(
       choruses: choruses,
       // Flatter than the band: a stream of eighths is not played as a
       // stream of dotted quavers, whatever the ride is doing.
-      swing: tune.style.piano.feel == Feel.swing ? lineSwing(swing) : straight,
+      // Flatter than the band: a stream of eighths is not played as a
+      // stream of dotted quavers, whatever the ride is doing. Straight
+      // in a feel that leans its sixteenths rather than its eighths.
+      swing: tune.style.drums.swingsSixteenths ? straight : lineSwing(swing),
       from: request.arpeggioStart,
       startNote: state.arpeggioRoot,
     );

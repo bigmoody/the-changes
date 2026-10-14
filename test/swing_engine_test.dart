@@ -176,10 +176,11 @@ void main() {
   });
 
   group('what does not move', () {
-    test('a shuffle keeps its triplet, whatever the tempo', () {
-      // A shuffle is a triplet feel by definition; it is the swing that
-      // flexes, not the shuffle. Passing it a straight swing changes
-      // nothing, because it never asked.
+    test('a shuffle leans with the slider, like the swing it is', () {
+      // It used to be pinned to the triplet while the comping over it
+      // followed the slider, so the two halves of the band disagreed
+      // about the same groove. A shuffle is an eighth-note swing and
+      // moves with the rest of them.
       final loose = drumBar(
         feel: Feel.shuffle,
         bar: 0,
@@ -194,35 +195,62 @@ void main() {
         random: math.Random(5),
         swing: widestSwing,
       );
-      expect([for (final h in loose) h.beat], [for (final h in tight) h.beat]);
+      expect([
+        for (final h in loose) h.beat,
+      ], isNot([for (final h in tight) h.beat]));
+      expect(
+        offbeatsOf([for (final h in tight) h.beat]),
+        contains(widestSwing.toStringAsFixed(3)),
+      );
       expect(
         offbeatsOf([for (final h in loose) h.beat]),
-        contains(tripletSwing.toStringAsFixed(3)),
+        contains(straight.toStringAsFixed(3)),
       );
     });
 
-    test('an even feel stays even', () {
-      for (final feel in [Feel.bossa, Feel.funk, Feel.calypso, Feel.samba]) {
-        final swung = drumBar(
+    test('an even feel is even until it is asked not to be', () {
+      // Even by default, which is the whole of what makes a bossa a
+      // bossa, and leanable on purpose: the slider reaches every groove
+      // now rather than only the ones called swing.
+      for (final feel in [Feel.bossa, Feel.calypso, Feel.samba]) {
+        expect(feel.swingBy(140), straight, reason: '$feel starts even');
+        final even = drumBar(
+          feel: feel,
+          bar: 0,
+          beatsPerBar: 4,
+          random: math.Random(2),
+          swing: feel.swingBy(140),
+        );
+        final leaned = drumBar(
           feel: feel,
           bar: 0,
           beatsPerBar: 4,
           random: math.Random(2),
           swing: widestSwing,
         );
-        final even = drumBar(
-          feel: feel,
-          bar: 0,
-          beatsPerBar: 4,
-          random: math.Random(2),
-          swing: straight,
-        );
         expect(
-          [for (final h in swung) h.beat],
-          [for (final h in even) h.beat],
-          reason: '$feel',
+          [for (final h in leaned) h.beat],
+          isNot([for (final h in even) h.beat]),
+          reason: '$feel should lean when it is asked to',
         );
       }
+    });
+
+    test('funk leans its sixteenths, not its eighths', () {
+      // Swinging a funk tune's eighths like a jazz tune sounds nothing
+      // like funk. What moves is the second of each pair of sixteenths.
+      expect(Feel.funk.swingsSixteenths, isTrue);
+      expect(Feel.funk.swingBy(100), straight);
+      // An eighth is left where it is, and the sixteenth after it moves.
+      expect(swungBeat(1.5, widestSwing, sixteenths: true), 1.5);
+      expect(
+        swungBeat(1.25, widestSwing, sixteenths: true),
+        closeTo(1 + widestSwing / 2, 1e-9),
+      );
+      expect(
+        swungBeat(1.75, widestSwing, sixteenths: true),
+        closeTo(1.5 + widestSwing / 2, 1e-9),
+      );
     });
 
     test('the beats themselves never move', () {

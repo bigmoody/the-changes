@@ -59,14 +59,20 @@ class DrumHit {
   final double beat;
   final double velocity;
   final bool hard;
+
+  /// The same hit, moved: how a straight pattern becomes a leaning one.
+  DrumHit at(double beat) =>
+      DrumHit(drum: drum, beat: beat, velocity: velocity, hard: hard);
 }
 
 /// The hits for one bar of [feel]. [bar] counts from the start of the loop,
 /// so two-bar patterns (like the clave) and phrase-ending fills line up.
 ///
-/// [swing] is where the off-beat eighth falls inside the beat: a half is
-/// even. It only reaches the swing feel: a shuffle is a triplet feel by
-/// definition and the even feels are even.
+/// [swing] is where the off-beat falls inside the beat: a half is even.
+/// It reaches every feel. The patterns are written straight and the
+/// off-beats are moved once, at the end, so the slider leans a shuffle
+/// and a bossa the same way it leans a swing tune, and a pattern stays a
+/// description of what is played rather than of when.
 List<DrumHit> drumBar({
   required Feel feel,
   required int bar,
@@ -77,15 +83,19 @@ List<DrumHit> drumBar({
   // Figures written for a four-beat bar lose whatever falls past the end
   // of a shorter one (a waltz keeps the first two beats of the clave).
   for (final hit in switch (feel) {
-    Feel.swing => _swingBar(bar, beatsPerBar, random, swing),
+    Feel.swing => _swingBar(bar, beatsPerBar, random),
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
     Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
     Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
     Feel.samba => _sambaBar(bar, beatsPerBar, random),
   })
-    if (hit.beat < beatsPerBar) hit,
+    if (hit.beat < beatsPerBar) hit.at(leaned(hit.beat, feel, swing)),
 ];
+
+/// Where a hit lands once the feel's off-beats are leaned.
+double leaned(double beat, Feel feel, double swing) =>
+    swungBeat(beat, swing, sixteenths: feel.swingsSixteenths);
 
 double _human(math.Random random) => 0.85 + random.nextDouble() * 0.15;
 
@@ -98,12 +108,7 @@ List<int> _backbeats(int beatsPerBar) => switch (beatsPerBar) {
   _ => [for (var beat = 1; beat < beatsPerBar; beat += 2) beat],
 };
 
-List<DrumHit> _swingBar(
-  int bar,
-  int beatsPerBar,
-  math.Random random,
-  double swing,
-) {
+List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
   final backbeats = _backbeats(beatsPerBar);
   for (var beat = 0; beat < beatsPerBar; beat++) {
@@ -116,11 +121,12 @@ List<DrumHit> _swingBar(
       ),
     );
     if (isBackbeat) {
-      // The swung "a" after 2 and 4, and the hi-hat closing underfoot.
+      // The "a" after 2 and 4, written straight and leaned at the end,
+      // and the hi-hat closing underfoot.
       hits.add(
         DrumHit(
           drum: Drum.ride,
-          beat: beat + swing,
+          beat: beat + 0.5,
           velocity: 0.4 * _human(random),
         ),
       );
@@ -145,7 +151,7 @@ List<DrumHit> _swingBar(
 
   // Quiet snare comping on an off-beat, now and then.
   if (random.nextDouble() < 0.3) {
-    final beat = random.nextInt(beatsPerBar) + swing;
+    final beat = random.nextInt(beatsPerBar) + 0.5;
     hits.add(
       DrumHit(drum: Drum.snare, beat: beat, velocity: 0.22 * _human(random)),
     );
@@ -155,7 +161,7 @@ List<DrumHit> _swingBar(
     hits.add(
       DrumHit(
         drum: Drum.kick,
-        beat: random.nextInt(beatsPerBar) + swing,
+        beat: random.nextInt(beatsPerBar) + 0.5,
         velocity: 0.62 * _human(random),
         hard: true,
       ),
@@ -168,7 +174,7 @@ List<DrumHit> _swingBar(
       ..add(
         DrumHit(drum: Drum.snare, beat: from, velocity: 0.55 * _human(random)),
       )
-      ..add(DrumHit(drum: Drum.snare, beat: from + swing, velocity: 0.45))
+      ..add(DrumHit(drum: Drum.snare, beat: from + 0.5, velocity: 0.45))
       ..add(
         DrumHit(
           drum: Drum.snare,
@@ -176,7 +182,7 @@ List<DrumHit> _swingBar(
           velocity: 0.6 * _human(random),
         ),
       )
-      ..add(DrumHit(drum: Drum.snare, beat: from + 1 + swing, velocity: 0.5));
+      ..add(DrumHit(drum: Drum.snare, beat: from + 1 + 0.5, velocity: 0.5));
   }
   return hits;
 }
@@ -402,7 +408,7 @@ List<DrumHit> drumSoloBar({
   required double swing,
 }) {
   final hits = <DrumHit>[];
-  final swung = feel == Feel.swing;
+  final swung = !feel.swingsSixteenths;
   final last = bar == of - 1;
 
   // The foot keeps the time, so the bar is never lost.
@@ -488,11 +494,14 @@ List<DrumHit> _shuffleBar(int bar, int beatsPerBar, math.Random random) {
           velocity: (isBackbeat ? 0.6 : 0.5) * _human(random),
         ),
       )
-      // The "a": the third of the triplet, where the bounce lives.
+      // The "a", where the bounce lives. Written straight and leaned at
+      // the end: a shuffle was pinned to the triplet here while the
+      // comping over it followed the slider, so the two halves of the
+      // band disagreed about the same groove.
       ..add(
         DrumHit(
           drum: Drum.ride,
-          beat: beat + tripletSwing,
+          beat: beat + 0.5,
           velocity: 0.34 * _human(random),
         ),
       );

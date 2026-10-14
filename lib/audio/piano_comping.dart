@@ -165,7 +165,10 @@ class Comper {
   }) {
     // The swung "and" of a beat lands late; in straight feels it's halfway,
     // and how late is the band's business rather than this one's.
-    final and = feel == Feel.swing ? swing : 0.5;
+    // Taken as given rather than gated on the feel: an even groove
+    // arrives with an even value, and a slider that has been moved
+    // arrives moved, whatever the groove is called.
+    final and = feel.swingsSixteenths ? 0.5 : swing;
     // A push lands on the "and" of the beat *before* the chord, so it's
     // early by what's left of that beat, not by the "and" itself. In swing
     // that's a third of a beat; pushing by two thirds put the chord on a

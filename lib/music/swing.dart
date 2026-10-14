@@ -43,6 +43,30 @@ const dottedSwing = 0.75;
 /// players swing harder than the notation admits, but not without limit.
 const widestSwing = 0.78;
 
+/// Where a beat position lands once the off-beats are swung.
+///
+/// Written straight and moved here, rather than each pattern working out
+/// its own off-beats: one rule in one place means the slider reaches
+/// every groove the same way, and a pattern stays a description of what
+/// is played rather than of when.
+///
+/// [sixteenths] for a feel that swings its sixteenths rather than its
+/// eighths, which is what funk does: the eighths stay where they are and
+/// the second of each pair of sixteenths is the one that moves.
+double swungBeat(double beat, double at, {bool sixteenths = false}) {
+  const close = 1e-6;
+  final whole = beat.floorToDouble();
+  final within = beat - whole;
+  if (sixteenths) {
+    final half = within < 0.5 ? 0.0 : 0.5;
+    final inPair = within - half;
+    if ((inPair - 0.25).abs() < close) return whole + half + at / 2;
+    return beat;
+  }
+  if ((within - 0.5).abs() < close) return whole + at;
+  return beat;
+}
+
 /// How far a running line swings against how the ride does.
 ///
 /// Half as far. A cymbal and a melody are not played with the same

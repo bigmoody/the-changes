@@ -8,13 +8,17 @@ import 'package:play_along/audio/walking_bass.dart';
 import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/tune.dart';
 
-List<DrumHit> bar(Feel feel, int index, [int seed = 1]) => drumBar(
-  feel: feel,
-  bar: index,
-  beatsPerBar: 4,
-  random: math.Random(seed),
-  swing: tripletSwing,
-);
+/// A bar of [feel], leaning the way that feel leans by default: the
+/// triplet for the ones that swing, even for the ones that do not. The
+/// slider can move any of them now, so what it is given has to say so.
+List<DrumHit> bar(Feel feel, int index, [int seed = 1, double? swing]) =>
+    drumBar(
+      feel: feel,
+      bar: index,
+      beatsPerBar: 4,
+      random: math.Random(seed),
+      swing: swing ?? (feel.swings ? tripletSwing : straight),
+    );
 
 List<double> beatsOf(List<DrumHit> hits, Drum drum) =>
     [for (final h in hits.where((h) => h.drum == drum)) h.beat]..sort();
@@ -419,7 +423,9 @@ void main() {
             chords[i % chords.length],
             i.isEven ? 4 : 2,
             feel,
-            swing: tripletSwing,
+            // Each feel leaning its own way: an even groove is handed an
+            // even value, which is what the band hands it.
+            swing: feel.swings ? tripletSwing : straight,
           )) {
             if (hit.beat < 0) early.add(hit.beat);
           }

@@ -1,4 +1,5 @@
 import 'chord.dart';
+import 'swing.dart';
 import 'comping.dart';
 
 /// One chord in a bar, with where it sits in time.
@@ -58,6 +59,21 @@ enum Feel {
 
   /// Whether this feel's eighths are long-short.
   bool get swings => this == swing || this == shuffle;
+
+  /// Where the off-beats sit before anybody touches the slider: the
+  /// tempo's own swing for the feels that swing, even for the rest.
+  ///
+  /// The slider overrides this for any of them, which is the point: a
+  /// groove that is even by convention is still a groove somebody may
+  /// want to lean.
+  double swingBy(int tempo) => swings ? swingAt(tempo) : straight;
+
+  /// Whether what moves is the sixteenths rather than the eighths.
+  ///
+  /// Funk, and only funk. Its eighths stay where they are and the second
+  /// of each pair of sixteenths is the one that leans, which is why
+  /// swinging its eighths like a jazz tune sounds nothing like funk.
+  bool get swingsSixteenths => this == funk;
 
   /// The tempos this feel lives at, in beats a minute.
   ///
