@@ -3,8 +3,10 @@
 // Several ways out, because they are for different ends. As text, the
 // changes are laid out as they are on screen, to read anywhere: a
 // message, a note, a printout on the stand. As an iReal Pro link, they go
-// into the app most players already keep their charts in. As MusicXML,
-// they open in notation software to be engraved or arranged from.
+// into the app most players already keep their charts in. As a PDF, they
+// are a page to print and put on the stand. As MusicXML, they open in
+// notation software to be engraved or arranged from. As MIDI, the band
+// playing them goes into a DAW as notes.
 //
 // Only the changes leave, whichever way: there is no melody and no lyric
 // in this app to send.
@@ -19,6 +21,7 @@ import 'package:share_plus/share_plus.dart';
 import '../music/chart_pdf.dart';
 import '../music/chart_text.dart';
 import '../music/ireal_export.dart';
+import '../music/midi_write.dart';
 import '../music/musicxml_export.dart';
 import '../music/tune.dart';
 import '../music/user_progression.dart';
@@ -85,72 +88,92 @@ Future<void> shareCharts(
           bytes: pdf,
         ),
       ], subject: subject);
+    case _How.midi:
+      await _shareFiles(context, [
+        for (final tune in tunes)
+          (
+            name: midiFileName(tune.title),
+            mime: 'audio/midi',
+            bytes: midiFor(tune),
+          ),
+      ], subject: subject);
   }
 }
 
 /// A file on its way out: what it is called, what it is, and what is in it.
 typedef _OutFile = ({String name, String mime, List<int> bytes});
 
-enum _How { text, ireal, musicXml, pdf }
+enum _How { text, ireal, musicXml, pdf, midi }
 
-Future<_How?> _askHow(BuildContext context, int tunes) =>
-    showModalBottomSheet<_How>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                tunes == 1 ? 'Share This Chart' : 'Share These $tunes Charts',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+Future<_How?> _askHow(
+  BuildContext context,
+  int tunes,
+) => showModalBottomSheet<_How>(
+  context: context,
+  showDragHandle: true,
+  builder: (context) => SafeArea(
+    // Five ways out and a word about the trademark: more than fits on
+    // a short screen, so the sheet scrolls rather than overflowing.
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text(
+              tunes == 1 ? 'Share This Chart' : 'Share These $tunes Charts',
+              style: Theme.of(context).textTheme.titleMedium,
             ),
-            ListTile(
-              key: const ValueKey('share-text'),
-              leading: const Icon(Icons.notes),
-              title: const Text('As Text'),
-              subtitle: const Text('The changes, laid out as they are here'),
-              onTap: () => Navigator.of(context).pop(_How.text),
+          ),
+          ListTile(
+            key: const ValueKey('share-text'),
+            leading: const Icon(Icons.notes),
+            title: const Text('As Text'),
+            subtitle: const Text('The changes, laid out as they are here'),
+            onTap: () => Navigator.of(context).pop(_How.text),
+          ),
+          ListTile(
+            key: const ValueKey('share-ireal'),
+            leading: const Icon(Icons.link),
+            title: const Text('As an iReal Pro Link'),
+            subtitle: const Text('Opens in iReal Pro on the other end'),
+            onTap: () => Navigator.of(context).pop(_How.ireal),
+          ),
+          ListTile(
+            key: const ValueKey('share-pdf'),
+            leading: const Icon(Icons.picture_as_pdf_outlined),
+            title: const Text('As a PDF'),
+            subtitle: const Text('The chart as a page, to print or to read'),
+            onTap: () => Navigator.of(context).pop(_How.pdf),
+          ),
+          ListTile(
+            key: const ValueKey('share-midi'),
+            leading: const Icon(Icons.piano_outlined),
+            title: const Text('As MIDI'),
+            subtitle: const Text('The band playing it, for a DAW'),
+            onTap: () => Navigator.of(context).pop(_How.midi),
+          ),
+          ListTile(
+            key: const ValueKey('share-musicxml'),
+            leading: const Icon(Icons.library_music_outlined),
+            title: const Text('As MusicXML'),
+            subtitle: const Text('Opens in notation software, chords and form'),
+            onTap: () => Navigator.of(context).pop(_How.musicXml),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+            child: Text(
+              'iReal Pro is a trademark of its owner; The Changes isn\'t '
+              'affiliated with it.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            ListTile(
-              key: const ValueKey('share-ireal'),
-              leading: const Icon(Icons.link),
-              title: const Text('As an iReal Pro Link'),
-              subtitle: const Text('Opens in iReal Pro on the other end'),
-              onTap: () => Navigator.of(context).pop(_How.ireal),
-            ),
-            ListTile(
-              key: const ValueKey('share-pdf'),
-              leading: const Icon(Icons.picture_as_pdf_outlined),
-              title: const Text('As a PDF'),
-              subtitle: const Text('The chart as a page, to print or to read'),
-              onTap: () => Navigator.of(context).pop(_How.pdf),
-            ),
-            ListTile(
-              key: const ValueKey('share-musicxml'),
-              leading: const Icon(Icons.library_music_outlined),
-              title: const Text('As MusicXML'),
-              subtitle: const Text(
-                'Opens in notation software, chords and form',
-              ),
-              onTap: () => Navigator.of(context).pop(_How.musicXml),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-              child: Text(
-                'iReal Pro is a trademark of its owner; The Changes isn\'t '
-                'affiliated with it.',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
+    ),
+  ),
+);
 
 Future<void> _share(
   BuildContext context,
