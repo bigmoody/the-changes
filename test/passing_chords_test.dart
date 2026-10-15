@@ -67,6 +67,59 @@ void main() {
       );
     });
 
+    test('the chord it climbs into is spelled by the key, not the climb', () {
+      // The sharp is for the passing chord. The chord after it is a
+      // chord of the key and takes the key's spelling, which is what the
+      // ii of D♭ being written D♯m7 got wrong: E♭m7 sits a semitone
+      // above the D°7 before it, and was spelled as though it were
+      // passing too.
+      expect(
+        chordsIn(
+          _move('Passing Diminished').filled,
+          'D♭',
+        ).map((c) => c.display),
+        ['D♭6', 'D°7', 'E♭m7'],
+      );
+      expect(
+        chordsIn(
+          _move('Passing Diminished').filled,
+          'A♭',
+        ).map((c) => c.display),
+        ['A♭6', 'A°7', 'B♭m7'],
+      );
+    });
+
+    test('a sharp key is written with sharps', () {
+      // A fixed table of flats put D♭7 and G♭m7 into the key of E, and
+      // D♭m7 and G♭7 into B. Both are four or more sharps.
+      expect(
+        chordsIn(_move('Secondary Dominant').filled, 'E').map((c) => c.display),
+        ['E6', 'C♯7', 'F♯m7'],
+      );
+      expect(
+        chordsIn(_move('Adding the ii').filled, 'B').map((c) => c.display),
+        ['C♯m7', 'F♯7', 'BΔ7'],
+      );
+    });
+
+    test('no chord in any key is rooted on D♯ or A♯', () {
+      // Except the passing diminished, where the climb is the point and
+      // D♯°7 is how it is read. Everything else: the ♭iii of G is B♭m7.
+      for (final key in steps) {
+        for (final move in passingMoves) {
+          for (final chord in chordsIn(move.filled, key)) {
+            final intervals = chord.quality.intervals;
+            if (intervals.contains(3) && intervals.contains(6)) continue;
+            expect(
+              chord.rootName,
+              isNot(anyOf('D♯', 'A♯')),
+              reason: '$key: ${chord.display}',
+            );
+          }
+        }
+      }
+    });
+
     test('a chord arriving from above keeps its flat', () {
       // The chromatic approach slides down into the ii, so it is not
       // climbing and the sharp rule must leave it alone.
