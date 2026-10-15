@@ -56,6 +56,12 @@ void main() {
     };
   }
 
+  // The three with a piano on them re-pinned when the piano's release
+  // came back down from 0.3 of a second to 0.2. At 0.3 every chord was
+  // still sounding when the next one landed, which is a blur and not a
+  // pedal. Rhythm changes is comped on the guitar, which has its own
+  // shorter release, and does not move.
+  //
   // The three with a piano on them re-pinned when it was struck 1.6 dB
   // harder for sitting too far back. None of them is modal, so the quartal
   // voicings in the same commit do not reach them; rhythm changes is comped
@@ -93,9 +99,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 515846591519119029,
-        'Bass': -6718252218236816881,
-        'Drums': -7444521913703691061,
+        'Chords': 2203759134988664311,
+        'Bass': 1518779006530354847,
+        'Drums': 2622734513705247941,
       },
     );
   });
@@ -151,10 +157,10 @@ void main() {
         ),
       ),
       {
-        'Chords': -1993098316807571056,
-        'Bass': 2353429780327942122,
-        'Drums': 1876544167670208400,
-        'Arpeggios': -8673454679067683398,
+        'Chords': -4605123939553479598,
+        'Bass': 846266009908833991,
+        'Drums': 7404800353527402622,
+        'Arpeggios': -660344210291449637,
       },
     );
   });
@@ -179,9 +185,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -3684733949263823551,
-        'Bass': 4100212034402826426,
-        'Drums': 2422930488144254327,
+        'Chords': 2800531173029669864,
+        'Bass': 8690478838482417250,
+        'Drums': 2669640246253844395,
       },
     );
   });

@@ -337,6 +337,15 @@ void main() {
       // chords instead of a tenth of one over them, and it is deliberate
       // rather than a number moved to let a change through. Below 300 Hz,
       // where a real speaker does play, the bass is 13 dB clear.
+      //
+      // Where it actually sits: 0.974, a quarter of a decibel under the
+      // chords. It was nearer 0.94 until the piano's release came back
+      // down from 0.3 of a second to 0.2 for smearing the comping, which
+      // takes energy out of the chords and hands some of this margin
+      // back. The floor is left where it is rather than pulled up under
+      // the measured value: a guard with one per cent of room is one that
+      // trips on the next unrelated change, which is how this one tripped
+      // in the first place.
       double audible(Uint8List wav) {
         final samples = decodeWav(wav);
         final high = math.exp(-2 * math.pi * 300 / SampleBank.sampleRate);

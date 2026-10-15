@@ -80,8 +80,11 @@ class Comper {
   /// answer. It holds across until the landing, so the two overlap the
   /// way a pedalled piano does rather than the first being lifted off.
   static _Pattern _slide(double and, {double from = 0}) => [
-    (from, 2.3, 0.8),
-    (from + 2 + and, 1.4, 0.9),
+    // Held across the gap and let go as the landing arrives, not through
+    // it: two five-note stacks a tone apart sounding together is ten
+    // notes, and that is not a suspension resolving, it is a smudge.
+    (from, 2.2, 0.8),
+    (from + 2 + and, 1.2, 0.9),
   ];
 
   /// The figures that are a slide, and so play two shapes rather than one.

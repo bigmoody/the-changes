@@ -1314,7 +1314,18 @@ const _pianoRoom = 0.16;
 ///
 /// Long enough to be a pedal lifted on the change, and no longer: a chord
 /// that hangs about through the one after it is not lush, it is a mess.
-const _pianoRelease = 0.3;
+///
+/// Which is what 0.3 of a second turned out to be. At 140 beats a minute
+/// it is seven tenths of a beat, and comping chords land one to two beats
+/// apart, so every chord was still sounding when the next one arrived and
+/// the part came out as a blur. Worse once the piano was brought forward,
+/// because the blur came forward with it.
+///
+/// 0.2 is a damper falling rather than a pedal held through the change.
+/// None of the piano's richness is in this number: that is in the length
+/// of the recordings, which is what the chord rings *for*, and those are
+/// untouched.
+const _pianoRelease = 0.2;
 
 /// How far a swirl recording runs past its own circle, so one circle
 /// overlaps the next and the join between them is a crossfade rather than
