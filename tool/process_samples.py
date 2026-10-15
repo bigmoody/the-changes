@@ -219,11 +219,21 @@ BRUSH_PEAKS = {
     "cross_stick": 0.3289, "hihat_pedal": 0.3264, "tom_high": 0.3000,
     "cowbell": 0.2500, "tom_low": 0.1469, "kick": 0.0774,
 }
-# Trimmed to the same lengths as the stick kit's matching drum.
+# Trimmed to the same lengths as the stick kit's matching drum, except the
+# snare.
+#
+# This drum is not damped, and a brush stroke on an undamped head leaves the
+# snare wires buzzing: measured against its own peak, the ring is still only
+# 17 to 19 dB down at 0.2s on the library's worst takes, where the stick
+# kit's snare is 25 dB down. At the stick snare's length the fade starts at
+# 0.5s and never reaches it, so the ring played at full level and the kit
+# sounded resonant rather than brushed. Shorter, with a fade long enough to
+# cover 0.2s onwards: 3 dB off the ring at 0.2s and 13 dB at 0.3s, against
+# 0.8 dB at 0.15s, which is still the stroke itself.
 BRUSH_TRIM = {
     "ride": (1.8, 0.5), "hihat_pedal": (0.5, 0.15), "hihat_closed": (0.4, 0.12),
     "hihat_open": (0.6, 0.2), "kick": (0.7, 0.2), "cross_stick": (0.4, 0.12),
-    "snare": (0.7, 0.2), "tom_high": (0.9, 0.3), "tom_low": (0.9, 0.3),
+    "snare": (0.35, 0.22), "tom_high": (0.9, 0.3), "tom_low": (0.9, 0.3),
     "cowbell": (0.5, 0.15),
 }
 if want("brushes"):

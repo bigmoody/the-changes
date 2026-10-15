@@ -21,6 +21,31 @@ import 'package:play_along/music/loop_range.dart';
 import 'package:play_along/music/tune.dart' show DrumSound;
 import 'package:play_along/music/tune_library.dart';
 
+/// How far down a drum is still ringing [seconds] after the hit, in dB
+/// against the take's own peak, taken over the take that rings longest.
+///
+/// Against its own peak because [DrumSamples.levelling] brings every
+/// layer up to the same peak: what you hear as resonance is the ratio of
+/// the ring to the stroke, not the ring's level in the file.
+double ringAt(DrumSamples drum, double seconds) {
+  var worst = -200.0;
+  for (final takes in drum.layers) {
+    for (final take in takes) {
+      final samples = take.samples;
+      final peak = samples.fold<int>(0, (p, s) => math.max(p, s.abs()));
+      final at = (seconds * 44100).round();
+      if (peak == 0 || at + 441 >= samples.length) continue;
+      var window = 0;
+      for (var i = at; i < at + 441; i++) {
+        window = math.max(window, samples[i].abs());
+      }
+      if (window == 0) continue;
+      worst = math.max(worst, 20 * math.log(window / peak) / math.ln10);
+    }
+  }
+  return worst;
+}
+
 /// The loudest sample in a drum's recordings, which is the level the
 /// others are brought up to and so the level the drum plays at.
 int peakOf(DrumSamples drum) => drum.layers
@@ -111,6 +136,34 @@ void main() {
         );
       }
     });
+  });
+
+  group('how long it rings', () {
+    // The snare in this library is undamped, and a brush stroke on an
+    // undamped head leaves the wires buzzing well after the stroke. Cut
+    // to the stick snare's length the fade started at 0.5s and never
+    // reached that ring, so the kit sounded resonant rather than
+    // brushed: the softest layer, which is the one a tap lands on, was
+    // only 19 dB down at 0.2s where the stick snare is 25. The
+    // recordings are cut shorter now, with the fade over the ring.
+    //
+    // Against the stick snare rather than a number, because "resonant"
+    // is a comparison: the kit it is swapped for is what the ear has to
+    // go on. Changing the stick kit should bring you back here.
+    for (final seconds in [0.1, 0.2, 0.3]) {
+      test('at ${(seconds * 1000).round()}ms it is no more resonant than '
+          'the stick snare', () {
+        final brushed = ringAt(bank.brushes[Drum.snare]!, seconds);
+        final struck = ringAt(bank.snare, seconds);
+        expect(
+          brushed,
+          lessThanOrEqualTo(struck),
+          reason:
+              'brushes ${brushed.toStringAsFixed(1)} dB down, '
+              'sticks ${struck.toStringAsFixed(1)} dB down',
+        );
+      });
+    }
   });
 
   group('choosing it', () {
