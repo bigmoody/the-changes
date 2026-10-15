@@ -206,6 +206,7 @@ class AppSettings extends ChangeNotifier {
     this._markTheBar,
     this._drumLevels,
     this._exerciseLevels,
+    this._arpeggioRate,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -229,6 +230,7 @@ class AppSettings extends ChangeNotifier {
     this._markTheBar = MarkTheBar.filled,
     this._drumLevels = const DrumLevels(),
   ]) : _exerciseLevels = const {},
+       _arpeggioRate = ArpeggioRate.eighths,
        _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -240,6 +242,7 @@ class AppSettings extends ChangeNotifier {
        _fadeChart = FadeChart.never,
        _takesWithBand = true;
 
+  static const _arpeggioRateKey = 'arpeggioRate';
   static const _exerciseLevelsKey = 'exerciseLevels';
   static const _instrumentKey = 'chartInstrument';
   static const _mixKey = 'mixWithOthers';
@@ -280,6 +283,7 @@ class AppSettings extends ChangeNotifier {
     var comping = Comping.piano;
     var bassSound = BassSound.upright;
     var drumSound = DrumSound.kit;
+    var arpeggioRate = ArpeggioRate.eighths;
     var chordColours = const ChordColours();
     var colourChords = true;
     var splitEnharmonics = false;
@@ -315,6 +319,11 @@ class AppSettings extends ChangeNotifier {
       markTheBar = MarkTheBar.values.firstWhere(
         (value) => value.name == savedMark,
         orElse: () => MarkTheBar.filled,
+      );
+      final savedRate = await storage.getString(_arpeggioRateKey);
+      arpeggioRate = ArpeggioRate.values.firstWhere(
+        (value) => value.name == savedRate,
+        orElse: () => ArpeggioRate.eighths,
       );
       final savedExercises = await storage.getString(_exerciseLevelsKey);
       if (savedExercises != null) {
@@ -449,6 +458,7 @@ class AppSettings extends ChangeNotifier {
       markTheBar,
       drumLevels,
       exerciseLevels,
+      arpeggioRate,
     );
   }
 
@@ -895,6 +905,21 @@ class AppSettings extends ChangeNotifier {
   /// out of the book, one written in the app, one imported this morning.
   /// A tune nobody has started is not in here at all, which is how the
   /// screen knows to open on the first one.
+  /// How fast the arpeggio part goes by.
+  ArpeggioRate get arpeggioRate => _arpeggioRate;
+  ArpeggioRate _arpeggioRate;
+
+  Future<void> setArpeggioRate(ArpeggioRate value) async {
+    if (value == _arpeggioRate) return;
+    _arpeggioRate = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_arpeggioRateKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
   Map<String, ChartExercise> _exerciseLevels;
   Map<String, ChartExercise> get exerciseLevels => _exerciseLevels;
 

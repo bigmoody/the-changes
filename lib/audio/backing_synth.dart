@@ -121,6 +121,7 @@ class BackingRequest {
     this.arpeggios = false,
     this.arpeggioSound = Comping.piano,
     this.arpeggioStart = ArpeggioStart.root,
+    this.arpeggioRate = ArpeggioRate.eighths,
     this.arrangement = Arrangement.keepGoing,
     this.imported,
     this.drumLevels = const DrumLevels(),
@@ -170,6 +171,9 @@ class BackingRequest {
   /// Which chord tone they start from.
   final ArpeggioStart arpeggioStart;
 
+  /// How fast the arpeggio goes by.
+  final ArpeggioRate arpeggioRate;
+
   /// How the band plays the form: how many choruses, and what happens on
   /// each of them.
   final Arrangement arrangement;
@@ -201,6 +205,7 @@ class BackingRequest {
     arpeggios: arpeggios,
     arpeggioSound: arpeggioSound,
     arpeggioStart: arpeggioStart,
+    arpeggioRate: arpeggioRate,
     arrangement: arrangement,
     imported: imported,
     drumLevels: drumLevels,
@@ -956,12 +961,11 @@ _Parts _renderParts(
       chords,
       choruses: choruses,
       // Flatter than the band: a stream of eighths is not played as a
-      // stream of dotted quavers, whatever the ride is doing.
-      // Flatter than the band: a stream of eighths is not played as a
       // stream of dotted quavers, whatever the ride is doing. Straight
       // in a feel that leans its sixteenths rather than its eighths.
       swing: tune.style.drums.swingsSixteenths ? straight : lineSwing(swing),
       from: request.arpeggioStart,
+      rate: request.arpeggioRate,
       startNote: state.arpeggioRoot,
     );
     arpeggioRoot = line.lastStart;

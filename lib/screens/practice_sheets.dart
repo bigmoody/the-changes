@@ -468,6 +468,29 @@ void showMixer(BuildContext context, PracticeController controller) {
                   ],
                 ),
               ),
+            if (controller.arpeggios)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text('Rate', style: theme.textTheme.titleSmall),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SegmentedButton<ArpeggioRate>(
+                        key: const ValueKey('arpeggio-rate'),
+                        showSelectedIcon: false,
+                        segments: [
+                          for (final rate in ArpeggioRate.values)
+                            ButtonSegment(value: rate, label: Text(rate.label)),
+                        ],
+                        selected: {controller.settings.arpeggioRate},
+                        onSelectionChanged: (value) =>
+                            controller.setArpeggioRate(value.first),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (controller.recordingStore != null && controller.ref != null)
               ListTile(
                 key: const ValueKey('import-recording'),

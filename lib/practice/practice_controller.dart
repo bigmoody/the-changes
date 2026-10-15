@@ -519,6 +519,13 @@ class PracticeController extends ChangeNotifier {
   }
 
   /// Which chord tone the arpeggios start from.
+  Future<void> setArpeggioRate(ArpeggioRate value) async {
+    if (value == settings.arpeggioRate) return;
+    await settings.setArpeggioRate(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
   Future<void> setArpeggioStart(ArpeggioStart value) async {
     if (value == settings.arpeggioStart) return;
     await settings.setArpeggioStart(value);
@@ -1025,6 +1032,7 @@ class PracticeController extends ChangeNotifier {
         arpeggios: _arpeggios,
         arpeggioSound: settings.arpeggioSound,
         arpeggioStart: settings.arpeggioStart,
+        arpeggioRate: settings.arpeggioRate,
         arrangement: arrangement ?? take.arrangement,
         imported: _imported?.transposedBy(take.semitones),
         drumLevels: settings.drumLevels,
@@ -1044,6 +1052,7 @@ class PracticeController extends ChangeNotifier {
     arpeggios: _arpeggios,
     arpeggioSound: settings.arpeggioSound,
     arpeggioStart: settings.arpeggioStart,
+    arpeggioRate: settings.arpeggioRate,
     arrangement: arrangement ?? _arrangement,
     imported: _imported?.transposedBy(_semitones),
     drumLevels: settings.drumLevels,
@@ -1224,6 +1233,7 @@ class PracticeController extends ChangeNotifier {
           arpeggios: _arpeggios,
           arpeggioSound: settings.arpeggioSound,
           arpeggioStart: settings.arpeggioStart,
+          arpeggioRate: settings.arpeggioRate,
           arrangement: _arrangement,
           imported: _imported?.transposedBy(_semitones),
           drumLevels: settings.drumLevels,
