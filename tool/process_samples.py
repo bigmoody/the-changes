@@ -27,10 +27,14 @@ def decode(path, cents=0):
          "-f", "f32le", "-"], check=True, capture_output=True).stdout
     a = array.array("f"); a.frombytes(pcm); return a
 
-def trim(samples, seconds, fade, onset_fraction=0.02, preroll=0.002):
+def onset_of(samples, onset_fraction=0.02, preroll=0.002):
+    """Where the hit starts: the first sample worth hearing, less a hair."""
     peak = max(abs(x) for x in samples) or 1.0
     start = next((i for i, x in enumerate(samples) if abs(x) >= peak * onset_fraction), 0)
-    start = max(0, start - int(preroll * SR))
+    return max(0, start - int(preroll * SR))
+
+def trim(samples, seconds, fade, onset_fraction=0.02, preroll=0.002):
+    start = onset_of(samples, onset_fraction, preroll)
     out = samples[start:start + int(seconds * SR)]
     n = len(out); f = int(fade * SR)
     for i in range(max(0, n - f), n):
@@ -236,19 +240,99 @@ BRUSH_TRIM = {
     "snare": (0.35, 0.22), "tom_high": (0.9, 0.3), "tom_low": (0.9, 0.3),
     "cowbell": (0.5, 0.15),
 }
+# A gel pad on the brush snare's head.
+#
+# This drum is tuned high and barely damped, and it sings. Measuring one
+# stroke in slices, the mode at 318 Hz stands 22.6 dB above the energy
+# either side of it at the attack, 26.6 dB by 0.08s and still 25.8 dB at
+# 0.15s: as the broadband stroke dies away the drum is left sounding a
+# pitch. That is what an undamped head does and it is what a gel pad on
+# the head is for.
+#
+# Which makes this a question of decay and not of balance. Two earlier
+# attempts at it went wrong by treating it as balance: EQ enough to flatten
+# the mode costs 43 dB of narrow cuts, 21 of them on the fundamental, and
+# mixing in the library's room recording smooths the mode but lengthens
+# the tail, which is the opposite of damping. Shortening the recordings
+# does nothing either, the taps at 140 bpm being shorter than the trim
+# already: 0.35s down to 0.20s moved the rendered level by 0.03 dB.
+#
+# So this does what the pad does. Each mode's own content is taken out
+# progressively: none at the attack, so the stroke keeps the character it
+# was played with, and nearly all of it [BRUSH_GEL_TAU] later, so the head
+# stops ringing on. Subtracting a band-pass is a notch, so at full gate
+# the mode is gone and nothing else is touched.
+BRUSH_GEL_MODES = (318, 449, 566)
+BRUSH_GEL_Q = 2.5
+BRUSH_GEL_TAU = 0.012
+
+def bandpass(samples, f0, q):
+    """Just the content around [f0], at full level there."""
+    w0 = 2 * math.pi * f0 / SR
+    al = math.sin(w0) / (2 * q)
+    c = math.cos(w0)
+    a0 = 1 + al
+    b0, b2 = al / a0, -al / a0
+    a1, a2 = -2 * c / a0, (1 - al) / a0
+    out = array.array("f", [0.0]) * len(samples)
+    x1 = x2 = y1 = y2 = 0.0
+    for i, x in enumerate(samples):
+        y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2
+        out[i] = y
+        x2, x1 = x1, x
+        y2, y1 = y1, y
+    return out
+
+def gel(samples, onset, modes, q, tau):
+    """Damps [modes] from [onset] on, over [tau] seconds.
+
+    One mode at a time, each taken out of what the one before it left.
+    Not from the original: at these widths the bands overlap, and three
+    band-passes of the same signal subtracted together put each other's
+    skirts back where the others had just taken a mode out. Measured on
+    one stroke, that fills the notch in from 17.2 dB deep to 1.4.
+    """
+    out = array.array("f", samples)
+    gate = [
+        0.0 if i < onset else 1 - math.exp(-((i - onset) / SR) / tau)
+        for i in range(len(samples))
+    ]
+    for f0 in modes:
+        band = bandpass(out, f0, q)
+        for i in range(len(out)):
+            out[i] -= band[i] * gate[i]
+    return out
+
 if want("brushes"):
     by_drum = {}
+    ungelled = []
     for name in sorted(os.listdir(f"{RAW}/brushes")):
         m = re.match(r"(.+)_(\d)_(\d)\.wav", name)
         secs, fd = BRUSH_TRIM[m[1]]
-        by_drum.setdefault(m[1], []).append(
-            (f"{OUT}/drums_brushes/{name}", trim(decode(f"{RAW}/brushes/{name}"), secs, fd)))
+        raw = decode(f"{RAW}/brushes/{name}")
+        hit = trim(raw, secs, fd)
+        if m[1] == "snare":
+            ungelled.append(hit)
+            hit = trim(
+                gel(raw, onset_of(raw), BRUSH_GEL_MODES, BRUSH_GEL_Q, BRUSH_GEL_TAU),
+                secs, fd)
+        by_drum.setdefault(m[1], []).append((f"{OUT}/drums_brushes/{name}", hit))
     for drum, files in sorted(by_drum.items()):
         peak = max(max(abs(x) for x in s) for _, s in files)
         scale = BRUSH_PEAKS[drum] / peak
         for out, samples in files:
             write(out, samples, scale)
-        print(f"brushes {drum}: {len(files)} files, peak {peak:.4f}, gain {scale:.2f}")
+        note = ""
+        if drum == "snare" and ungelled:
+            # What the gel costs in energy at this peak, which is what the
+            # band has to put back: see _brushGelMakeUp in backing_synth.
+            was = max(max(abs(x) for x in s) for s in ungelled) or 1.0
+            e0 = sum(sum((x / was) ** 2 for x in s) for s in ungelled)
+            e1 = sum(sum((x * scale / BRUSH_PEAKS[drum]) ** 2 for x in s)
+                     for _, s in files)
+            note = f", gel costs {10 * math.log10(e0 / e1):.2f} dB of energy"
+        print(f"brushes {drum}: {len(files)} files, peak {peak:.4f}, "
+              f"gain {scale:.2f}{note}")
 
 # The brush swirl: the left hand's circle on the snare head, which is what
 # makes a brush groove sound played rather than tapped.
