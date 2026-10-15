@@ -1112,9 +1112,15 @@ _Parts _renderParts(
   /// somebody playing a funk tune with brushes has asked for brushes.
   DrumSamples? recordedDrum(Drum drum) {
     if (bank == null) return null;
-    final ours = drum == Drum.snare && tune.style.drums == Feel.funk
-        ? bank.snareTight
-        : drumIn(bank, drum);
+    // Funk takes the close microphones: the drum rather than the room
+    // for the snare, and a kick that is the floor of the groove rather
+    // than one heard across it.
+    final funk = tune.style.drums == Feel.funk;
+    final ours = switch (drum) {
+      Drum.snare when funk => bank.snareTight,
+      Drum.kick when funk => bank.kickClose,
+      _ => drumIn(bank, drum),
+    };
     return bank.playingDrum(drum, request.drumSound, ours);
   }
 

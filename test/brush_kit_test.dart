@@ -137,6 +137,7 @@ void main() {
         hiHatClosed: bank.hiHatClosed,
         hiHatOpen: bank.hiHatOpen,
         kick: bank.kick,
+        kickClose: bank.kick,
         snare: bank.snare,
         snareTight: bank.snare,
         crossStick: bank.crossStick,

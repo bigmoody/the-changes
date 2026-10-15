@@ -1,10 +1,17 @@
-// The funk snare: the same drum, the other microphone.
+// The funk kit's close microphones: the same drums, heard from a
+// different place.
 //
-// The kit's snare is an overhead's snare, which is the drum in its room,
-// and on a jazz backbeat that is what you want. Funk wants the drum and
-// not the room, so funk reaches for the close microphone instead. The
-// level is the same either way and only the tone changes, so the
-// pattern's velocity still means what it meant.
+// The kit is an overhead's kit, which is the drums in their room, and on
+// a jazz backbeat that is what you want. Funk wants the drums and not
+// the room.
+//
+// The snare and the kick are the two, and they needed it for opposite
+// reasons. The snare's level was right and only its tail was wrong, so
+// the close one is normalised to the same peak and only the tone changes.
+// The kick's level was the problem: the overheads' kick peaks at 0.077
+// against the snare's 1.0, which is what a kick sounds like from across
+// a room and is 22 dB under the floor a funk groove needs, and no
+// velocity reaches up from there.
 
 import 'dart:io';
 import 'dart:math' as math;
@@ -74,6 +81,36 @@ void main() {
     });
   });
 
+  group('the kick, which had the same problem worse', () {
+    test('the close kick is far louder than the overheads\' one', () {
+      // The point of it. The overheads' kick peaks at 0.077 against the
+      // snare's 1.0, because that is a kick heard across a room, and no
+      // velocity reaches the floor of a funk groove from there.
+      expect(peakOf(bank.kickClose) / peakOf(bank.kick), greaterThan(5));
+    });
+
+    test('and shorter, because a funk kick is a punch', () {
+      expect(decayOf(bank.kickClose), lessThan(decayOf(bank.kick)));
+    });
+
+    test('it sits with the funk snare rather than under it', () {
+      // Within a decibel, where it was 17.6 under.
+      final kick = peakOf(bank.kickClose) * 0.85; // the funk pattern's
+      final snare = peakOf(bank.snareTight) * 0.5; // velocities
+      expect(20 * math.log(kick / snare) / math.ln10, closeTo(0, 2));
+    });
+
+    test('the same two layers and four takes as the kick it replaces', () {
+      expect(bank.kickClose.length, bank.kick.length);
+      for (var layer = 0; layer < bank.kickClose.length; layer++) {
+        expect(
+          bank.kickClose.layers[layer].length,
+          bank.kick.layers[layer].length,
+        );
+      }
+    });
+  });
+
   group('who gets it', () {
     /// The same bank with the close snare replaced by the overhead one, so
     /// a render that reaches for it comes out differently and a render
@@ -87,6 +124,7 @@ void main() {
       hiHatClosed: bank.hiHatClosed,
       hiHatOpen: bank.hiHatOpen,
       kick: bank.kick,
+      kickClose: bank.kick,
       snare: bank.snare,
       snareTight: bank.snare,
       crossStick: bank.crossStick,
@@ -109,7 +147,7 @@ void main() {
       ).stems[Instrument.drums]!;
     }
 
-    test('a funk tune plays it', () {
+    test('a funk tune plays them', () {
       final funk = standards.firstWhere((t) => t.style.drums == Feel.funk);
       expect(
         drumsOf(funk.title, bank),

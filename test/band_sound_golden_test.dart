@@ -56,6 +56,12 @@ void main() {
     };
   }
 
+  // The funk tune re-pinned a fifth time when its kick became the close
+  // microphone's as well. The overheads' kick is 22 dB under the snare,
+  // which is what a kick sounds like from across a room and cannot be the
+  // floor of a funk groove at any velocity. Nothing else moves: the kick
+  // is chosen by the groove, like the snare.
+  //
   // The funk tune re-pinned a fourth time when its snare became the close
   // microphone's instead of the overheads'. Same drum, same level, half
   // the length: the overhead is the drum in its room and funk wants the
@@ -212,9 +218,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -8913168239016665639,
-        'Bass': 5265210569221512842,
-        'Drums': -3202105465168572988,
+        'Chords': -2207867714579125509,
+        'Bass': -3505601354935458429,
+        'Drums': 8408564540202221592,
       },
     );
   });

@@ -13,6 +13,12 @@ The files were trimmed and converted to mono 16-bit WAV with
 | Drums | [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) | Versilian Studios & Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
 | Drums, brushes | [Swirly Drums](https://github.com/sfzinstruments/karoryfer.swirly-drums) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
 
+The funk kick is the same Virtuosity drum through the microphone inside
+it, trimmed to 0.4 s where the overhead kick is 0.7 s, and normalised to a
+peak of 0.55 rather than to the overheads' balance: the overhead kick
+peaks at 0.077 against the snare's 1.0, which is correct for a kick heard
+across a room and 22 dB under what a funk groove needs.
+
 The funk snare is the same Virtuosity drum through its close microphone
 rather than the overheads, trimmed to 0.35 s where the overhead snare is
 0.7 s, and normalised to the overhead snare's peak so that only the tone

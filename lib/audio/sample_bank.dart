@@ -206,6 +206,7 @@ class SampleBank {
     this.importedChords,
     this.importedBass,
     required this.snareTight,
+    required this.kickClose,
     this.brushes = const {},
     this.importedDrums = const {},
   });
@@ -271,6 +272,7 @@ class SampleBank {
     tomHigh: tomHigh,
     tomLow: tomLow,
     snareTight: snareTight,
+    kickClose: kickClose,
     brushes: brushes,
     importedChords: chords,
     importedBass: bass,
@@ -314,6 +316,12 @@ class SampleBank {
 
   /// Snare hits: [quiet (jazz comping), loud (funk backbeat)].
   final DrumSamples snare;
+
+  /// The same kick through the microphone inside the drum: present
+  /// rather than across the room. The overheads' kick is 22 dB under the
+  /// snare, which is what a kick sounds like from out there and is the
+  /// floor of a funk groove rather than a thing feathered under it.
+  final DrumSamples kickClose;
 
   /// The same snare through the close microphone: shorter, drier, more
   /// crack and less room. What a funk backbeat is, and the overhead's
@@ -427,6 +435,7 @@ class SampleBank {
         ])
           [for (final level in layers) await wav('drums/snare_$level.wav')],
       ]),
+      kickClose: await kit('kick_close'),
       snareTight: DrumSamples.plain([
         for (final layers in [
           [6, 8, 10],

@@ -312,3 +312,29 @@ if want("snaretight"):
     for out, s in decoded:
         write(out, s, 1.0 / peak)
     print(f"snare tight: {len(decoded)} files, peak {peak:.4f}, gain {1.0 / peak:.2f}")
+
+# A close kick, for funk: the same drum through the microphone inside it.
+#
+# The kit's kick is the overheads' kick, which is a kick heard across a
+# room, and that is right for jazz where it is feathered under everything.
+# In funk it is the floor of the groove, and the overhead kick cannot be
+# that at any level: its peak is 0.077 against the snare's 1.0, so at full
+# velocity it is still 22 dB under the backbeat. Velocity cannot fix a
+# recording that quiet.
+#
+# So funk gets the close microphone, normalised to a peak that sits with
+# the funk snare rather than to the overheads' balance. Trimmed to 0.4 s,
+# where the overhead kick is 0.7: the close mic is 27 dB down by 0.3 and
+# a funk kick is a punch rather than a boom.
+if want("kickclose"):
+    close = []
+    for layer, vl in ((1, 2), (2, 4)):
+        for take in (1, 2, 3, 4):
+            close.append((
+                f"{RAW}/drums/kickmic_kick_snoff_vl{vl}_rr{take}.flac",
+                f"{OUT}/drums/kick_close_{layer}_{take}.wav", 0.4, 0.14))
+    decoded = [(out, trim(decode(src), secs, fd)) for src, out, secs, fd in close]
+    peak = max(max(abs(x) for x in s) for _, s in decoded)
+    for out, s in decoded:
+        write(out, s, 0.55 / peak)
+    print(f"kick close: {len(decoded)} files, peak {peak:.4f}, gain {0.55 / peak:.2f}")

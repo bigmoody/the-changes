@@ -55,6 +55,7 @@ SampleBank bankOf(
   hiHatClosed: emptyDrum,
   hiHatOpen: emptyDrum,
   kick: emptyDrum,
+  kickClose: emptyDrum,
   snare: emptyDrum,
   snareTight: emptyDrum,
   crossStick: emptyDrum,

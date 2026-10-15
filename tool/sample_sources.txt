@@ -267,3 +267,11 @@ drums/snaremic_snare_center_vl10.flac https://raw.githubusercontent.com/sfzinstr
 drums/snaremic_snare_center_vl24.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl24.flac
 drums/snaremic_snare_center_vl26.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl26.flac
 drums/snaremic_snare_center_vl28.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl28.flac
+drums/kickmic_kick_snoff_vl2_rr1.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr1.flac
+drums/kickmic_kick_snoff_vl2_rr2.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr2.flac
+drums/kickmic_kick_snoff_vl2_rr3.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr3.flac
+drums/kickmic_kick_snoff_vl2_rr4.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl2_rr4.flac
+drums/kickmic_kick_snoff_vl4_rr1.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr1.flac
+drums/kickmic_kick_snoff_vl4_rr2.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr2.flac
+drums/kickmic_kick_snoff_vl4_rr3.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr3.flac
+drums/kickmic_kick_snoff_vl4_rr4.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/kickmic/kick/kickmic_kick_snoff_vl4_rr4.flac
