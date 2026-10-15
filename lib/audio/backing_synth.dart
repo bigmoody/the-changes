@@ -1245,8 +1245,7 @@ _Parts _renderParts(
               _drumLevel *
               hit.velocity *
               samples.levelling[layer] *
-              (playingBrushes ? _brushTrim : 1) *
-              (playingBrushes && hit.drum == Drum.snare ? _brushGelMakeUp : 1);
+              (playingBrushes ? _brushTrim : 1);
           drums.addRecording(
             at(beat),
             take,
@@ -1390,21 +1389,6 @@ _Parts _renderParts(
 /// means normalising the brush samples by energy rather than by peak,
 /// which is a rebuild of all 87 of them and a job of its own.
 const _brushTrim = 0.78;
-
-/// What the gel on the brush snare's head costs in level, put back.
-///
-/// The recordings are damped so the drum stops ringing on, which takes
-/// the ringing modes' energy out with them: the processing tool measures
-/// the loss at 2.32 dB. The samples cannot carry it back, being normalised
-/// to a peak already, and putting the energy back into the file instead
-/// would want a peak of 1.31 and clip the stroke. So it goes back here,
-/// where a decision about level belongs anyway.
-///
-/// Without it, measured against the chords, the brush kit sits 2.4 dB
-/// under the stick kit it stands in for, which is the backbeat of the
-/// arrangement moving because a kit was chosen. The gel is meant to change
-/// how long the drum rings and not how loud it is.
-const _brushGelMakeUp = 1.306;
 
 /// How loud the recorded drums sit against the bass and piano (cymbals
 /// measure quiet on average but cut through, so this was set by level

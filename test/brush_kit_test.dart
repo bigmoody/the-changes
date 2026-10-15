@@ -46,97 +46,6 @@ double ringAt(DrumSamples drum, double seconds) {
   return worst;
 }
 
-/// The magnitudes of a real signal's spectrum, by a radix-2 FFT.
-///
-/// [input]'s length must be a power of two. Only the lower half is
-/// returned, the upper half being its mirror image.
-List<double> spectrumOf(List<double> input) {
-  final n = input.length;
-  final re = List<double>.of(input);
-  final im = List<double>.filled(n, 0);
-  for (var i = 1, j = 0; i < n; i++) {
-    var bit = n >> 1;
-    for (; j & bit != 0; bit >>= 1) {
-      j ^= bit;
-    }
-    j ^= bit;
-    if (i < j) {
-      final tr = re[i], ti = im[i];
-      re[i] = re[j];
-      im[i] = im[j];
-      re[j] = tr;
-      im[j] = ti;
-    }
-  }
-  for (var span = 2; span <= n; span <<= 1) {
-    final half = span ~/ 2;
-    for (var i = 0; i < n; i += span) {
-      for (var k = 0; k < half; k++) {
-        final angle = -2 * math.pi * k / span;
-        final wr = math.cos(angle), wi = math.sin(angle);
-        final ur = re[i + k], ui = im[i + k];
-        final xr = re[i + k + half], xi = im[i + k + half];
-        final vr = xr * wr - xi * wi, vi = xr * wi + xi * wr;
-        re[i + k] = ur + vr;
-        im[i + k] = ui + vi;
-        re[i + k + half] = ur - vr;
-        im[i + k + half] = ui - vi;
-      }
-    }
-  }
-  return [
-    for (var i = 0; i < n ~/ 2; i++) math.sqrt(re[i] * re[i] + im[i] * im[i]),
-  ];
-}
-
-/// How loudly [drum] is still sounding the band around [hz], [seconds]
-/// after the stroke, in dB against the stroke's own peak. The take that
-/// sings loudest is the one reported.
-///
-/// Against its own peak because [DrumSamples.levelling] brings every
-/// layer up to the same peak: what the ear hears as a drum ringing on is
-/// the ring measured against the stroke that started it.
-double modeRingOf(DrumSamples drum, double hz, double seconds) {
-  const n = 8192;
-  const rate = 44100;
-  var worst = -200.0;
-  for (final takes in drum.layers) {
-    for (final take in takes) {
-      final samples = take.samples;
-      var peak = 0, peakAt = 0;
-      for (var i = 0; i < samples.length; i++) {
-        if (samples[i].abs() > peak) {
-          peak = samples[i].abs();
-          peakAt = i;
-        }
-      }
-      if (peak == 0) continue;
-      final from = peakAt + (seconds * rate).round();
-      final frame = List<double>.filled(n, 0);
-      for (var i = 0; i < n && from + i < samples.length; i++) {
-        frame[i] =
-            samples[from + i] * (0.5 - 0.5 * math.cos(2 * math.pi * i / n));
-      }
-      final spectrum = spectrumOf(frame);
-      // A sixth of an octave around the mode, which is the mode and not
-      // its neighbours.
-      final lo = (hz / math.pow(2, 1 / 12) * n / rate).floor();
-      final hi = (hz * math.pow(2, 1 / 12) * n / rate).ceil();
-      var energy = 0.0;
-      for (var k = math.max(1, lo); k <= math.min(n ~/ 2 - 1, hi); k++) {
-        energy += spectrum[k] * spectrum[k];
-      }
-      if (energy <= 0) continue;
-      // Against the peak through the same window, so the window's own
-      // gain cancels.
-      final ring =
-          20 * math.log(math.sqrt(energy) / (peak * n / 4)) / math.ln10;
-      worst = math.max(worst, ring);
-    }
-  }
-  return worst;
-}
-
 /// The loudest sample in a drum's recordings, which is the level the
 /// others are brought up to and so the level the drum plays at.
 int peakOf(DrumSamples drum) => drum.layers
@@ -252,39 +161,6 @@ void main() {
           reason:
               'brushes ${brushed.toStringAsFixed(1)} dB down, '
               'sticks ${struck.toStringAsFixed(1)} dB down',
-        );
-      });
-    }
-  });
-
-  group('it does not sing', () {
-    // This drum is tuned high and barely damped, and left alone it sounds
-    // a pitch after the stroke rather than just decaying. Measuring one
-    // stroke in slices, the mode at 318 Hz stood 22.6 dB above the energy
-    // either side of it at the attack, 26.6 dB by 0.08s and still 25.8 dB
-    // at 0.15s: as the broadband stroke died away the drum was left
-    // ringing, which is what "tinny" and "resonant" were both about.
-    //
-    // So the recordings are damped, the way a gel pad on the head damps
-    // it: see BRUSH_GEL_MODES in tool/process_samples.py. This is the
-    // measurement that says the gel is still on. Each mode is checked a
-    // tenth of a second after the stroke, by which time an undamped head
-    // is all that is left sounding.
-    //
-    // Was -41.7 dB at 318 Hz before the gel and -62.4 after, so the bar
-    // sits between them with room either side. The levels are against the
-    // stroke's own peak, so a louder or quieter kit cannot move them.
-    const ceiling = -52.0;
-    for (final hz in [318.0, 449.0, 566.0]) {
-      test('${hz.round()} Hz has stopped ringing a tenth of a second '
-          'after the stroke', () {
-        final ring = modeRingOf(bank.brushes[Drum.snare]!, hz, 0.1);
-        expect(
-          ring,
-          lessThan(ceiling),
-          reason:
-              'the brush snare is still sounding ${hz.round()} Hz at '
-              '${ring.toStringAsFixed(1)} dB under the stroke',
         );
       });
     }
