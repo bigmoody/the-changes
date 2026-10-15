@@ -104,9 +104,6 @@ class Comper {
   /// Whether the last bar's slide resolves into this one.
   bool _resolving = false;
 
-  /// Whether the last bar lifted and left a chord owed to this one.
-  bool _answering = false;
-
   /// The figures that are a slide, and so play two shapes rather than one.
   static const _slides = {'slide'};
 
@@ -146,16 +143,13 @@ class Comper {
     _held = isNew ? 0 : _held + 1;
     _sounding = chord.display;
 
-    // The bar a slide resolved into. Its chord has already arrived, just
-    // after the downbeat, and playing a figure on top of a resolution is
-    // two pianists.
-    // A lift left the shape above ringing and the chord still to come, so
-    // this bar brings it in. It may choose how, but not whether: left to
-    // rest, the suspension hangs for a whole bar and the part is back to
-    // riding the shape above, which is what the fall was fixed for.
-    final answering = _answering;
-    _answering = false;
-
+    // The bar after a slide, either way up, plays nothing.
+    //
+    // After a fall the chord has already arrived, half a beat before the
+    // bar line, and a figure on top of a resolution is two pianists.
+    // After a lift the shape above is left hanging and is meant to stay
+    // hanging: the chord coming in underneath it in the next bar is what
+    // stopped there being a lift to hear at all.
     if (_resolving) {
       _resolving = false;
       // The chord it is sounding and how long it has been held are both
@@ -200,7 +194,6 @@ class Comper {
             beatsPerBar: beatsPerBar,
             intoSection: intoSection,
             canSlide: moving != null,
-            answering: answering,
           );
     if (pattern.isEmpty) return const [];
 
@@ -214,10 +207,9 @@ class Comper {
       // not somewhere to sit: the next thing played is the chord.
       previousVoicing = quartalHomeFor(chord);
       _started = true;
-      // Only a fall has delivered the chord early. A lift has left the
-      // bar after it with its chord still to come, so that bar plays.
-      _resolving = slide == QuartalSlide.down;
-      _answering = slide == QuartalSlide.up;
+      // Either way up, the bar after it belongs to the figure: a fall has
+      // put the chord there already and a lift is still ringing into it.
+      _resolving = true;
       final loud = (isNew ? 0.66 : 0.5) + random.nextDouble() * 0.26;
       return [
         for (final (index, (beat, length, velocity)) in pattern.indexed)
@@ -301,7 +293,6 @@ class Comper {
     int beatsPerBar = 4,
     bool intoSection = false,
     bool canSlide = false,
-    bool answering = false,
   }) {
     // The swung "and" of a beat lands late; in straight feels it's halfway,
     // and how late is the band's business rather than this one's.
@@ -376,35 +367,20 @@ class Comper {
           ('rest', 1, const []),
         ] else ...[
           // Still the same chord: mostly leave it alone, and more so the
-          // longer it has been sounding. Unless it is answering a lift,
-          // when the chord is owed and silence is not an answer.
-          if (!answering) ('rest', 5 + settled * 3, const []),
+          // longer it has been sounding.
+          ('rest', 5 + settled * 3, const []),
           // Five ways in rather than one. Every one of these used to begin
           // on the "and" of 2, so whichever was picked you heard a chord
           // in the same place, and a vamp ticked. The weighting that keeps
           // a figure from repeating compares names, and these had
           // different names and the same landing, so it never noticed.
-          // Weighted up when answering a lift: it is the first place in
-          // the bar clear of the shape above still ringing, so it is where
-          // the chord that was owed comes in.
-          (
-            'remind',
-            answering ? 9 : (_held.isOdd ? 2 : 4),
-            [(1 + and, 1.1, 0.75)],
-          ),
+          ('remind', _held.isOdd ? 2 : 4, [(1 + and, 1.1, 0.75)]),
           ('lift', 3, [(3 + and, 0.9, 0.8)]),
           ('inside', 3, [(2 + and, 1.0, 0.8)]),
           ('on four', 2, [(3, 0.9, 0.75)]),
           ('echo', 3, [(1 + and, 0.7, 0.75), (3, 0.6, 0.65)]),
           ('answer', 3, [(2, 0.5, 0.7), (3 + and, 0.9, 0.8)]),
-          // The downbeat, and never when answering a lift. The lift lands
-          // half a beat before the bar line, so a chord on the downbeat
-          // arrives 0.38 of a beat after it: at this tune's 240 that is
-          // under a tenth of a second and the shape above never hangs at
-          // all. Giving it the downbeat treated it as a suspension held
-          // over the line, which it is not: it is one that has only just
-          // got there.
-          if (!answering) ('again', quiet ? 1 : 2, [(0, 1.2, 0.7)]),
+          ('again', quiet ? 1 : 2, [(0, 1.2, 0.7)]),
           // Answering a chord that is simply still sounding is the figure's
           // own job on the record: Evans plays it into the gaps rather than
           // under the melody. Weighted to be heard without becoming the

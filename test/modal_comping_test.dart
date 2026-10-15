@@ -359,43 +359,43 @@ void main() {
       }
     });
 
-    test('the bar after it plays, because its chord has not arrived', () {
-      // The other way round from a fall. A fall delivers the chord half a
-      // beat early, so the next bar has had it and says nothing; a lift
-      // leaves the chord still to come, so the next bar brings it in and
-      // the hanging shape above resolves.
-      var played = 0, total = 0;
-      for (var seed = 0; seed < 20; seed++) {
+    test('the bar after it plays nothing, so the shape above hangs', () {
+      // The same as after a fall, for the opposite reason. A fall has put
+      // the chord in that bar already, half a beat before the line; a
+      // lift has left the shape above ringing into it and is meant to
+      // leave it there. A chord underneath it in that bar is what stopped
+      // there being a lift to hear at all.
+      for (var seed = 0; seed < 40; seed++) {
         final bars = compedChorus('Impressions', seed: seed);
         for (final (i, bar) in bars.indexed) {
           if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
           if (i + 1 >= bars.length) continue;
-          total++;
-          if (bars[i + 1].isNotEmpty) played++;
+          expect(bars[i + 1], isEmpty, reason: 'bar ${i + 2}, seed $seed');
         }
       }
-      expect(played / total, greaterThan(0.8));
     });
 
-    test('the shape above is left to hang before the chord answers', () {
-      // What went wrong first time. The lift lands half a beat before the
-      // bar line, and the answer was weighted onto the downbeat, which is
-      // 0.38 of a beat later: at this tune's 240 that is under a tenth of
-      // a second, so the shape above never hung at all. The downbeat is
-      // where a suspension held over a bar line wants to land, and this
-      // is not one of those, it is one that has only just arrived.
-      for (var seed = 0; seed < 20; seed++) {
+    test('nothing comes in under it for a bar and a half at least', () {
+      // The chord was once coming in 0.38 of a beat after the lift, which
+      // at this tune's 240 is under a tenth of a second: two chords at
+      // once rather than one opening onto the other. Now the bar after is
+      // the figure's own, so the next thing played is a bar and a half
+      // away at the very soonest.
+      for (var seed = 0; seed < 40; seed++) {
         final bars = compedChorus('Impressions', seed: seed);
         for (final (i, bar) in bars.indexed) {
           if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
-          if (i + 1 >= bars.length || bars[i + 1].isEmpty) continue;
-          // The next bar's beats start a bar after this one's.
-          final gap = 4 + bars[i + 1].first.beat - bar.last.beat;
-          expect(
-            gap,
-            greaterThanOrEqualTo(1.5),
-            reason: 'bar ${i + 1}, seed $seed answers after $gap beats',
-          );
+          for (var next = i + 1; next < bars.length; next++) {
+            if (bars[next].isEmpty) continue;
+            // Beats counted from this bar's start.
+            final gap = (next - i) * 4 + bars[next].first.beat - bar.last.beat;
+            expect(
+              gap,
+              greaterThanOrEqualTo(1.5),
+              reason: 'bar ${i + 1}, seed $seed answered after $gap beats',
+            );
+            break;
+          }
         }
       }
     });
