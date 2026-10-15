@@ -210,9 +210,12 @@ class AppSettings extends ChangeNotifier {
     this._arpeggioRate,
     this._arpeggioReach,
     this._chartFont,
+    this._minorSign,
   ) {
     // The lettering lives in the theme, where every chart reaches it.
     letterChartsIn(_chartFont);
+    // The minor sign lives beside the chord symbols, for the same reason.
+    writeMinorAs(_minorSign);
   }
 
   /// Settings that aren't saved anywhere, for tests.
@@ -236,6 +239,7 @@ class AppSettings extends ChangeNotifier {
     this._markTheBar = MarkTheBar.filled,
     this._drumLevels = const DrumLevels(),
   ]) : _chartFont = ChartFont.hand,
+       _minorSign = MinorSign.m,
        _exerciseLevels = const {},
        _arpeggioRate = ArpeggioRate.eighths,
        _arpeggioReach = ArpeggioReach.plain,
@@ -250,6 +254,7 @@ class AppSettings extends ChangeNotifier {
        _fadeChart = FadeChart.never,
        _takesWithBand = true {
     letterChartsIn(_chartFont);
+    writeMinorAs(_minorSign);
   }
 
   static const _arpeggioRateKey = 'arpeggioRate';
@@ -260,6 +265,7 @@ class AppSettings extends ChangeNotifier {
   static const _takesBandKey = 'takesWithBand';
   static const _diagramKey = 'chordDiagram';
   static const _chartFontKey = 'chartFont';
+  static const _minorSignKey = 'minorSign';
   static const _aimKey = 'aimFor';
   static const _compingKey = 'comping';
   static const _bassSoundKey = 'bassSound';
@@ -292,6 +298,7 @@ class AppSettings extends ChangeNotifier {
     var takesWithBand = true;
     var diagram = ChordDiagram.none;
     var chartFont = ChartFont.hand;
+    var minorSign = MinorSign.m;
     DrillTarget? aimFor;
     var comping = Comping.piano;
     var bassSound = BassSound.upright;
@@ -440,6 +447,11 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedFont,
         orElse: () => ChartFont.hand,
       );
+      final savedMinor = await storage.getString(_minorSignKey);
+      minorSign = MinorSign.values.firstWhere(
+        (value) => value.name == savedMinor,
+        orElse: () => MinorSign.m,
+      );
       final savedDiagram = await storage.getString(_diagramKey);
       diagram = ChordDiagram.values.firstWhere(
         (value) => value.name == savedDiagram,
@@ -485,6 +497,7 @@ class AppSettings extends ChangeNotifier {
       arpeggioRate,
       arpeggioReach,
       chartFont,
+      minorSign,
     );
   }
 
@@ -550,6 +563,23 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_chartFontKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// Whether a minor chord is written Dm7 or D-7, on the chart and in
+  /// everything the chart is sent out as.
+  MinorSign get minorSign => _minorSign;
+  MinorSign _minorSign;
+
+  Future<void> setMinorSign(MinorSign value) async {
+    if (value == _minorSign) return;
+    _minorSign = value;
+    writeMinorAs(value);
+    notifyListeners();
+    try {
+      await _storage?.setString(_minorSignKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

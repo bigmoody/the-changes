@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import '../audio/arpeggios.dart';
 import '../audio/backing_synth.dart';
 import '../music/arrangement.dart';
+import '../music/chord.dart' show MinorSign;
 import '../music/chord_drill.dart';
 import '../music/comping.dart';
 import '../music/swing.dart';
@@ -132,6 +133,22 @@ Future<void> showViewOptions(
                     ),
                     selected: settings.chartFont == face,
                     onSelected: (_) => settings.setChartFont(face),
+                  ),
+              ],
+            ),
+            heading('Minor Chords'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final sign in MinorSign.values)
+                  ChoiceChip(
+                    key: ValueKey('minor-${sign.name}'),
+                    // The chip is the chord itself, written that way, so
+                    // the choice is read rather than described.
+                    label: Text(sign.label),
+                    selected: settings.minorSign == sign,
+                    onSelected: (_) => settings.setMinorSign(sign),
                   ),
               ],
             ),
