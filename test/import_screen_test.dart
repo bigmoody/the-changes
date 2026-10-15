@@ -118,6 +118,52 @@ void main() {
     expect(find.text('Blues One'), findsOneWidget);
   });
 
+  testWidgets('a whole book of charts: held out of the box, built as read', (
+    tester,
+  ) async {
+    // A playlist is not a thing you type: a book of charts runs to
+    // hundreds of thousands of characters and well over a thousand
+    // songs. Neither the link nor the songs can be laid out all at
+    // once, so the link is kept and shown as a line, and the songs are
+    // built as they are scrolled to.
+    tester.view
+      ..physicalSize = const Size(393, 852) * 3
+      ..devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    final book =
+        'irealbook://'
+        '${Uri.encodeComponent([for (var i = 0; i < 400; i++) 'Song $i=Doe Jane=Medium Swing=F=n=[T44F7 |Bb7 |F7 |C7 Z', 'A Big Book'].join('==='))}';
+    final store = ProgressionStore.inMemory();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(Brightness.light),
+        home: ImportScreen(store: store, handed: book),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Found 400 Songs'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('import-text'))),
+      isA<TextField>().having((f) => f.controller?.text, 'in the box', ''),
+      reason: 'the link is too long to lay out in a text field',
+    );
+    expect(
+      find.byKey(const ValueKey('import-held')),
+      findsOneWidget,
+      reason: 'and is shown as the line it came in on',
+    );
+    expect(
+      tester.widgetList(find.byType(CheckboxListTile)).length,
+      lessThan(40),
+      reason: 'only the songs on the screen are built',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('import-go')));
+    await tester.pumpAndSettle();
+    expect(store.all, hasLength(400));
+  });
+
   testWidgets('with nothing yet, the empty page offers an import', (
     tester,
   ) async {
