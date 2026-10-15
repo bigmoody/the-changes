@@ -1,3 +1,4 @@
+import '../audio/chiptune.dart' show ChipEra;
 import 'chord.dart';
 import 'swing.dart';
 import 'comping.dart';
@@ -210,6 +211,29 @@ enum BassSound {
 
   const BassSound(this.label);
   final String label;
+}
+
+/// What the whole band is played on.
+///
+/// The recorded instruments, or a console's: see [ChipEra] for what makes
+/// that sound and why there is nothing of anybody's music in it.
+enum BandVoice {
+  band('The Band'),
+  eightBit('8-Bit'),
+  sixteenBit('16-Bit');
+
+  const BandVoice(this.label);
+
+  final String label;
+
+  /// Which machine, or null for the band.
+  ChipEra? get era => switch (this) {
+    band => null,
+    eightBit => ChipEra.eightBit,
+    sixteenBit => ChipEra.sixteenBit,
+  };
+
+  bool get isChip => this != band;
 }
 
 /// Who plays the drums.

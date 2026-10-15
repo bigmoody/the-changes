@@ -55,6 +55,10 @@ void main() {
 
   testWidgets('and the brushes can be chosen', (tester) async {
     await openMixer(tester);
+    // Scrolled into view first: the sheet grew a Voice row under the Kit
+    // row, and a tap at an off-screen position does nothing silently.
+    await tester.ensureVisible(find.text('Brushes'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Brushes'));
     await tester.pumpAndSettle();
     final button = tester.widget<SegmentedButton<DrumSound>>(
