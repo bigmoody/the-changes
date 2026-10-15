@@ -85,6 +85,50 @@ List<List<int>> voicingsFor(Chord chord, {Chord? resolvingTo}) {
   ];
 }
 
+/// The quartal voicings of [chord], low to high, or null for a chord they
+/// do not suit.
+///
+/// Stacked fourths rather than a rootless shell: on a modal tune the
+/// rootless voicings are not wrong, they are just not the sound. Sixteen
+/// bars of one chord is not held up by saying which chord it is, which is
+/// what a 3rd and a 7th are for. It is held up by the colour of the
+/// stack, and that is why the record everybody knows this tune from is
+/// built on fourths.
+///
+/// The first form is the "So What" chord itself, as Bill Evans plays it in
+/// the answering figure to the head: on D minor, E A D G B, three perfect
+/// fourths with a major third on top, which over a bass playing the root
+/// is the 9th, 5th, octave, 11th and 13th. In the comping range it lands
+/// where he plays it, E3 up to B4. The second is the same stack from the
+/// root, so the two can be alternated the way the A and B rootless forms
+/// are.
+///
+/// Only for minor sevenths, which is what a dorian vamp is made of. A
+/// fourth stack over a dominant or a major seventh is a different idea
+/// and not this one, so those keep the voicings they had.
+List<List<int>>? quartalVoicingsFor(Chord chord) {
+  final intervals = chord.quality.intervals;
+  final isMinorSeventh =
+      intervals.contains(3) &&
+      intervals.contains(10) &&
+      !intervals.contains(6); // a half-diminished is not a dorian chord
+  if (!isMinorSeventh) return null;
+  // In four keys of the twelve the first form comes out with its bottom
+  // note a semitone or two under [compLowest]. That is [_stack] keeping
+  // the top note inside the range and letting the bottom give, and it is
+  // the right way round: the alternative is the whole shape an octave up,
+  // where comping turns shrill. The range was drawn for the four-note
+  // rootless voicings, and a five-note stack of fourths is 19 semitones
+  // wide where those are 10 or 11, so it does not always have an octave
+  // to sit in. Two semitones below C3 is still well clear of the bass.
+  return [
+    // 9th, 5th, octave, 11th, 13th.
+    _stack(chord.root, const [2, 7, 12, 17, 21]),
+    // Root, 11th, ♭7th, ♭3rd, 5th: the same shape, started on the root.
+    _stack(chord.root, const [0, 5, 10, 15, 19]),
+  ];
+}
+
 /// Stacks [degrees] (semitones above [root]) upwards into a close voicing
 /// sitting in the comping range.
 List<int> _stack(int root, List<int> degrees) {

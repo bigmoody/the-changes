@@ -56,6 +56,11 @@ void main() {
     };
   }
 
+  // The three with a piano on them re-pinned when it was struck 1.6 dB
+  // harder for sitting too far back. None of them is modal, so the quartal
+  // voicings in the same commit do not reach them; rhythm changes is comped
+  // on the guitar and does not move at all this time.
+  //
   // All four re-pinned when the compers were given the form to play to on
   // a chart that does not change chord. Every one of them here does change
   // chord, so what reaches them is the second half of it: five beats for a
@@ -88,9 +93,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 2974737637698730862,
-        'Bass': -1630472235447016372,
-        'Drums': -1206636266075876745,
+        'Chords': 515846591519119029,
+        'Bass': -6718252218236816881,
+        'Drums': -7444521913703691061,
       },
     );
   });
@@ -146,10 +151,10 @@ void main() {
         ),
       ),
       {
-        'Chords': -965549795767178350,
-        'Bass': -3193453181490837489,
-        'Drums': 7044546145538430278,
-        'Arpeggios': -8480268107246482901,
+        'Chords': -1993098316807571056,
+        'Bass': 2353429780327942122,
+        'Drums': 1876544167670208400,
+        'Arpeggios': -8673454679067683398,
       },
     );
   });
@@ -174,9 +179,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -4467257507072686272,
-        'Bass': 3722905577628945921,
-        'Drums': -4038366946253196443,
+        'Chords': -3684733949263823551,
+        'Bass': 4100212034402826426,
+        'Drums': 2422930488144254327,
       },
     );
   });

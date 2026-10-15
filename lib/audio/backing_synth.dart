@@ -745,8 +745,14 @@ _Parts _renderParts(
     }
   }
 
-  final comper = Comper(math.Random(seed + 4))
-    ..previousVoicing = state.pianoVoicing;
+  // A modal tune is voiced in fourths. It is the one kind of tune where
+  // what holds a chorus up is the colour of the stack rather than the
+  // changes, because there are hardly any changes, and it is why So What
+  // is the name of a chord as well as of a tune.
+  final comper = Comper(
+    math.Random(seed + 4),
+    quartal: tune.tags.contains(Genre.modal),
+  )..previousVoicing = state.pianoVoicing;
   final compSlots = loop.slotsIn(tune);
   final guitarist = GuitarComper(math.Random(seed + 6))
     ..previousVoicing = state.guitarVoicing;
@@ -1279,15 +1285,19 @@ _Parts _renderParts(
 /// matching the stems to a typical trio balance).
 /// How hard the piano is struck, against the rest of the band.
 ///
-/// Pulled back by a hundredth of a decibel when the pedal was lengthened.
-/// A chord that rings for half a second longer puts more energy into the
-/// mix over a bar even though no single stroke got louder, and the band's
-/// balance is set by what is heard over a bar. The bass has to stay above
-/// the chords in the range a phone can actually reproduce, and it did so
-/// by under one per cent, so this is the difference between keeping that
-/// and losing it. Inaudible on its own: it is there to leave the balance
-/// exactly where it was while the piano rings longer.
-const _pianoLevel = 0.513;
+/// Up 1.6 dB from 0.513, because the piano was too far back. Measured
+/// over a chorus it sat 13 dB under the bass, and while most of that gap
+/// is the bass's bottom end carrying energy a piano has no business
+/// carrying, the comping is the part you play along to and it was behind
+/// the band rather than in it.
+///
+/// What this is traded against is the bass staying audible on a phone,
+/// which barely reproduces anything below 300 Hz: see the test that
+/// compares the two over 300 Hz to 3 kHz, where the bass has only its
+/// harmonics. Any lift here comes out of that margin, so the number is
+/// chosen to leave the bass level with the chords in that band rather
+/// than above them, and no further.
+const _pianoLevel = 0.62;
 
 /// How much room is heard around the piano. It arrives with a hall
 /// already on it, so this is a little more of the same hall rather than

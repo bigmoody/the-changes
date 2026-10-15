@@ -39,11 +39,20 @@ class Comper {
   /// [shapes] replaces the piano's voicings with another instrument's (the
   /// guitar's), each already in place; [home] is where that hand's lowest
   /// note likes to sit.
-  Comper(this.random, {this.shapes, this.home = compHome});
+  Comper(
+    this.random, {
+    this.shapes,
+    this.home = compHome,
+    this.quartal = false,
+  });
 
   final math.Random random;
   final List<List<int>> Function(Chord chord, {Chord? resolvingTo})? shapes;
   final int home;
+
+  /// Voice the minor sevenths in fourths: the sound of a modal tune, and
+  /// the reason So What is the name of a chord as well as of a tune.
+  final bool quartal;
 
   /// The voicing last played, which the next one moves smoothly from. Set it
   /// to carry a hand position over from an earlier stretch of playing.
@@ -386,7 +395,9 @@ class Comper {
     if (ownShapes != null && ownShapes.isNotEmpty) {
       shapes = ownShapes;
     } else {
-      final forms = voicingsFor(chord, resolvingTo: next);
+      final forms =
+          (quartal ? quartalVoicingsFor(chord) : null) ??
+          voicingsFor(chord, resolvingTo: next);
       shapes =
           <List<int>>[
                 for (final form in forms)
