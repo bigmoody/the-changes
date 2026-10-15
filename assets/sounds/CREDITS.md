@@ -40,16 +40,6 @@ The recordings run 13 to 16 seconds; the lengths kept put every note about
 36 dB down before its fade begins, so a low C keeps the tail it still has
 at 3 seconds and an A above middle C is not padded with silence.
 
-## The chiptune voices
-
-Generated, not sampled: there are no recordings behind the 8-Bit and
-16-Bit voices and nothing in them is taken from anybody's music. What
-makes the sound is the hardware those machines had, which is a handful of
-channels each able to make one kind of waveform: two pulse waves with a
-selectable duty cycle, a triangle for the bass, and a noise generator
-that everything percussive was made out of. `lib/audio/chiptune.dart`
-builds those waveforms from their harmonics.
-
 ## Lettering and notation
 
 Chord symbols and titles are lettered in Petaluma Script, and the staves

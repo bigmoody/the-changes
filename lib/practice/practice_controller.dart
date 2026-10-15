@@ -558,13 +558,6 @@ class PracticeController extends ChangeNotifier {
         sound,
   ];
 
-  Future<void> setBandVoice(BandVoice value) async {
-    if (value == settings.bandVoice) return;
-    await settings.setBandVoice(value);
-    notifyListeners();
-    _restartIfPlaying(delay: Duration.zero);
-  }
-
   Future<void> setDrumSound(DrumSound value) async {
     if (value == settings.drumSound) return;
     await settings.setDrumSound(value);
@@ -1029,7 +1022,6 @@ class PracticeController extends ChangeNotifier {
         comping: settings.comping,
         bassSound: settings.bassSound,
         drumSound: settings.drumSound,
-        voice: settings.bandVoice,
         arpeggios: _arpeggios,
         arpeggioSound: settings.arpeggioSound,
         arpeggioStart: settings.arpeggioStart,
@@ -1049,7 +1041,6 @@ class PracticeController extends ChangeNotifier {
     comping: settings.comping,
     bassSound: settings.bassSound,
     drumSound: settings.drumSound,
-    voice: settings.bandVoice,
     arpeggios: _arpeggios,
     arpeggioSound: settings.arpeggioSound,
     arpeggioStart: settings.arpeggioStart,
@@ -1230,7 +1221,6 @@ class PracticeController extends ChangeNotifier {
           comping: settings.comping,
           bassSound: settings.bassSound,
           drumSound: settings.drumSound,
-          voice: settings.bandVoice,
           arpeggios: _arpeggios,
           arpeggioSound: settings.arpeggioSound,
           arpeggioStart: settings.arpeggioStart,

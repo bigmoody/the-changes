@@ -395,28 +395,6 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                // What the band is played on at all, under what each part
-                // plays: a daily control is a fader, and this is not one.
-                Text('Voice', style: theme.textTheme.titleSmall),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: SegmentedButton<BandVoice>(
-                    key: const ValueKey('band-voice'),
-                    showSelectedIcon: false,
-                    segments: [
-                      for (final voice in BandVoice.values)
-                        ButtonSegment(value: voice, label: Text(voice.label)),
-                    ],
-                    selected: {controller.settings.bandVoice},
-                    onSelectionChanged: (value) =>
-                        controller.setBandVoice(value.first),
-                  ),
-                ),
-              ],
-            ),
             SwitchListTile(
               key: const ValueKey('count-in'),
               contentPadding: EdgeInsets.zero,

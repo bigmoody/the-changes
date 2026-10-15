@@ -23,7 +23,6 @@ import 'arpeggios.dart';
 import 'drum_levels.dart';
 import 'drum_patterns.dart';
 import 'guitar_comping.dart';
-import 'chiptune.dart';
 import 'instruments.dart';
 import 'piano_comping.dart';
 import 'sample_bank.dart';
@@ -118,7 +117,6 @@ class BackingRequest {
     this.samples,
     this.comping = Comping.piano,
     this.bassSound = BassSound.upright,
-    this.voice = BandVoice.band,
     this.drumSound = DrumSound.kit,
     this.arpeggios = false,
     this.arpeggioSound = Comping.piano,
@@ -152,9 +150,6 @@ class BackingRequest {
 
   /// Who plays the drums.
   final DrumSound drumSound;
-
-  /// What the band is played on: its own instruments, or a console's.
-  final BandVoice voice;
 
   /// How loud each drum is on its own. Empty renders the kit as it was
   /// recorded, which is what it does for everybody who never asks.
@@ -203,7 +198,6 @@ class BackingRequest {
     comping: comping,
     bassSound: bassSound,
     drumSound: drumSound,
-    voice: voice,
     arpeggios: arpeggios,
     arpeggioSound: arpeggioSound,
     arpeggioStart: arpeggioStart,
@@ -578,18 +572,8 @@ _Parts _renderParts(
   final seed = request.seed * 31 + batch * 7919;
   final human = math.Random(seed + 1);
   final takesRandom = math.Random(seed + 2);
-  // A console's percussion is its noise channel, so the chip voices bring
-  // their own kit and the recorded one is not reached for at all.
-  final chip = request.voice.era;
-  final chips = chip == null
-      ? null
-      : ChipKit(sampleRate, math.Random(seed + 3), chip);
-  final kit = bank == null && chip == null
-      ? DrumKit(sampleRate, math.Random(seed + 3))
-      : null;
+  final kit = bank == null ? DrumKit(sampleRate, math.Random(seed + 3)) : null;
   final pianoCache = <(int, int), Float32List>{};
-  final chipCache = <(int, int), Float32List>{};
-  final chipBassCache = <(int, int), Float32List>{};
 
   // Which pass through the form a beat belongs to, within this batch.
   int chorusOf(double beat) =>
@@ -709,22 +693,6 @@ _Parts _renderParts(
             .round(),
         releaseSamples: (0.06 * sampleRate).round(),
       );
-    } else if (chip != null) {
-      final seconds = secondsPerBeatAt(note.beat) * note.length;
-      final duration = (seconds * 100).round();
-      bass.addSamples(
-        at(note.beat),
-        chipBassCache.putIfAbsent(
-          (note.pitch, duration),
-          () => chipBass(
-            midiToFrequency(note.pitch),
-            duration / 100 + 0.05,
-            sampleRate,
-            era: chip,
-          ),
-        ),
-        note.velocity,
-      );
     } else {
       bass.addSamples(
         at(note.beat),
@@ -755,22 +723,6 @@ _Parts _renderParts(
     required double beatSeconds,
   }) {
     final target = into ?? piano;
-    if (chip != null) {
-      // The comping channel: a quarter-duty pulse, which is the thinner
-      // of the two and leaves the squarer one for anything on top.
-      final duration = (beatSeconds * lengthBeats * 100).round();
-      final note = chipCache.putIfAbsent(
-        (pitch, duration),
-        () => chipTone(
-          midiToFrequency(pitch),
-          duration / 100 + 0.1,
-          sampleRate,
-          era: chip,
-        ),
-      );
-      target.addSamples(start, note, velocity * level);
-      return;
-    }
     if (bank != null) {
       final sound = instrument ?? bank.piano;
       final (shift, layers) = sound.nearest(pitch);
@@ -801,10 +753,6 @@ _Parts _renderParts(
     math.Random(seed + 4),
     quartal: tune.tags.contains(Genre.modal),
     slide: tune.quartalSlide,
-    // A console had two pulse channels, so a chord is two notes. Four
-    // square waves at once beat against each other and come out as a
-    // broken organ, which is what this sounded like before.
-    shapes: chip == null ? null : twoVoiceVoicingsFor,
   )..previousVoicing = state.pianoVoicing;
   final compSlots = loop.slotsIn(tune);
 
@@ -1153,14 +1101,14 @@ _Parts _renderParts(
   /// wins over both: somebody who imported a snare wants to hear it, and
   /// somebody playing a funk tune with brushes has asked for brushes.
   DrumSamples? recordedDrum(Drum drum) {
-    if (bank == null || chip != null) return null;
+    if (bank == null) return null;
     final ours = drum == Drum.snare && tune.style.drums == Feel.funk
         ? bank.snareTight
         : drumIn(bank, drum);
     return bank.playingDrum(drum, request.drumSound, ours);
   }
 
-  Float32List? bandsDrum(Drum drum) => switch (drum) {
+  Float32List? synthesisedDrum(Drum drum) => switch (drum) {
     Drum.ride => kit?.ride[takesRandom.nextInt(kit.ride.length)],
     Drum.hiHatPedal => kit?.hiHatPedal,
     Drum.hiHatClosed || Drum.hiHatOpen => kit?.closedHat,
@@ -1171,25 +1119,6 @@ _Parts _renderParts(
     // Nothing in the synthesised kit sounds remotely like a brush.
     Drum.swirl => null,
   };
-
-  /// What actually gets hit when there is nothing recorded: a console's
-  /// noise channel where one is playing, and the band's own synthesised
-  /// kit otherwise.
-  Float32List? synthesisedDrum(Drum drum) {
-    final chipped = chips;
-    if (chipped == null) return bandsDrum(drum);
-    return switch (drum) {
-      Drum.ride => chipped.ride[takesRandom.nextInt(chipped.ride.length)],
-      Drum.hiHatClosed || Drum.hiHatOpen => chipped.closedHat,
-      Drum.hiHatPedal => chipped.hiHatPedal,
-      Drum.kick => chipped.kick,
-      Drum.snare => chipped.snare,
-      Drum.crossStick || Drum.cowbell => chipped.crossStick,
-      Drum.tomHigh || Drum.tomLow => chipped.kick,
-      // No brush ever circled a shift register.
-      Drum.swirl => null,
-    };
-  }
 
   // The tune bars the loop covers (a loop can start mid-bar).
   final bars = <int>[];
@@ -1275,11 +1204,7 @@ _Parts _renderParts(
         } else {
           final sound = synthesisedDrum(hit.drum);
           if (sound != null) {
-            // A console's kit is its noise channel and it sat right up
-            // with everything else, because there were four channels and
-            // no mix to speak of. At the band's fallback figure of 0.35
-            // it came out 15 dB under the bass.
-            final asRecorded = hit.velocity * (chip == null ? 0.35 : 2.0);
+            final asRecorded = hit.velocity * 0.35;
             drums.addSamples(
               at(beat),
               sound,
@@ -1314,13 +1239,7 @@ _Parts _renderParts(
     piano.buffer,
     0,
     sampleRate,
-    wet: chip != null
-        // A pulse channel had nowhere to be. The next machine had a
-        // reverb built in and everybody turned it on, so the later era
-        // gets a little and the earlier one gets none, which is most of
-        // what tells the two apart.
-        ? (chip == ChipEra.eightBit ? 0 : 0.18)
-        : bank == null
+    wet: bank == null
         ? 0.35
         : request.comping == Comping.guitar
         ? guitarRoom
@@ -1344,13 +1263,7 @@ _Parts _renderParts(
           : _pianoRoom,
     );
   }
-  if (chip != null) {
-    // No room on the kit, either era. A console's percussion is its noise
-    // channel with the envelope snapped shut, and the point of it is that
-    // it is tight: reverb on it is the one thing that makes it sound like
-    // neither machine. The chords get the later era's reverb because that
-    // is where its reverb went.
-  } else if (bank == null) {
+  if (bank == null) {
     addRoomReverb(drums.buffer, 0, sampleRate, wet: 0.25);
     addRoomReverb(bass.buffer, 0, sampleRate, wet: 0.08);
   } else {

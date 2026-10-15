@@ -15,7 +15,6 @@
 // come to disagree.
 
 import 'chord.dart';
-import 'guide_tones.dart' show seventhDegreeOf, thirdDegreeOf;
 
 /// The lowest and highest note the comping uses (C3 to E5): the middle of
 /// the piano, above the bass. The bottom of a voicing normally sits around
@@ -135,36 +134,6 @@ List<List<int>>? quartalVoicingsFor(Chord chord) {
     _stack(chord.root, const [2, 7, 12, 17, 21]),
     // Root, 11th, ♭7th, ♭3rd, 5th: the same shape, started on the root.
     _stack(chord.root, const [0, 5, 10, 15, 19]),
-  ];
-}
-
-/// The two notes that say what the chord is, and nothing else: its 3rd
-/// and its 7th, in both orders so the comper can pick whichever is nearer
-/// the hand.
-///
-/// For a voice with two channels and not six. A console of that era had
-/// two pulse generators, a triangle and a noise source, and the music was
-/// written for exactly that: two voices of harmony, the bass on the
-/// triangle, the drums out of the noise. Handing it a four-note rootless
-/// voicing gives four square waves in a cluster, which beat against each
-/// other and come out as a broken organ rather than as any machine that
-/// ever existed.
-///
-/// Two notes is not a compromise forced by the hardware either, or not
-/// only that: the 3rd and the 7th are the two that carry a chord, which
-/// is why the app teaches them on their own.
-List<List<int>> twoVoiceVoicingsFor(Chord chord, {Chord? resolvingTo}) {
-  final third = chord.pitchClassFor(thirdDegreeOf(chord));
-  final seventh = chord.pitchClassFor(seventhDegreeOf(chord));
-  return [
-    _stack(chord.root, [
-      (third - chord.root) % 12,
-      (seventh - chord.root) % 12,
-    ]),
-    _stack(chord.root, [
-      (seventh - chord.root) % 12,
-      (third - chord.root) % 12,
-    ]),
   ];
 }
 

@@ -206,7 +206,6 @@ class AppSettings extends ChangeNotifier {
     this._markTheBar,
     this._drumLevels,
     this._exerciseLevels,
-    this._bandVoice,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -230,7 +229,6 @@ class AppSettings extends ChangeNotifier {
     this._markTheBar = MarkTheBar.filled,
     this._drumLevels = const DrumLevels(),
   ]) : _exerciseLevels = const {},
-       _bandVoice = BandVoice.band,
        _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -242,7 +240,6 @@ class AppSettings extends ChangeNotifier {
        _fadeChart = FadeChart.never,
        _takesWithBand = true;
 
-  static const _bandVoiceKey = 'bandVoice';
   static const _exerciseLevelsKey = 'exerciseLevels';
   static const _instrumentKey = 'chartInstrument';
   static const _mixKey = 'mixWithOthers';
@@ -283,7 +280,6 @@ class AppSettings extends ChangeNotifier {
     var comping = Comping.piano;
     var bassSound = BassSound.upright;
     var drumSound = DrumSound.kit;
-    var bandVoice = BandVoice.band;
     var chordColours = const ChordColours();
     var colourChords = true;
     var splitEnharmonics = false;
@@ -319,11 +315,6 @@ class AppSettings extends ChangeNotifier {
       markTheBar = MarkTheBar.values.firstWhere(
         (value) => value.name == savedMark,
         orElse: () => MarkTheBar.filled,
-      );
-      final savedVoice = await storage.getString(_bandVoiceKey);
-      bandVoice = BandVoice.values.firstWhere(
-        (value) => value.name == savedVoice,
-        orElse: () => BandVoice.band,
       );
       final savedExercises = await storage.getString(_exerciseLevelsKey);
       if (savedExercises != null) {
@@ -458,7 +449,6 @@ class AppSettings extends ChangeNotifier {
       markTheBar,
       drumLevels,
       exerciseLevels,
-      bandVoice,
     );
   }
 
@@ -905,21 +895,6 @@ class AppSettings extends ChangeNotifier {
   /// out of the book, one written in the app, one imported this morning.
   /// A tune nobody has started is not in here at all, which is how the
   /// screen knows to open on the first one.
-  /// What the band is played on: its own instruments, or a console's.
-  BandVoice get bandVoice => _bandVoice;
-  BandVoice _bandVoice;
-
-  Future<void> setBandVoice(BandVoice value) async {
-    if (value == _bandVoice) return;
-    _bandVoice = value;
-    notifyListeners();
-    try {
-      await _storage?.setString(_bandVoiceKey, value.name);
-    } catch (e) {
-      debugPrint('Could not save settings: $e');
-    }
-  }
-
   Map<String, ChartExercise> _exerciseLevels;
   Map<String, ChartExercise> get exerciseLevels => _exerciseLevels;
 
