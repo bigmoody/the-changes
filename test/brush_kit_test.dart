@@ -14,6 +14,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/drum_levels.dart';
 import 'package:play_along/audio/drum_patterns.dart' show Drum;
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/music/loop_range.dart';
@@ -150,6 +151,79 @@ void main() {
         gappy.playingDrum(Drum.ride, DrumSound.brushes, gappy.ride),
         same(gappy.ride),
       );
+    });
+  });
+
+  group('how loud it is', () {
+    test('the kit sits where the stick kit sits, in the mix', () async {
+      // It used to sit over it: 2.1 dB up on a swing tune and 5.1 on a
+      // bossa. The recordings were matched to the stick kit's peaks, and
+      // peaks are the wrong thing to match, because a brush on a drum is
+      // a wash where a stick is a tick and the same peak carries far more
+      // energy. Measured against the chords, which do not change.
+      for (final title in ['A Foggy Day', 'Blue Bossa']) {
+        final tune = standards.firstWhere((t) => t.title == title);
+        double drumsAgainstChords(DrumSound sound) {
+          final backing = renderBacking(
+            BackingRequest(
+              tune: tune,
+              loop: LoopRange.wholeTune(tune),
+              tempo: 140,
+              samples: bank,
+              seed: 7,
+              drumSound: sound,
+            ),
+          );
+          double rms(Instrument part) {
+            final pcm = decodeWav(backing.stems[part]!);
+            var sum = 0.0;
+            for (final sample in pcm) {
+              sum += sample * sample.toDouble();
+            }
+            return math.sqrt(sum / pcm.length);
+          }
+
+          return 20 *
+              math.log(rms(Instrument.drums) / rms(Instrument.chords)) /
+              math.ln10;
+        }
+
+        expect(
+          drumsAgainstChords(DrumSound.brushes),
+          closeTo(drumsAgainstChords(DrumSound.kit), 1.5),
+          reason: title,
+        );
+      }
+    });
+
+    test('and the circle is under the kit, not over it', () async {
+      // A wash is continuous where a hit is not, so at the velocity a
+      // hit wants the circle was carrying more energy than everything
+      // else in the groove put together.
+      final tune = standards.firstWhere((t) => t.title == 'A Foggy Day');
+      double onlyDrum(Drum only) {
+        final backing = renderBacking(
+          BackingRequest(
+            tune: tune,
+            loop: LoopRange.wholeTune(tune),
+            tempo: 140,
+            samples: bank,
+            seed: 7,
+            drumSound: DrumSound.brushes,
+            drumLevels: DrumLevels({
+              for (final drum in Drum.values) drum: drum == only ? 1.0 : 0.0,
+            }),
+          ),
+        );
+        final pcm = decodeWav(backing.stems[Instrument.drums]!);
+        var sum = 0.0;
+        for (final sample in pcm) {
+          sum += sample * sample.toDouble();
+        }
+        return math.sqrt(sum / pcm.length);
+      }
+
+      expect(onlyDrum(Drum.swirl), lessThan(onlyDrum(Drum.snare)));
     });
   });
 

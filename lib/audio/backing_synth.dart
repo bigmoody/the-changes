@@ -1242,7 +1242,10 @@ _Parts _renderParts(
                     ));
           final take = pickTake(samples.layers[layer]);
           final asRecorded =
-              _drumLevel * hit.velocity * samples.levelling[layer];
+              _drumLevel *
+              hit.velocity *
+              samples.levelling[layer] *
+              (playingBrushes ? _brushTrim : 1);
           drums.addRecording(
             at(beat),
             take,
@@ -1365,6 +1368,27 @@ _Parts _renderParts(
     ),
   );
 }
+
+/// How much the brush kit comes down by against the stick kit.
+///
+/// The brush recordings were normalised drum for drum to the *peak* of
+/// the stick kit's matching drum, so that choosing brushes would change
+/// the tone and not the arrangement. Matching peaks turned out to be
+/// matching the wrong thing: a brush on a drum is a wash where a stick is
+/// a tick, so the same peak carries far more energy, and every brush drum
+/// came out 3 to 4 dB over the one it stood in for. Measured against the
+/// band, the kit was 2.1 dB up on a swing tune and 5.1 on a bossa.
+///
+/// A trim on the kit rather than a gain on each recording, because how
+/// loud one kit sits against another is a decision about the mix and not
+/// a property of either recording, which is where [_drumLevel] lives too.
+///
+/// What it does not fix is the balance inside the kit, which is still off
+/// by a couple of dB either way: the cross-stick and the hi-hat pedal
+/// come out a little over and the kick a little under. Putting that right
+/// means normalising the brush samples by energy rather than by peak,
+/// which is a rebuild of all 87 of them and a job of its own.
+const _brushTrim = 0.78;
 
 /// How loud the recorded drums sit against the bass and piano (cymbals
 /// measure quiet on average but cut through, so this was set by level

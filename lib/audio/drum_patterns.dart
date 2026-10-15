@@ -216,7 +216,11 @@ List<DrumHit> _swingBrushBar(int bar, int beatsPerBar, math.Random random) {
         DrumHit(
           drum: Drum.swirl,
           beat: beat.toDouble(),
-          velocity: 0.5 * _human(random),
+          // Well under the taps. A circle is the texture and the taps are
+          // the time, and a wash is continuous where a tap is not, so the
+          // same velocity makes it the loudest thing in the kit: it was
+          // carrying more energy than anything else in either groove.
+          velocity: 0.26 * _human(random),
         ),
       );
     }
@@ -362,7 +366,13 @@ List<DrumHit> _bossaBrushBar(int bar, int beatsPerBar, math.Random random) {
         beat: beat.toDouble(),
         // Leaning on 1 and 3 the way the hi-hat's eighths leaned on the
         // beat, so the pulse is still where it was.
-        velocity: (beat.isEven ? 0.46 : 0.38) * _human(random),
+        //
+        // Well under what those eighths were, though, and for the reason
+        // the swing circle is: a wash is continuous where a tick is not,
+        // so it carries far more energy at the same velocity. At 0.46 the
+        // circle alone was louder than everything else in the groove put
+        // together.
+        velocity: (beat.isEven ? 0.22 : 0.18) * _human(random),
         beats: 1,
       ),
     );
