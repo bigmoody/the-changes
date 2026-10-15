@@ -85,12 +85,32 @@ process("bass", bass, seconds=2.2, fade=0.35)
 # Piano: Salamander names use C4 = MIDI 60. Velocity layers 5, 9, 13 → 1, 2, 3.
 PIANO_NAMES = {"C":0, "D#":3, "F#":6, "A":9}
 layers = {"5": 1, "9": 2, "13": 3}
+
+# How long to keep, by register. The recordings run 13 to 16 seconds and
+# were all cut at 3, which is a rule about the clock rather than about the
+# piano: a low C is still only 27 dB down at 3 seconds and audibly going,
+# while an A above middle C is at 37 and finished. Cutting them all at the
+# same moment took most of the bass register's tail away and nothing from
+# the treble's.
+#
+# These lengths instead land every note around 36 dB down before the fade
+# starts, so each one is let go at the point it has actually died rather
+# than at the point the shortest of them had. The fade is a fifth of the
+# length in each case.
+#
+# What this buys is the thing a 3-second cut could not give at any tempo
+# under about 110: a chord held for a whole bar of a ballad used to run
+# out halfway through and fade while it was still being held.
+PIANO_SECONDS = {48: 8.0, 51: 8.0, 54: 6.5, 57: 6.5, 60: 5.0, 63: 5.0,
+                 66: 3.5, 69: 3.5, 72: 3.5}
 piano = []
 for name in sorted(os.listdir(f"{RAW}/piano") if want("piano") else []):
     m = re.match(r"([A-G]#?)(\d)v(\d+)\.flac", name)
     midi = (int(m[2]) + 1) * 12 + PIANO_NAMES[m[1]]
-    piano.append((f"{RAW}/piano/{name}", f"{OUT}/piano/piano_{midi}_v{layers[m[3]]}.wav"))
-process("piano", piano, seconds=3.0, fade=0.6)
+    secs = PIANO_SECONDS[midi]
+    piano.append((f"{RAW}/piano/{name}", f"{OUT}/piano/piano_{midi}_v{layers[m[3]]}.wav",
+                  secs, secs / 5))
+process("piano", piano)
 
 def drums(prefix, pattern, seconds, fade):
     jobs = []

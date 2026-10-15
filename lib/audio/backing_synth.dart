@@ -730,10 +730,10 @@ _Parts _renderParts(
       target.addRecording(
         start,
         sound.forVelocity(layers, velocity),
-        0.52 * velocity * level,
+        _pianoLevel * velocity * level,
         rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: (beatSeconds * lengthBeats * sampleRate).round(),
-        releaseSamples: (0.18 * sampleRate).round(),
+        releaseSamples: (_pianoRelease * sampleRate).round(),
       );
     } else {
       final duration = (beatSeconds * lengthBeats * 100).round();
@@ -1205,14 +1205,14 @@ _Parts _renderParts(
         ? 0.35
         : request.comping == Comping.guitar
         ? guitarRoom
-        : 0.12,
+        : _pianoRoom,
   );
   if (mixes[Instrument.arpeggio] case final arpeggioMix?) {
     addRoomReverb(
       arpeggioMix.buffer,
       0,
       sampleRate,
-      wet: request.arpeggioSound == Comping.guitar ? guitarRoom : 0.12,
+      wet: request.arpeggioSound == Comping.guitar ? guitarRoom : _pianoRoom,
     );
   }
   if (mixes[Instrument.imported] case final importedMix?) {
@@ -1220,7 +1220,9 @@ _Parts _renderParts(
       importedMix.buffer,
       0,
       sampleRate,
-      wet: request.imported?.voice == PartVoice.guitar ? guitarRoom : 0.12,
+      wet: request.imported?.voice == PartVoice.guitar
+          ? guitarRoom
+          : _pianoRoom,
     );
   }
   if (bank == null) {
@@ -1267,6 +1269,35 @@ _Parts _renderParts(
 /// How loud the recorded drums sit against the bass and piano (cymbals
 /// measure quiet on average but cut through, so this was set by level
 /// matching the stems to a typical trio balance).
+/// How hard the piano is struck, against the rest of the band.
+///
+/// Pulled back by a hundredth of a decibel when the pedal was lengthened.
+/// A chord that rings for half a second longer puts more energy into the
+/// mix over a bar even though no single stroke got louder, and the band's
+/// balance is set by what is heard over a bar. The bass has to stay above
+/// the chords in the range a phone can actually reproduce, and it did so
+/// by under one per cent, so this is the difference between keeping that
+/// and losing it. Inaudible on its own: it is there to leave the balance
+/// exactly where it was while the piano rings longer.
+const _pianoLevel = 0.513;
+
+/// How much room is heard around the piano. It arrives with a hall
+/// already on it, so this is a little more of the same hall rather than
+/// a second one: enough to join it to the kit, which now has one too.
+const _pianoRoom = 0.16;
+
+/// How long the piano takes to let a chord go.
+///
+/// It was 0.18 of a second, which is a damper falling on a key that has
+/// been released: correct for a player with no pedal, and nobody comps
+/// with no pedal. A chord was damped the instant its written length ran
+/// out, so one never rang into the next and the part came out as a row of
+/// separate chords rather than a piano being played.
+///
+/// Long enough to be a pedal lifted on the change, and no longer: a chord
+/// that hangs about through the one after it is not lush, it is a mess.
+const _pianoRelease = 0.3;
+
 /// How far a swirl recording runs past its own circle, so one circle
 /// overlaps the next and the join between them is a crossfade rather than
 /// an edge. Baked into the files by `tool/process_samples.py`, and needed

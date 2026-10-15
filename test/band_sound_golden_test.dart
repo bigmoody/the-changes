@@ -56,6 +56,14 @@ void main() {
     };
   }
 
+  // The three with a piano on them re-pinned when it was given its tail
+  // back: the recordings were all cut at 3 seconds and are now cut where
+  // each register has actually died, the pedal is let up over 0.3 of a
+  // second rather than 0.18, and the stroke is a hundredth of a decibel
+  // softer to leave the band's balance where it was. Rhythm changes is
+  // not among them, which is the check: it is comped and arpeggiated on
+  // the guitar, so nothing here should have reached it.
+  //
   // All four re-pinned when the recorded kit was given a room and its
   // layer chosen by how hard the stroke is. Every stem moved, not only the
   // drums: one gain is worked out from the summed mix and handed to all of
@@ -73,9 +81,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -6795078518623837668,
-        'Bass': -2338208205621561693,
-        'Drums': -3014582228555834450,
+        'Chords': -2175515544437863851,
+        'Bass': -1133154908398613124,
+        'Drums': 8329262449647208300,
       },
     );
   });
@@ -131,10 +139,10 @@ void main() {
         ),
       ),
       {
-        'Chords': -8481698092698815099,
-        'Bass': -8356220928723660125,
-        'Drums': -5286584494442728111,
-        'Arpeggios': -1860957466257339242,
+        'Chords': 5647163268689021234,
+        'Bass': 5122604412584054575,
+        'Drums': -3230471491011277960,
+        'Arpeggios': -6970577978376720112,
       },
     );
   });
@@ -159,9 +167,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 7596816124038297170,
-        'Bass': 599835489253585947,
-        'Drums': 2477951148983821036,
+        'Chords': -1663792146688055098,
+        'Bass': 5035989795993764222,
+        'Drums': 7870876570978042504,
       },
     );
   });

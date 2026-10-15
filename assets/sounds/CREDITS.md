@@ -29,8 +29,11 @@ quietest thing there. Matching it means changing kit changes the tone and
 not the arrangement.
 
 Changes made to the Salamander samples (as CC BY asks us to note): trimmed
-to 3 seconds with a fade-out, mixed to mono, resampled to 44.1 kHz and
-converted to 16-bit.
+to between 3.5 and 8 seconds depending on the register, with a fade-out of a
+fifth of that, mixed to mono, resampled to 44.1 kHz and converted to 16-bit.
+The recordings run 13 to 16 seconds; the lengths kept put every note about
+36 dB down before its fade begins, so a low C keeps the tail it still has
+at 3 seconds and an A above middle C is not padded with silence.
 
 ## Lettering and notation
 
