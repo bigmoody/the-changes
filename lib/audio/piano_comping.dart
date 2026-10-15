@@ -70,6 +70,9 @@ class Comper {
   /// somewhere else.
   double? _lastEntry;
 
+  /// The figures that are a slide, and so play two shapes rather than one.
+  static const _slides = {'slide', 'slide late'};
+
   /// Comps one chord lasting [beats], starting at beat 0 of its own time.
   /// [next] is the chord it leads to, which decides whether a dominant is
   /// played plain or altered.
@@ -105,6 +108,10 @@ class Comper {
     _held = isNew ? 0 : _held + 1;
     _sounding = chord.display;
 
+    // The quartal slide, where the chord has one: the shape a tone above
+    // falling onto the shape on the chord. Offered as a figure the comper
+    // can choose, because that is what it is.
+    final slide = quartal ? slideFor(chord) : null;
     final pattern = held
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
         : calypso
@@ -118,8 +125,29 @@ class Comper {
             beatInBar: beatInBar,
             beatsPerBar: beatsPerBar,
             intoSection: intoSection,
+            canSlide: slide != null,
           );
     if (pattern.isEmpty) return const [];
+
+    // A slide is two chords and not one, so it is the one figure whose
+    // notes are not the same for every hit: the first lands on the shape
+    // above and the rest on the shape it falls to. The hand finishes on
+    // the lower one, which is where the next chord moves from.
+    if (slide != null && _slides.contains(_lastPattern)) {
+      previousVoicing = slide.to;
+      _started = true;
+      final loud = (isNew ? 0.66 : 0.5) + random.nextDouble() * 0.26;
+      return [
+        for (final (index, (beat, length, velocity)) in pattern.indexed)
+          (
+            beat: beat,
+            length: length,
+            velocity: (loud * velocity).clamp(0.3, 1.0),
+            notes: index == 0 ? slide.from : slide.to,
+          ),
+      ];
+    }
+
     final notes = _pickVoicing(chord, next, reuse: !isNew);
     // A chord that's still ringing is touched more gently than a fresh one.
     final loud = (isNew ? 0.66 : 0.5) + random.nextDouble() * 0.26;
@@ -190,6 +218,7 @@ class Comper {
     double beatInBar = 0,
     int beatsPerBar = 4,
     bool intoSection = false,
+    bool canSlide = false,
   }) {
     // The swung "and" of a beat lands late; in straight feels it's halfway,
     // and how late is the band's business rather than this one's.
@@ -249,6 +278,9 @@ class Comper {
           // exactly is a tell of its own.
           ('turn', 7, [(1 + and, 0.6, 0.8), (3, 1.1, 0.9)]),
           ('turn up', 5, [(2, 0.7, 0.75), (3 + and, 0.9, 0.9)]),
+          // The slide is a leading figure by nature, so this is where it
+          // belongs most: a whole step falling onto the next section.
+          if (canSlide) ('slide', 8, [(2, 0.9, 0.8), (3, 1.2, 0.9)]),
           ('rest', 2, const []),
         ] else ...[
           // Still the same chord: mostly leave it alone, and more so the
@@ -266,6 +298,14 @@ class Comper {
           ('echo', 3, [(1 + and, 0.7, 0.75), (3, 0.6, 0.65)]),
           ('answer', 3, [(2, 0.5, 0.7), (3 + and, 0.9, 0.8)]),
           ('again', quiet ? 1 : 2, [(0, 1.2, 0.7)]),
+          // Answering a chord that is simply still sounding is the figure's
+          // own job on the record: Evans plays it into the gaps rather than
+          // under the melody. Weighted to be heard without becoming the
+          // only thing a vamp does.
+          if (canSlide) ...[
+            ('slide', 6, [(2, 0.9, 0.8), (3, 1.2, 0.85)]),
+            ('slide late', 4, [(1 + and, 0.7, 0.75), (2 + and, 1.0, 0.85)]),
+          ],
         ],
       ] else if (beats >= 2) ...[
         if (isNew) ...[

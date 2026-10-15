@@ -95,13 +95,21 @@ List<List<int>> voicingsFor(Chord chord, {Chord? resolvingTo}) {
 /// stack, and that is why the record everybody knows this tune from is
 /// built on fourths.
 ///
-/// The first form is the "So What" chord itself, as Bill Evans plays it in
-/// the answering figure to the head: on D minor, E A D G B, three perfect
-/// fourths with a major third on top, which over a bass playing the root
-/// is the 9th, 5th, octave, 11th and 13th. In the comping range it lands
-/// where he plays it, E3 up to B4. The second is the same stack from the
-/// root, so the two can be alternated the way the A and B rootless forms
-/// are.
+/// The two are not alternatives, they are the two ends of one move, and
+/// the order is the order it is played in.
+///
+/// The first is the "So What" chord itself, as Bill Evans plays it in the
+/// answering figure to the head: on D minor, E A D G B, three perfect
+/// fourths with a major third on top. In the comping range it lands where
+/// he plays it, E3 up to B4. The second is the same shape slid down a
+/// whole step, D G C F A.
+///
+/// What makes it work is that the shape never changes. Over an E bass
+/// those first five notes read as Em11; over a D bass the second five
+/// read as Dm11, D the root, F the ♭3, A the 5th, C the ♭7 and G the
+/// 11th. The stack has no 3rd and no 7th of its own to argue with either
+/// reading, which is why one shape can be slid about and still belong.
+/// See [slideFor] for playing it as the move rather than as a choice.
 ///
 /// Only for minor sevenths, which is what a dorian vamp is made of. A
 /// fourth stack over a dominant or a major seventh is a different idea
@@ -127,6 +135,26 @@ List<List<int>>? quartalVoicingsFor(Chord chord) {
     // Root, 11th, ♭7th, ♭3rd, 5th: the same shape, started on the root.
     _stack(chord.root, const [0, 5, 10, 15, 19]),
   ];
+}
+
+/// The quartal slide: the shape a whole step above [chord], falling to the
+/// shape on it. Null for a chord that has no quartal voicing.
+///
+/// This is the figure So What is made of, and it is a gesture rather than
+/// a pair of voicings to pick from. Evans answers the melody with it in
+/// the gaps: the shape a tone up, then the same shape dropped a tone onto
+/// the chord. Side-slipping, or planing. Played as two separate choices
+/// it is neither, just two voicings of one chord that happen to be a tone
+/// apart, which is what this app did before.
+({List<int> from, List<int> to})? slideFor(Chord chord) {
+  final forms = quartalVoicingsFor(chord);
+  if (forms == null) return null;
+  // The upper shape has to be above the one it falls to, or it is not a
+  // fall. In the keys where the stacking drops the first form an octave
+  // to keep its top note in range, it comes out below the second, and
+  // there the move is not available.
+  if (forms[0].first <= forms[1].first) return null;
+  return (from: forms[0], to: forms[1]);
 }
 
 /// Stacks [degrees] (semitones above [root]) upwards into a close voicing

@@ -16,13 +16,17 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/piano_comping.dart';
 import 'package:play_along/music/loop_range.dart';
+import 'package:play_along/music/tune.dart' show Genre;
 import 'package:play_along/music/tune_library.dart';
 
 /// What the comper plays, bar by bar, for a whole chorus of [title].
 List<List<CompHit>> compedChorus(String title, {int seed = 7}) {
   final tune = standards.firstWhere((t) => t.title == title);
   final slots = LoopRange.wholeTune(tune).slotsIn(tune);
-  final comper = Comper(math.Random(seed));
+  final comper = Comper(
+    math.Random(seed),
+    quartal: tune.tags.contains(Genre.modal),
+  );
   return [
     for (var i = 0; i < slots.length; i++)
       comper.comp(
@@ -138,6 +142,41 @@ void main() {
       // Four bars against three, so the front has a third more bars to
       // fill; anything short of a clear gap is the weighting not biting.
       expect(back / 3, lessThan(front / 4 * 0.85));
+    });
+  });
+
+  group('the slide gets played, not just defined', () {
+    /// The bars where the comper moved between two shapes inside the bar.
+    List<int> slidBars(List<List<CompHit>> bars) => [
+      for (final (i, bar) in bars.indexed)
+        if (bar.length > 1 && bar.any((hit) => hit.notes != bar.first.notes)) i,
+    ];
+
+    test('So What slides several times a chorus', () {
+      // Often enough to be the sound of the tune, not so often that it is
+      // the only thing the piano knows.
+      final slid = slidBars(compedChorus('So What'));
+      expect(slid.length, greaterThanOrEqualTo(3));
+      expect(slid.length, lessThan(16));
+    });
+
+    test('and every slide falls a whole step', () {
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('So What', seed: seed);
+        for (final i in slidBars(bars)) {
+          final first = bars[i].first.notes;
+          final last = bars[i].last.notes;
+          expect(last, [
+            for (final n in first) n - 2,
+          ], reason: 'bar ${i + 1}, seed $seed');
+        }
+      }
+    });
+
+    test('a tune that is not modal never slides', () {
+      // The figure belongs to a vamp. Autumn Leaves has changes of its
+      // own to play and does not need one borrowed.
+      expect(slidBars(compedChorus('Autumn Leaves')), isEmpty);
     });
   });
 

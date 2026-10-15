@@ -64,6 +64,58 @@ void main() {
     });
   });
 
+  group('the slide, which is what the tune is made of', () {
+    // Two voicings of one chord that happen to sit a tone apart is not
+    // the figure. The figure is the move: the shape a tone above falling
+    // onto the shape on the chord, which is side-slipping, and it is what
+    // Evans answers the melody with in the gaps.
+    test('it falls a whole step, and the shape never changes', () {
+      final slide = slideFor(chord('Dm7'))!;
+      expect(slide.to, [for (final n in slide.from) n - 2]);
+      expect(gaps(slide.from), gaps(slide.to));
+    });
+
+    test('from the So What chord onto the chord itself', () {
+      // E A D G B, then D G C F A.
+      final slide = slideFor(chord('Dm7'))!;
+      expect(slide.from, [52, 57, 62, 67, 71]);
+      expect(slide.to, [50, 55, 60, 65, 69]);
+    });
+
+    test('which is Em11 falling to Dm11', () {
+      // The same five notes read as either, because the stack has no 3rd
+      // and no 7th of its own to argue with the bass. Over E: root, 11,
+      // ♭7, ♭3, 5. Over D the shape below it says the same of D.
+      final slide = slideFor(chord('Dm7'))!;
+      expect([for (final n in slide.from) (n - 52) % 12], [0, 5, 10, 3, 7]);
+      expect([for (final n in slide.to) (n - 50) % 12], [0, 5, 10, 3, 7]);
+    });
+
+    test('it is a fall and never a climb', () {
+      for (final root in kRoots) {
+        final slide = slideFor(chord('${root}m7'));
+        if (slide == null) continue;
+        expect(slide.from.first, greaterThan(slide.to.first), reason: root);
+      }
+    });
+
+    test('and is not offered in the two keys where it would climb', () {
+      // Where the stacking drops the upper shape an octave to keep its
+      // top note in range, it lands under the one it would fall to, and
+      // a slide that goes up is not this figure.
+      final without = [
+        for (final root in kRoots)
+          if (slideFor(chord('${root}m7')) == null) root,
+      ];
+      expect(without, ['A♭', 'A']);
+    });
+
+    test('a chord with no quartal voicing has no slide either', () {
+      expect(slideFor(chord('G7')), isNull);
+      expect(slideFor(chord('CΔ7')), isNull);
+    });
+  });
+
   group('and only where it belongs', () {
     test('a dominant keeps its own voicings', () {
       // A fourth stack over a dominant is a different idea, not this one.
