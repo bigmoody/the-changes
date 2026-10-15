@@ -70,32 +70,30 @@ class Comper {
   /// somewhere else.
   double? _lastEntry;
 
-  /// The slide, as the tune plays it: the shape above on the second beat,
-  /// falling to the shape on the chord two and a half beats later, on the
-  /// "and" of the fourth.
+  /// The slide, as the tune plays it: the shape above on the third beat of
+  /// the second bar of a pair, falling to the shape on the chord two and a
+  /// half beats later, which is the "and" of the first beat of the bar
+  /// after it.
   ///
   /// A beat apart was too quick. What the gap is for is the suspension:
   /// the upper shape wants time to sit there and be heard wanting to
   /// fall, and landing it a beat later is a grace note rather than an
   /// answer.
   ///
-  /// Beat two and nowhere else, and the gap decides that as much as taste
-  /// does. The shape above never belongs on a downbeat: it is the leaning
-  /// half of the figure and a bar does not open on the lean. That rules
-  /// out beat one. Starting it any later than beat two puts the landing
-  /// outside the bar, and starting it on an off-beat puts the landing on
-  /// a subdivision nobody plays, because the gap is measured from
-  /// wherever it begins. So there is one placement left, which is the one
-  /// the tune uses.
+  /// The shape above never falls on a downbeat. It is the leaning half of
+  /// the figure and a bar does not open on the lean.
   static _Pattern _slide(double and) => [
     // Held across the gap and let go as the landing arrives, not through
     // it: two five-note stacks a tone apart sounding together is ten
     // notes, and that is not a suspension resolving, it is a smudge.
-    (1, 2.2, 0.8),
-    // The landing rings on over the bar line, which is where a resolution
-    // wants to go.
-    (3 + and, 1.2, 0.9),
+    (2, 2.2, 0.8),
+    // Over the bar line, which is where a resolution wants to go, and is
+    // why the bar it lands in does not play a figure of its own.
+    (2 + 2 + and, 1.2, 0.9),
   ];
+
+  /// Whether the last bar's slide resolves into this one.
+  bool _resolving = false;
 
   /// The figures that are a slide, and so play two shapes rather than one.
   static const _slides = {'slide'};
@@ -125,6 +123,7 @@ class Comper {
     int beatsPerBar = 4,
     bool startsSection = false,
     bool intoSection = false,
+    int bar = 0,
     required double swing,
   }) {
     // A section beginning counts as new even when the chord has not
@@ -135,10 +134,31 @@ class Comper {
     _held = isNew ? 0 : _held + 1;
     _sounding = chord.display;
 
+    // The bar a slide resolved into. Its chord has already arrived, just
+    // after the downbeat, and playing a figure on top of a resolution is
+    // two pianists.
+    if (_resolving) {
+      _resolving = false;
+      // The chord it is sounding and how long it has been held are both
+      // counted above, for this bar like any other: the bar is not a gap
+      // in the tune, it is a bar whose chord came in early.
+      return const [];
+    }
+
     // The quartal slide, where the chord has one: the shape a tone above
     // falling onto the shape on the chord. Offered as a figure the comper
     // can choose, because that is what it is.
-    final slide = quartal ? slideFor(chord) : null;
+    //
+    // Only in the second bar of a pair. The figure is a two-bar phrase, a
+    // bar of the chord and then the answer, and the answer lands in the
+    // bar after it: an Em11 on the third beat falls on the "and" of the
+    // first beat of the next bar, which is that bar's Dm11 arriving. Put
+    // in every bar it is not an answer to anything.
+    //
+    // Never in the bar before a section, where the turn figure leads in
+    // and where a resolution landing just after the downbeat would take
+    // the top of the section's own arrival away from it.
+    final slide = quartal && bar.isOdd && !intoSection ? slideFor(chord) : null;
     final pattern = held
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
         : calypso
@@ -163,6 +183,8 @@ class Comper {
     if (slide != null && _slides.contains(_lastPattern)) {
       previousVoicing = slide.to;
       _started = true;
+      // The landing falls in the next bar, so that bar has had its chord.
+      _resolving = true;
       final loud = (isNew ? 0.66 : 0.5) + random.nextDouble() * 0.26;
       return [
         for (final (index, (beat, length, velocity)) in pattern.indexed)
@@ -305,10 +327,19 @@ class Comper {
           // exactly is a tell of its own.
           ('turn', 7, [(1 + and, 0.6, 0.8), (3, 1.1, 0.9)]),
           ('turn up', 5, [(2, 0.7, 0.75), (3 + and, 0.9, 0.9)]),
-          // The slide is a leading figure by nature, so this is where it
-          // belongs most: a whole step falling onto the next section.
-          if (canSlide) ('slide', 8, _slide(and)),
           ('rest', 2, const []),
+        ] else if (canSlide) ...[
+          // The second bar of a pair, on a tune whose chord has a slide.
+          // This is not one figure among several here: the pair of bars
+          // exists to put the tune's own answer in the second of them, so
+          // the answer is what goes there. Weighted against the full
+          // palette it turned up once or twice a chorus and So What did
+          // not sound like itself.
+          //
+          // A bar off now and then so that it breathes and so the figure
+          // is still something that arrives.
+          ('slide', 9, _slide(and)),
+          ('rest', 1, const []),
         ] else ...[
           // Still the same chord: mostly leave it alone, and more so the
           // longer it has been sounding.
@@ -329,7 +360,6 @@ class Comper {
           // own job on the record: Evans plays it into the gaps rather than
           // under the melody. Weighted to be heard without becoming the
           // only thing a vamp does.
-          if (canSlide) ('slide', 9, _slide(and)),
         ],
       ] else if (beats >= 2) ...[
         if (isNew) ...[
@@ -355,11 +385,21 @@ class Comper {
     // over sixteen bars of one chord is where the chord keeps arriving,
     // not which entry in a table it came from, and several of these begin
     // on the same beat under different names.
+    // The slide is exempt from both. They are there to stop a lone jab
+    // becoming the only thing a vamp says, and a figure that is the tune
+    // is meant to come round again: penalised for repeating and for
+    // landing where it landed, a weight of nine against a rest of one
+    // came out at 0.81 against 1 and the answer skipped half its bars.
     final weights = [
       for (final (name, weight, strikes) in patterns)
-        weight *
-            (name == _lastPattern ? 0.3 : 1.0) *
-            (strikes.isNotEmpty && strikes.first.$1 == _lastEntry ? 0.3 : 1.0),
+        if (_slides.contains(name))
+          weight.toDouble()
+        else
+          weight *
+              (name == _lastPattern ? 0.3 : 1.0) *
+              (strikes.isNotEmpty && strikes.first.$1 == _lastEntry
+                  ? 0.3
+                  : 1.0),
     ];
     var roll = random.nextDouble() * weights.fold(0.0, (a, b) => a + b);
     var chosen = 0;

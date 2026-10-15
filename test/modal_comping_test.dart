@@ -40,9 +40,12 @@ List<List<CompHit>> compedChorus(String title, {int seed = 7}) {
         startsSection: tune.sections.containsKey(
           slots[i].startBeat ~/ tune.beatsPerBar,
         ),
+        // Counting round the form, as the renderer does: the bar after the
+        // last one is the first one.
         intoSection: tune.sections.containsKey(
-          slots[i].endBeat ~/ tune.beatsPerBar,
+          (slots[i].endBeat ~/ tune.beatsPerBar) % tune.barCount,
         ),
+        bar: slots[i].startBeat ~/ tune.beatsPerBar,
       ),
   ];
 }
@@ -64,12 +67,22 @@ void main() {
       // they had five different beats to begin on; 5 with the weighting
       // against repeating a landing as well. Both halves of the fix pay,
       // and the spread of landings pays more than the weighting does.
+      // Slides are left out of this. They are the tune's own answer and
+      // they are meant to come round at the same place every two bars:
+      // counting them, the rate is 41 per cent and ought to be. What this
+      // guards is the figures in between, where the same place twice
+      // running is the monotony it was written for.
       var repeats = 0, pairs = 0;
       for (var seed = 0; seed < 40; seed++) {
         final bars = compedChorus('So What', seed: seed);
         double? last;
         for (final bar in bars) {
           if (bar.isEmpty) continue;
+          final slid = bar.length > 1 && bar.first.notes != bar.last.notes;
+          if (slid) {
+            last = null;
+            continue;
+          }
           if (last != null) {
             pairs++;
             if (bar.first.beat == last) repeats++;
@@ -155,9 +168,12 @@ void main() {
     test('So What slides several times a chorus', () {
       // Often enough to be the sound of the tune, not so often that it is
       // the only thing the piano knows.
+      // Every other bar, give or take a bar off: twelve bars of a chorus
+      // are second-of-a-pair and not leading into a section, and the
+      // answer goes in nearly all of them.
       final slid = slidBars(compedChorus('So What'));
-      expect(slid.length, greaterThanOrEqualTo(3));
-      expect(slid.length, lessThan(16));
+      expect(slid.length, greaterThanOrEqualTo(8));
+      expect(slid.length, lessThanOrEqualTo(12));
     });
 
     test('and every slide falls a whole step', () {
@@ -240,19 +256,19 @@ void main() {
       }
     });
 
-    test(
-      'it comes in on the second beat, landing on the and of the fourth',
-      () {
-        for (var seed = 0; seed < 20; seed++) {
-          final bars = compedChorus('So What', seed: seed);
-          for (final bar in bars) {
-            if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
-            expect(bar.first.beat, 1, reason: 'seed $seed');
-            expect(bar.last.beat, closeTo(3.62, 0.001), reason: 'seed $seed');
-          }
+    test('it comes in on the third beat and lands in the next bar', () {
+      // The figure is a two-bar phrase: a bar of the chord, then the
+      // answer, which falls across the bar line onto the "and" of the
+      // first beat of the bar after it.
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('So What', seed: seed);
+        for (final bar in bars) {
+          if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
+          expect(bar.first.beat, 2, reason: 'seed $seed');
+          expect(bar.last.beat, closeTo(4.62, 0.001), reason: 'seed $seed');
         }
-      },
-    );
+      }
+    });
 
     test('the fall takes two and a half beats, not one', () {
       // A beat apart was too quick to be the figure. The gap is what the

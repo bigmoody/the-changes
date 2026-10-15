@@ -56,6 +56,13 @@ void main() {
     };
   }
 
+  // The bossa re-pinned on its own when a chorus's last bar started
+  // counting as the bar before a section: the bar after it is the first
+  // bar, which is where a section begins, so the end of a chorus now
+  // leads back to the top the way the end of any other section leads
+  // into the next. It reaches any tune whose chart has section markers,
+  // which is why one with no piano figure changed in it moved.
+  //
   // The three with a piano on them re-pinned when the piano's release
   // came back down from 0.3 of a second to 0.2. At 0.3 every chord was
   // still sounding when the next one landed, which is a blur and not a
@@ -157,10 +164,10 @@ void main() {
         ),
       ),
       {
-        'Chords': -4605123939553479598,
-        'Bass': 846266009908833991,
-        'Drums': 7404800353527402622,
-        'Arpeggios': -660344210291449637,
+        'Chords': 7951234421867695077,
+        'Bass': -2635244460730262927,
+        'Drums': -6151015532253098802,
+        'Arpeggios': -1485049368801546167,
       },
     );
   });

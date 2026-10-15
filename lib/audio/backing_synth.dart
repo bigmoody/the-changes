@@ -754,6 +754,14 @@ _Parts _renderParts(
     quartal: tune.tags.contains(Genre.modal),
   )..previousVoicing = state.pianoVoicing;
   final compSlots = loop.slotsIn(tune);
+
+  /// Whether [bar] begins a section, counting round the form: the bar
+  /// after the last one is the first one, so the end of a chorus leads
+  /// back to the top the way the end of any other section leads into the
+  /// next.
+  bool startsSectionAt(int bar) =>
+      tune.sections.containsKey(bar % tune.barCount);
+
   final guitarist = GuitarComper(math.Random(seed + 6))
     ..previousVoicing = state.guitarVoicing;
 
@@ -838,7 +846,7 @@ _Parts _renderParts(
           startsSection: tune.sections.containsKey(
             slot.startBeat ~/ beatsPerBar,
           ),
-          intoSection: tune.sections.containsKey(slot.endBeat ~/ beatsPerBar),
+          intoSection: startsSectionAt(slot.endBeat ~/ beatsPerBar),
         )) {
           if (!sounds(LayOut.chords, chorusBeat + slotStart + hit.beat)) {
             continue;
@@ -915,7 +923,8 @@ _Parts _renderParts(
           startsSection: tune.sections.containsKey(
             slot.startBeat ~/ beatsPerBar,
           ),
-          intoSection: tune.sections.containsKey(slot.endBeat ~/ beatsPerBar),
+          intoSection: startsSectionAt(slot.endBeat ~/ beatsPerBar),
+          bar: slot.startBeat ~/ beatsPerBar,
         )) {
           if (!sounds(LayOut.chords, chorusBeat + slotStart + hit.beat)) {
             continue;
