@@ -38,8 +38,8 @@ const _columns = 4;
 /// large, a long one is written smaller, and only something longer than
 /// any standard spills onto a second page.
 const _tallestRow = 92.0;
-const _shortestRow = 42.0;
-const _rowGap = 16.0;
+const _shortestRow = 34.0;
+const _rowGap = 14.0;
 
 const _ink = Color(0xFF1C1B19);
 const _graphite = Color(0xFF6B665D);
@@ -93,7 +93,12 @@ List<ui.Picture> _pagesOf(Tune tune) {
     _shortestRow,
     _tallestRow,
   );
-  final perPage = (room / (rowHeight + _rowGap)).floor().clamp(1, 40);
+  final fit = (room / (rowHeight + _rowGap)).floor().clamp(1, 40);
+  // Where it takes more than one page, the rows are shared out evenly
+  // rather than packed: a second page with one row on it looks like a
+  // mistake, and two half pages read better than a full one and a scrap.
+  final sheets = (lines.length / fit).ceil();
+  final perPage = (lines.length / math.max(sheets, 1)).ceil().clamp(1, fit);
   final pages = <ui.Picture>[];
   for (var from = 0; from < lines.length || pages.isEmpty; from += perPage) {
     final recorder = ui.PictureRecorder();

@@ -54,6 +54,17 @@ void main() {
     expectTableIsRight(text);
   });
 
+  testWidgets('a long chart still gets on one page', (tester) async {
+    // Caravan is thirteen rows once the repeats are folded. A chart
+    // belongs on one page the way it belongs on one screen: the rows get
+    // smaller rather than the chart getting longer.
+    late String text;
+    await tester.runAsync(() async {
+      text = latin1.decode(await chartPdf([_tune('Caravan')]));
+    });
+    expect(text, contains('/Type /Pages /Count 1'));
+  });
+
   testWidgets('a setlist is a page each, in order', (tester) async {
     late String text;
     await tester.runAsync(() async {
