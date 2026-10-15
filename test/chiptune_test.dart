@@ -14,7 +14,9 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/chiptune.dart';
+import 'package:play_along/audio/piano_comping.dart';
 import 'package:play_along/audio/sample_bank.dart';
+import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/loop_range.dart';
 import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
@@ -171,6 +173,73 @@ void main() {
       ).stems[Instrument.chords]!;
       expect(chords(BandVoice.band), isNot(chords(BandVoice.eightBit)));
       expect(chords(BandVoice.eightBit), isNot(chords(BandVoice.sixteenBit)));
+    });
+  });
+
+  group('two channels, not six', () {
+    test('a chord is two notes', () {
+      // The thing that made it sound bad. Four square waves in a cluster
+      // beat against each other and come out as a broken organ: those
+      // machines had two pulse generators and the music was written for
+      // two. Four voices is not that machine played badly, it is a
+      // different and worse machine.
+      for (final symbol in ['Cm7', 'G7', 'B♭Δ7', 'Dø7', 'F6', 'A+']) {
+        final chord = Chord.parse(symbol);
+        for (final shape in twoVoiceVoicingsFor(chord)) {
+          expect(shape, hasLength(2), reason: symbol);
+        }
+      }
+    });
+
+    test('and they are the two that carry the chord', () {
+      for (final symbol in ['Cm7', 'G7', 'B♭Δ7', 'F6']) {
+        final chord = Chord.parse(symbol);
+        final degrees = {
+          for (final note in twoVoiceVoicingsFor(chord).first)
+            (note - chord.root) % 12,
+        };
+        expect(degrees, hasLength(2), reason: symbol);
+        // A 3rd of some kind and a 7th of some kind, or the stand-ins a
+        // chord without one of them gets.
+        for (final degree in degrees) {
+          expect(
+            const [2, 3, 4, 5, 8, 9, 10, 11, 0].contains(degree),
+            isTrue,
+            reason: '$symbol has a $degree in it',
+          );
+        }
+      }
+    });
+
+    test('both orders are offered, so the hand can lead', () {
+      final forms = twoVoiceVoicingsFor(Chord.parse('Cm7'));
+      expect(forms, hasLength(2));
+      expect(forms[0], isNot(forms[1]));
+    });
+
+    test('and the band plays two and not four', () async {
+      // Through the comper, which is where the four came from.
+      final bank = await SampleBank.load(
+        (path) async => File('assets/sounds/$path').readAsBytes(),
+      );
+      final tune = standards.firstWhere((t) => t.title == 'A Foggy Day');
+      // The chords stem is the only place to see it from outside, so this
+      // checks the shapes the comper is handed rather than the audio: a
+      // four-note voicing and a two-note one both render to one buffer.
+      final comper = Comper(math.Random(7), shapes: twoVoiceVoicingsFor);
+      final slots = LoopRange.wholeTune(tune).slotsIn(tune);
+      for (var i = 0; i < slots.length; i++) {
+        for (final hit in comper.comp(
+          slots[i].chord,
+          (slots[i].endBeat - slots[i].startBeat).toInt(),
+          tune.style.piano.feel,
+          next: slots[(i + 1) % slots.length].chord,
+          swing: 0.62,
+        )) {
+          expect(hit.notes, hasLength(2));
+        }
+      }
+      expect(bank.piano, isNotNull);
     });
   });
 

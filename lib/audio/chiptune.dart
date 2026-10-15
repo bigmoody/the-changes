@@ -130,7 +130,10 @@ Float32List chipTone(
   sampleRate,
   harmonics: pulseHarmonics(duty),
   era: era,
-  amplitude: 0.22,
+  // Up from 0.22 when the harmony went from four notes to two: two
+  // voices carrying a chord have to be heard, and on those records the
+  // pulse channels are the record and the triangle is underneath it.
+  amplitude: 0.42,
 );
 
 /// A bass note: the triangle channel.
@@ -145,7 +148,9 @@ Float32List chipBass(
   sampleRate,
   harmonics: triangleHarmonics(),
   era: era,
-  amplitude: 0.5,
+  // Down, for the same reason. A triangle is a quiet wave by nature and
+  // it was still 13 dB over the harmony.
+  amplitude: 0.3,
 );
 
 /// Noise, as the noise channel made it: a shift register clocked at a

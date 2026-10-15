@@ -801,6 +801,10 @@ _Parts _renderParts(
     math.Random(seed + 4),
     quartal: tune.tags.contains(Genre.modal),
     slide: tune.quartalSlide,
+    // A console had two pulse channels, so a chord is two notes. Four
+    // square waves at once beat against each other and come out as a
+    // broken organ, which is what this sounded like before.
+    shapes: chip == null ? null : twoVoiceVoicingsFor,
   )..previousVoicing = state.pianoVoicing;
   final compSlots = loop.slotsIn(tune);
 
@@ -1275,7 +1279,7 @@ _Parts _renderParts(
             // with everything else, because there were four channels and
             // no mix to speak of. At the band's fallback figure of 0.35
             // it came out 15 dB under the bass.
-            final asRecorded = hit.velocity * (chip == null ? 0.35 : 1.15);
+            final asRecorded = hit.velocity * (chip == null ? 0.35 : 2.0);
             drums.addSamples(
               at(beat),
               sound,
