@@ -42,6 +42,14 @@ void showAboutTheChanges(BuildContext context) {
         'computer. iReal Pro is a trademark of its owner; The Changes '
         'isn\'t affiliated with it.',
       ),
+      const SizedBox(height: 8),
+      const Text(
+        'Sharing a chart sends it out as text, as an iReal Pro link, as a '
+        'PDF to print, as MusicXML for notation software, or as MIDI of '
+        'the band playing it. The band itself records as an audio file '
+        'from the practice screen. Only the changes ever leave: there is '
+        'no melody and no lyric in this app to send.',
+      ),
     ],
   );
 }
