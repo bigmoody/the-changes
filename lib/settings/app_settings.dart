@@ -18,6 +18,7 @@ import '../audio/backing_synth.dart';
 import '../audio/drum_levels.dart';
 import '../audio/drum_patterns.dart';
 import '../audio/felt_beat.dart';
+import '../theme.dart' show ChartFont, letterChartsIn;
 
 /// Which instrument the charts are written for.
 ///
@@ -208,7 +209,11 @@ class AppSettings extends ChangeNotifier {
     this._exerciseLevels,
     this._arpeggioRate,
     this._arpeggioReach,
-  );
+    this._chartFont,
+  ) {
+    // The lettering lives in the theme, where every chart reaches it.
+    letterChartsIn(_chartFont);
+  }
 
   /// Settings that aren't saved anywhere, for tests.
   AppSettings.inMemory([
@@ -230,7 +235,8 @@ class AppSettings extends ChangeNotifier {
     this._feelTheBeat = FeelTheBeat.off,
     this._markTheBar = MarkTheBar.filled,
     this._drumLevels = const DrumLevels(),
-  ]) : _exerciseLevels = const {},
+  ]) : _chartFont = ChartFont.hand,
+       _exerciseLevels = const {},
        _arpeggioRate = ArpeggioRate.eighths,
        _arpeggioReach = ArpeggioReach.plain,
        _storage = null,
@@ -242,7 +248,9 @@ class AppSettings extends ChangeNotifier {
        _metronomeClickOn = ClickOn.everyBeat,
        _metronomeDropout = Dropout.none,
        _fadeChart = FadeChart.never,
-       _takesWithBand = true;
+       _takesWithBand = true {
+    letterChartsIn(_chartFont);
+  }
 
   static const _arpeggioRateKey = 'arpeggioRate';
   static const _arpeggioReachKey = 'arpeggioReach';
@@ -251,6 +259,7 @@ class AppSettings extends ChangeNotifier {
   static const _mixKey = 'mixWithOthers';
   static const _takesBandKey = 'takesWithBand';
   static const _diagramKey = 'chordDiagram';
+  static const _chartFontKey = 'chartFont';
   static const _aimKey = 'aimFor';
   static const _compingKey = 'comping';
   static const _bassSoundKey = 'bassSound';
@@ -282,6 +291,7 @@ class AppSettings extends ChangeNotifier {
     var mixWithOthers = true;
     var takesWithBand = true;
     var diagram = ChordDiagram.none;
+    var chartFont = ChartFont.hand;
     DrillTarget? aimFor;
     var comping = Comping.piano;
     var bassSound = BassSound.upright;
@@ -425,6 +435,11 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == saved,
         orElse: () => ChartInstrument.concert,
       );
+      final savedFont = await storage.getString(_chartFontKey);
+      chartFont = ChartFont.values.firstWhere(
+        (value) => value.name == savedFont,
+        orElse: () => ChartFont.hand,
+      );
       final savedDiagram = await storage.getString(_diagramKey);
       diagram = ChordDiagram.values.firstWhere(
         (value) => value.name == savedDiagram,
@@ -469,6 +484,7 @@ class AppSettings extends ChangeNotifier {
       exerciseLevels,
       arpeggioRate,
       arpeggioReach,
+      chartFont,
     );
   }
 
@@ -518,6 +534,22 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_diagramKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// The face every chart is lettered in.
+  ChartFont get chartFont => _chartFont;
+  ChartFont _chartFont;
+
+  Future<void> setChartFont(ChartFont value) async {
+    if (value == _chartFont) return;
+    _chartFont = value;
+    letterChartsIn(value);
+    notifyListeners();
+    try {
+      await _storage?.setString(_chartFontKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

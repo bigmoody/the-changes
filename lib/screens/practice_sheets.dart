@@ -114,6 +114,27 @@ Future<void> showViewOptions(
                   ),
               ],
             ),
+            heading('Chart Font'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final face in ChartFont.values)
+                  ChoiceChip(
+                    key: ValueKey('font-${face.name}'),
+                    // Each chip in the hand it is offering, so the choice
+                    // is made by reading rather than by guessing.
+                    label: Text(
+                      face.label,
+                      // Size only: the colour is the chip's, which turns
+                      // to paper when it is the one chosen.
+                      style: letteredIn(face, const TextStyle(fontSize: 15)),
+                    ),
+                    selected: settings.chartFont == face,
+                    onSelected: (_) => settings.setChartFont(face),
+                  ),
+              ],
+            ),
             heading('Under the Chords'),
             Wrap(
               spacing: 8,

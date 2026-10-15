@@ -36,15 +36,88 @@ const handFont = 'PetalumaScript';
 @visibleForTesting
 List<String>? handFontFallback;
 
-/// [base] in the chart's hand lettering. It comes in one weight: asking it
-/// to be bold would only smear it.
-TextStyle handLettered([TextStyle? base]) =>
-    (base ?? const TextStyle()).copyWith(
-      fontFamily: handFont,
-      fontFamilyFallback: handFontFallback,
-      fontWeight: FontWeight.w400,
-      letterSpacing: 0,
-    );
+/// The face a chart is written in.
+///
+/// Charts come in hands: a copyist's lettering in a fake book, the print of
+/// an engraved edition, the serif of an older published folio. Which one
+/// you read fastest is yours, not the app's, so it is a setting, the way
+/// iReal Pro's font is.
+///
+/// The hand is the default because it is what a chart on a stand looks
+/// like. Print is the one to reach for if a script is harder to read at a
+/// glance, which it is for plenty of players and most of all in low light
+/// at the back of a room.
+enum ChartFont {
+  /// Petaluma Script: a copyist's hand, and the app's own look.
+  hand('Hand Lettered', handFont, FontWeight.w400),
+
+  /// The face the rest of the app is set in, so the chart is printed in
+  /// the phone's own type: clean, and spaced for the screen it is on.
+  printed('Printed', null, FontWeight.w600),
+
+  /// Print with serifs, like a page out of a published folio.
+  serif('Serif', 'Georgia', FontWeight.w500);
+
+  const ChartFont(this.label, this.family, this.weight);
+
+  /// The chip on the View sheet.
+  final String label;
+
+  /// The family to letter in, or null to leave the text in the app's own
+  /// font: the system face on a phone, and whatever a test has loaded.
+  final String? family;
+
+  /// Chord symbols are the music on the page and want a little weight in
+  /// print. The hand comes in one weight only: asking it to be bold would
+  /// smear it.
+  final FontWeight weight;
+
+  /// Faces to fall back on where this one is not there at all. The signs
+  /// a chart needs beyond the alphabet (Δ, ˚) come from the phone itself,
+  /// which supplies them without being asked.
+  List<String> get fallback => switch (this) {
+    hand || printed => const [],
+    // Georgia is on iPhones; Android has its own serif under the name
+    // every Android serif answers to.
+    serif => const ['Times New Roman', 'serif'],
+  };
+}
+
+/// The face charts are lettered in now. Read [chartFont] rather than
+/// assuming the hand.
+ChartFont get chartFont => _chartFont;
+ChartFont _chartFont = ChartFont.hand;
+
+/// Letters every chart in [face], from here on.
+///
+/// Kept here, beside the lettering itself, rather than passed down: every
+/// chord, title and rehearsal letter in the app is drawn through
+/// [handLettered], and threading one word through all of them would be a
+/// change to a hundred call sites for a setting that is the same
+/// everywhere. `AppSettings` owns the choice and calls this when it
+/// changes; the app above it rebuilds, and the next frame is in the new
+/// face. The PDF export is drawn through the same lettering, so a printed
+/// chart leaves the app looking like the one on the screen.
+void letterChartsIn(ChartFont face) => _chartFont = face;
+
+/// [base] in the chart's lettering, whichever face it is set in.
+TextStyle handLettered([TextStyle? base]) => letteredIn(_chartFont, base);
+
+/// [base] in [face], whether or not that is the face charts are set in.
+///
+/// What the font chooser writes its own chips in, so each one shows the
+/// hand it is offering.
+TextStyle letteredIn(ChartFont face, [TextStyle? base]) {
+  final style = (base ?? const TextStyle()).copyWith(
+    fontFamilyFallback: [...face.fallback, ...?handFontFallback],
+    fontWeight: face.weight,
+    letterSpacing: 0,
+  );
+  // A face with no family of its own keeps the one it was given: the
+  // app's, which is the system font on a phone. copyWith cannot put a
+  // null back, hence the two ways out.
+  return face.family == null ? style : style.copyWith(fontFamily: face.family);
+}
 
 /// [symbol] as the hand lettering writes it: its diminished sign is the
 /// raised ring a copyist uses, which the font has, rather than a degree
