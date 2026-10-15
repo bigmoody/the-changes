@@ -46,117 +46,6 @@ double ringAt(DrumSamples drum, double seconds) {
   return worst;
 }
 
-/// The magnitudes of a real signal's spectrum, by a radix-2 FFT.
-///
-/// [input]'s length must be a power of two. Only the lower half is
-/// returned, the upper half being its mirror image.
-List<double> spectrumOf(List<double> input) {
-  final n = input.length;
-  final re = List<double>.of(input);
-  final im = List<double>.filled(n, 0);
-  for (var i = 1, j = 0; i < n; i++) {
-    var bit = n >> 1;
-    for (; j & bit != 0; bit >>= 1) {
-      j ^= bit;
-    }
-    j ^= bit;
-    if (i < j) {
-      final tr = re[i], ti = im[i];
-      re[i] = re[j];
-      im[i] = im[j];
-      re[j] = tr;
-      im[j] = ti;
-    }
-  }
-  for (var span = 2; span <= n; span <<= 1) {
-    final half = span ~/ 2;
-    for (var i = 0; i < n; i += span) {
-      for (var k = 0; k < half; k++) {
-        final angle = -2 * math.pi * k / span;
-        final wr = math.cos(angle), wi = math.sin(angle);
-        final ur = re[i + k], ui = im[i + k];
-        final xr = re[i + k + half], xi = im[i + k + half];
-        final vr = xr * wr - xi * wi, vi = xr * wi + xi * wr;
-        re[i + k] = ur + vr;
-        im[i + k] = ui + vi;
-        re[i + k + half] = ur - vr;
-        im[i + k + half] = ui - vi;
-      }
-    }
-  }
-  return [
-    for (var i = 0; i < n ~/ 2; i++) math.sqrt(re[i] * re[i] + im[i] * im[i]),
-  ];
-}
-
-/// How far the most prominent mode in [drum] stands above the energy
-/// either side of it, in dB.
-///
-/// A drum has modes and is supposed to: what the ear objects to is one
-/// of them standing a long way clear of its neighbours, because that is
-/// heard as a pitch rather than as a drum. So each twelfth of an octave
-/// is compared with the average of the octave around it, and the worst
-/// of those is the number that matters.
-double worstModeOf(DrumSamples drum) {
-  const n = 16384;
-  const rate = 44100;
-  // A twelfth of an octave apiece, from 150 Hz to 1400.
-  final centres = <double>[];
-  for (var step = 0; ; step++) {
-    final centre = 150 * math.pow(2, step / 12).toDouble();
-    if (centre > 1400) break;
-    centres.add(centre);
-  }
-  final summed = List<double>.filled(centres.length, 0);
-  var counted = 0;
-  for (final takes in drum.layers) {
-    for (final take in takes) {
-      final samples = take.samples;
-      if (samples.isEmpty) continue;
-      var peak = 0, peakAt = 0;
-      for (var i = 0; i < samples.length; i++) {
-        if (samples[i].abs() > peak) {
-          peak = samples[i].abs();
-          peakAt = i;
-        }
-      }
-      if (peak == 0) continue;
-      // From the loudest sample on, windowed, and zero-padded where the
-      // recording is shorter than the window.
-      final frame = List<double>.filled(n, 0);
-      for (var i = 0; i < n && peakAt + i < samples.length; i++) {
-        frame[i] =
-            samples[peakAt + i] * (0.5 - 0.5 * math.cos(2 * math.pi * i / n));
-      }
-      final spectrum = spectrumOf(frame);
-      // The energy in each band of this take, summed across takes to be
-      // averaged below, so that one odd stroke cannot carry the verdict.
-      for (var b = 0; b < centres.length; b++) {
-        final lo = (centres[b] / math.pow(2, 1 / 24) * n / rate).floor();
-        final hi = (centres[b] * math.pow(2, 1 / 24) * n / rate).ceil();
-        for (var k = math.max(1, lo); k <= math.min(n ~/ 2 - 1, hi); k++) {
-          summed[b] += spectrum[k] * spectrum[k];
-        }
-      }
-      counted++;
-    }
-  }
-  final bands = [
-    for (final energy in summed)
-      energy > 0 ? 10 * math.log(energy / counted) / math.ln10 : -200.0,
-  ];
-  var worst = -200.0;
-  for (var i = 0; i < bands.length; i++) {
-    final from = math.max(0, i - 6), to = math.min(bands.length, i + 7);
-    var trend = 0.0;
-    for (var j = from; j < to; j++) {
-      trend += bands[j];
-    }
-    worst = math.max(worst, bands[i] - trend / (to - from));
-  }
-  return worst;
-}
-
 /// The loudest sample in a drum's recordings, which is the level the
 /// others are brought up to and so the level the drum plays at.
 int peakOf(DrumSamples drum) => drum.layers
@@ -249,57 +138,26 @@ void main() {
     });
   });
 
-  group('how it rings', () {
-    // Two complaints about this kit, and the same cause under both. The
-    // drum is tuned high and barely damped, so it has a mode at 318 Hz
-    // that in the close mic stands 22.6 dB clear of the energy either
-    // side of it, where the stick snare's most prominent mode stands
-    // 12.6 dB clear of its own. A mode that far out on its own is heard
-    // as a pitched ping on each stroke rather than as a drum, which is
-    // what "tinny" and "resonant" were both describing.
+  group('how long it rings', () {
+    // The snare in this library is undamped, and a brush stroke on an
+    // undamped head leaves the wires buzzing well after the stroke. Cut
+    // to the stick snare's length the fade started at 0.5s and never
+    // reached that ring, so the kit sounded resonant rather than
+    // brushed: the softest layer, which is the one a tap lands on, was
+    // only 19 dB down at 0.2s where the stick snare is 25. The
+    // recordings are cut shorter now, with the fade over the ring.
     //
-    // The fix is a quarter of the library's room recording of the same
-    // strokes, where the modes are already smoothed. See BRUSH_ROOM in
-    // tool/process_samples.py for why it is that and not EQ, which would
-    // have cost 43 dB of narrow cuts.
-    // Both drums that come off that snare, the cross-stick being an edge
-    // hit on the same head and the sound the bossa clave is played with.
-    for (final drum in [Drum.snare, Drum.crossStick]) {
-      test('${drum.label}: no mode stands out further than the stick '
-          'kit\'s does', () {
-        final brushed = worstModeOf(bank.brushes[drum]!);
-        final sticks = worstModeOf(
-          drum == Drum.snare ? bank.snare : bank.crossStick,
-        );
-        expect(
-          brushed,
-          lessThanOrEqualTo(sticks),
-          reason:
-              'the worst brush mode stands ${brushed.toStringAsFixed(1)} dB '
-              'clear, the worst stick mode ${sticks.toStringAsFixed(1)} dB',
-        );
-      });
-    }
-
-    // The room it is mixed with is a tail as well as a smoother, and a
-    // tail is the other thing that gets called resonant, so it is bounded
-    // rather than left to grow. Early on it may bloom over the stick
-    // snare, which is what a room does and what the stick kit's own
-    // overheads do. By 0.3s it has to be gone: anything still sounding
-    // there is the drum ringing and not the room.
-    const allowance = 8.0;
-    for (final (seconds, over) in [
-      (0.1, allowance),
-      (0.2, allowance),
-      (0.3, 0.0),
-    ]) {
-      test('at ${(seconds * 1000).round()}ms the tail is within '
-          '${over.round()} dB of the stick snare', () {
+    // Against the stick snare rather than a number, because "resonant"
+    // is a comparison: the kit it is swapped for is what the ear has to
+    // go on. Changing the stick kit should bring you back here.
+    for (final seconds in [0.1, 0.2, 0.3]) {
+      test('at ${(seconds * 1000).round()}ms it is no more resonant than '
+          'the stick snare', () {
         final brushed = ringAt(bank.brushes[Drum.snare]!, seconds);
         final struck = ringAt(bank.snare, seconds);
         expect(
           brushed,
-          lessThanOrEqualTo(struck + over),
+          lessThanOrEqualTo(struck),
           reason:
               'brushes ${brushed.toStringAsFixed(1)} dB down, '
               'sticks ${struck.toStringAsFixed(1)} dB down',

@@ -236,57 +236,13 @@ BRUSH_TRIM = {
     "snare": (0.35, 0.22), "tom_high": (0.9, 0.3), "tom_low": (0.9, 0.3),
     "cowbell": (0.5, 0.15),
 }
-# How much of the library's room capture is mixed into the brush snare.
-#
-# The drum itself is the problem. It is tuned high and barely damped: its
-# fundamental sits at 318 Hz against the stick kit's 180, and in the close
-# mic that one mode stands 22.6 dB above the energy either side of it,
-# where the stick snare's most prominent mode stands 12.6 dB above its
-# own surroundings. A single mode that far out of its surroundings is
-# heard as a pitched ping on every stroke rather than as a drum, which is
-# what made the kit sound tinny. It is not a microphone's doing: the
-# bottom mic has the same peak, and the two mics are not time-aligned, so
-# blending them would comb the transient instead.
-#
-# It cannot be taken out with EQ either. Fitting notches to the three
-# worst modes needs 43 dB of narrow cuts to get the drum down to the
-# stick snare's prominence, and 21 dB of that lands on the fundamental,
-# which would leave a hollow box rather than a snare.
-#
-# What does work is the library's own room recording of the same strokes,
-# where the modes are already smoothed: a quarter of it is enough to
-# bring the worst mode to 11.7 dB, inside the stick snare's 12.6, and
-# past a quarter the mode barely moves while the room tail keeps
-# growing. It costs a short bloom, about 4 dB over the stick snare's
-# level at 0.1s and gone by 0.3s, which is broadband room rather than a
-# pitched ring and is also the perspective the stick kit is recorded
-# from, that kit being overheads.
-BRUSH_ROOM = 0.25
-
-def mix_room(close, room, amount):
-    """Mixes a room capture into a close one.
-
-    Each is brought to its own peak first, so [amount] means the same
-    thing whatever the stroke, and the group's own gain sets the level
-    afterwards. Both have been through [trim], which starts them at the
-    onset, so the two captures line up.
-    """
-    pc = max(abs(x) for x in close) or 1.0
-    pr = max(abs(x) for x in room) or 1.0
-    return array.array("f", [
-        (1 - amount) * close[i] / pc + amount * room[i] / pr
-        for i in range(min(len(close), len(room)))])
-
 if want("brushes"):
     by_drum = {}
     for name in sorted(os.listdir(f"{RAW}/brushes")):
         m = re.match(r"(.+)_(\d)_(\d)\.wav", name)
         secs, fd = BRUSH_TRIM[m[1]]
-        hit = trim(decode(f"{RAW}/brushes/{name}"), secs, fd)
-        room = f"{RAW}/brushes_room/{name}"
-        if os.path.exists(room):
-            hit = mix_room(hit, trim(decode(room), secs, fd), BRUSH_ROOM)
-        by_drum.setdefault(m[1], []).append((f"{OUT}/drums_brushes/{name}", hit))
+        by_drum.setdefault(m[1], []).append(
+            (f"{OUT}/drums_brushes/{name}", trim(decode(f"{RAW}/brushes/{name}"), secs, fd)))
     for drum, files in sorted(by_drum.items()):
         peak = max(max(abs(x) for x in s) for _, s in files)
         scale = BRUSH_PEAKS[drum] / peak
