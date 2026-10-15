@@ -437,6 +437,20 @@ class Chord {
     (letter: 3, accidental: -1) => (letter: 2, accidental: 0), // F♭ → E
     (letter: 2, accidental: 1) => (letter: 3, accidental: 0), // E♯ → F
     (letter: 6, accidental: 1) => (letter: 0, accidental: 0), // B♯ → C
+    // D♯ → E♭ and A♯ → B♭. Nobody writes a chord on D♯ or A♯, whatever
+    // the quality: the roots the drill deals out are E♭ and B♭ for major,
+    // dominant and minor alike, and D♯ is the spelling its own comment
+    // says stops a player dead. Transposing a letter at a time will
+    // otherwise land on them, which is how an E♭ part of The Girl from
+    // Ipanema came to read E♭Δ7 in bar 17 and D♯m7 in bar 21: the same
+    // note, because the concert chart writes G♭Δ7 there and F♯m7 here,
+    // and the two spellings move to different letters.
+    //
+    // Only these two. C♯, F♯ and G♯ are all real chord roots and which
+    // way they are written depends on where the chord is going, which is
+    // a judgement this cannot make from one chord at a time.
+    (letter: 1, accidental: 1) => (letter: 2, accidental: -1), // D♯ → E♭
+    (letter: 5, accidental: 1) => (letter: 6, accidental: -1), // A♯ → B♭
     _ => note,
   };
 

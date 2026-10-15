@@ -60,12 +60,19 @@ void main() {
     }
   });
 
-  test('no chord in any key is rooted on C♭, F♭, E♯ or B♯', () {
+  test('no chord in any key is rooted on C♭, F♭, E♯, B♯, D♯ or A♯', () {
     for (final tune in [...standards, ...practiceProgressions]) {
       for (var semitones = 0; semitones < 12; semitones++) {
         for (final slot in tune.transposed(semitones).slots) {
           final symbol = slot.chord.display;
-          for (final awkward in ['C♭', 'F♭', 'E♯', 'B♯']) {
+          // D♯ and A♯ among them: nobody writes a chord on either,
+          // whatever its quality, and the drill deals out E♭ and B♭ for
+          // major, dominant and minor alike. An E♭ part of The Girl from
+          // Ipanema used to read E♭Δ7 in bar 17 and D♯m7 in bar 21, the
+          // same note twice over, because the concert chart writes G♭Δ7
+          // in one and F♯m7 in the other and a letter-at-a-time
+          // transposition carries that difference across.
+          for (final awkward in ['C♭', 'F♭', 'E♯', 'B♯', 'D♯', 'A♯']) {
             expect(
               symbol,
               isNot(startsWith(awkward)),
