@@ -384,18 +384,27 @@ class Comper {
           // in the same place, and a vamp ticked. The weighting that keeps
           // a figure from repeating compares names, and these had
           // different names and the same landing, so it never noticed.
-          ('remind', _held.isOdd ? 2 : 4, [(1 + and, 1.1, 0.75)]),
+          // Weighted up when answering a lift: it is the first place in
+          // the bar clear of the shape above still ringing, so it is where
+          // the chord that was owed comes in.
+          (
+            'remind',
+            answering ? 9 : (_held.isOdd ? 2 : 4),
+            [(1 + and, 1.1, 0.75)],
+          ),
           ('lift', 3, [(3 + and, 0.9, 0.8)]),
           ('inside', 3, [(2 + and, 1.0, 0.8)]),
           ('on four', 2, [(3, 0.9, 0.75)]),
           ('echo', 3, [(1 + and, 0.7, 0.75), (3, 0.6, 0.65)]),
           ('answer', 3, [(2, 0.5, 0.7), (3 + and, 0.9, 0.8)]),
-          // The downbeat. Normally the least of these, because restating
-          // a chord that is already sounding is what made static tunes
-          // mechanical. Answering a lift it is the most of them: the shape
-          // above has been hanging over the bar line and the downbeat is
-          // where it wants to land.
-          ('again', answering ? 12 : (quiet ? 1 : 2), [(0, 1.2, 0.7)]),
+          // The downbeat, and never when answering a lift. The lift lands
+          // half a beat before the bar line, so a chord on the downbeat
+          // arrives 0.38 of a beat after it: at this tune's 240 that is
+          // under a tenth of a second and the shape above never hangs at
+          // all. Giving it the downbeat treated it as a suspension held
+          // over the line, which it is not: it is one that has only just
+          // got there.
+          if (!answering) ('again', quiet ? 1 : 2, [(0, 1.2, 0.7)]),
           // Answering a chord that is simply still sounding is the figure's
           // own job on the record: Evans plays it into the gaps rather than
           // under the melody. Weighted to be heard without becoming the

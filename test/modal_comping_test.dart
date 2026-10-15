@@ -377,6 +377,29 @@ void main() {
       expect(played / total, greaterThan(0.8));
     });
 
+    test('the shape above is left to hang before the chord answers', () {
+      // What went wrong first time. The lift lands half a beat before the
+      // bar line, and the answer was weighted onto the downbeat, which is
+      // 0.38 of a beat later: at this tune's 240 that is under a tenth of
+      // a second, so the shape above never hung at all. The downbeat is
+      // where a suspension held over a bar line wants to land, and this
+      // is not one of those, it is one that has only just arrived.
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('Impressions', seed: seed);
+        for (final (i, bar) in bars.indexed) {
+          if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
+          if (i + 1 >= bars.length || bars[i + 1].isEmpty) continue;
+          // The next bar's beats start a bar after this one's.
+          final gap = 4 + bars[i + 1].first.beat - bar.last.beat;
+          expect(
+            gap,
+            greaterThanOrEqualTo(1.5),
+            reason: 'bar ${i + 1}, seed $seed answers after $gap beats',
+          );
+        }
+      }
+    });
+
     test('the hand still rests on the chord, never on the shape above', () {
       // The lift leaves the upper shape ringing, which is the point, but
       // it is still not somewhere to sit: every bar that is not the lift
