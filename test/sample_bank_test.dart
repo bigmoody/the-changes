@@ -103,14 +103,29 @@ void main() {
       expect(takes, hasLength(3));
     }
     expect(bank.ride.length, 2);
-    // The rim click must not jump out of the groove: the takes we keep are
-    // within a few dB of each other, not the library's full 14 dB spread.
-    expect(bank.crossStick.length, 1);
-    final peaks = [
-      for (final take in bank.crossStick.layers.single)
-        take.samples.map((s) => s.abs()).reduce(math.max),
-    ];
-    expect(peaks.reduce(math.max) / peaks.reduce(math.min), lessThan(1.6));
+    // Two cross-sticks, a click and a crack, because the same drum is a
+    // bossa clave and a samba and those are not the same stroke. A samba
+    // asks for `hard` and there used to be nothing to give it.
+    expect(bank.crossStick.length, 2);
+    // Inside a layer the takes are played round-robin, so they must be
+    // within a few dB of each other or a steady click jumps about. The
+    // first attempt at this used two layers 6 dB apart and did exactly
+    // that.
+    for (final layer in bank.crossStick.layers) {
+      final peaks = [
+        for (final take in layer)
+          take.samples.map((s) => s.abs()).reduce(math.max),
+      ];
+      expect(peaks.reduce(math.max) / peaks.reduce(math.min), lessThan(1.6));
+    }
+    // And between the layers, far apart, or there is no point having two.
+    final quiet = bank.crossStick.layers.first
+        .map((t) => t.samples.map((s) => s.abs()).reduce(math.max))
+        .reduce(math.max);
+    final loud = bank.crossStick.layers.last
+        .map((t) => t.samples.map((s) => s.abs()).reduce(math.max))
+        .reduce(math.max);
+    expect(loud / quiet, greaterThan(4));
     // Every drum's layers are levelled, so how hard a hit lands is the
     // part's decision and not the recording's.
     for (final drum in [

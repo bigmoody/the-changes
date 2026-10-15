@@ -338,3 +338,38 @@ if want("kickclose"):
     for out, s in decoded:
         write(out, s, 0.55 / peak)
     print(f"kick close: {len(decoded)} files, peak {peak:.4f}, gain {0.55 / peak:.2f}")
+
+# A quieter cross-stick, so the clave can be a click.
+#
+# There was one cross-stick sound in the kit, from layers 6 and 7 of the
+# library's sixteen, and it was doing four jobs: the bossa clave, the
+# brush bossa's, the calypso and the samba. A bossa clave is a cross-stick
+# and that part was right, but at that stroke weight it is a crack rather
+# than a click, and with one layer there was nothing softer to ask for.
+# The samba asks for `hard` and could not have it either.
+#
+# Layers 1 and 2, which are 19 dB under 6 and 7: a stick laid on the rim
+# rather than knocked against it. At the kit's own gain, so they sit where
+# the rest of the kit sits; the levelling in DrumSamples brings the layer
+# up to the loud one's peak afterwards, so what changes between the two is
+# the tone and not the level.
+#
+# Measured before choosing, because the two things wanted pull against
+# each other. The takes inside a layer are played round-robin, so they
+# have to be within a couple of dB of each other or a steady click jumps
+# about; the layers have to be far apart or there is no point having two.
+# Peaks across the quiet end, in dBFS:
+#
+#   vl1 −45.0   vl2 −43.7   vl3 −38.6   vl4 −32.4   vl5 −30.4   vl6 −25.9
+#
+# so vl1+vl2 are 1.3 dB apart and 19 under the loud pair, vl4+vl5 are 2 dB
+# apart but only 5 under it, and vl3+vl4 are 6 dB apart from each other,
+# which is the version of this that went in first and made a click that
+# alternated between two levels. vl1 and vl2 still have 31 dB over their
+# own noise floor, which survives being brought up.
+if want("crossstick"):
+    process("cross stick", [
+        (f"{RAW}/drums/oh_snare_crossstick_vl{level}.flac",
+         f"{OUT}/drums/cross_stick_{level}.wav", 0.4, 0.12)
+        for level in (1, 2)
+    ], gain=DRUM_GAIN)

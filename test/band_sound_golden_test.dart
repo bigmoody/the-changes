@@ -56,6 +56,14 @@ void main() {
     };
   }
 
+  // The bossa re-pinned when its clave stopped being the loudest thing in
+  // the kit. Three things in one: the cross-stick is a lighter recording,
+  // it is struck 4.4 dB softer, and the ride no longer jumps 2.6 dB above
+  // the hi-hat it is standing in for. Nothing else moves: the clave's
+  // level is the bossa pattern's, and the softer cross-stick is a layer
+  // chosen by how hard the stroke is, which only this feel strikes gently
+  // enough to reach.
+  //
   // The funk tune re-pinned a fifth time when its kick became the close
   // microphone's as well. The overheads' kick is 22 dB under the snare,
   // which is what a kick sounds like from across a room and cannot be the
@@ -190,10 +198,10 @@ void main() {
         ),
       ),
       {
-        'Chords': 7951234421867695077,
-        'Bass': -2635244460730262927,
-        'Drums': -6151015532253098802,
-        'Arpeggios': -1485049368801546167,
+        'Chords': -4241954030302562660,
+        'Bass': -4210759773282664676,
+        'Drums': -1594108293936643830,
+        'Arpeggios': 572209075231783294,
       },
     );
   });

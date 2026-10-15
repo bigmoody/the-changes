@@ -374,7 +374,13 @@ List<DrumHit> _bossaBrushBar(int bar, int beatsPerBar, math.Random random) {
       DrumHit(
         drum: Drum.crossStick,
         beat: beat,
-        velocity: 0.7 * _human(random),
+        // Down from 0.7, which made the clave the loudest thing in the
+        // kit: 2.7 dB over the eighths that are the pulse. Five strokes
+        // in two bars is the clave and is not too many, but five strokes
+        // on top of the groove rather than inside it is what busy sounds
+        // like. The cross-stick recording is the quiet end of the
+        // library's range and it was being brought right back up again.
+        velocity: 0.42 * _human(random),
       ),
     );
   }
@@ -415,7 +421,14 @@ List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
       DrumHit(
         drum: onRide ? Drum.ride : Drum.hiHatClosed,
         beat: beat,
-        velocity: (eighth.isEven ? 0.34 : 0.24) * _human(random),
+        // The ride is a louder recording than the closed hat, so the
+        // same velocity on it came out 2.6 dB up and the pulse jumped
+        // every time the drummer moved across. It is the same part
+        // either way and should be the same level.
+        velocity:
+            (eighth.isEven ? 0.34 : 0.24) *
+            (onRide ? 0.74 : 1) *
+            _human(random),
       ),
     );
   }
@@ -428,7 +441,13 @@ List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
       DrumHit(
         drum: Drum.crossStick,
         beat: beat,
-        velocity: 0.7 * _human(random),
+        // Down from 0.7, which made the clave the loudest thing in the
+        // kit: 2.7 dB over the eighths that are the pulse. Five strokes
+        // in two bars is the clave and is not too many, but five strokes
+        // on top of the groove rather than inside it is what busy sounds
+        // like. The cross-stick recording is the quiet end of the
+        // library's range and it was being brought right back up again.
+        velocity: 0.42 * _human(random),
       ),
     );
   }

@@ -328,9 +328,14 @@ class SampleBank {
   /// snare is what a jazz one is, so the groove picks.
   final DrumSamples snareTight;
 
-  /// Cross-stick (rim click) hits. The library records this from a tick to
-  /// a crack, 14 dB apart; the bossa clave wants the quiet end, so only two
-  /// neighbouring layers are kept and played round-robin.
+  /// Cross-stick hits: [click, crack].
+  ///
+  /// The library records this from a tick to a crack across sixteen
+  /// layers, 14 dB apart end to end. Two of them are kept at each end of
+  /// the useful range rather than one pair in the middle, because the
+  /// same drum is the bossa clave, the calypso and the samba, and those
+  /// are not the same stroke. A clave laid on the rim is a click; a samba
+  /// asks for `hard` and now has something to be given.
   final DrumSamples crossStick;
 
   /// Calypso percussion: [soft, hard] layers each.
@@ -446,10 +451,17 @@ class SampleBank {
               await wav('drums/snare_tight_$level.wav'),
           ],
       ]),
+      // Two layers, because the clave is a click and a samba's is a
+      // crack, and with one of them there was nothing to choose between.
       crossStick: DrumSamples.plain([
-        [
-          for (final layer in [6, 7]) await wav('drums/cross_stick_$layer.wav'),
-        ],
+        for (final layers in [
+          [1, 2],
+          [6, 7],
+        ])
+          [
+            for (final level in layers)
+              await wav('drums/cross_stick_$level.wav'),
+          ],
       ]),
       cowbell: await kit('cowbell'),
       tomHigh: await toms('tom_high'),
