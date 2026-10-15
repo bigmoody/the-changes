@@ -226,6 +226,66 @@ void main() {
       );
     });
 
+    test('all of it is short, because all of it was', () {
+      // A channel making percussion is a channel somebody wants back for
+      // a note, so the envelopes were snapped shut. The first version of
+      // this ran two to five times longer, with a ride of half a second,
+      // which is a wash: the one thing that hardware could not do.
+      const longest = {
+        'kick': 90,
+        'snare': 90,
+        'hat': 32,
+        'pedal': 28,
+        'ride': 160,
+        'stick': 22,
+      };
+      for (final era in ChipEra.values) {
+        final kit = ChipKit(rate, math.Random(7), era);
+        final lengths = {
+          'kick': kit.kick,
+          'snare': kit.snare,
+          'hat': kit.closedHat,
+          'pedal': kit.hiHatPedal,
+          'ride': kit.ride.first,
+          'stick': kit.crossStick,
+        };
+        for (final entry in lengths.entries) {
+          final ms = entry.value.length / (rate / 1000);
+          expect(
+            ms,
+            lessThanOrEqualTo(longest[entry.key]!.toDouble()),
+            reason: '${era.label} ${entry.key} runs ${ms.round()}ms',
+          );
+        }
+      }
+    });
+
+    test('and each one ends where it has stopped sounding', () {
+      // Cut while it is still going is a click. The ride used to end at
+      // 35 dB down, which is audible, so every hit had an edge on the
+      // back of it.
+      for (final era in ChipEra.values) {
+        final kit = ChipKit(rate, math.Random(7), era);
+        for (final (name, drum) in [
+          ('snare', kit.snare),
+          ('hat', kit.closedHat),
+          ('pedal', kit.hiHatPedal),
+          ('ride', kit.ride.first),
+          ('stick', kit.crossStick),
+        ]) {
+          final peak = drum.fold<double>(0, (p, s) => math.max(p, s.abs()));
+          final ending = drum
+              .skip(drum.length - 32)
+              .fold<double>(0, (p, s) => math.max(p, s.abs()));
+          expect(
+            ending,
+            lessThan(peak * 0.02),
+            reason: '${era.label} $name is still sounding at the end',
+          );
+        }
+      }
+    });
+
     test('a ride hit is not the same hit three times', () {
       final kit = ChipKit(rate, math.Random(7), ChipEra.eightBit);
       expect(kit.ride[0], isNot(kit.ride[1]));

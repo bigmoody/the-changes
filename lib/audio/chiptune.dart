@@ -179,14 +179,16 @@ Float32List _noise(
 /// instead, and it is why the kick on those records is a falling sound
 /// rather than a thump.
 Float32List chipKick(int sampleRate, {ChipEra era = ChipEra.eightBit}) {
-  final seconds = era == ChipEra.eightBit ? 0.1 : 0.14;
+  final seconds = era == ChipEra.eightBit ? 0.055 : 0.085;
   final count = (seconds * sampleRate).round();
   final out = Float32List(count);
   var phase = 0.0;
   for (var i = 0; i < count; i++) {
     final t = i / sampleRate;
-    // 150 Hz down to 40 over the length of it.
-    final hertz = 150 * math.exp(-t / 0.03) + 40;
+    // 150 Hz down to 40, and quickly: the drop is the sound, and dragged
+    // out over a tenth of a second it is a falling tone rather than a
+    // kick.
+    final hertz = 150 * math.exp(-t / 0.014) + 40;
     phase += 2 * math.pi * hertz / sampleRate;
     final envelope = math.exp(-t / (seconds / 3));
     // Squared off on the earlier machine, rounder on the later one.
@@ -199,52 +201,59 @@ Float32List chipKick(int sampleRate, {ChipEra era = ChipEra.eightBit}) {
 }
 
 /// The percussion, all of it out of the noise channel bar the kick.
+///
+/// Short. All of it. A channel making percussion is a channel somebody
+/// wants back for a note, so the envelopes on these machines were set to
+/// let go almost at once: a hi-hat is two hundredths of a second and a
+/// snare is six. The first version of this was two to five times longer
+/// than that, with a ride of half a second, which is a wash and not a
+/// tick, and a wash is the one thing that hardware could not do.
+///
+/// Each one runs for five times its own decay, which is where the sound
+/// has fallen 40 dB and is properly over. Cut shorter it stops while it
+/// is still sounding, which is a click; left longer it is silence taking
+/// up a channel.
 class ChipKit {
   ChipKit(int sampleRate, math.Random random, ChipEra era)
     : ride = [
         for (var i = 0; i < 3; i++)
-          _noise(
+          _hit(
             sampleRate,
             random,
-            seconds: era == ChipEra.eightBit ? 0.28 : 0.5,
-            decay: era == ChipEra.eightBit ? 0.07 : 0.13,
+            decay: era == ChipEra.eightBit ? 0.02 : 0.032,
             step: 2,
             amplitude: 0.5,
           ),
       ],
-      // Shorter and faster-clocked: the same sound at another setting,
-      // which is all the hardware could do and all it needed to.
-      closedHat = _noise(
+      // The same noise clocked faster, which is the only difference the
+      // hardware could make between a hi-hat and anything else.
+      closedHat = _hit(
         sampleRate,
         random,
-        seconds: 0.05,
-        decay: 0.012,
+        decay: era == ChipEra.eightBit ? 0.004 : 0.006,
         step: 1,
-        amplitude: 0.45,
-      ),
-      hiHatPedal = _noise(
-        sampleRate,
-        random,
-        seconds: 0.04,
-        decay: 0.009,
-        step: 1,
-        amplitude: 0.35,
-      ),
-      snare = _noise(
-        sampleRate,
-        random,
-        seconds: era == ChipEra.eightBit ? 0.12 : 0.18,
-        decay: era == ChipEra.eightBit ? 0.035 : 0.055,
-        step: 3,
-        amplitude: 0.8,
-      ),
-      crossStick = _noise(
-        sampleRate,
-        random,
-        seconds: 0.03,
-        decay: 0.006,
-        step: 4,
         amplitude: 0.5,
+      ),
+      hiHatPedal = _hit(
+        sampleRate,
+        random,
+        decay: era == ChipEra.eightBit ? 0.0035 : 0.005,
+        step: 1,
+        amplitude: 0.38,
+      ),
+      snare = _hit(
+        sampleRate,
+        random,
+        decay: era == ChipEra.eightBit ? 0.012 : 0.018,
+        step: 3,
+        amplitude: 0.85,
+      ),
+      crossStick = _hit(
+        sampleRate,
+        random,
+        decay: era == ChipEra.eightBit ? 0.003 : 0.004,
+        step: 4,
+        amplitude: 0.55,
       ),
       kick = chipKick(sampleRate, era: era);
 
@@ -255,3 +264,19 @@ class ChipKit {
   final Float32List crossStick;
   final Float32List kick;
 }
+
+/// One noise hit, five decays long so it ends where it has stopped.
+Float32List _hit(
+  int sampleRate,
+  math.Random random, {
+  required double decay,
+  required int step,
+  double amplitude = 1,
+}) => _noise(
+  sampleRate,
+  random,
+  seconds: decay * 5,
+  decay: decay,
+  step: step,
+  amplitude: amplitude,
+);

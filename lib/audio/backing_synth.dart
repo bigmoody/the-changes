@@ -1341,9 +1341,11 @@ _Parts _renderParts(
     );
   }
   if (chip != null) {
-    if (chip == ChipEra.sixteenBit) {
-      addRoomReverb(drums.buffer, 0, sampleRate, wet: 0.12);
-    }
+    // No room on the kit, either era. A console's percussion is its noise
+    // channel with the envelope snapped shut, and the point of it is that
+    // it is tight: reverb on it is the one thing that makes it sound like
+    // neither machine. The chords get the later era's reverb because that
+    // is where its reverb went.
   } else if (bank == null) {
     addRoomReverb(drums.buffer, 0, sampleRate, wet: 0.25);
     addRoomReverb(bass.buffer, 0, sampleRate, wet: 0.08);
