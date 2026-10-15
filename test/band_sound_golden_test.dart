@@ -56,6 +56,13 @@ void main() {
     };
   }
 
+  // All four re-pinned when the compers were given the form to play to on
+  // a chart that does not change chord. Every one of them here does change
+  // chord, so what reaches them is the second half of it: five beats for a
+  // held chord's figure to begin on where there were two, and a weighting
+  // against landing twice in the same place. Rhythm changes moves with the
+  // rest because the guitarist comps through the same code.
+  //
   // The three with a piano on them re-pinned when it was given its tail
   // back: the recordings were all cut at 3 seconds and are now cut where
   // each register has actually died, the pedal is let up over 0.3 of a
@@ -81,9 +88,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -2175515544437863851,
-        'Bass': -1133154908398613124,
-        'Drums': 8329262449647208300,
+        'Chords': 2974737637698730862,
+        'Bass': -1630472235447016372,
+        'Drums': -1206636266075876745,
       },
     );
   });
@@ -110,10 +117,10 @@ void main() {
         ),
       ),
       {
-        'Chords': 3637804339393996240,
-        'Bass': -3609468427492631304,
-        'Drums': 366290961986166608,
-        'Arpeggios': -2306486937325772848,
+        'Chords': -4416572867461313775,
+        'Bass': -6444537040212494243,
+        'Drums': -8085259844125761161,
+        'Arpeggios': 6703595369907602220,
       },
     );
   });
@@ -139,10 +146,10 @@ void main() {
         ),
       ),
       {
-        'Chords': 5647163268689021234,
-        'Bass': 5122604412584054575,
-        'Drums': -3230471491011277960,
-        'Arpeggios': -6970577978376720112,
+        'Chords': -965549795767178350,
+        'Bass': -3193453181490837489,
+        'Drums': 7044546145538430278,
+        'Arpeggios': -8480268107246482901,
       },
     );
   });
@@ -167,9 +174,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -1663792146688055098,
-        'Bass': 5035989795993764222,
-        'Drums': 7870876570978042504,
+        'Chords': -4467257507072686272,
+        'Bass': 3722905577628945921,
+        'Drums': -4038366946253196443,
       },
     );
   });

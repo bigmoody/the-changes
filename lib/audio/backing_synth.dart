@@ -829,6 +829,10 @@ _Parts _renderParts(
               tuneBeat ~/ beatsPerBar -
               loop.startBeat ~/ beatsPerBar +
               chorus * loopBars,
+          startsSection: tune.sections.containsKey(
+            slot.startBeat ~/ beatsPerBar,
+          ),
+          intoSection: tune.sections.containsKey(slot.endBeat ~/ beatsPerBar),
         )) {
           if (!sounds(LayOut.chords, chorusBeat + slotStart + hit.beat)) {
             continue;
@@ -902,6 +906,10 @@ _Parts _renderParts(
           swing: swing,
           beatInBar: (math.max(slot.startBeat, loop.startBeat) % beatsPerBar)
               .toDouble(),
+          startsSection: tune.sections.containsKey(
+            slot.startBeat ~/ beatsPerBar,
+          ),
+          intoSection: tune.sections.containsKey(slot.endBeat ~/ beatsPerBar),
         )) {
           if (!sounds(LayOut.chords, chorusBeat + slotStart + hit.beat)) {
             continue;

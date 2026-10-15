@@ -57,12 +57,23 @@ class Comper {
   bool _started = false;
   String? _lastPattern;
 
+  /// The beat the last figure arrived on, so the next one can arrive
+  /// somewhere else.
+  double? _lastEntry;
+
   /// Comps one chord lasting [beats], starting at beat 0 of its own time.
   /// [next] is the chord it leads to, which decides whether a dominant is
   /// played plain or altered.
   ///
   /// With [held], each chord is simply struck and held for its whole length,
   /// re-struck gently on each new bar if it lasts that long.
+  ///
+  /// [startsSection] and [intoSection] are where the form is, and on a
+  /// modal tune they are the only thing there is to play to. Sixteen bars
+  /// of Dm7 gave the comper nothing to react to, so it reacted to nothing
+  /// and poked at the same off-beat bar after bar. The top of a section is
+  /// a place a pianist lands on even when the harmony has not moved, and
+  /// the bar before one is a place they lead through.
   List<CompHit> comp(
     Chord chord,
     int beats,
@@ -73,9 +84,15 @@ class Comper {
     double beatInBar = 0,
     CompFigure? figure,
     int beatsPerBar = 4,
+    bool startsSection = false,
+    bool intoSection = false,
     required double swing,
   }) {
-    final isNew = chord.display != _sounding;
+    // A section beginning counts as new even when the chord has not
+    // changed. It is the one thing that makes a vamp playable: the second
+    // A of So What is somewhere a pianist arrives rather than somewhere
+    // they happen to still be.
+    final isNew = chord.display != _sounding || (startsSection && _started);
     _held = isNew ? 0 : _held + 1;
     _sounding = chord.display;
 
@@ -91,6 +108,7 @@ class Comper {
             figure: figure,
             beatInBar: beatInBar,
             beatsPerBar: beatsPerBar,
+            intoSection: intoSection,
           );
     if (pattern.isEmpty) return const [];
     final notes = _pickVoicing(chord, next, reuse: !isNew);
@@ -162,6 +180,7 @@ class Comper {
     CompFigure? figure,
     double beatInBar = 0,
     int beatsPerBar = 4,
+    bool intoSection = false,
   }) {
     // The swung "and" of a beat lands late; in straight feels it's halfway,
     // and how late is the band's business rather than this one's.
@@ -178,6 +197,14 @@ class Comper {
     final canPush = _started;
     // Holding the same chord for a third bar or more: lean towards silence.
     final quiet = _held >= 2;
+    // And the longer it sits, the further towards silence. The old
+    // weighting moved once, at the third bar, and then never again, so the
+    // sixteenth bar of a vamp was as busy as the third and a modal tune
+    // came out as one poked off-beat a bar for a page. Rising instead
+    // gives each section an arc: a pianist states the chord, then gets out
+    // of the way, and the top of the next section brings them back in.
+    // Capped, because a vamp is sparse and not abandoned.
+    final settled = math.min(_held, 5);
 
     // Somebody has asked for one figure and no other, so it is played in
     // every bar, new chord or not. That is not what a band does and is
@@ -205,12 +232,30 @@ class Comper {
           // taught and what is played cannot drift apart.
           for (final (figure, weight) in bandFigures(canPush: canPush))
             (figure.name, weight, figure.strikes(and)),
+        ] else if (intoSection) ...[
+          // The bar before a new section: the one place in sixteen bars of
+          // one chord where something is about to happen, so it is played
+          // through rather than rested on however long the chord has sat.
+          // Not without fail, because a turn figure on every eighth bar
+          // exactly is a tell of its own.
+          ('turn', 7, [(1 + and, 0.6, 0.8), (3, 1.1, 0.9)]),
+          ('turn up', 5, [(2, 0.7, 0.75), (3 + and, 0.9, 0.9)]),
+          ('rest', 2, const []),
         ] else ...[
-          // Still the same chord: mostly leave it alone.
-          ('rest', quiet ? 8 : 5, const []),
-          ('remind', 4, [(1 + and, 1.1, 0.75)]),
+          // Still the same chord: mostly leave it alone, and more so the
+          // longer it has been sounding.
+          ('rest', 5 + settled * 3, const []),
+          // Five ways in rather than one. Every one of these used to begin
+          // on the "and" of 2, so whichever was picked you heard a chord
+          // in the same place, and a vamp ticked. The weighting that keeps
+          // a figure from repeating compares names, and these had
+          // different names and the same landing, so it never noticed.
+          ('remind', _held.isOdd ? 2 : 4, [(1 + and, 1.1, 0.75)]),
           ('lift', 3, [(3 + and, 0.9, 0.8)]),
-          ('echo', 2, [(1 + and, 0.7, 0.75), (3, 0.6, 0.65)]),
+          ('inside', 3, [(2 + and, 1.0, 0.8)]),
+          ('on four', 2, [(3, 0.9, 0.75)]),
+          ('echo', 3, [(1 + and, 0.7, 0.75), (3, 0.6, 0.65)]),
+          ('answer', 3, [(2, 0.5, 0.7), (3 + and, 0.9, 0.8)]),
           ('again', quiet ? 1 : 2, [(0, 1.2, 0.7)]),
         ],
       ] else if (beats >= 2) ...[
@@ -230,10 +275,18 @@ class Comper {
     ];
 
     // Weighted pick, with last time's rhythm made less likely so the same
-    // figure doesn't repeat back to back.
+    // figure doesn't repeat back to back, and with anything that lands
+    // where the last one landed made less likely too.
+    //
+    // The second half of that is what a vamp needs. What an ear picks out
+    // over sixteen bars of one chord is where the chord keeps arriving,
+    // not which entry in a table it came from, and several of these begin
+    // on the same beat under different names.
     final weights = [
-      for (final (name, weight, _) in patterns)
-        (name == _lastPattern ? weight * 0.3 : weight.toDouble()),
+      for (final (name, weight, strikes) in patterns)
+        weight *
+            (name == _lastPattern ? 0.3 : 1.0) *
+            (strikes.isNotEmpty && strikes.first.$1 == _lastEntry ? 0.3 : 1.0),
     ];
     var roll = random.nextDouble() * weights.fold(0.0, (a, b) => a + b);
     var chosen = 0;
@@ -242,7 +295,12 @@ class Comper {
       if (roll <= 0) break;
     }
     _lastPattern = patterns[chosen].$1;
-    return patterns[chosen].$3;
+    final strikes = patterns[chosen].$3;
+    // A rest is not a landing, so it does not clear where the last one
+    // was: the thing to avoid is two bars running that arrive in the same
+    // place, whether or not there was a bar off between them.
+    if (strikes.isNotEmpty) _lastEntry = strikes.first.$1;
+    return strikes;
   }
 
   /// [figure] laid over the bars a chord covers, cut to that chord.

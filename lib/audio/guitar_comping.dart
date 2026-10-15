@@ -142,6 +142,8 @@ class GuitarComper {
     int tempo = 120,
     CompFigure? figure,
     int beatsPerBar = 4,
+    bool startsSection = false,
+    bool intoSection = false,
     required double swing,
   }) {
     if (style == PianoStyle.swing) {
@@ -155,6 +157,8 @@ class GuitarComper {
           figure: figure,
           beatInBar: beatInBar,
           beatsPerBar: beatsPerBar,
+          startsSection: startsSection,
+          intoSection: intoSection,
           swing: swing,
         ))
           (
