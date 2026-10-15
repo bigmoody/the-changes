@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import '../music/chart_exercises.dart' show ChartExercise;
 import 'chord_colours.dart';
 import 'key_colours.dart';
 
@@ -204,6 +205,7 @@ class AppSettings extends ChangeNotifier {
     this._feelTheBeat,
     this._markTheBar,
     this._drumLevels,
+    this._exerciseLevels,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -226,7 +228,8 @@ class AppSettings extends ChangeNotifier {
     this._feelTheBeat = FeelTheBeat.off,
     this._markTheBar = MarkTheBar.filled,
     this._drumLevels = const DrumLevels(),
-  ]) : _storage = null,
+  ]) : _exerciseLevels = const {},
+       _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
        _metronomeTempo = 120,
@@ -237,6 +240,7 @@ class AppSettings extends ChangeNotifier {
        _fadeChart = FadeChart.never,
        _takesWithBand = true;
 
+  static const _exerciseLevelsKey = 'exerciseLevels';
   static const _instrumentKey = 'chartInstrument';
   static const _mixKey = 'mixWithOthers';
   static const _takesBandKey = 'takesWithBand';
@@ -294,6 +298,7 @@ class AppSettings extends ChangeNotifier {
     var feelTheBeat = FeelTheBeat.off;
     var markTheBar = MarkTheBar.filled;
     var drumLevels = const DrumLevels();
+    var exerciseLevels = const <String, ChartExercise>{};
     var fadeChart = FadeChart.never;
     try {
       final savedAid = await storage.getString(_chordAidKey);
@@ -311,6 +316,19 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedMark,
         orElse: () => MarkTheBar.filled,
       );
+      final savedExercises = await storage.getString(_exerciseLevelsKey);
+      if (savedExercises != null) {
+        final read = jsonDecode(savedExercises) as Map<String, Object?>;
+        exerciseLevels = {
+          for (final entry in read.entries)
+            // Stored by position, so a level saved by a version that had
+            // more exercises than this one does is ignored rather than
+            // crashing somebody's settings.
+            if (entry.value case final int level)
+              if (level >= 0 && level < ChartExercise.values.length)
+                entry.key: ChartExercise.values[level],
+        };
+      }
       final savedLevels = await storage.getString(_drumLevelsKey);
       if (savedLevels != null) {
         drumLevels = DrumLevels.fromJson(
@@ -430,6 +448,7 @@ class AppSettings extends ChangeNotifier {
       feelTheBeat,
       markTheBar,
       drumLevels,
+      exerciseLevels,
     );
   }
 
@@ -869,6 +888,37 @@ class AppSettings extends ChangeNotifier {
   /// cymbals at the level the kit was recorded at.
   DrumLevels get drumLevels => _drumLevels;
   DrumLevels _drumLevels;
+
+  /// How far through the exercises somebody has got, by tune.
+  ///
+  /// Kept by title because that is what a tune has whoever made it: one
+  /// out of the book, one written in the app, one imported this morning.
+  /// A tune nobody has started is not in here at all, which is how the
+  /// screen knows to open on the first one.
+  Map<String, ChartExercise> _exerciseLevels;
+  Map<String, ChartExercise> get exerciseLevels => _exerciseLevels;
+
+  /// The exercise [tune] is on, or the first one if it has not been
+  /// started.
+  ChartExercise exerciseFor(String tune) =>
+      _exerciseLevels[tune] ?? ChartExercise.values.first;
+
+  Future<void> setExerciseFor(String tune, ChartExercise which) async {
+    if (_exerciseLevels[tune] == which) return;
+    _exerciseLevels = {..._exerciseLevels, tune: which};
+    notifyListeners();
+    try {
+      await _storage?.setString(
+        _exerciseLevelsKey,
+        jsonEncode({
+          for (final entry in _exerciseLevels.entries)
+            entry.key: entry.value.index,
+        }),
+      );
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
 
   Future<void> setDrumLevel(Drum drum, double level) async {
     _drumLevels = _drumLevels.set(drum, level);

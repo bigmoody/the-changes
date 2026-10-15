@@ -25,6 +25,7 @@ import 'loop_bar.dart';
 import 'now_playing.dart';
 import 'play_shortcuts.dart';
 import 'practice_sheets.dart';
+import 'chart_exercises_screen.dart';
 import 'progression_editor_screen.dart';
 import 'setlists_screen.dart' show showAddToSetlist;
 import 'share_chart.dart';
@@ -282,6 +283,18 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   ),
                 ),
                 onRecord: () => showPracticeRecord(context, _controller),
+                // The chart as the player reads it, so the exercise is in
+                // their own key, and by title so a tune they wrote or
+                // imported keeps its own level like any other.
+                onExercises: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ChartExercisesScreen(
+                      tune: _controller.chart,
+                      player: _controller.player,
+                      settings: _controller.settings,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -533,6 +546,7 @@ class _MoreMenu extends StatelessWidget {
     required this.onShare,
     required this.onStage,
     required this.onRecord,
+    required this.onExercises,
   });
 
   final LibraryStore? library;
@@ -545,6 +559,9 @@ class _MoreMenu extends StatelessWidget {
 
   /// Opens the practice record for this tune.
   final VoidCallback onRecord;
+
+  /// Opens the exercises generated from this tune's changes.
+  final VoidCallback onExercises;
 
   @override
   Widget build(BuildContext context) {
@@ -571,6 +588,8 @@ class _MoreMenu extends StatelessWidget {
               showAddToSetlist(context, library!, tune, title);
             case 'record':
               onRecord();
+            case 'exercises':
+              onExercises();
             case 'share':
               onShare();
             case 'stage':
@@ -578,6 +597,14 @@ class _MoreMenu extends StatelessWidget {
           }
         },
         itemBuilder: (context) => [
+          const PopupMenuItem(
+            value: 'exercises',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.school_outlined),
+              title: Text('Exercises'),
+            ),
+          ),
           const PopupMenuItem(
             value: 'stage',
             child: ListTile(
