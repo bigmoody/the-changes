@@ -1265,12 +1265,17 @@ _Parts _renderParts(
     // drums stopped dead at the end of a chorus. The mix has a second of
     // room past the batch and the tail is carried into the next one, so
     // the ring crosses the loop rather than being cut at it.
-    addRoomReverb(drums.buffer, 0, sampleRate, wet: _drumRoom);
+    addRoomReverb(drums.buffer, 0, sampleRate, wet: roomFor(tune.style.drums));
     // The reference the whole band's gain is worked out from has to be the
     // same sound, or the peak it reports is of a kit that is not the one
     // being played.
     if (drumsAsRecorded != null) {
-      addRoomReverb(drumsAsRecorded.buffer, 0, sampleRate, wet: _drumRoom);
+      addRoomReverb(
+        drumsAsRecorded.buffer,
+        0,
+        sampleRate,
+        wet: roomFor(tune.style.drums),
+      );
     }
   }
 
@@ -1372,6 +1377,18 @@ const _swirlOverlap = 1.2;
 /// samples already have their own, and a drum's transient makes added
 /// reverb obvious long before a sustained instrument's does.
 const _drumRoom = 0.09;
+
+/// How much room the kit gets for [feel].
+///
+/// A funk kit is close-miked and dry, and that is not a mixing fashion,
+/// it is what the music is: the groove is in the spaces between the kick
+/// and the snare, and a room fills them in. The same amount that joins a
+/// jazz kit to the band turns a funk backbeat into a thud.
+double roomFor(Feel feel) => switch (feel) {
+  Feel.funk => 0,
+  // The rest are played in a room and recorded in one.
+  _ => _drumRoom,
+};
 
 const _drumLevel = 1.7;
 

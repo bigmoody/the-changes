@@ -485,20 +485,34 @@ List<DrumHit> _funkBar(int bar, int beatsPerBar, math.Random random) {
     );
   }
   // Backbeat.
+  //
+  // Down from 0.95, which was a number read as "a funk backbeat is struck
+  // as hard as anything in the kit" without looking at what it was being
+  // multiplied by. The snare is the loudest recording in the bank, 22 dB
+  // over the kick, because the kit is balanced as an overhead hears it:
+  // the snare cracks and the kick is across the room. At 0.95 the
+  // backbeat came out 8 dB over the hats and 23 over the kick, and a
+  // funk groove with an inaudible kick is not a funk groove.
+  //
+  // Still hard, so it is the hard-struck recording and keeps its crack.
+  // Only the level of it has come down.
   for (final beat in _backbeats(beatsPerBar)) {
     hits.add(
       DrumHit(
         drum: Drum.snare,
         beat: beat.toDouble(),
-        velocity: 0.95 * _human(random),
+        velocity: 0.5 * _human(random),
         hard: true,
       ),
     );
   }
-  // Ghost snare between the backbeats, sometimes.
+  // Ghost snare between the backbeats, sometimes. Scaled with the
+  // backbeat: at a quarter against a backbeat of a half it would be
+  // louder than the thing it is a ghost of, because it is not struck
+  // hard and so is lifted to the loud layer's level by the levelling.
   if (random.nextDouble() < 0.4) {
     hits.add(
-      DrumHit(drum: Drum.snare, beat: 2.5, velocity: 0.25 * _human(random)),
+      DrumHit(drum: Drum.snare, beat: 2.5, velocity: 0.13 * _human(random)),
     );
   }
   for (final beat in _funkKicks[random.nextInt(_funkKicks.length)]) {

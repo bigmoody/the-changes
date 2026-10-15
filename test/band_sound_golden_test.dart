@@ -56,6 +56,13 @@ void main() {
     };
   }
 
+  // The funk tune re-pinned on its own when its kit lost the room and its
+  // backbeat came down 5.5 dB. A funk kit is close-miked and dry, and the
+  // backbeat was struck at 0.95 against the loudest recording in the
+  // bank, which put it 8 dB over the hats. No other feel is touched: the
+  // room is now chosen by the groove and the velocity is in the funk
+  // pattern alone.
+  //
   // The bossa re-pinned on its own when a chorus's last bar started
   // counting as the bar before a section: the bar after it is the first
   // bar, which is where a section begins, so the end of a chorus now
@@ -192,9 +199,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 2800531173029669864,
-        'Bass': 8690478838482417250,
-        'Drums': 2669640246253844395,
+        'Chords': -6625696067589372404,
+        'Bass': 2911153695381185277,
+        'Drums': -8351656824936825884,
       },
     );
   });
