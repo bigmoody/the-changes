@@ -491,6 +491,32 @@ void showMixer(BuildContext context, PracticeController controller) {
                   ],
                 ),
               ),
+            if (controller.arpeggios)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text('Up To', style: theme.textTheme.titleSmall),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SegmentedButton<ArpeggioReach>(
+                        key: const ValueKey('arpeggio-reach'),
+                        showSelectedIcon: false,
+                        segments: [
+                          for (final reach in ArpeggioReach.values)
+                            ButtonSegment(
+                              value: reach,
+                              label: Text(reach.label),
+                            ),
+                        ],
+                        selected: {controller.settings.arpeggioReach},
+                        onSelectionChanged: (value) =>
+                            controller.setArpeggioReach(value.first),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (controller.recordingStore != null && controller.ref != null)
               ListTile(
                 key: const ValueKey('import-recording'),

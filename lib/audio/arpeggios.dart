@@ -11,6 +11,7 @@
 // place on the keyboard instead of leaping about.
 
 import '../music/chord.dart';
+import '../music/enclosures.dart' show scaleFor;
 import '../music/swing.dart';
 
 typedef ArpeggioNote = ({
@@ -102,6 +103,78 @@ enum ArpeggioRate {
   bool get leansSixteenths => this == sixteenths;
 }
 
+/// How far up the chord to go.
+enum ArpeggioReach {
+  /// The chord in its plain form: 1 3 5 7, and the octave on top. What
+  /// this was for a long time, and what you learn the shape of a chart
+  /// from, because every note of it is unarguably the chord.
+  plain('Plain'),
+
+  /// Up to the 9th, which is the extension nearly every chord will take
+  /// and the one a player reaches for first.
+  ninth('9th'),
+
+  /// Up to the 13th: 1 3 5 7 9 11 13, as the chord's own scale spells
+  /// them. Seven rungs, so the climb takes a bar of eighths on its own
+  /// and the way back down takes the next one.
+  thirteenth('13th');
+
+  const ArpeggioReach(this.label);
+
+  final String label;
+}
+
+/// The rungs of [chord]'s arpeggio, in semitones above its root.
+///
+/// The extensions are the 9th, 11th and 13th of the chord's own scale,
+/// which is what gets the alterations right without a table: a ♭9 where
+/// the scale has one, a ♯11 where the chord is Lydian, a ♭13 on an
+/// altered dominant.
+///
+/// The 11th is left out where it would clash. A natural 11th is a
+/// semitone above a major 3rd, which is the avoid note of the whole
+/// system: on a major or a dominant chord it is either raised to a ♯11 or
+/// it is not played, and a scale that has a ♯11 in it hands one over here
+/// already. On a minor chord there is no major 3rd to clash with and the
+/// 11th is one of the better sounds in the music, so it stays.
+List<int> arpeggioRungsOf(Chord chord, ArpeggioReach reach) {
+  final plain = chord.withoutExtensions;
+  final basic = <int>{
+    for (final interval in plain.quality.intervals) interval % 12,
+  }.toList()..sort();
+  if (reach == ArpeggioReach.plain) return basic;
+
+  final spelled = scaleFor(chord);
+  final scale = <int>{
+    for (final note in spelled)
+      if (parseNoteName(note) case final s?)
+        (pitchClassOf(s) - chord.root) % 12,
+  }.toList()..sort();
+  if (scale.length < 7) {
+    // A chord the book has no mode for: take whatever extensions it is
+    // written with and nothing invented. Still only as far as asked,
+    // since a C13 arpeggiated to the 9th should stop at the 9th.
+    final ceiling = reach == ArpeggioReach.ninth ? 15 : 21;
+    return [
+      ...basic,
+      for (final interval in chord.quality.intervals)
+        if (interval > 11 && interval <= ceiling) interval,
+    ]..sort();
+  }
+
+  final hasMajorThird = chord.quality.intervals.any((i) => i % 12 == 4);
+  final eleventh = scale[3];
+  return [
+    ...basic,
+    scale[1] + 12,
+    if (reach == ArpeggioReach.thirteenth) ...[
+      // The avoid note, and only it: a ♯11 is scale[3] too and is fine.
+      if (!(hasMajorThird && eleventh == 5)) eleventh + 12,
+      scale[5] + 12,
+    ],
+  ];
+}
+
 /// above the bass, in the middle of the piano.
 const arpeggioLowestStart = 55;
 const arpeggioHighestStart = 67;
@@ -120,6 +193,7 @@ const arpeggioHighestStart = 67;
   required double swing,
   ArpeggioStart from = ArpeggioStart.root,
   ArpeggioRate rate = ArpeggioRate.eighths,
+  ArpeggioReach reach = ArpeggioReach.plain,
   int? startNote,
 }) {
   final notes = <ArpeggioNote>[];
@@ -127,14 +201,14 @@ const arpeggioHighestStart = 67;
   var start = 0;
   for (var chorus = 0; chorus < choruses; chorus++) {
     for (final (chord, beats) in chords) {
-      final plain = chord.withoutExtensions;
-      final intervals = <int>{
-        for (final interval in plain.quality.intervals) interval % 12,
-      }.toList()..sort();
-      final degree = from.index % intervals.length;
+      final rungs = arpeggioRungsOf(chord, reach);
+      // Inversions are of the chord and not of its extensions: starting
+      // an arpeggio on the 11th is not an inversion of anything.
+      final basic = chord.withoutExtensions.quality.intervals.length;
+      final degree = from.index % (basic < rungs.length ? basic : rungs.length);
 
       // The starting note nearest the last one, kept in range.
-      final startClass = (plain.root + intervals[degree]) % 12;
+      final startClass = (chord.root + rungs[degree]) % 12;
       var first = previousStart + ((startClass - previousStart + 6) % 12) - 6;
       while (first < arpeggioLowestStart) {
         first += 12;
@@ -144,14 +218,16 @@ const arpeggioHighestStart = 67;
       }
       previousStart = first;
 
-      // Up through the chord from there, to the same note an octave up.
+      // Up through the chord from there: the rungs above the one it
+      // started on, then the ones below it an octave higher. Plain, the
+      // climb is closed off with the starting note an octave up, which is
+      // the shape everybody practises. With extensions the top rung is
+      // already above that octave, so there is nothing to close.
       final up = [
-        for (var i = 0; i < intervals.length; i++)
-          first +
-              intervals[(degree + i) % intervals.length] +
-              (degree + i >= intervals.length ? 12 : 0) -
-              intervals[degree],
-        first + 12,
+        for (var i = degree; i < rungs.length; i++)
+          first + rungs[i] - rungs[degree],
+        for (var i = 0; i < degree; i++) first + rungs[i] + 12 - rungs[degree],
+        if (reach == ArpeggioReach.plain) first + 12,
       ];
       // Then back down (without repeating the top).
       final cycle = [...up, ...up.reversed.skip(1).take(up.length - 2)];

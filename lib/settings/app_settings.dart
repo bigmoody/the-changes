@@ -207,6 +207,7 @@ class AppSettings extends ChangeNotifier {
     this._drumLevels,
     this._exerciseLevels,
     this._arpeggioRate,
+    this._arpeggioReach,
   );
 
   /// Settings that aren't saved anywhere, for tests.
@@ -231,6 +232,7 @@ class AppSettings extends ChangeNotifier {
     this._drumLevels = const DrumLevels(),
   ]) : _exerciseLevels = const {},
        _arpeggioRate = ArpeggioRate.eighths,
+       _arpeggioReach = ArpeggioReach.plain,
        _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
@@ -243,6 +245,7 @@ class AppSettings extends ChangeNotifier {
        _takesWithBand = true;
 
   static const _arpeggioRateKey = 'arpeggioRate';
+  static const _arpeggioReachKey = 'arpeggioReach';
   static const _exerciseLevelsKey = 'exerciseLevels';
   static const _instrumentKey = 'chartInstrument';
   static const _mixKey = 'mixWithOthers';
@@ -284,6 +287,7 @@ class AppSettings extends ChangeNotifier {
     var bassSound = BassSound.upright;
     var drumSound = DrumSound.kit;
     var arpeggioRate = ArpeggioRate.eighths;
+    var arpeggioReach = ArpeggioReach.plain;
     var chordColours = const ChordColours();
     var colourChords = true;
     var splitEnharmonics = false;
@@ -324,6 +328,11 @@ class AppSettings extends ChangeNotifier {
       arpeggioRate = ArpeggioRate.values.firstWhere(
         (value) => value.name == savedRate,
         orElse: () => ArpeggioRate.eighths,
+      );
+      final savedReach = await storage.getString(_arpeggioReachKey);
+      arpeggioReach = ArpeggioReach.values.firstWhere(
+        (value) => value.name == savedReach,
+        orElse: () => ArpeggioReach.plain,
       );
       final savedExercises = await storage.getString(_exerciseLevelsKey);
       if (savedExercises != null) {
@@ -459,6 +468,7 @@ class AppSettings extends ChangeNotifier {
       drumLevels,
       exerciseLevels,
       arpeggioRate,
+      arpeggioReach,
     );
   }
 
@@ -915,6 +925,21 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_arpeggioRateKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// How far up the chord the arpeggio goes.
+  ArpeggioReach get arpeggioReach => _arpeggioReach;
+  ArpeggioReach _arpeggioReach;
+
+  Future<void> setArpeggioReach(ArpeggioReach value) async {
+    if (value == _arpeggioReach) return;
+    _arpeggioReach = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_arpeggioReachKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }

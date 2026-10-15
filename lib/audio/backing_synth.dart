@@ -122,6 +122,7 @@ class BackingRequest {
     this.arpeggioSound = Comping.piano,
     this.arpeggioStart = ArpeggioStart.root,
     this.arpeggioRate = ArpeggioRate.eighths,
+    this.arpeggioReach = ArpeggioReach.plain,
     this.arrangement = Arrangement.keepGoing,
     this.imported,
     this.drumLevels = const DrumLevels(),
@@ -174,6 +175,9 @@ class BackingRequest {
   /// How fast the arpeggio goes by.
   final ArpeggioRate arpeggioRate;
 
+  /// How far up the chord it goes.
+  final ArpeggioReach arpeggioReach;
+
   /// How the band plays the form: how many choruses, and what happens on
   /// each of them.
   final Arrangement arrangement;
@@ -206,6 +210,7 @@ class BackingRequest {
     arpeggioSound: arpeggioSound,
     arpeggioStart: arpeggioStart,
     arpeggioRate: arpeggioRate,
+    arpeggioReach: arpeggioReach,
     arrangement: arrangement,
     imported: imported,
     drumLevels: drumLevels,
@@ -966,6 +971,7 @@ _Parts _renderParts(
       swing: tune.style.drums.swingsSixteenths ? straight : lineSwing(swing),
       from: request.arpeggioStart,
       rate: request.arpeggioRate,
+      reach: request.arpeggioReach,
       startNote: state.arpeggioRoot,
     );
     arpeggioRoot = line.lastStart;
