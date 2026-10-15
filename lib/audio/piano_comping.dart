@@ -70,25 +70,35 @@ class Comper {
   /// somewhere else.
   double? _lastEntry;
 
-  /// The slide, as the tune plays it: the shape above on [from], and the
-  /// shape it falls to two and a half beats later, on the "and" after the
-  /// second beat following it.
+  /// The slide, as the tune plays it: the shape above on the second beat,
+  /// falling to the shape on the chord two and a half beats later, on the
+  /// "and" of the fourth.
   ///
   /// A beat apart was too quick. What the gap is for is the suspension:
   /// the upper shape wants time to sit there and be heard wanting to
   /// fall, and landing it a beat later is a grace note rather than an
-  /// answer. It holds across until the landing, so the two overlap the
-  /// way a pedalled piano does rather than the first being lifted off.
-  static _Pattern _slide(double and, {double from = 0}) => [
+  /// answer.
+  ///
+  /// Beat two and nowhere else, and the gap decides that as much as taste
+  /// does. The shape above never belongs on a downbeat: it is the leaning
+  /// half of the figure and a bar does not open on the lean. That rules
+  /// out beat one. Starting it any later than beat two puts the landing
+  /// outside the bar, and starting it on an off-beat puts the landing on
+  /// a subdivision nobody plays, because the gap is measured from
+  /// wherever it begins. So there is one placement left, which is the one
+  /// the tune uses.
+  static _Pattern _slide(double and) => [
     // Held across the gap and let go as the landing arrives, not through
     // it: two five-note stacks a tone apart sounding together is ten
     // notes, and that is not a suspension resolving, it is a smudge.
-    (from, 2.2, 0.8),
-    (from + 2 + and, 1.2, 0.9),
+    (1, 2.2, 0.8),
+    // The landing rings on over the bar line, which is where a resolution
+    // wants to go.
+    (3 + and, 1.2, 0.9),
   ];
 
   /// The figures that are a slide, and so play two shapes rather than one.
-  static const _slides = {'slide', 'slide late'};
+  static const _slides = {'slide'};
 
   /// Comps one chord lasting [beats], starting at beat 0 of its own time.
   /// [next] is the chord it leads to, which decides whether a dominant is
@@ -319,10 +329,7 @@ class Comper {
           // own job on the record: Evans plays it into the gaps rather than
           // under the melody. Weighted to be heard without becoming the
           // only thing a vamp does.
-          if (canSlide) ...[
-            ('slide', 6, _slide(and)),
-            ('slide late', 4, _slide(and, from: 1)),
-          ],
+          if (canSlide) ('slide', 9, _slide(and)),
         ],
       ] else if (beats >= 2) ...[
         if (isNew) ...[

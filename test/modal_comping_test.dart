@@ -217,6 +217,43 @@ void main() {
       }
     });
 
+    test('the upper shape never lands on a downbeat', () {
+      // It is the leaning half of the figure and a bar does not open on
+      // the lean. Nothing else in the comper may put it there either: it
+      // is not a resting voicing, so the only hit it can ever be is the
+      // opening of a slide.
+      final tune = standards.firstWhere((t) => t.title == 'So What');
+      final slots = LoopRange.wholeTune(tune).slotsIn(tune);
+      for (var seed = 0; seed < 40; seed++) {
+        final bars = compedChorus('So What', seed: seed);
+        for (final (i, bar) in bars.indexed) {
+          final home = quartalHomeFor(slots[i].chord)!;
+          for (final hit in bar) {
+            if (hit.notes.first == home.first) continue;
+            expect(
+              hit.beat % 4,
+              isNot(0),
+              reason: 'bar ${i + 1}, seed $seed opens the bar on the lean',
+            );
+          }
+        }
+      }
+    });
+
+    test(
+      'it comes in on the second beat, landing on the and of the fourth',
+      () {
+        for (var seed = 0; seed < 20; seed++) {
+          final bars = compedChorus('So What', seed: seed);
+          for (final bar in bars) {
+            if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
+            expect(bar.first.beat, 1, reason: 'seed $seed');
+            expect(bar.last.beat, closeTo(3.62, 0.001), reason: 'seed $seed');
+          }
+        }
+      },
+    );
+
     test('the fall takes two and a half beats, not one', () {
       // A beat apart was too quick to be the figure. The gap is what the
       // suspension is made of: the upper shape needs time to sit there
