@@ -26,6 +26,7 @@ List<List<CompHit>> compedChorus(String title, {int seed = 7}) {
   final comper = Comper(
     math.Random(seed),
     quartal: tune.tags.contains(Genre.modal),
+    slide: tune.quartalSlide,
   );
   return [
     for (var i = 0; i < slots.length; i++)
@@ -317,6 +318,84 @@ void main() {
       // The figure belongs to a vamp. Autumn Leaves has changes of its
       // own to play and does not need one borrowed.
       expect(slidBars(compedChorus('Autumn Leaves')), isEmpty);
+    });
+  });
+
+  group('Impressions, the same figure the other way up', () {
+    // Two tunes on one form, and the figure is most of what keeps them
+    // from being one tune. So What's shape above falls onto the chord and
+    // closes the phrase; Impressions lifts off the chord to the shape
+    // above and leaves it there, so the phrase opens.
+    List<CompHit> aSlide(String title, {int seed = 7}) {
+      for (final bar in compedChorus(title, seed: seed)) {
+        if (bar.length > 1 && bar.first.notes != bar.last.notes) return bar;
+      }
+      return const [];
+    }
+
+    test('it lifts where So What falls', () {
+      final up = aSlide('Impressions');
+      expect(up, isNotEmpty);
+      expect(up.last.notes.first, up.first.notes.first + 2);
+
+      final down = aSlide('So What');
+      expect(down.last.notes.first, down.first.notes.first - 2);
+    });
+
+    test('the same two shapes, in the other order', () {
+      final up = aSlide('Impressions');
+      final down = aSlide('So What');
+      expect(up.first.notes, down.last.notes);
+      expect(up.last.notes, down.first.notes);
+    });
+
+    test('and it keeps the rhythm: in on three, over before the bar ends', () {
+      for (var seed = 0; seed < 20; seed++) {
+        for (final bar in compedChorus('Impressions', seed: seed)) {
+          if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
+          expect(bar.first.beat, 2, reason: 'seed $seed');
+          expect(bar.last.beat, closeTo(3.62, 0.001), reason: 'seed $seed');
+        }
+      }
+    });
+
+    test('the bar after it plays, because its chord has not arrived', () {
+      // The other way round from a fall. A fall delivers the chord half a
+      // beat early, so the next bar has had it and says nothing; a lift
+      // leaves the chord still to come, so the next bar brings it in and
+      // the hanging shape above resolves.
+      var played = 0, total = 0;
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('Impressions', seed: seed);
+        for (final (i, bar) in bars.indexed) {
+          if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
+          if (i + 1 >= bars.length) continue;
+          total++;
+          if (bars[i + 1].isNotEmpty) played++;
+        }
+      }
+      expect(played / total, greaterThan(0.8));
+    });
+
+    test('the hand still rests on the chord, never on the shape above', () {
+      // The lift leaves the upper shape ringing, which is the point, but
+      // it is still not somewhere to sit: every bar that is not the lift
+      // itself plays the chord's own shape.
+      final tune = standards.firstWhere((t) => t.title == 'Impressions');
+      final slots = LoopRange.wholeTune(tune).slotsIn(tune);
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('Impressions', seed: seed);
+        for (final (i, bar) in bars.indexed) {
+          if (bar.isEmpty) continue;
+          final lift = bar.length > 1 && bar.first.notes != bar.last.notes;
+          if (lift) continue;
+          expect(
+            bar.first.notes,
+            quartalHomeFor(slots[i].chord),
+            reason: 'bar ${i + 1}, seed $seed',
+          );
+        }
+      }
     });
   });
 

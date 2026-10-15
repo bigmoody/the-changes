@@ -752,6 +752,7 @@ _Parts _renderParts(
   final comper = Comper(
     math.Random(seed + 4),
     quartal: tune.tags.contains(Genre.modal),
+    slide: tune.quartalSlide,
   )..previousVoicing = state.pianoVoicing;
   final compSlots = loop.slotsIn(tune);
 

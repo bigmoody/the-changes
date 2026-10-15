@@ -342,6 +342,21 @@ typedef KeyOf = ({int pitchClass, bool minor});
 KeyOf readKeyLabel(String key) =>
     (pitchClass: pitchClassOf(keyTonicOf(key)), minor: isMinorKeyLabel(key));
 
+/// Which way the quartal figure moves on a modal tune.
+///
+/// The shape is the same either way: a stack of fourths, slid a whole
+/// step. What differs is which end of the move the chord is on, and that
+/// is the difference between the two tunes everybody knows the sound of.
+enum QuartalSlide {
+  /// Down onto the chord, as So What does. The shape above leans and
+  /// falls, and the figure resolves.
+  down,
+
+  /// Up off the chord, as Impressions does. The chord lifts to the shape
+  /// above and is left there, so the figure opens instead of closing.
+  up,
+}
+
 class Tune {
   const Tune._({
     required this.title,
@@ -356,6 +371,7 @@ class Tune {
     required this.bars,
     required this.sections,
     required this.tags,
+    required this.quartalSlide,
   });
 
   /// Builds a tune from a simple text chart such as
@@ -376,6 +392,7 @@ class Tune {
     BandStyle? style,
     Set<Genre> tags = const {},
     int beatsPerBar = 4,
+    QuartalSlide quartalSlide = QuartalSlide.down,
   }) {
     final barTexts = chart
         .split('|')
@@ -426,6 +443,7 @@ class Tune {
       bars: bars,
       sections: sections,
       tags: tags,
+      quartalSlide: quartalSlide,
     );
   }
 
@@ -449,6 +467,10 @@ class Tune {
 
   /// Section letters by the bar they start on, e.g. {0: 'A', 8: 'A', 16: 'B'}.
   final Map<int, String> sections;
+
+  /// Which way the quartal figure moves, for a tune voiced in fourths.
+  /// Ignored by any tune that is not modal, which has no such figure.
+  final QuartalSlide quartalSlide;
 
   /// Genres tagged by hand: blues, bebop …
   final Set<Genre> tags;
@@ -530,6 +552,7 @@ class Tune {
           beatsPerBar: beatsPerBar,
           sections: sections,
           tags: tags,
+          quartalSlide: quartalSlide,
           bars: bars,
         );
 
@@ -548,6 +571,7 @@ class Tune {
       beatsPerBar: beatsPerBar,
       sections: sections,
       tags: tags,
+      quartalSlide: quartalSlide,
       bars: [
         for (final bar in bars)
           [
