@@ -137,6 +137,17 @@ List<List<int>>? quartalVoicingsFor(Chord chord) {
   ];
 }
 
+/// The quartal shape that sits *on* [chord]: where the hand rests, and
+/// where a slide lands. Null for a chord with no quartal voicing.
+///
+/// The one above it is not an alternative to this and must never be left
+/// sounding on its own. On So What the piano rode the upper shape for
+/// bars at a time and only sometimes came back, because the voicing
+/// picker was handed both and chose whichever was nearer the hand. The
+/// figure is a fall, so the top of it is somewhere you are on the way
+/// through and this is the only place to stop.
+List<int>? quartalHomeFor(Chord chord) => quartalVoicingsFor(chord)?[1];
+
 /// The quartal slide: the shape a whole step above [chord], falling to the
 /// shape on it. Null for a chord that has no quartal voicing.
 ///

@@ -435,9 +435,14 @@ class Comper {
     if (ownShapes != null && ownShapes.isNotEmpty) {
       shapes = ownShapes;
     } else {
-      final forms =
-          (quartal ? quartalVoicingsFor(chord) : null) ??
-          voicingsFor(chord, resolvingTo: next);
+      // On a modal tune the hand rests on the shape that sits on the
+      // chord, and only there. The shape a tone above is half of a fall,
+      // not a voicing to settle on: offered as one it became home and
+      // stayed there, which is a suspension nobody ever resolves.
+      final home = quartal ? quartalHomeFor(chord) : null;
+      final forms = home == null
+          ? voicingsFor(chord, resolvingTo: next)
+          : [home];
       shapes =
           <List<int>>[
                 for (final form in forms)

@@ -173,6 +173,50 @@ void main() {
       }
     });
 
+    test('it always comes back: nothing is left on the upper shape', () {
+      // What it did wrong. The voicing picker was handed both shapes and
+      // chose by which was nearer the hand, so the one a tone above
+      // became home and sat there for bars at a time. The figure is a
+      // fall; the top of it is somewhere you pass through.
+      //
+      // Note expect and not !=: comparing two Lists with != in Dart asks
+      // whether they are the same object, which they never are, and the
+      // first version of this check passed everything.
+      final tune = standards.firstWhere((t) => t.title == 'So What');
+      for (var seed = 0; seed < 20; seed++) {
+        final slots = LoopRange.wholeTune(tune).slotsIn(tune);
+        final bars = compedChorus('So What', seed: seed);
+        for (final (i, bar) in bars.indexed) {
+          if (bar.isEmpty) continue;
+          final home = quartalHomeFor(slots[i].chord)!;
+          expect(
+            bar.last.notes,
+            home,
+            reason: 'bar ${i + 1}, seed $seed ends away from home',
+          );
+        }
+      }
+    });
+
+    test('and the only shape above it ever appears is on the way down', () {
+      final tune = standards.firstWhere((t) => t.title == 'So What');
+      final slots = LoopRange.wholeTune(tune).slotsIn(tune);
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('So What', seed: seed);
+        for (final (i, bar) in bars.indexed) {
+          final home = quartalHomeFor(slots[i].chord)!;
+          for (final (j, hit) in bar.indexed) {
+            if (hit.notes.first == home.first) continue;
+            // Anything that is not home is the shape above, and it is
+            // only allowed as the opening of a fall that lands.
+            expect(j, 0, reason: 'bar ${i + 1}, seed $seed');
+            expect(bar.length, greaterThan(1), reason: 'bar ${i + 1}');
+            expect(bar.last.notes, home, reason: 'bar ${i + 1}');
+          }
+        }
+      }
+    });
+
     test('a tune that is not modal never slides', () {
       // The figure belongs to a vamp. Autumn Leaves has changes of its
       // own to play and does not need one borrowed.
