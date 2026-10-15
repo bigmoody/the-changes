@@ -500,9 +500,14 @@ Int16List decodeWav(Uint8List bytes) {
 }
 
 /// Wraps 16-bit mono [samples] in a WAV header, for writing out as a file.
-Uint8List wavOf(Int16List samples, int sampleRate) {
+/// A WAV file of [samples] at [sampleRate].
+///
+/// With [channels] above one the samples are already interleaved, a frame
+/// at a time: left, right, left, right.
+Uint8List wavOf(Int16List samples, int sampleRate, {int channels = 1}) {
   const headerSize = 44;
   final dataSize = samples.length * 2;
+  final bytesPerFrame = channels * 2;
   final bytes = ByteData(headerSize + dataSize);
   void ascii(int offset, String text) {
     for (var i = 0; i < text.length; i++) {
@@ -516,10 +521,10 @@ Uint8List wavOf(Int16List samples, int sampleRate) {
   ascii(12, 'fmt ');
   bytes.setUint32(16, 16, Endian.little);
   bytes.setUint16(20, 1, Endian.little); // PCM
-  bytes.setUint16(22, 1, Endian.little); // mono
+  bytes.setUint16(22, channels, Endian.little);
   bytes.setUint32(24, sampleRate, Endian.little);
-  bytes.setUint32(28, sampleRate * 2, Endian.little);
-  bytes.setUint16(32, 2, Endian.little);
+  bytes.setUint32(28, sampleRate * bytesPerFrame, Endian.little);
+  bytes.setUint16(32, bytesPerFrame, Endian.little);
   bytes.setUint16(34, 16, Endian.little);
   ascii(36, 'data');
   bytes.setUint32(40, dataSize, Endian.little);

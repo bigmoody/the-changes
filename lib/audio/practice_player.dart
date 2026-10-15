@@ -292,6 +292,10 @@ class PracticePlayer {
         paused: true,
         // Silent, not skipped: see where the streams are built.
         volume: playing == null ? _volumes[entry.key]! : 0,
+        // Each part in its own place. The stems are already separate
+        // voices, so this is the whole of the stereo: nothing in the
+        // renderer has to know, and the mono buffers stay mono.
+        pan: entry.key.pan,
       );
     }
     for (final entry in recordingStreams.entries) {
@@ -299,6 +303,9 @@ class PracticePlayer {
         entry.value,
         paused: true,
         volume: _volumes[instrumentFor(entry.key)]!,
+        // The same place the live band's part sits, so playing a take
+        // back does not rearrange the room.
+        pan: instrumentFor(entry.key).pan,
       );
       _recordingHandles[entry.key] = handle;
       _applyShift(entry.value, handle, playing!.shift);

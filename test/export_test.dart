@@ -35,6 +35,21 @@ BackingRequest _request({
   );
 }
 
+/// The export summed to one channel.
+///
+/// It is written in stereo, with each part where the player puts it, and
+/// everything here is about where a sound is in time and how loud it is
+/// rather than which side of the room it came from. Summed rather than
+/// one channel taken, so a part panned away from centre is not quietly
+/// left out of the measurement.
+Int16List _mono(Uint8List wav) {
+  final frames = decodeWav(wav);
+  return Int16List.fromList([
+    for (var i = 0; i + 1 < frames.length; i += 2)
+      ((frames[i] + frames[i + 1]) / 2).round(),
+  ]);
+}
+
 double _rms(Int16List samples, int from, int to) {
   var sum = 0.0;
   final end = math.min(to, samples.length);
@@ -45,13 +60,72 @@ double _rms(Int16List samples, int from, int to) {
 }
 
 void main() {
+  test('it is written in stereo, with the band spread across it', () {
+    // The player puts each part in its own place, so an export that was a
+    // mono sum of a stereo band would not be the thing anybody heard.
+    final wav = exportTrack(_request());
+    // Two channels, and the header saying so.
+    final header = ByteData.sublistView(wav);
+    expect(header.getUint16(22, Endian.little), 2, reason: 'channels');
+    expect(
+      header.getUint32(28, Endian.little),
+      44100 * 4,
+      reason: 'bytes a second',
+    );
+    expect(header.getUint16(32, Endian.little), 4, reason: 'bytes a frame');
+
+    // And the two channels differ, which is the whole point: the chords
+    // sit left of centre and the arpeggios right of it.
+    final frames = decodeWav(wav);
+    var difference = 0.0;
+    for (var i = 0; i + 1 < frames.length; i += 2) {
+      difference += (frames[i] - frames[i + 1]).abs();
+    }
+    expect(difference, greaterThan(0));
+  });
+
+  test('the parts are placed where the player places them', () {
+    // Bass and drums down the middle, the comping to one side and the
+    // arpeggios to the other, so the two keyboard parts can be told
+    // apart while both are going.
+    expect(Instrument.bass.pan, 0);
+    expect(Instrument.drums.pan, 0);
+    expect(Instrument.chords.pan, lessThan(0));
+    expect(Instrument.arpeggio.pan, greaterThan(0));
+    // Modestly: a part at the far side of the image is a part somebody
+    // with one earbud in has lost.
+    for (final part in Instrument.values) {
+      expect(part.pan.abs(), lessThanOrEqualTo(0.5), reason: part.label);
+    }
+  });
+
+  test('and the law is the engine\'s own', () {
+    // Equal power: the two gains square up to one, so a part does not get
+    // louder as it crosses the middle, and a centred one is 0.707 either
+    // side rather than 1 and 1.
+    for (final pan in [-1.0, -0.35, 0.0, 0.2, 0.35, 1.0]) {
+      final gains = panGains(pan);
+      expect(
+        gains.left * gains.left + gains.right * gains.right,
+        closeTo(1, 1e-9),
+        reason: 'at $pan',
+      );
+    }
+    expect(panGains(0).left, closeTo(0.70710678, 1e-6));
+    expect(panGains(0).right, closeTo(0.70710678, 1e-6));
+    expect(panGains(-1).left, closeTo(1, 1e-9));
+    expect(panGains(-1).right, closeTo(0, 1e-9));
+    expect(panGains(1).left, closeTo(0, 1e-9));
+    expect(panGains(1).right, closeTo(1, 1e-9));
+  });
+
   test('it comes out as a playable WAV of the right length', () {
     final request = _request(choruses: 2);
     final wav = exportTrack(request);
     expect(String.fromCharCodes(wav.take(4)), 'RIFF');
     expect(String.fromCharCodes(wav.skip(8).take(4)), 'WAVE');
 
-    final samples = decodeWav(wav);
+    final samples = _mono(wav);
     final seconds = samples.length / 44100;
     // A bar of count-in and two eight-bar choruses at 160, plus the ring of
     // the last chord.
@@ -62,7 +136,7 @@ void main() {
   });
 
   test('the whole band is in it, all the way through', () {
-    final samples = decodeWav(exportTrack(_request(choruses: 3)));
+    final samples = _mono(exportTrack(_request(choruses: 3)));
     // Loud from the count-in to the last bar, with nothing dropping out.
     final chunk = samples.length ~/ 8;
     for (var i = 0; i < 7; i++) {
@@ -75,7 +149,7 @@ void main() {
   });
 
   test('nothing clips, however much is stacked up', () {
-    final samples = decodeWav(exportTrack(_request(choruses: 2, tempo: 300)));
+    final samples = _mono(exportTrack(_request(choruses: 2, tempo: 300)));
     var squared = 0;
     for (final sample in samples) {
       if (sample.abs() >= 32760) squared++;
@@ -84,8 +158,8 @@ void main() {
   });
 
   test('the count-in can be left off', () {
-    final withClicks = decodeWav(exportTrack(_request()));
-    final without = decodeWav(exportTrack(_request(), withCountIn: false));
+    final withClicks = _mono(exportTrack(_request()));
+    final without = _mono(exportTrack(_request(), withCountIn: false));
     expect(without.length, lessThan(withClicks.length));
     // A bar of four at 160 is 1.5 seconds.
     expect((withClicks.length - without.length) / 44100, closeTo(1.5, 0.2));
@@ -101,8 +175,8 @@ void main() {
     for (var i = (lead * rate).round(); i < take.length; i++) {
       take[i] = (math.sin(2 * math.pi * 440 * i / rate) * 12000).round();
     }
-    final plain = decodeWav(exportTrack(request));
-    final mixed = decodeWav(exportTrack(request, take: take, takeLeadIn: lead));
+    final plain = _mono(exportTrack(request));
+    final mixed = _mono(exportTrack(request, take: take, takeLeadIn: lead));
     expect(mixed.length, greaterThanOrEqualTo(plain.length));
 
     // During the count-in the take hasn't started; once the band comes in
@@ -185,10 +259,10 @@ void main() {
     });
 
     test('the file is as long as the section, not the arrangement', () {
-      final full = decodeWav(exportTrack(request(choruses: 4)));
+      final full = _mono(exportTrack(request(choruses: 4)));
       // Somebody played about ten seconds: twenty beats, which is into the
       // B section, so the band runs to the end of B: 32 beats, 16 seconds.
-      final short = decodeWav(exportTrack(request(choruses: 4), endBeat: 32));
+      final short = _mono(exportTrack(request(choruses: 4), endBeat: 32));
       expect(short.length, lessThan(full.length ~/ 2));
       final seconds = short.length / 44100;
       // Two seconds of count-in, sixteen of band, and the fade.
@@ -196,7 +270,7 @@ void main() {
     });
 
     test('it fades rather than stopping with a click', () {
-      final samples = decodeWav(exportTrack(request(choruses: 4), endBeat: 32));
+      final samples = _mono(exportTrack(request(choruses: 4), endBeat: 32));
       final last = _rms(samples, samples.length - 2000, samples.length);
       final before = _rms(
         samples,
@@ -215,7 +289,7 @@ void main() {
     final request = _request(
       arrangement: const Arrangement(choruses: 3, headInAndOut: true),
     );
-    final samples = decodeWav(exportTrack(request));
+    final samples = _mono(exportTrack(request));
     expect(samples, isNotEmpty);
     expect(
       exportLength(request).inMilliseconds / 1000,

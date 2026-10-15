@@ -104,6 +104,47 @@ enum Instrument {
 
   const Instrument(this.label);
   final String label;
+
+  /// Where the part sits across the stereo image, from −1 (left) to 1.
+  ///
+  /// The band was in one place, which is the place a mono mix puts
+  /// everything: on top of itself. Spread out, you can hear the comping
+  /// apart from the arpeggios while both are going, which is the whole
+  /// reason to be able to have both.
+  ///
+  /// Where each one goes is where it goes on a record of this music. Bass
+  /// and drums down the middle, because a bass panned anywhere is a bass
+  /// you cannot place and only half of on one earbud, and because the kit
+  /// sits behind the band. The piano off to one side as a pianist sits,
+  /// the arpeggios opposite it, an imported part out of the way of both.
+  ///
+  /// Modestly, and not hard over. Somebody practising with one earbud in
+  /// has to be able to hear the part they are playing against, and a part
+  /// at the far side of the image is a part they have lost. A third of
+  /// the way out is audible as width and survives being halved.
+  double get pan => switch (this) {
+    bass || drums => 0,
+    chords => -0.35,
+    arpeggio => 0.35,
+    imported => 0.2,
+  };
+}
+
+/// How much of a sound at [pan] goes to each side.
+///
+/// The engine's own law, taken from its source rather than guessed at:
+/// the left gain is the cosine of the angle and the right is the sine, so
+/// the two always square up to one and a part does not get louder as it
+/// crosses the middle. A centred part is 0.707 either side, which is 3 dB
+/// down on both and the same 3 dB for everything, so the balance between
+/// the parts is untouched.
+///
+/// Written out here so the export can place a part exactly where the
+/// player places it. Two laws would have meant the file not being the
+/// thing anybody heard.
+({double left, double right}) panGains(double pan) {
+  final angle = (pan + 1) * math.pi / 4;
+  return (left: math.cos(angle), right: math.sin(angle));
 }
 
 class BackingRequest {
