@@ -1,8 +1,16 @@
-// Bringing charts in from iReal Pro: paste a link, one song or a whole
+// Bringing charts in from iReal Pro: a link, one song or a whole
 // playlist, see what's in it, choose, and they're saved to My Changes,
 // to play and edit like any of your own.
 //
-// It reads only what the player pastes, on the phone: nothing is
+// The link arrives by being shared to the app, by being tapped, or by
+// being pasted. Which of those is available is not the player's choice:
+// on a phone or tablet iReal Pro will not hand a playlist's link to the
+// clipboard, so sharing is the route, and on a computer it will, so a
+// link copied there can be pasted here. The screen says so, because a
+// paste box with nothing to paste into it reads as a broken feature
+// rather than as the wrong half of one.
+//
+// It reads only what the player hands it, on the phone: nothing is
 // downloaded, and nothing leaves the phone.
 
 import 'package:flutter/material.dart';
@@ -98,9 +106,11 @@ class _ImportScreenState extends State<ImportScreen> {
           const SizedBox(height: 4),
           Text(
             'Share a song or a playlist to The Changes, or tap its link, '
-            'and it opens here. Pasting one still works where you can '
-            'copy it. Every song in it comes in, sections, repeats and '
-            'endings included.',
+            'and it opens here. That is the way on a phone or tablet, '
+            'where iReal Pro will not let you copy a link out of a '
+            'playlist. On a computer it will, so you can copy one there '
+            'and paste it below. Every song in it comes in, sections, '
+            'repeats and endings included.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: scheme.onSurfaceVariant,
             ),
@@ -130,7 +140,9 @@ class _ImportScreenState extends State<ImportScreen> {
           if (_text.text.trim().isNotEmpty && _songs.isEmpty)
             Text(
               'No iReal Pro songs found in that. Paste the whole link: it '
-              'starts irealb://',
+              'starts irealb://. On a phone or tablet you cannot copy '
+              'one, so share the song or playlist to The Changes '
+              'instead, or copy the link in iReal Pro on a computer.',
               style: muted,
             ),
           if (_songs.isNotEmpty) ...[

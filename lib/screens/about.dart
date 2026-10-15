@@ -36,8 +36,11 @@ void showAboutTheChanges(BuildContext context) {
       ),
       const SizedBox(height: 8),
       const Text(
-        'Import reads iReal Pro links you paste in. iReal Pro is a trademark '
-        'of its owner; The Changes isn\'t affiliated with it.',
+        'Import reads iReal Pro links you share to the app, tap, or paste '
+        'in. On a phone or tablet, sharing is the one that works: iReal '
+        'Pro will not copy a playlist\'s link there, though it will on a '
+        'computer. iReal Pro is a trademark of its owner; The Changes '
+        'isn\'t affiliated with it.',
       ),
     ],
   );

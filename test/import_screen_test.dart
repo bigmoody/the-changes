@@ -18,6 +18,39 @@ final _playlist =
     'irealbook://${Uri.encodeComponent(['Blues One=Doe Jane=Medium Swing=F=n=[T44F7 |Bb7 |F7 |C7 Z', 'Waltz Two=Roe Rick=Jazz Waltz=Bb=n=[T34Bb^7 |G-7 |C-7 |F7 Z', 'My Jam List'].join('==='))}';
 
 void main() {
+  testWidgets('it says where a link can be copied and where it cannot', (
+    tester,
+  ) async {
+    // The paste box is the fallback, not the way in. On a phone iReal
+    // Pro will not put a playlist's link on the clipboard, so sharing to
+    // the app is the route, and a paste box offered with no explanation
+    // reads as a feature that does not work. Both halves have to be on
+    // the screen: that sharing is the phone's way, and that a computer
+    // will give you the link to paste.
+    tester.view
+      ..physicalSize = const Size(393, 852) * 3
+      ..devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(Brightness.light),
+        home: ImportScreen(store: ProgressionStore.inMemory()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final help = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((t) => t.data ?? '')
+        .join(' ');
+    expect(help, contains('Share'));
+    expect(help, contains('computer'), reason: 'where a link can be copied');
+    expect(
+      help,
+      contains('will not let you copy'),
+      reason: 'and where it cannot',
+    );
+  });
+
   testWidgets('paste a playlist, choose, and they are in My Changes', (
     tester,
   ) async {
