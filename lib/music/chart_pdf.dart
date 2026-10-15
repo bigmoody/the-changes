@@ -47,10 +47,17 @@ const _pencil = pencilLight;
 
 /// [tunes] as the pages of a PDF: a tune to a page, and on to another
 /// page where a long one does not fit.
-Future<Uint8List> chartPdf(List<Tune> tunes, {String? heading}) async {
+///
+/// [note] goes under the heading on every page: what the chart is written
+/// for, when that is not concert pitch.
+Future<Uint8List> chartPdf(
+  List<Tune> tunes, {
+  String? heading,
+  String? note,
+}) async {
   final pages = <PdfPage>[];
   for (final tune in tunes) {
-    for (final picture in _pagesOf(tune)) {
+    for (final picture in _pagesOf(tune, note)) {
       final image = await picture.toImage(
         (_pageWidth * _pixelsPerPoint).round(),
         (_pageHeight * _pixelsPerPoint).round(),
@@ -83,7 +90,7 @@ Uint8List _withoutAlpha(Uint8List rgba) {
 }
 
 /// The pages one tune takes, drawn.
-List<ui.Picture> _pagesOf(Tune tune) {
+List<ui.Picture> _pagesOf(Tune tune, String? note) {
   final lines = layOutChart(tune, _columns);
   const top = _margin + 76;
   const room = _pageHeight - top - _margin;
@@ -108,7 +115,7 @@ List<ui.Picture> _pagesOf(Tune tune) {
       const Rect.fromLTWH(0, 0, _pageWidth, _pageHeight),
       Paint()..color = const Color(0xFFFFFFFF),
     );
-    _heading(canvas, tune, page: pages.length + 1);
+    _heading(canvas, tune, page: pages.length + 1, note: note);
     _rows(
       canvas,
       tune,
@@ -121,7 +128,7 @@ List<ui.Picture> _pagesOf(Tune tune) {
   return pages;
 }
 
-void _heading(ui.Canvas canvas, Tune tune, {required int page}) {
+void _heading(ui.Canvas canvas, Tune tune, {required int page, String? note}) {
   _write(
     canvas,
     tune.title,
@@ -146,6 +153,7 @@ void _heading(ui.Canvas canvas, Tune tune, {required int page}) {
     'Key of ${tune.key}',
     if (tune.beatsPerBar != 4) '${tune.beatsPerBar}/4',
     '${tune.defaultTempo} bpm',
+    ?note,
   ].join(' · ');
   _write(
     canvas,

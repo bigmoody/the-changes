@@ -8,6 +8,15 @@
 // notation software to be engraved or arranged from. As MIDI, the band
 // playing them goes into a DAW as notes.
 //
+// What goes out is the chart as the player is reading it: in the key
+// they have put it in, and written for their instrument. An alto player
+// who has been reading in E flat sends an E flat chart, because that is
+// the chart they have in front of them.
+//
+// The MIDI is the exception, and has to be: it is not a chart to read but
+// the band to listen to, and the band plays in concert pitch. Transposing
+// that would hand a DAW a file in a key nobody is playing in.
+//
 // Only the changes leave, whichever way: there is no melody and no lyric
 // in this app to send.
 
@@ -25,36 +34,64 @@ import '../music/midi_write.dart';
 import '../music/musicxml_export.dart';
 import '../music/tune.dart';
 import '../music/user_progression.dart';
+import '../settings/app_settings.dart';
 
-/// Shares [tune], asking first whether as text or as a link.
+/// Shares [tune], asking first how.
 ///
-/// [semitones] sends it in the key it's being played in rather than the key
-/// it's written in, so what goes out is what the player was reading.
-Future<void> shareChart(BuildContext context, Tune tune, {int semitones = 0}) =>
-    shareCharts(context, [tune.transposed(semitones)], heading: tune.title);
+/// [semitones] is the key the player has put it in, and [instrument] is
+/// what they are reading it on: together they are the chart in front of
+/// them, which is what goes out.
+Future<void> shareChart(
+  BuildContext context,
+  Tune tune, {
+  int semitones = 0,
+  ChartInstrument instrument = ChartInstrument.concert,
+}) => shareCharts(
+  context,
+  [tune.transposed(semitones)],
+  heading: tune.title,
+  instrument: instrument,
+);
 
 /// Shares several charts at once, one after another under [heading].
+///
+/// [tunes] are as the band sounds them; [instrument] is what the player is
+/// reading them on, and everything but the MIDI is written for it.
 Future<void> shareCharts(
   BuildContext context,
   List<Tune> tunes, {
   String? heading,
+  ChartInstrument instrument = ChartInstrument.concert,
 }) async {
   if (tunes.isEmpty) return;
   final subject = heading ?? tunes.first.title;
-  final how = await _askHow(context, tunes.length);
+  final how = await _askHow(context, tunes.length, instrument);
   if (how == null || !context.mounted) return;
+  // The chart as it is being read. The same tunes when the player reads
+  // at concert pitch, which is most of them.
+  final reading = instrument.semitones == 0
+      ? tunes
+      : [for (final tune in tunes) tune.transposed(instrument.semitones)];
+  // Said once at the top of whatever carries words, so nobody opens an
+  // E flat chart thinking it is in C.
+  final written = instrument == ChartInstrument.concert
+      ? null
+      : 'Written for ${instrument.name}';
   switch (how) {
     case _How.text:
       await _share(
         context,
-        chartsText(tunes, heading: tunes.length > 1 ? heading : null),
+        chartsText(
+          reading,
+          heading: [?(tunes.length > 1 ? heading : null), ?written].join('\n'),
+        ),
         subject: subject,
       );
     case _How.ireal:
       // The exporter works on the player's own progressions, so a standard
       // is written out as one first. Those stand-ins are never saved.
       final songs = [
-        for (final (index, tune) in tunes.indexed)
+        for (final (index, tune) in reading.indexed)
           UserProgression.fromTune(tune, id: '$index'),
       ];
       await _share(
@@ -66,20 +103,20 @@ Future<void> shareCharts(
       );
     case _How.musicXml:
       await _shareFiles(context, [
-        for (final (index, tune) in tunes.indexed)
+        for (final (index, tune) in reading.indexed)
           () {
             final song = UserProgression.fromTune(tune, id: '$index');
             return (
               name: musicXmlFileName(song),
               mime: 'application/vnd.recordare.musicxml+xml',
-              bytes: utf8.encode(musicXmlFor(song)),
+              bytes: utf8.encode(musicXmlFor(song, note: written)),
             );
           }(),
       ], subject: subject);
     case _How.pdf:
       // The page is drawn first: it takes a moment, and the share sheet
       // should come up with the file already made.
-      final pdf = await chartPdf(tunes, heading: subject);
+      final pdf = await chartPdf(reading, heading: subject, note: written);
       if (!context.mounted) return;
       await _shareFiles(context, [
         (
@@ -108,6 +145,7 @@ enum _How { text, ireal, musicXml, pdf, midi }
 Future<_How?> _askHow(
   BuildContext context,
   int tunes,
+  ChartInstrument instrument,
 ) => showModalBottomSheet<_How>(
   context: context,
   showDragHandle: true,
@@ -161,6 +199,16 @@ Future<_How?> _askHow(
             subtitle: const Text('Opens in notation software, chords and form'),
             onTap: () => Navigator.of(context).pop(_How.musicXml),
           ),
+          if (instrument != ChartInstrument.concert)
+            Padding(
+              key: const ValueKey('share-instrument'),
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: Text(
+                'The chart goes out as you are reading it, written for '
+                '${instrument.name}.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: Text(

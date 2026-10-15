@@ -274,6 +274,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   context,
                   _controller.originalTune,
                   semitones: _controller.semitones,
+                  // What goes out is the chart on the stand: the key it
+                  // has been put in, written for the instrument reading
+                  // it.
+                  instrument: _controller.settings.instrument,
                 ),
                 // The same controller goes with it, so the band carries on
                 // playing as you walk on and off.

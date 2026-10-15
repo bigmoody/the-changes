@@ -18,7 +18,11 @@ import 'tune.dart';
 import 'user_progression.dart';
 
 /// [progression] as a MusicXML score, ready to write to a .musicxml file.
-String musicXmlFor(UserProgression progression) {
+///
+/// [note] is written above the first bar beside the feel: what the chart
+/// is written for, when that is not concert pitch. The chords themselves
+/// are already written that way, so nothing here transposes.
+String musicXmlFor(UserProgression progression, {String? note}) {
   final out = StringBuffer()
     ..writeln('<?xml version="1.0" encoding="UTF-8" standalone="no"?>')
     ..writeln(
@@ -46,7 +50,7 @@ String musicXmlFor(UserProgression progression) {
     ..writeln('    </score-part>')
     ..writeln('  </part-list>')
     ..writeln('  <part id="P1">');
-  _measures(out, progression);
+  _measures(out, progression, note);
   out
     ..writeln('  </part>')
     ..writeln('</score-partwise>');
@@ -71,7 +75,7 @@ String fileNameFor(String title) {
 /// chord lasts a whole number of beats.
 const _divisions = 1;
 
-void _measures(StringBuffer out, UserProgression progression) {
+void _measures(StringBuffer out, UserProgression progression, String? note) {
   final bars = progression.bars;
   final sections = chartForm(progression);
   final beatsPerBar = progression.beatsPerBar;
@@ -129,7 +133,7 @@ void _measures(StringBuffer out, UserProgression progression) {
         ..writeln('        </direction-type>')
         ..writeln('      </direction>');
     }
-    if (i == 0) _tempo(out, progression);
+    if (i == 0) _tempo(out, progression, note);
     _bar(out, bars[i], beatsPerBar);
     // The ending bracket and the repeat sign close on the right of it, as
     // does a double barline between sections and the end of the chart.
@@ -186,11 +190,15 @@ void _attributes(StringBuffer out, UserProgression progression) {
 
 /// The feel in words and the tempo in numbers, the way they sit at the top
 /// of a lead sheet.
-void _tempo(StringBuffer out, UserProgression progression) {
+void _tempo(StringBuffer out, UserProgression progression, String? note) {
   out
     ..writeln('      <direction placement="above">')
     ..writeln('        <direction-type>')
-    ..writeln('          <words>${_text(_feelWords(progression))}</words>')
+    ..writeln(
+      '          <words>'
+      '${_text([_feelWords(progression), ?note].join(' · '))}'
+      '</words>',
+    )
     ..writeln('        </direction-type>')
     ..writeln('      </direction>')
     ..writeln('      <direction placement="above">')
