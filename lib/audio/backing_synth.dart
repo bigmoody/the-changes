@@ -1485,7 +1485,19 @@ double roomFor(Feel feel) => switch (feel) {
   _ => _drumRoom,
 };
 
-const _drumLevel = 1.7;
+/// Lowered 1 dB from 1.7, to put the comping further forward.
+///
+/// The piano was a touch quiet by default and the direct fix, lifting it,
+/// was not available: that comes out of the bass's margin over 300 Hz to
+/// 3 kHz, which is all a phone speaker plays, and there was 0.46 dB of it
+/// left. Bringing the kit down instead leaves that margin exactly where
+/// it was, the shared gain lifting bass and chords together so their
+/// ratio does not move.
+///
+/// What it does change is the kit against the band: on a swing tune the
+/// drums were 2.25 dB under the chords and are now 3.25, and on a funk
+/// tune 4.20 dB over and now 3.20.
+const _drumLevel = 1.515;
 
 /// A drum in a short example: [at] seconds in, how loud, and whether it
 /// is a hard stroke, which changes the tone rather than the level, as it

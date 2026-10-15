@@ -127,6 +127,14 @@ void main() {
   // layer chosen by how hard the stroke is. Every stem moved, not only the
   // drums: one gain is worked out from the summed mix and handed to all of
   // them, so a louder kit moves the bytes of the bass as well.
+  // All four re-pinned when the recorded kit came down 1 dB, to put the
+  // comping further forward. Lifting the piano instead would have been
+  // the direct way round and was not available: it comes out of the
+  // bass's margin over 300 Hz to 3 kHz, which is all a phone speaker
+  // plays, and 0.46 dB of that was left. Every stem moves again, the one
+  // gain off the summed mix being handed to all of them, so a quieter
+  // kit moves the bytes of the bass too. Rhythm changes is among them
+  // this time for that reason and not because its guitar changed.
   test('a swing tune, piano comping', () {
     final tune = tuneNamed('A Foggy Day');
     expect(
@@ -140,9 +148,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 2203759134988664311,
-        'Bass': 1518779006530354847,
-        'Drums': 2622734513705247941,
+        'Chords': -1665969834922227523,
+        'Bass': -1789955654117938412,
+        'Drums': 2007003399160216928,
       },
     );
   });
@@ -169,10 +177,10 @@ void main() {
         ),
       ),
       {
-        'Chords': -4416572867461313775,
-        'Bass': -6444537040212494243,
-        'Drums': -8085259844125761161,
-        'Arpeggios': 6703595369907602220,
+        'Chords': -1282040926182401071,
+        'Bass': 981331333045148967,
+        'Drums': -4433178409430512963,
+        'Arpeggios': -9193643309482914657,
       },
     );
   });
@@ -198,10 +206,10 @@ void main() {
         ),
       ),
       {
-        'Chords': -4241954030302562660,
-        'Bass': -4210759773282664676,
-        'Drums': -1594108293936643830,
-        'Arpeggios': 572209075231783294,
+        'Chords': 2487918751794878146,
+        'Bass': 4840102059698419593,
+        'Drums': -7465439303167663579,
+        'Arpeggios': -7356065158708507562,
       },
     );
   });
@@ -226,9 +234,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -2207867714579125509,
-        'Bass': -3505601354935458429,
-        'Drums': 8408564540202221592,
+        'Chords': 6229360461391581415,
+        'Bass': -4059528358616524240,
+        'Drums': 1804155906518307522,
       },
     );
   });
