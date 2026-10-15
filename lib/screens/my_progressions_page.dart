@@ -51,6 +51,7 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
   Genre? _genre;
   var _order = TuneOrder.title;
   var _starredOnly = false;
+  var _query = '';
   final _scroll = ScrollController();
   late final _letters = LetterIndex(_scroll);
 
@@ -58,6 +59,23 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
   void dispose() {
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Whether [progression] is one of what's being looked for.
+  ///
+  /// The same fields the Tunes tab searches, as far as a progression has
+  /// them: what it is called, who wrote it, what key it is in, and the
+  /// feel the band plays it with, so "bossa" finds the bossas. An
+  /// imported playlist can run to hundreds, which is what this is for.
+  bool _matches(UserProgression progression) {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    return [
+      progression.title,
+      progression.composer ?? '',
+      progression.key,
+      progression.style.drums.label,
+    ].any((text) => text.toLowerCase().contains(query));
   }
 
   /// Choosing progressions to delete several at once.
@@ -134,7 +152,8 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
       for (final progression in all)
         if ((_genre == null || progression.genres.contains(_genre)) &&
             (!_starredOnly ||
-                widget.library.isFavourite(TuneRef.mine(progression.id))))
+                widget.library.isFavourite(TuneRef.mine(progression.id))) &&
+            _matches(progression))
           progression,
     ], _order);
     // The strip only makes sense down a list in an order with an alphabet
@@ -167,6 +186,19 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
             ? _Empty(onImport: _import)
             : Column(
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: TextField(
+                      key: const ValueKey('progression-search'),
+                      decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.search),
+                        hintText: 'Search your changes, composers or keys',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                      ),
+                      onChanged: (value) => setState(() => _query = value),
+                    ),
+                  ),
                   TuneListControls(
                     starredOnly: _starredOnly,
                     onStarred: (on) => setState(() => _starredOnly = on),
