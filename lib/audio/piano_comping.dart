@@ -171,7 +171,10 @@ class Comper {
     // Never in the bar before a section, where the turn figure leads in
     // and where a resolution landing just after the downbeat would take
     // the top of the section's own arrival away from it.
-    final pair = quartal && bar.isOdd && !intoSection ? slideFor(chord) : null;
+    final pair =
+        quartal && slide != QuartalSlide.none && bar.isOdd && !intoSection
+        ? slideFor(chord)
+        : null;
     // Up is the same two shapes in the other order: the chord first and
     // the one above it second, left ringing rather than resolved.
     final moving = pair == null
@@ -179,6 +182,8 @@ class Comper {
         : switch (slide) {
             QuartalSlide.down => pair,
             QuartalSlide.up => (from: pair.to, to: pair.from),
+            // Ruled out above: a tune with no figure never reaches here.
+            QuartalSlide.none => null,
           };
     final pattern = held
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]

@@ -348,6 +348,15 @@ KeyOf readKeyLabel(String key) =>
 /// step. What differs is which end of the move the chord is on, and that
 /// is the difference between the two tunes everybody knows the sound of.
 enum QuartalSlide {
+  /// No figure: the fourths are voiced and left to be comped like any
+  /// other chord.
+  ///
+  /// The default, and it has to be. The slide is one tune's lick and not
+  /// a modal device: played on every tune tagged modal it made six of
+  /// them sound like So What, which is what happens when the thing a
+  /// tune is known for is treated as a property of its genre.
+  none,
+
   /// Down onto the chord, as So What does. The shape above leans and
   /// falls, and the figure resolves.
   down,
@@ -392,7 +401,7 @@ class Tune {
     BandStyle? style,
     Set<Genre> tags = const {},
     int beatsPerBar = 4,
-    QuartalSlide quartalSlide = QuartalSlide.down,
+    QuartalSlide quartalSlide = QuartalSlide.none,
   }) {
     final barTexts = chart
         .split('|')

@@ -16,7 +16,7 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/piano_comping.dart';
 import 'package:play_along/music/loop_range.dart';
-import 'package:play_along/music/tune.dart' show Genre;
+import 'package:play_along/music/tune.dart' show Genre, QuartalSlide;
 import 'package:play_along/music/tune_library.dart';
 
 /// What the comper plays, bar by bar, for a whole chorus of [title].
@@ -419,6 +419,46 @@ void main() {
           );
         }
       }
+    });
+  });
+
+  group('the figure belongs to its tune, not to the genre', () {
+    // It was on by default for anything tagged modal, which is six other
+    // tunes: Cantaloupe Island, Chameleon, Maiden Voyage, Milestones,
+    // Little Sunflower and Footprints all answered themselves with So
+    // What's lick. Quartal voicings are a modal idiom and belong to all
+    // of them; the slide is one tune's hook and belongs to one tune.
+    test('only So What and Impressions have one', () {
+      final withFigure = [
+        for (final tune in standards)
+          if (tune.quartalSlide != QuartalSlide.none) tune.title,
+      ];
+      expect(withFigure, ['Impressions', 'So What']);
+    });
+
+    test('and the rest of the modal tunes never slide', () {
+      for (final tune in standards) {
+        if (!tune.tags.contains(Genre.modal)) continue;
+        if (tune.quartalSlide != QuartalSlide.none) continue;
+        for (final bar in compedChorus(tune.title)) {
+          expect(
+            bar.length < 2 || bar.first.notes == bar.last.notes,
+            isTrue,
+            reason: '${tune.title} slid',
+          );
+        }
+      }
+    });
+
+    test('but they are still voiced in fourths', () {
+      // What they should have got all along, and did: the figure going
+      // away must not take the voicings with it.
+      final tune = standards.firstWhere((t) => t.title == 'Cantaloupe Island');
+      final slots = LoopRange.wholeTune(tune).slotsIn(tune);
+      final fm7 = slots.first.chord;
+      expect(quartalHomeFor(fm7), isNotNull);
+      final played = compedChorus(tune.title).firstWhere((b) => b.isNotEmpty);
+      expect(played.first.notes, quartalHomeFor(fm7));
     });
   });
 

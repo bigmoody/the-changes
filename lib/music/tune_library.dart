@@ -413,6 +413,9 @@ final _firstStandards = <Tune>[
     tags: {Genre.modal},
     defaultTempo: 140,
     chart: _dorianAABA,
+    // The shape above falls onto the chord: the figure the tune, and the
+    // chord, are named after.
+    quartalSlide: QuartalSlide.down,
   ),
   Tune.fromChart(
     title: 'Solar',
