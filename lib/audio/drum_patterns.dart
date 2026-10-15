@@ -460,7 +460,7 @@ List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
 }
 
 /// Kick figures, in eighths from the start of the bar.
-const _funkKicks = [
+const funkKicks = [
   [0.0, 1.5],
   [0.0, 1.5, 2.5],
   [0.0, 2.5, 3.5],
@@ -515,7 +515,12 @@ List<DrumHit> _funkBar(int bar, int beatsPerBar, math.Random random) {
       DrumHit(drum: Drum.snare, beat: 2.5, velocity: 0.13 * _human(random)),
     );
   }
-  for (final beat in _funkKicks[random.nextInt(_funkKicks.length)]) {
+  // Taken from the bar rather than rolled, and held for two bars, because
+  // a funk kick is a riff. Rolling it a bar at a time gave a drummer who
+  // had never played the figure before and never would again. It is also
+  // what lets the bass play the same one: both work it out from the bar
+  // number rather than one of them having to be told.
+  for (final beat in funkKicksFor(bar)) {
     hits.add(
       DrumHit(
         drum: Drum.kick,
@@ -540,6 +545,10 @@ const _calypsoToms = [
   ([1.0, 1.5], [2.5, 3.0]),
   ([2.5], [1.0, 3.0]),
 ];
+
+/// The kick figure for [bar]: a two-bar riff, so the groove is something
+/// being played rather than something being chosen.
+List<double> funkKicksFor(int bar) => funkKicks[(bar ~/ 2) % funkKicks.length];
 
 List<DrumHit> _calypsoBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];

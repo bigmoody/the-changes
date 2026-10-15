@@ -56,6 +56,12 @@ void main() {
     };
   }
 
+  // The funk tune re-pinned again when its bass was built on the kick
+  // instead of beside it: the two were each rolling their own syncopation
+  // out of their own random, so they were only ever together by accident.
+  // Both read the figure off the bar number now. The kick's own choice
+  // moved with it, from a roll a bar to a two-bar riff.
+  //
   // The funk tune re-pinned on its own when its kit lost the room and its
   // backbeat came down 5.5 dB. A funk kit is close-miked and dry, and the
   // backbeat was struck at 0.95 against the loudest recording in the
@@ -199,9 +205,9 @@ void main() {
         ),
       ),
       {
-        'Chords': -6625696067589372404,
-        'Bass': 2911153695381185277,
-        'Drums': -8351656824936825884,
+        'Chords': -8913168239016665639,
+        'Bass': 5265210569221512842,
+        'Drums': 6306765420053377252,
       },
     );
   });

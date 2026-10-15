@@ -18,6 +18,8 @@
 
 import 'dart:math' as math;
 
+import 'drum_patterns.dart' show funkKicksFor;
+
 import '../music/bass_moves.dart';
 import '../music/chord.dart';
 
@@ -80,6 +82,47 @@ List<BassNote> bossaBassLine(
   _Style.bossa,
   beatsPerBar,
 );
+
+/// The funk bass figure for a bar, built on the kick's [kicks] so the two
+/// are one part.
+///
+/// The root lands on every kick, long on the downbeat and short after it,
+/// which is the line locked to the drum. One colour note goes in a gap so
+/// it is a bass line and not a doubling, and which note that is turns
+/// with the riff rather than being rolled, because the whole point of a
+/// funk line is that you hear the same thing twice.
+List<(int, double, double)> _funkOnTheKick(
+  List<double> kicks, {
+  required int riff,
+  required int root,
+  required int fifth,
+  required int octave,
+  required int approach,
+  required bool changing,
+}) {
+  final notes = [for (final beat in kicks) (root, beat, beat == 0 ? 0.9 : 0.4)];
+  // Only ever up. Where the root sits high enough that the octave above
+  // it is off the end of the instrument, the old figures reached for the
+  // octave *below*, which is a different note in a different register:
+  // the line then started the next bar from down there and kept going
+  // down. The fifth does the same job and stays put.
+  final up = octave > root ? octave : fifth;
+  final taken = kicks.toSet();
+  // Into the next chord, where there is one, off the last off-beat.
+  if (changing && !taken.contains(3.5)) {
+    notes.add((approach, 3.5, 0.45));
+    taken.add(3.5);
+  }
+  // The first gap that is free, late in the bar for preference: a funk
+  // line answers its own downbeat rather than crowding it.
+  for (final beat in const [2.5, 3.5, 1.5, 3.0, 2.0]) {
+    if (taken.contains(beat)) continue;
+    notes.add((riff.isEven ? up : fifth, beat, 0.4));
+    break;
+  }
+  notes.sort((a, b) => a.$2.compareTo(b.$2));
+  return notes;
+}
 
 /// A funk bass line: root-heavy and syncopated, with octave pops.
 List<BassNote> funkBassLine(
@@ -147,6 +190,7 @@ List<BassNote> _play(
               canAnticipate: !isVeryLast,
               style: style,
               beatInBar: start % beatsPerBar,
+              bar: start ~/ beatsPerBar,
             );
       for (final note in played) {
         notes.add((
@@ -359,6 +403,7 @@ class _Bassist {
     required bool canAnticipate,
     required _Style style,
     int beatInBar = 0,
+    int bar = 0,
   }) {
     final funk = style == _Style.funk;
     // Calypso, two chords to a bar: the second chord's root comes in early,
@@ -368,8 +413,15 @@ class _Bassist {
     if (beatsLeftInPhrase <= 0) _newPhrase();
     beatsLeftInPhrase -= beats;
 
-    final centre = (previous * 2 + registerCentre) ~/ 3;
-    var root = _within12(_nearest(chord.bass, centre), previous);
+    // A funk line stays where it is. The others follow the hand, weighting
+    // the last note two to one against the register's centre, which is
+    // what keeps a walking line smooth; a riff anchored that way wanders,
+    // because each bar starts from wherever the bar before it finished.
+    // On four bars of one chord it walked itself down an octave.
+    final centre = funk ? registerCentre : (previous * 2 + registerCentre) ~/ 3;
+    var root = funk
+        ? _nearest(chord.bass, centre)
+        : _within12(_nearest(chord.bass, centre), previous);
     final tones = _ChordTones(chord);
     // A Latin bass rocks *up* to the 5th; dropping to the 5th below is what
     // makes it sound like a rock bass line instead. So if the 5th above
@@ -416,64 +468,29 @@ class _Bassist {
           (1, [(root, 0, 0.9)]),
         ],
       ] else if (funk) ...[
+        // Built from the kick's own figure rather than chosen beside it.
+        //
+        // The bass and the drummer were each rolling their own syncopation
+        // every bar out of their own random, so the two were only ever
+        // together by accident. In funk they are one part: the line is the
+        // kick with notes on it. Both work the figure out from the bar
+        // number, so they agree without either being told.
         if (beats >= 4) ...[
           (
-            4,
-            [
-              (root, 0, 0.9),
-              (root, 1.5, 0.4),
-              (octave, 2, 0.4),
-              (root, 2.5, 0.4),
-              (approach, 3.5, 0.45),
-            ],
-          ),
-          (
-            3,
-            [
-              (root, 0, 0.9),
-              (fifth, 1.5, 0.45),
-              (root, 2, 0.9),
-              (octave, 3.5, 0.45),
-            ],
-          ),
-          (
-            3,
-            [
-              (root, 0, 1.4),
-              (root, 1.5, 0.45),
-              (fifth, 2.5, 0.45),
-              (approach, 3.5, 0.45),
-            ],
-          ),
-          (
-            2,
-            [
-              (root, 0, 0.45),
-              (root, 0.5, 0.45),
-              (fifth, 1, 0.9),
-              (root, 2, 0.9),
-              (approach, 3.5, 0.45),
-            ],
-          ),
-          (
-            2,
-            [
-              (root, 0, 1.9),
-              (octave, 2, 0.45),
-              (fifth, 2.5, 0.45),
-              (root, 3, 0.9),
-            ],
-          ),
-          if (canAnticipate)
-            (
-              2,
-              [
-                (root, 0, 0.9),
-                (root, 1.5, 0.4),
-                (fifth, 2, 0.9),
-                (nextRoot, 3.5, 1.0),
-              ],
+            1,
+            _funkOnTheKick(
+              funkKicksFor(bar),
+              riff: bar ~/ 2,
+              root: root,
+              fifth: fifth,
+              octave: octave,
+              approach: approach,
+              // A leading note only where there is something to lead to.
+              // Four bars of one chord used to get four of them, each
+              // walking into a chord that never came.
+              changing: next.bass != chord.bass,
             ),
+          ),
         ] else if (beats >= 2) ...[
           (4, [(root, 0, 0.9), (root, 1.5, 0.45)]),
           (3, [(root, 0, 1.4), (approach, 1.5, 0.45)]),
