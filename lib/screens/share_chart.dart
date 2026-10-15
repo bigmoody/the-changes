@@ -9,12 +9,14 @@
 // Only the changes leave, whichever way: there is no melody and no lyric
 // in this app to send.
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../music/chart_pdf.dart';
 import '../music/chart_text.dart';
 import '../music/ireal_export.dart';
 import '../music/musicxml_export.dart';
@@ -67,17 +69,29 @@ Future<void> shareCharts(
             return (
               name: musicXmlFileName(song),
               mime: 'application/vnd.recordare.musicxml+xml',
-              text: musicXmlFor(song),
+              bytes: utf8.encode(musicXmlFor(song)),
             );
           }(),
+      ], subject: subject);
+    case _How.pdf:
+      // The page is drawn first: it takes a moment, and the share sheet
+      // should come up with the file already made.
+      final pdf = await chartPdf(tunes, heading: subject);
+      if (!context.mounted) return;
+      await _shareFiles(context, [
+        (
+          name: '${fileNameFor(subject)}.pdf',
+          mime: 'application/pdf',
+          bytes: pdf,
+        ),
       ], subject: subject);
   }
 }
 
 /// A file on its way out: what it is called, what it is, and what is in it.
-typedef _OutFile = ({String name, String mime, String text});
+typedef _OutFile = ({String name, String mime, List<int> bytes});
 
-enum _How { text, ireal, musicXml }
+enum _How { text, ireal, musicXml, pdf }
 
 Future<_How?> _askHow(BuildContext context, int tunes) =>
     showModalBottomSheet<_How>(
@@ -108,6 +122,13 @@ Future<_How?> _askHow(BuildContext context, int tunes) =>
               title: const Text('As an iReal Pro Link'),
               subtitle: const Text('Opens in iReal Pro on the other end'),
               onTap: () => Navigator.of(context).pop(_How.ireal),
+            ),
+            ListTile(
+              key: const ValueKey('share-pdf'),
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('As a PDF'),
+              subtitle: const Text('The chart as a page, to print or to read'),
+              onTap: () => Navigator.of(context).pop(_How.pdf),
             ),
             ListTile(
               key: const ValueKey('share-musicxml'),
@@ -163,7 +184,7 @@ Future<void> _shareFiles(
     final written = <XFile>[];
     for (final out in files) {
       final file = File('${folder.path}/${out.name}');
-      await file.writeAsString(out.text);
+      await file.writeAsBytes(out.bytes);
       written.add(XFile(file.path, mimeType: out.mime));
     }
     await SharePlus.instance.share(
