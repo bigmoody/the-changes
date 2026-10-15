@@ -70,6 +70,20 @@ class Comper {
   /// somewhere else.
   double? _lastEntry;
 
+  /// The slide, as the tune plays it: the shape above on [from], and the
+  /// shape it falls to two and a half beats later, on the "and" after the
+  /// second beat following it.
+  ///
+  /// A beat apart was too quick. What the gap is for is the suspension:
+  /// the upper shape wants time to sit there and be heard wanting to
+  /// fall, and landing it a beat later is a grace note rather than an
+  /// answer. It holds across until the landing, so the two overlap the
+  /// way a pedalled piano does rather than the first being lifted off.
+  static _Pattern _slide(double and, {double from = 0}) => [
+    (from, 2.3, 0.8),
+    (from + 2 + and, 1.4, 0.9),
+  ];
+
   /// The figures that are a slide, and so play two shapes rather than one.
   static const _slides = {'slide', 'slide late'};
 
@@ -280,7 +294,7 @@ class Comper {
           ('turn up', 5, [(2, 0.7, 0.75), (3 + and, 0.9, 0.9)]),
           // The slide is a leading figure by nature, so this is where it
           // belongs most: a whole step falling onto the next section.
-          if (canSlide) ('slide', 8, [(2, 0.9, 0.8), (3, 1.2, 0.9)]),
+          if (canSlide) ('slide', 8, _slide(and)),
           ('rest', 2, const []),
         ] else ...[
           // Still the same chord: mostly leave it alone, and more so the
@@ -303,8 +317,8 @@ class Comper {
           // under the melody. Weighted to be heard without becoming the
           // only thing a vamp does.
           if (canSlide) ...[
-            ('slide', 6, [(2, 0.9, 0.8), (3, 1.2, 0.85)]),
-            ('slide late', 4, [(1 + and, 0.7, 0.75), (2 + and, 1.0, 0.85)]),
+            ('slide', 6, _slide(and)),
+            ('slide late', 4, _slide(and, from: 1)),
           ],
         ],
       ] else if (beats >= 2) ...[

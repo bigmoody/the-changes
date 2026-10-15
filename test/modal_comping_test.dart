@@ -217,6 +217,37 @@ void main() {
       }
     });
 
+    test('the fall takes two and a half beats, not one', () {
+      // A beat apart was too quick to be the figure. The gap is what the
+      // suspension is made of: the upper shape needs time to sit there
+      // and be heard wanting to fall. It lands on the "and" after the
+      // second beat following it, so with the swung off-beat at 0.62 the
+      // two are 2.62 apart.
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('So What', seed: seed);
+        for (final bar in bars) {
+          if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
+          expect(
+            bar.last.beat - bar.first.beat,
+            closeTo(2.62, 0.001),
+            reason: 'seed $seed',
+          );
+        }
+      }
+    });
+
+    test('and the upper shape holds until the landing', () {
+      // Lifted off early it is a stab followed by a chord rather than one
+      // falling onto the other, so it rings across the gap the way a
+      // pedalled piano does.
+      for (var seed = 0; seed < 20; seed++) {
+        for (final bar in compedChorus('So What', seed: seed)) {
+          if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
+          expect(bar.first.length, greaterThan(2.0), reason: 'seed $seed');
+        }
+      }
+    });
+
     test('a tune that is not modal never slides', () {
       // The figure belongs to a vamp. Autumn Leaves has changes of its
       // own to play and does not need one borrowed.
