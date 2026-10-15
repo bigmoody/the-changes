@@ -138,6 +138,7 @@ void main() {
         hiHatOpen: bank.hiHatOpen,
         kick: bank.kick,
         snare: bank.snare,
+        snareTight: bank.snare,
         crossStick: bank.crossStick,
         cowbell: bank.cowbell,
         tomHigh: bank.tomHigh,

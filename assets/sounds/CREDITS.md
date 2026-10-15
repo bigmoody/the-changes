@@ -13,6 +13,11 @@ The files were trimmed and converted to mono 16-bit WAV with
 | Drums | [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) | Versilian Studios & Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
 | Drums, brushes | [Swirly Drums](https://github.com/sfzinstruments/karoryfer.swirly-drums) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
 
+The funk snare is the same Virtuosity drum through its close microphone
+rather than the overheads, trimmed to 0.35 s where the overhead snare is
+0.7 s, and normalised to the overhead snare's peak so that only the tone
+differs.
+
 The brush swirl is cut from the library's long stirring takes, which run
 6 to 13 seconds and are meant for a sampler to loop. Each slice is one
 circle, two beats, shaped the way the circle is played: the backward half

@@ -261,3 +261,9 @@ brushes_stir/stir_2_1.wav https://raw.githubusercontent.com/sfzinstruments/karor
 brushes_stir/stir_2_2.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/snare_stir/stir_dl2_rr2.wav
 brushes_stir/stir_3_1.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/snare_stir/stir_dl3_rr1.wav
 brushes_stir/stir_3_2.wav https://raw.githubusercontent.com/sfzinstruments/karoryfer.swirly-drums/master/Samples/snare_stir/stir_dl3_rr2.wav
+drums/snaremic_snare_center_vl6.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl6.flac
+drums/snaremic_snare_center_vl8.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl8.flac
+drums/snaremic_snare_center_vl10.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl10.flac
+drums/snaremic_snare_center_vl24.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl24.flac
+drums/snaremic_snare_center_vl26.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl26.flac
+drums/snaremic_snare_center_vl28.flac https://raw.githubusercontent.com/sfzinstruments/virtuosity_drums/master/Samples/snaremic/snare/snaremic_snare_center_vl28.flac

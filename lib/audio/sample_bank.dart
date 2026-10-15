@@ -205,6 +205,7 @@ class SampleBank {
     required this.tomLow,
     this.importedChords,
     this.importedBass,
+    required this.snareTight,
     this.brushes = const {},
     this.importedDrums = const {},
   });
@@ -269,6 +270,7 @@ class SampleBank {
     cowbell: cowbell,
     tomHigh: tomHigh,
     tomLow: tomLow,
+    snareTight: snareTight,
     brushes: brushes,
     importedChords: chords,
     importedBass: bass,
@@ -312,6 +314,11 @@ class SampleBank {
 
   /// Snare hits: [quiet (jazz comping), loud (funk backbeat)].
   final DrumSamples snare;
+
+  /// The same snare through the close microphone: shorter, drier, more
+  /// crack and less room. What a funk backbeat is, and the overhead's
+  /// snare is what a jazz one is, so the groove picks.
+  final DrumSamples snareTight;
 
   /// Cross-stick (rim click) hits. The library records this from a tick to
   /// a crack, 14 dB apart; the bossa clave wants the quiet end, so only two
@@ -419,6 +426,16 @@ class SampleBank {
           [24, 26, 28],
         ])
           [for (final level in layers) await wav('drums/snare_$level.wav')],
+      ]),
+      snareTight: DrumSamples.plain([
+        for (final layers in [
+          [6, 8, 10],
+          [24, 26, 28],
+        ])
+          [
+            for (final level in layers)
+              await wav('drums/snare_tight_$level.wav'),
+          ],
       ]),
       crossStick: DrumSamples.plain([
         [

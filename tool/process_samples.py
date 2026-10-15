@@ -287,3 +287,28 @@ if want("swirl"):
     for out, s in swirl:
         write(out, s, SWIRL_PEAK / peak)
     print(f"swirl: {len(swirl)} files, peak {peak:.4f}, gain {SWIRL_PEAK / peak:.2f}")
+
+# A tighter snare, for funk: the same drum through the close microphone
+# instead of the overheads.
+#
+# The overhead snare is the kit's snare because the kit is an overhead's
+# kit, and on a jazz backbeat that is right: what you want there is the
+# drum in its room. Funk wants the drum and not the room. The close mic is
+# 10 dB down by 0.1 of a second and 46 by 0.3, where the overhead is still
+# ringing at 0.7, so it is trimmed much shorter and there is nothing to cut
+# off.
+#
+# Normalised to the same peak as the overhead snare it replaces, so the
+# pattern's velocity means what it meant: the tone changes and the level
+# does not.
+if want("snaretight"):
+    tight = []
+    for level in (6, 8, 10, 24, 26, 28):
+        tight.append((
+            f"{RAW}/drums/snaremic_snare_center_vl{level}.flac",
+            f"{OUT}/drums/snare_tight_{level}.wav", 0.35, 0.12))
+    decoded = [(out, trim(decode(src), secs, fd)) for src, out, secs, fd in tight]
+    peak = max(max(abs(x) for x in s) for _, s in decoded)
+    for out, s in decoded:
+        write(out, s, 1.0 / peak)
+    print(f"snare tight: {len(decoded)} files, peak {peak:.4f}, gain {1.0 / peak:.2f}")

@@ -1091,8 +1091,22 @@ _Parts _renderParts(
       request.drumSound == DrumSound.brushes &&
       bank?.brushes.isNotEmpty == true;
 
-  DrumSamples? recordedDrum(Drum drum) =>
-      bank?.playingDrum(drum, request.drumSound, drumIn(bank, drum));
+  /// Which recordings to hit for [drum]: the band's own, or the brush or
+  /// imported kit's where somebody chose one and it has that drum.
+  ///
+  /// The snare is the exception, and the groove decides it. The kit's
+  /// snare is an overhead's snare, which is the drum in its room, and
+  /// that is a jazz backbeat. A funk backbeat is the drum without the
+  /// room, so funk gets the close microphone instead. A chosen kit still
+  /// wins over both: somebody who imported a snare wants to hear it, and
+  /// somebody playing a funk tune with brushes has asked for brushes.
+  DrumSamples? recordedDrum(Drum drum) {
+    if (bank == null) return null;
+    final ours = drum == Drum.snare && tune.style.drums == Feel.funk
+        ? bank.snareTight
+        : drumIn(bank, drum);
+    return bank.playingDrum(drum, request.drumSound, ours);
+  }
 
   Float32List? synthesisedDrum(Drum drum) => switch (drum) {
     Drum.ride => kit?.ride[takesRandom.nextInt(kit.ride.length)],

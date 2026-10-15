@@ -56,6 +56,13 @@ void main() {
     };
   }
 
+  // The funk tune re-pinned a fourth time when its snare became the close
+  // microphone's instead of the overheads'. Same drum, same level, half
+  // the length: the overhead is the drum in its room and funk wants the
+  // drum. No other groove is touched, which the tight snare's own test
+  // checks by swapping the recording out and watching which renders
+  // notice.
+  //
   // The funk tune re-pinned again when its bass was built on the kick
   // instead of beside it: the two were each rolling their own syncopation
   // out of their own random, so they were only ever together by accident.
@@ -207,7 +214,7 @@ void main() {
       {
         'Chords': -8913168239016665639,
         'Bass': 5265210569221512842,
-        'Drums': 6306765420053377252,
+        'Drums': -3202105465168572988,
       },
     );
   });
