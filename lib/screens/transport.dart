@@ -351,6 +351,40 @@ class _ArpeggioButton extends StatelessWidget {
             onPressed: () => c.setArpeggioSound(sound),
             child: Text('On ${sound.label.toLowerCase()}'),
           ),
+        const Divider(height: 8),
+        // How fast and how far, under the button that turns them on
+        // rather than only in the mixer: the mixer is where you set the
+        // band up and this is where you are while you are playing.
+        //
+        // In submenus because flat they would be eight more items on a
+        // menu that already has eight, and a menu you have to scroll to
+        // reach the end of is a menu with something hidden at the end.
+        SubmenuButton(
+          key: const ValueKey('arpeggio-rate-menu'),
+          menuChildren: [
+            for (final rate in ArpeggioRate.values)
+              MenuItemButton(
+                key: ValueKey('arpeggio-rate-${rate.name}'),
+                leadingIcon: tick(settings.arpeggioRate == rate),
+                onPressed: () => c.setArpeggioRate(rate),
+                child: Text(rate.label),
+              ),
+          ],
+          child: Text('Rate: ${settings.arpeggioRate.label.toLowerCase()}'),
+        ),
+        SubmenuButton(
+          key: const ValueKey('arpeggio-reach-menu'),
+          menuChildren: [
+            for (final reach in ArpeggioReach.values)
+              MenuItemButton(
+                key: ValueKey('arpeggio-reach-${reach.name}'),
+                leadingIcon: tick(settings.arpeggioReach == reach),
+                onPressed: () => c.setArpeggioReach(reach),
+                child: Text(reach.label),
+              ),
+          ],
+          child: Text('Up to: ${settings.arpeggioReach.label.toLowerCase()}'),
+        ),
       ],
       builder: (context, menu, _) {
         final on = c.arpeggios && c.isAudible(Instrument.arpeggio);
