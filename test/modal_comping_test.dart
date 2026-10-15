@@ -256,33 +256,36 @@ void main() {
       }
     });
 
-    test('it comes in on the third beat and lands in the next bar', () {
+    test('it comes in on the third beat and lands before the bar ends', () {
       // The figure is a two-bar phrase: a bar of the chord, then the
-      // answer, which falls across the bar line onto the "and" of the
-      // first beat of the bar after it.
+      // answer, which lands half a beat before the bar line, on the "and"
+      // of the fourth, and rings on into the next bar.
       for (var seed = 0; seed < 20; seed++) {
         final bars = compedChorus('So What', seed: seed);
         for (final bar in bars) {
           if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
           expect(bar.first.beat, 2, reason: 'seed $seed');
-          expect(bar.last.beat, closeTo(4.62, 0.001), reason: 'seed $seed');
+          expect(bar.last.beat, closeTo(3.62, 0.001), reason: 'seed $seed');
         }
       }
     });
 
-    test('the fall takes two and a half beats, not one', () {
-      // A beat apart was too quick to be the figure. The gap is what the
-      // suspension is made of: the upper shape needs time to sit there
-      // and be heard wanting to fall. It lands on the "and" after the
-      // second beat following it, so with the swung off-beat at 0.62 the
-      // two are 2.62 apart.
+    test('the fall takes a beat and a half', () {
+      // A beat apart was too quick and two and a half was too long. What
+      // the gap is for is the suspension: the upper shape needs time to
+      // sit there and be heard wanting to fall, and where it wants to
+      // land is just before the bar line.
+      //
+      // The off-beat and not a literal half beat, so the figure leans
+      // with whatever the swing is set to: at 0.62 the two are 1.62
+      // apart, and at an even 0.5 they would be 1.5.
       for (var seed = 0; seed < 20; seed++) {
         final bars = compedChorus('So What', seed: seed);
         for (final bar in bars) {
           if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
           expect(
             bar.last.beat - bar.first.beat,
-            closeTo(2.62, 0.001),
+            closeTo(1.62, 0.001),
             reason: 'seed $seed',
           );
         }
@@ -293,10 +296,19 @@ void main() {
       // Lifted off early it is a stab followed by a chord rather than one
       // falling onto the other, so it rings across the gap the way a
       // pedalled piano does.
+      // Against the gap rather than a number of beats, so that moving the
+      // landing cannot quietly turn the figure back into a stab: this
+      // asked for two beats when the gap was two and a half, and the gap
+      // is now a beat and a half.
       for (var seed = 0; seed < 20; seed++) {
         for (final bar in compedChorus('So What', seed: seed)) {
           if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
-          expect(bar.first.length, greaterThan(2.0), reason: 'seed $seed');
+          final gap = bar.last.beat - bar.first.beat;
+          expect(
+            bar.first.length,
+            greaterThan(gap * 0.85),
+            reason: 'seed $seed',
+          );
         }
       }
     });

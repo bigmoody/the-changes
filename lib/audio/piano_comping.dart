@@ -71,14 +71,17 @@ class Comper {
   double? _lastEntry;
 
   /// The slide, as the tune plays it: the shape above on the third beat of
-  /// the second bar of a pair, falling to the shape on the chord two and a
-  /// half beats later, which is the "and" of the first beat of the bar
-  /// after it.
+  /// the second bar of a pair, falling to the shape on the chord half a
+  /// beat before the bar ends.
   ///
-  /// A beat apart was too quick. What the gap is for is the suspension:
-  /// the upper shape wants time to sit there and be heard wanting to
-  /// fall, and landing it a beat later is a grace note rather than an
-  /// answer.
+  /// A beat apart was too quick and two and a half was too long. What the
+  /// gap is for is the suspension, and where it wants to land is just
+  /// before the bar line: the answer arrives on the "and" of the fourth
+  /// and rings on over into the next bar.
+  ///
+  /// The off-beat rather than a literal half beat, so the figure leans
+  /// with whatever the swing is set to. Everything else the piano plays
+  /// off the beat does.
   ///
   /// The shape above never falls on a downbeat. It is the leaning half of
   /// the figure and a bar does not open on the lean.
@@ -86,10 +89,10 @@ class Comper {
     // Held across the gap and let go as the landing arrives, not through
     // it: two five-note stacks a tone apart sounding together is ten
     // notes, and that is not a suspension resolving, it is a smudge.
-    (2, 2.2, 0.8),
-    // Over the bar line, which is where a resolution wants to go, and is
-    // why the bar it lands in does not play a figure of its own.
-    (2 + 2 + and, 1.2, 0.9),
+    (2, 1.5, 0.8),
+    // Rings on past the bar line, which is where a resolution wants to
+    // go, and is why the bar after it does not play a figure of its own.
+    (3 + and, 1.2, 0.9),
   ];
 
   /// Whether the last bar's slide resolves into this one.
