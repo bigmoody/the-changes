@@ -48,6 +48,46 @@ String _link(List<String> songs, {String? playlist}) =>
     'irealb://${Uri.encodeComponent([...songs, ?playlist].join('==='))}';
 
 void main() {
+  group('a stray per cent sign', () {
+    // One % that is not an escape used to cost the whole link. Decoding
+    // was all or nothing: Uri.decodeComponent throws on it, and the
+    // catch read the link exactly as it arrived. Where the separators
+    // were already literal the songs still parsed, out of text that was
+    // still escaped, so a title came through as "Take%20The%20A%20Train"
+    // and the music, which is unscrambled character by character, came
+    // through as nonsense: single letters for chords, three chords in a
+    // bar that holds one, and qualities dropped.
+    //
+    // A per cent sign in a song's name is enough to do it, and it does
+    // it to every song in the playlist, not just that one.
+    const body =
+        'Blues%20One,%20100%%20proof=Doe%20Jane=Medium%20Swing=F=n='
+        '[T44F7%20|Bb7%20|F7%20|C7%20Z';
+
+    test('does not leave the other escapes in the words', () {
+      final song = parseIrealPro('irealbook://$body').single;
+      expect(song.progression.title, 'Blues One, 100% proof');
+      expect(song.style, 'Medium Swing');
+      expect(song.progression.composer, 'Jane Doe');
+    });
+
+    test('and does not reach the music', () {
+      final song = parseIrealPro('irealbook://$body').single;
+      expect(song.progression.bars, ['F7', 'Bb7', 'F7', 'C7']);
+    });
+
+    test('itself survives, being a per cent sign and not an escape', () {
+      expect(decodeEscapes('100% proof'), '100% proof');
+      expect(decodeEscapes('%'), '%');
+      expect(decodeEscapes('%2'), '%2');
+    });
+
+    test('an accented title still arrives as its letters', () {
+      // Two escapes to the letter, so decoding a byte at a time has to
+      // put them back together rather than hand over two half-letters.
+      expect(decodeEscapes('Caf%C3%A9 100% Bleu'), 'Café 100% Bleu');
+    });
+  });
   const blues =
       '[T44Bb7XyQ|Eb7XyQ|Bb7XyQKcl  LZEb7XyQ|Eo7XyQ|Bb7XyQ|G7b9XyQ|'
       'C-7XyQ|F7XyQ|Bb7 G7LZC-7 F7 Z ';

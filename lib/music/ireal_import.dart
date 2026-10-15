@@ -17,6 +17,8 @@
 // a repeated section as ×2, and 1st and 2nd endings as endings, so it opens
 // in the editor looking like the chart it came from.
 
+import 'dart:convert';
+
 import 'chord.dart';
 import 'tune.dart';
 import 'user_progression.dart';
@@ -47,14 +49,49 @@ List<ImportedSong> parseIrealPro(String text) => [
     ..._parseLink(match[0]!),
 ];
 
+/// [text] with its percent escapes decoded, leaving a stray `%` alone.
+///
+/// [Uri.decodeComponent] is all or nothing: one `%` that is not an
+/// escape and it throws, and the whole link was then read exactly as it
+/// arrived. A link whose separators are already literal still parses
+/// that way, so the songs came through with their titles untouched:
+/// "Blues%20One, 100%%20proof" and a style of "Medium%20Swing". A per
+/// cent sign in one song's name was enough to do it to every song in
+/// the playlist.
+///
+/// Decoded a byte at a time so that one bad escape costs only itself,
+/// and through UTF-8 so an accented title survives, its letters
+/// arriving as two escapes apiece.
+String decodeEscapes(String text) {
+  final out = StringBuffer();
+  final bytes = <int>[];
+  void flush() {
+    if (bytes.isEmpty) return;
+    out.write(utf8.decode(bytes, allowMalformed: true));
+    bytes.clear();
+  }
+
+  for (var i = 0; i < text.length;) {
+    if (text[i] == '%' &&
+        i + 2 < text.length &&
+        _hex.hasMatch(text.substring(i + 1, i + 3))) {
+      bytes.add(int.parse(text.substring(i + 1, i + 3), radix: 16));
+      i += 3;
+      continue;
+    }
+    flush();
+    out.write(text[i]);
+    i++;
+  }
+  flush();
+  return out.toString();
+}
+
+final _hex = RegExp(r'^[0-9a-fA-F]{2}$');
+
 List<ImportedSong> _parseLink(String link) {
   final scrambled = link.startsWith('irealb://');
-  var body = link.substring(link.indexOf('://') + 3);
-  try {
-    body = Uri.decodeComponent(body);
-  } on ArgumentError {
-    // Already decoded, or a stray %: read it as it is.
-  }
+  final body = decodeEscapes(link.substring(link.indexOf('://') + 3));
   final songs = <ImportedSong>[];
   for (final part in body.split('===')) {
     final song = _parseSong(part, scrambled: scrambled);
