@@ -1417,7 +1417,7 @@ _Parts _renderParts(
         drumsAsRecorded.buffer,
         0,
         sampleRate,
-        wet: roomFor(style.drums),
+        wet: chiptune != null ? 0 : roomFor(style.drums),
       );
     }
   }

@@ -384,212 +384,219 @@ void saturate(Float32List buffer, {required double drive}) {
 // ── A chiptune kit ───────────────────────────────────────────────────────
 //
 // The drums of an eight-bit console, made the way that console made them,
-// because it had no drum samples to play: two square channels, a triangle,
-// and a noise generator.
+// because it had no drum samples to play. Super Mario Bros. played its
+// drums on the noise channel, and that is what this kit is.
 //
-//  • Noise is where the hats, the cymbals and the snare come from. Its
-//    "period" is what makes it hiss or rattle, and the short-period mode
-//    is a tone rather than a hiss, which is what gives a chip snare its
-//    metallic edge.
-//  • The triangle has no volume control of its own, so it is used for the
-//    bass, and a kick is made by dropping its pitch quickly: a note that
-//    falls fast enough stops being a note and becomes a thump.
-//  • A square blip stands in for anything wooden or metallic and short,
-//    which here is the cross-stick and the cowbell.
+// What makes it sound like a console and not like a drum is two things,
+// and an earlier version of this kit got both of them wrong by building
+// chip drums out of a real drum's habits:
 //
-// What makes any of it sound like a drum is the envelope: a fast fall to
-// nothing, the way a tracker writes a volume column that counts down.
+//  • The volume is four bits, nought to fifteen, and it is set once a
+//    frame, sixty times a second. A drum is a short list of those
+//    numbers counting down, a handful of frames long. That is the whole
+//    envelope: it steps, it does not glide, and it stops dead when the
+//    list runs out. A smooth exponential tail is a real drum's, and it
+//    is what made this one ring.
+//  • There are no cymbals. A console has a noise generator and nothing
+//    else that hisses, so the ride is a hi-hat like the others, and the
+//    kit is never put in a room.
 //
-// There is no swirl. A brush is a thing you drag across a drumhead, and
-// nothing in a console sounds remotely like one; a brush groove on this
-// kit plays its other drums and leaves the circle out.
+// The volume lists and pitches below are a real game's noise
+// instruments, written out in tracker form: see tool/groove_sources.txt.
 
-/// How long a chip drum lasts, as a multiple of its decay.
-///
-/// The periods above it are in samples rather than in the console's own
-/// clock, and they are chosen by what each drum has to be: a few samples
-/// between steps is a hiss for a hat, a dozen is a body for a snare.
-///
-/// Four: by then the envelope is at two per cent and what is left is
-/// under everything else in the band. Any longer and the kit rings, and
-/// a console's drums do not ring: there is no room in a chip and no
-/// cymbal to hold one.
-const _chipTail = 4.0;
+/// Frames a second: the rate the console's music driver sets volumes at.
+const _frames = 60;
 
-/// The noise generator: a linear feedback shift register, as the console
-/// has, rather than a random number source.
-///
-/// Fifteen bits, exclusive-or of two taps shifted back in at the top. The
-/// short mode taps six bits along instead of one, which makes the sequence
-/// repeat in ninety-three steps rather than thirty-two thousand, and a
-/// sequence that short is heard as a pitch.
+/// The noise generator's period at each of its sixteen pitches, in
+/// cycles of the console's clock, highest pitch first.
+const _noisePeriods = [
+  4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, //
+  4068,
+];
+
+/// The console's clock, NTSC, in hertz.
+const _cpuHz = 1789773;
+
+/// The noise generator: a fifteen-bit linear feedback shift register, as
+/// the console has, rather than a random number source.
 class _Noise {
-  _Noise({this.short = false}) : _register = 1;
-  final bool short;
-  int _register;
+  int _register = 1;
 
-  double next() {
-    final other = short ? (_register >> 6) & 1 : (_register >> 1) & 1;
-    final feedback = (_register & 1) ^ other;
+  /// The next bit: on or off, nothing between, as the console's is.
+  bool next() {
+    final feedback = (_register & 1) ^ ((_register >> 1) & 1);
     _register = (_register >> 1) | (feedback << 14);
-    // The console's output is the bottom bit: on or off, nothing between.
-    return (_register & 1) == 1 ? 1.0 : -1.0;
+    return (_register & 1) == 1;
   }
 }
 
-/// A noise hit: [seconds] long, falling to nothing over [decay], with the
-/// generator stepped every [period] samples.
-Float32List _chipNoise(
+/// A noise drum: [volumes] set one a frame, the generator at [pitch].
+///
+/// [pitch] is the tracker's, nought to fifteen with fifteen highest; the
+/// generator steps at the clock divided by that pitch's period, and the
+/// output holds each bit until the next step, as the hardware does.
+Float32List _noiseDrum(
   int sampleRate, {
-  required double decay,
-  required int period,
-  bool short = false,
-  double level = 0.5,
+  required List<int> volumes,
+  required int pitch,
+  double gain = 1,
 }) {
-  final out = Float32List((decay * _chipTail * sampleRate).round());
-  final noise = _Noise(short: short);
-  var value = noise.next();
-  var countdown = period;
+  final perFrame = sampleRate ~/ _frames;
+  final out = Float32List(perFrame * volumes.length);
+  final stepsPerSample = _cpuHz / _noisePeriods[15 - pitch] / sampleRate;
+  final noise = _Noise();
+  var bit = noise.next();
+  var due = 0.0;
   for (var i = 0; i < out.length; i++) {
-    if (--countdown <= 0) {
-      value = noise.next();
-      countdown = period;
+    due += stepsPerSample;
+    while (due >= 1) {
+      bit = noise.next();
+      due -= 1;
     }
-    final t = i / sampleRate;
-    out[i] = value * level * math.exp(-t / decay);
+    final volume = volumes[i ~/ perFrame] / 15;
+    out[i] = (bit ? 1.0 : -1.0) * volume * gain;
   }
-  _fadeIn(out, (0.001 * sampleRate).round());
-  _fadeOut(out, (0.002 * sampleRate).round());
   return out;
 }
 
-/// A triangle note whose pitch falls from [from] to [to] over [sweep]
-/// seconds: the console's way of making a kick or a tom.
+/// A triangle note held for [frameCount] frames, falling from [from] to
+/// [to] hertz a frame at a time: the console's tom.
 ///
-/// Sixteen steps to the triangle, as the hardware has, so it keeps the
-/// stepped edge that makes it sound like itself rather than like a sine.
-Float32List _chipDrop(
+/// The triangle has no volume of its own, only on and off, so a tom made
+/// from it is a length and a pitch and nothing else. Sixteen steps to
+/// the wave, as the chip's counter gives it.
+Float32List _triangleDrop(
   int sampleRate, {
   required double from,
   required double to,
-  required double sweep,
-  required double decay,
-  double level = 0.6,
+  required int frameCount,
+  double gain = 1,
 }) {
-  final out = Float32List((decay * _chipTail * sampleRate).round());
+  final perFrame = sampleRate ~/ _frames;
+  final out = Float32List(perFrame * frameCount);
   var phase = 0.0;
   for (var i = 0; i < out.length; i++) {
-    final t = i / sampleRate;
-    final through = math.min(t / sweep, 1.0);
-    final hertz = from + (to - from) * through;
+    final frame = i ~/ perFrame;
+    final hertz = from + (to - from) * frame / math.max(frameCount - 1, 1);
     phase = (phase + hertz / sampleRate) % 1;
-    // A triangle in sixteen steps, as the chip's counter gives it.
     final triangle = 1 - 4 * (phase - 0.5).abs();
-    final stepped = (triangle * 8).round() / 8;
-    out[i] = stepped * level * math.exp(-t / decay);
+    out[i] = (triangle * 8).round() / 8 * gain;
   }
+  // The one smoothing the hardware has: it does not jump from a peak to
+  // silence, because the wave is wherever it is when the note stops. A
+  // millisecond each end does the same job here.
   _fadeIn(out, (0.001 * sampleRate).round());
-  _fadeOut(out, (0.002 * sampleRate).round());
+  _fadeOut(out, (0.001 * sampleRate).round());
   return out;
 }
 
-/// A square blip at [hertz]: short, and gone.
-Float32List _chipBlip(
+/// A square blip on one of the pulse channels: [volumes] a frame at a
+/// time, at [hertz], with the wave high for [duty] of each cycle.
+Float32List _pulseBlip(
   int sampleRate, {
+  required List<int> volumes,
   required double hertz,
-  required double decay,
-  double duty = 0.5,
-  double level = 0.4,
+  double duty = 0.125,
+  double gain = 1,
 }) {
-  final out = Float32List((decay * _chipTail * sampleRate).round());
+  final perFrame = sampleRate ~/ _frames;
+  final out = Float32List(perFrame * volumes.length);
   var phase = 0.0;
   for (var i = 0; i < out.length; i++) {
-    final t = i / sampleRate;
     phase = (phase + hertz / sampleRate) % 1;
-    out[i] = (phase < duty ? 1.0 : -1.0) * level * math.exp(-t / decay);
+    final volume = volumes[i ~/ perFrame] / 15;
+    out[i] = (phase < duty ? 1.0 : -1.0) * volume * gain;
   }
-  _fadeIn(out, (0.001 * sampleRate).round());
-  _fadeOut(out, (0.002 * sampleRate).round());
   return out;
 }
 
 /// The kit of an eight-bit console, drum by drum.
 ///
-/// One sound each rather than layers: a console had one noise channel and
-/// one triangle, and what varies between a quiet hit and a loud one there
-/// is the volume column, which is what the band's velocity already is.
+/// One sound each rather than layers: a console had one noise channel,
+/// and what varies between a quiet hit and a loud one there is the
+/// volume column, which is what the band's velocity already is.
 class ChiptuneKit {
   ChiptuneKit(int sampleRate)
-    : ride = _chipNoise(sampleRate, decay: 0.05, period: 4, level: 0.3),
-      hiHatClosed = _chipNoise(
+    : kick = _noiseDrum(
         sampleRate,
-        decay: 0.006,
-        period: 5,
-        level: 0.546,
+        volumes: const [10, 7, 4, 3, 2, 0],
+        pitch: 9,
+        gain: _level,
       ),
-      hiHatOpen = _chipNoise(sampleRate, decay: 0.03, period: 3, level: 0.3),
-      hiHatPedal = _chipNoise(sampleRate, decay: 0.005, period: 5, level: 0.26),
-      // The snare: noise in the short mode, which is where its ring comes
-      // from, under a quick drop that gives it a body to crack against.
-      snare = _mix(
-        _chipNoise(
-          sampleRate,
-          decay: 0.022,
-          period: 14,
-          short: true,
-          level: 0.728,
-        ),
-        _chipDrop(
-          sampleRate,
-          from: 420,
-          to: 180,
-          sweep: 0.012,
-          decay: 0.012,
-          level: 0.39,
-        ),
+      snare = _noiseDrum(
+        sampleRate,
+        volumes: const [11, 9, 8, 7, 6, 4, 3, 2, 1, 0],
+        pitch: 7,
+        gain: _level,
       ),
-      kick = _chipDrop(
+      hiHatClosed = _noiseDrum(
+        sampleRate,
+        volumes: const [4, 3, 2, 1, 0],
+        pitch: 12,
+        gain: _level,
+      ),
+      // The ride is the loose hat: a console has no cymbal to give it.
+      ride = _noiseDrum(
+        sampleRate,
+        volumes: const [7, 5, 4, 2, 2, 1, 0],
+        pitch: 12,
+        gain: _level,
+      ),
+      hiHatOpen = _noiseDrum(
+        sampleRate,
+        volumes: const [6, 5, 4, 4, 4, 4, 4, 4, 3, 2, 1, 0],
+        pitch: 12,
+        gain: _level,
+      ),
+      // The foot: the closed hat, a step quieter.
+      hiHatPedal = _noiseDrum(
+        sampleRate,
+        volumes: const [3, 2, 1, 0],
+        pitch: 12,
+        gain: _level,
+      ),
+      // A tick at the snare's pitch, as short as the closed hat.
+      crossStick = _noiseDrum(
+        sampleRate,
+        volumes: const [6, 3, 1, 0],
+        pitch: 7,
+        gain: _level,
+      ),
+      tomHigh = _triangleDrop(
+        sampleRate,
+        from: 330,
+        to: 165,
+        frameCount: 5,
+        gain: _level * 0.6,
+      ),
+      tomLow = _triangleDrop(
         sampleRate,
         from: 220,
-        to: 48,
-        sweep: 0.025,
-        decay: 0.028,
-        level: 1.04,
-      ),
-      tomHigh = _chipDrop(
-        sampleRate,
-        from: 400,
-        to: 180,
-        sweep: 0.035,
-        decay: 0.035,
-        level: 0.858,
-      ),
-      tomLow = _chipDrop(
-        sampleRate,
-        from: 260,
         to: 110,
-        sweep: 0.04,
-        decay: 0.04,
-        level: 0.858,
+        frameCount: 6,
+        gain: _level * 0.6,
       ),
-      crossStick = _chipBlip(sampleRate, hertz: 1200, decay: 0.005, duty: 0.25),
-      cowbell = _chipBlip(
+      cowbell = _pulseBlip(
         sampleRate,
+        volumes: const [8, 6, 4, 2, 0],
         hertz: 800,
-        decay: 0.018,
-        duty: 0.125,
-        level: 0.585,
+        gain: _level * 0.6,
       );
 
-  final Float32List ride;
+  /// How loud the kit is against the band. The volumes above are the
+  /// console's own, out of fifteen; this is the one number that sits the
+  /// whole kit in the mix.
+  static const _level = 0.9;
+
+  final Float32List kick;
+  final Float32List snare;
   final Float32List hiHatClosed;
+  final Float32List ride;
   final Float32List hiHatOpen;
   final Float32List hiHatPedal;
-  final Float32List snare;
-  final Float32List kick;
+  final Float32List crossStick;
   final Float32List tomHigh;
   final Float32List tomLow;
-  final Float32List crossStick;
   final Float32List cowbell;
 
   /// What this kit plays for [drum], or null where it has nothing: the
@@ -608,16 +615,4 @@ class ChiptuneKit {
     Drum.cowbell => cowbell,
     Drum.swirl => null,
   };
-}
-
-/// Two sounds laid on top of each other, as long as the longer one.
-Float32List _mix(Float32List a, Float32List b) {
-  final out = Float32List(math.max(a.length, b.length));
-  for (var i = 0; i < a.length; i++) {
-    out[i] += a[i];
-  }
-  for (var i = 0; i < b.length; i++) {
-    out[i] += b[i];
-  }
-  return out;
 }

@@ -51,50 +51,49 @@ void main() {
     }
   });
 
-  test('the kick falls in pitch rather than being struck', () {
-    // What makes a chip kick a kick: a note dropped fast enough stops
-    // being a note. So the first half of it crosses zero far more often
-    // than the second.
-    final kick = kit.kick;
-    int crossings(int from, int to) {
-      var count = 0;
-      for (var i = from + 1; i < to; i++) {
-        if ((kick[i] < 0) != (kick[i - 1] < 0)) count++;
-      }
-      return count;
-    }
-
-    final half = (0.03 * 44100).round();
-    expect(crossings(0, half), greaterThan(crossings(half, half * 2)));
-  });
-
-  test('nothing rings: a console has no room and no cymbal', () {
-    // Which is the whole character of the kit. The closed hat is a
-    // tick, the open one is longer, the ride longer again, and the
-    // longest thing in the kit is still under a quarter of a second.
-    final closed = lengthOf(kit.hiHatClosed, 44100);
-    final open = lengthOf(kit.hiHatOpen, 44100);
-    final ride = lengthOf(kit.ride, 44100);
-    expect(closed, lessThan(0.03));
-    expect(open, greaterThan(closed * 3));
-    expect(ride, greaterThan(open));
+  test('every drum is a handful of frames, stepping, then stopped', () {
+    // The console sets its four-bit volume once a frame, sixty times a
+    // second, from a short list counting down. So a drum's length is a
+    // whole number of frames, it holds one level for each of them, and
+    // it ends on the nought at the bottom of the list, not on a tail.
+    const perFrame = 44100 ~/ 60;
     for (final drum in Drum.values) {
       final sound = kit.of(drum);
       if (sound == null) continue;
+      expect(sound.length % perFrame, 0, reason: '${drum.name}: whole frames');
       expect(
-        sound.length / 44100,
-        lessThan(0.25),
-        reason: '${drum.name} is still going',
+        sound.length ~/ perFrame,
+        lessThanOrEqualTo(12),
+        reason: '${drum.name}: a fifth of a second at the very most',
       );
-      // And it ends on silence rather than on a step, which is a click.
-      expect(sound.last.abs(), lessThan(0.001), reason: drum.name);
+    }
+    // The closed hat is five frames and the snare ten: a twelfth of a
+    // second and a sixth, which is the scale these sounds live at.
+    expect(kit.hiHatClosed.length ~/ perFrame, 5);
+    expect(kit.snare.length ~/ perFrame, 10);
+    expect(kit.kick.length ~/ perFrame, 6);
+  });
+
+  test('and inside a frame the level does not move: it steps', () {
+    // The noise is plus or minus the frame's volume and nothing else, so
+    // within one frame every sample is the same size. A real drum's
+    // decay glides; this one stairs down.
+    const perFrame = 44100 ~/ 60;
+    final snare = kit.snare;
+    for (var frame = 0; frame < 9; frame++) {
+      final sizes = {
+        for (var i = frame * perFrame; i < (frame + 1) * perFrame; i++)
+          snare[i].abs().toStringAsFixed(6),
+      };
+      expect(sizes, hasLength(1), reason: 'frame $frame');
+    }
+    // And the last frame is the nought: silence, not a fade.
+    for (var i = 9 * perFrame; i < 10 * perFrame; i++) {
+      expect(snare[i], 0);
     }
   });
 
   test('the noise is the console\'s own, not a random number source', () {
-    // A linear feedback shift register in the short mode repeats every
-    // ninety-three steps, which is what gives a chip snare its pitch. A
-    // random source would never repeat.
     final snare = kit.snare;
     expect(loudest(snare), greaterThan(0.1));
     // Two kits built the same way are identical, sample for sample: it
