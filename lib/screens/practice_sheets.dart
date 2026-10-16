@@ -361,8 +361,8 @@ String _listenLine(PracticeController controller) {
 /// tune.
 ///
 /// The segments above say piano, guitar or imported; this says which
-/// imported, and opens every sound on the shelf to change it. It is only
-/// there once something has been brought in that could play the part.
+/// imported, and opens every sound on the shelf to change it, or the file
+/// picker when there is nothing on the shelf yet.
 class _FromTheShelf extends StatelessWidget {
   const _FromTheShelf({required this.controller, required this.role});
 
@@ -397,9 +397,10 @@ class _FromTheShelf extends StatelessWidget {
     final store = SoundFonts.maybeOf(context);
     if (store == null) return const SizedBox.shrink();
     final drums = role == SoundFontRole.drums;
-    if (!(drums ? store.hasKitsToChoose : store.hasInstrumentsToChoose)) {
-      return const SizedBox.shrink();
-    }
+    // Always there, even with nothing brought in yet: each device keeps
+    // its own SoundFonts, and a button that only appears once you have
+    // found the other screen and added one there is a button nobody on a
+    // new device ever sees. With nothing on the shelf it asks for a file.
     final name = drums ? store.drumsFrom : store.nameFor(role);
     return Align(
       alignment: AlignmentDirectional.centerEnd,
@@ -495,7 +496,7 @@ void showMixer(BuildContext context, PracticeController controller) {
             // has imported something for it.
             if (controller.settings.bassSound == BassSound.imported ||
                 controller.hasImportedBass ||
-                (shelf?.hasInstrumentsToChoose ?? false))
+                shelf != null)
               Row(
                 children: [
                   Text('Bass', style: theme.textTheme.titleSmall),

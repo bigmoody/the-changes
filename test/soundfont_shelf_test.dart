@@ -209,16 +209,20 @@ void main() {
       return controller;
     }
 
-    testWidgets('says nothing about a shelf with nothing on it', (
+    testWidgets('is offered on a device with nothing brought in yet', (
       tester,
     ) async {
+      // Each device keeps its own SoundFonts. Hiding the button until
+      // there were some meant a new device never showed it at all.
       await openTheMixer(
         tester,
         SoundFontStore.inMemory(),
         AppSettings.inMemory(),
       );
-      expect(find.byKey(const ValueKey('shelf-chords')), findsNothing);
-      expect(find.byKey(const ValueKey('shelf-drums')), findsNothing);
+      expect(find.byKey(const ValueKey('shelf-chords')), findsOneWidget);
+      expect(find.byKey(const ValueKey('shelf-bass')), findsOneWidget);
+      expect(find.byKey(const ValueKey('shelf-drums')), findsOneWidget);
+      expect(find.text('Choose an Imported Sound'), findsNWidgets(3));
     });
 
     testWidgets('chooses a sound off the shelf and puts it on', (
