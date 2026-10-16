@@ -18,7 +18,9 @@
 // What this reads, and what it does not:
 //
 //  • Read: the key and velocity range of each zone, the sample it plays,
-//    the note that sample was recorded at, its tuning, and its loop.
+//    the note that sample was recorded at, its tuning, how far apart it
+//    says its keys are, whether it sounds one fixed note whatever is
+//    played, and its loop.
 //  • Not read: modulators, envelopes, filters, LFOs, chorus, reverb, and
 //    the rest of the synthesis the format can describe. The app has its own
 //    envelope and its own room, and a note is held and released by the band
@@ -250,6 +252,8 @@ const _genInstrument = 41;
 const _genSampleModes = 54;
 const _genCoarseTune = 51;
 const _genFineTune = 52;
+const _genKeynum = 46;
+const _genScaleTuning = 56;
 const _genRootKey = 58;
 const _genSampleId = 53;
 
@@ -276,6 +280,7 @@ class _Region {
     required this.velLow,
     required this.velHigh,
     required this.tuneCents,
+    required this.scaleCents,
   });
 
   final Map<int, int> generators;
@@ -287,6 +292,23 @@ class _Region {
   /// Tuning asked for at the preset level, which the spec adds to the
   /// instrument's rather than replacing it.
   final int tuneCents;
+
+  /// The same for the scale: a preset's scale tuning is an offset to its
+  /// instrument's, not a replacement.
+  final int scaleCents;
+
+  /// How far apart two keys are, in cents. A hundred is a semitone and
+  /// the default; a font may say otherwise, and some do. Nought is a
+  /// fixed-pitch sound, where every key plays the same note, which is
+  /// how a font carries a sound effect or a gong.
+  int get scaleTuning => (generators[_genScaleTuning] ?? 100) + scaleCents;
+
+  /// The key this zone sounds as, whatever key was played. Fonts use it
+  /// for a fixed-pitch zone, and a zone that has it is not transposed.
+  int? get keynum {
+    final key = generators[_genKeynum];
+    return key != null && key >= 0 && key <= 127 ? key : null;
+  }
 
   int? get sampleId => generators[_genSampleId];
   bool get loops => (generators[_genSampleModes] ?? 0) & 1 == 1;
@@ -350,13 +372,21 @@ extension SoundFontInstruments on SoundFont {
       for (final region in covering) {
         final recording = read.putIfAbsent(region, () => _recordingOf(region));
         if (recording == null) continue;
+        // What this key sounds as. Normally the key itself; a zone with
+        // a keynum sounds that key whatever was played, which is how a
+        // font writes a fixed-pitch sound.
+        final sounding = region.keynum ?? pitch;
         takes.add(
           SampledNote(
             recording.samples,
-            // The sample's own rate and tuning, and then however far this
-            // key is from the note it was played at.
+            // The sample's own rate and tuning, and then however far
+            // this key is from the note it was played at. How far that
+            // is in cents is the font's business: a hundred to the
+            // semitone unless it says otherwise, and nought where it
+            // wants every key to sound the same note.
             rate:
-                recording.rate * _centsToRatio((pitch - recording.root) * 100),
+                recording.rate *
+                _centsToRatio((sounding - recording.root) * region.scaleTuning),
             loop: recording.loop,
           ),
         );
@@ -565,6 +595,7 @@ extension SoundFontInstruments on SoundFont {
       // filters and envelopes, which the band decides.
       final tune =
           _signedOf(zone[_genFineTune]) + _signedOf(zone[_genCoarseTune]) * 100;
+      final scale = _signedOf(zone[_genScaleTuning]);
 
       var instGlobals = <int, int>{};
       for (var z = firstInstBag; z < lastInstBag; z++) {
@@ -591,6 +622,7 @@ extension SoundFontInstruments on SoundFont {
             velLow: velLow,
             velHigh: velHigh,
             tuneCents: tune,
+            scaleCents: scale,
           ),
         );
       }
