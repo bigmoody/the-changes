@@ -379,6 +379,86 @@ void main() {
       }
     });
 
+    test('the tempo moves with the beat, because the beat has changed', () {
+      // Cherokee counted in six eight did not sound like six eight: its
+      // tempo is a quarter note's, and handing that number to a dotted
+      // quarter is a tune half as long again and nothing like the one
+      // you asked for.
+      const four = Meter.four;
+      const six = Meter(6, 8);
+      const sixInSix = Meter(6, 8, countedIn: 6);
+      expect(six.tempoFrom(four, 240), 160, reason: 'dotted quarters');
+      expect(four.tempoFrom(six, 160), 240, reason: 'and back again');
+      expect(sixInSix.tempoFrom(four, 120), 240, reason: 'the beat is an 8th');
+      expect(four.tempoFrom(four, 120), 120, reason: 'the same meter');
+      expect(const Meter(3, 4).tempoFrom(four, 120), 120, reason: 'both in 4');
+
+      final library = LibraryStore.inMemory();
+      final tune = standards.firstWhere((t) => t.title == 'Cherokee');
+      final controller = PracticeController(
+        tune: tune,
+        player: PracticePlayer(),
+        settings: AppSettings.inMemory(),
+        library: library,
+        ref: TuneRef.of(tune),
+      );
+      addTearDown(controller.dispose);
+      final written = controller.tempo;
+      controller.setMeter(six);
+      expect(controller.tempo, (written * 2 / 3).round());
+      // And what the tempo's own way back offers is the written tempo
+      // in the beats being counted now, not the raw number.
+      expect(controller.writtenTempo, (tune.defaultTempo * 2 / 3).round());
+      controller.setMeter(null);
+      expect(controller.tempo, written, reason: 'back where it started');
+    });
+
+    test('and opening it again finds the same tune, not a longer one', () {
+      // The loop and the tempo are both counted in beats, and a tune
+      // kept in another meter has a different number of them: opening
+      // Cherokee in six eight looped "bars 1 to 128" of a 64-bar tune
+      // and played it at a quarter note's tempo.
+      final tune = standards.firstWhere((t) => t.title == 'Cherokee');
+      final library = LibraryStore.inMemory();
+      library.setMeter(TuneRef.of(tune), const Meter(6, 8));
+      final controller = PracticeController(
+        tune: tune,
+        player: PracticePlayer(),
+        settings: AppSettings.inMemory(),
+        library: library,
+        ref: TuneRef.of(tune),
+      );
+      addTearDown(controller.dispose);
+      expect(controller.tune.beatsPerBar, 2);
+      expect(controller.loop.lengthBeats, controller.tune.totalBeats);
+      expect(controller.loop.isWholeTune(controller.tune), isTrue);
+      expect(controller.tempo, (tune.defaultTempo * 2 / 3).round());
+    });
+
+    test('but a tempo you left off at is already in your own beats', () {
+      // It was recorded while the tune was being counted this way, so
+      // converting it again on the way in made the tune open slower
+      // every time it was opened.
+      final tune = standards.firstWhere((t) => t.title == 'Cherokee');
+      final library = LibraryStore.inMemory();
+      final ref = TuneRef.of(tune);
+      library.setMeter(ref, const Meter(6, 8));
+      library.noteRun(ref, (at: DateTime.now(), tempo: 85, asked: 8, hits: 8));
+      PracticeController opened() => PracticeController(
+        tune: tune,
+        player: PracticePlayer(),
+        settings: AppSettings.inMemory(),
+        library: library,
+        ref: ref,
+      );
+      final first = opened();
+      addTearDown(first.dispose);
+      expect(first.tempo, 85);
+      final again = opened();
+      addTearDown(again.dispose);
+      expect(again.tempo, 85, reason: 'and again, and again');
+    });
+
     test('the practice screen remembers it, and says it is not the tune', () {
       final library = LibraryStore.inMemory();
       final tune = standards.firstWhere((t) => t.title == 'Autumn Leaves');

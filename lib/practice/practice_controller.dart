@@ -73,15 +73,32 @@ class PracticeController extends ChangeNotifier {
          ref,
          library,
        ).transposed(settings.instrument.semitones),
-       _loop = LoopRange.wholeTune(tune),
+       // The tune as the player keeps it, which is the one with the
+       // beats in it: a tune they count in six eight has half as many
+       // of them in a bar as the one written in four.
+       _loop = LoopRange.wholeTune(_asChosen(tune, ref, library)),
        // Where you left off, if you have been here before. The written
        // tempo is what the tune is played at; this is what *you* play it
        // at, which after a week of work is rarely the same number.
+       //
+       // The written tempo is counted in the written meter's beats, so
+       // on a tune the player counts another way it is converted: a
+       // quarter note's number handed to the dotted quarter of a bar of
+       // six eight plays it half as long again as it should be.
+       //
+       // What they left off at is not converted. It was recorded while
+       // they were counting the tune the way they count it, so it is
+       // already in those beats; converting it again is how Cherokee in
+       // six eight opened slower every time it was opened.
        _tempo =
            (ref == null
                ? null
                : tempoToOpenAt(library?.runsFor(ref) ?? const [])) ??
-           tune.defaultTempo {
+           _asChosen(
+             tune,
+             ref,
+             library,
+           ).meter.tempoFrom(tune.meter, tune.defaultTempo) {
     settings.addListener(_updateChart);
     recordingStore?.addListener(_recordingsChanged);
     _imported = partStore?.forTune(_ref);
@@ -140,9 +157,14 @@ class PracticeController extends ChangeNotifier {
   /// and a bar is not the same number of beats as it was.
   void setMeter(Meter? meter) {
     if (meter == _meter) return;
+    final was = this.meter;
     _meter = meter;
     final ref = _ref;
     if (ref != null) library?.setMeter(ref, meter);
+    // The tempo counts beats, and the beat is not the same note it was:
+    // a quarter in four, a dotted quarter in six eight, an eighth in six
+    // eight counted in six. So the number moves and the music does not.
+    _tempo = this.meter.tempoFrom(was, _tempo).clamp(minTempo, maxTempo);
     _tune = _source.transposed(_semitones).withStyle(style);
     _loop = LoopRange.wholeTune(_tune);
     _updateChart();
@@ -483,7 +505,8 @@ class PracticeController extends ChangeNotifier {
   /// tune you have been working on opens at the tempo you last got it up
   /// to, which is the useful thing and also the thing you sometimes want
   /// to get out of.
-  int get writtenTempo => originalTune.defaultTempo;
+  int get writtenTempo =>
+      meter.tempoFrom(originalTune.meter, originalTune.defaultTempo);
 
   /// Whether the tempo has been moved off the written one.
   bool get tempoIsChosen => _tempo != writtenTempo;
