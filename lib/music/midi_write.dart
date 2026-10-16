@@ -22,6 +22,7 @@ import '../audio/drum_patterns.dart';
 import '../audio/piano_comping.dart';
 import '../audio/walking_bass.dart';
 import 'meter.dart';
+import 'swing.dart';
 import 'tune.dart';
 
 /// Ticks to a quarter note. 480 divides by 2, 3, 4 and 5, so swung
@@ -50,16 +51,29 @@ Uint8List midiFor(
 }) {
   final beatsPerMinute = tempo ?? tune.defaultTempo;
   final beatsPerBar = tune.beatsPerBar;
-  final swing = tune.style.drums.swingBy(beatsPerMinute);
+  // The same stand-in the band makes when a groove has no figure for
+  // the bar: a file of the band is a file of what the band plays.
+  final style = tune.style.inMeter(tune.meter);
+  final swing = tune.meter.compound
+      ? tripletSwing
+      : style.drums.swingBy(beatsPerMinute);
   final random = math.Random(seed);
   // Everything is written from the top of the count-in.
   final offset = (countInBars * beatsPerBar).toDouble();
 
   final tracks = <Uint8List>[
     _conductor(tune, beatsPerMinute),
-    _piano(tune, swing: swing, choruses: choruses, offset: offset, seed: seed),
+    _piano(
+      tune,
+      style: style,
+      swing: swing,
+      choruses: choruses,
+      offset: offset,
+      seed: seed,
+    ),
     _bass(
       tune,
+      style: style,
       swing: swing,
       choruses: choruses,
       offset: offset,
@@ -67,6 +81,7 @@ Uint8List midiFor(
     ),
     _drums(
       tune,
+      style: style,
       swing: swing,
       choruses: choruses,
       offset: offset,
@@ -131,6 +146,7 @@ Uint8List _conductor(Tune tune, int tempo) {
 
 Uint8List _piano(
   Tune tune, {
+  required BandStyle style,
   required double swing,
   required int choruses,
   required double offset,
@@ -151,12 +167,12 @@ Uint8List _piano(
       final hits = comper.comp(
         slot.chord,
         slot.beats,
-        tune.style.piano.feel,
+        style.piano.feel,
         next: next,
-        held: tune.style.piano == PianoStyle.held,
-        calypso: tune.style.piano == PianoStyle.calypso,
-        pompe: tune.style.piano == PianoStyle.laPompe,
-        figure: tune.style.figure,
+        held: style.piano == PianoStyle.held,
+        calypso: style.piano == PianoStyle.calypso,
+        pompe: style.piano == PianoStyle.laPompe,
+        figure: style.figure,
         beatsPerBar: beatsPerBar,
         swing: swing,
         beatInBar: (slot.startBeat % beatsPerBar).toDouble(),
@@ -187,6 +203,7 @@ Uint8List _piano(
 
 Uint8List _bass(
   Tune tune, {
+  required BandStyle style,
   required double swing,
   required int choruses,
   required double offset,
@@ -197,7 +214,7 @@ Uint8List _bass(
     // Acoustic bass, which is what the band is playing.
     (tick: 0, order: 1, bytes: [0xC0 | _bassChannel, 32]),
   ];
-  final walk = switch (tune.style.bass) {
+  final walk = switch (style.bass) {
     BassStyle.walking => walkingBassLine,
     BassStyle.twoFeel => twoFeelBassLine,
     BassStyle.bossa => bossaBassLine,
@@ -229,6 +246,7 @@ Uint8List _bass(
 
 Uint8List _drums(
   Tune tune, {
+  required BandStyle style,
   required double swing,
   required int choruses,
   required double offset,
@@ -257,7 +275,7 @@ Uint8List _drums(
   for (var chorus = 0; chorus < choruses; chorus++) {
     for (var bar = 0; bar < tune.barCount; bar++) {
       for (final hit in drumBar(
-        feel: tune.style.drums,
+        feel: style.drums,
         bar: chorus * tune.barCount + bar,
         beatsPerBar: beatsPerBar,
         random: random,

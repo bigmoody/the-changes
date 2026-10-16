@@ -875,6 +875,23 @@ class _TheBand extends StatelessWidget {
             ),
           ),
         ),
+        // A groove whose figure takes a bar of four, in a bar that is
+        // not four: the band hands over to one that fits, and says so.
+        // Hearing a calypso chopped into six eight with no explanation
+        // is how this was found in the first place.
+        if (!style.drums.suits(controller.meter))
+          Padding(
+            key: const ValueKey('stands-in'),
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
+            child: Text(
+              '${style.drums.label} is a figure for a bar of four. In '
+              '${controller.meter.label} the band plays '
+              '${style.drums.standIn(controller.meter).label}.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         // A kit that plays nothing looks like one that is broken, so it
         // says why. Picking any other groove brings the drummer back.
         if (!style.drums.hasDrums)

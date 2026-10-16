@@ -17,6 +17,8 @@
 //    it on the cymbal.
 //  • Second line: the New Orleans street beat, kick and snare only, no
 //    cymbal, the kick picking up off the beat after each backbeat.
+//  • Afro 6/8: the standard bell across a twelve-eighth cycle, the
+//    bombo on the second beat of it, the hi-hat closing on the halves.
 //  • Gypsy jazz: nothing. The Quintette had no drummer.
 //  • Calypso: cowbell on the off-beats, toms instead of a snare backbeat,
 //    and the kick on the 3-3-2 (1, the "and" of 2, 4) with the bass. No
@@ -144,6 +146,7 @@ List<DrumHit> drumBar({
     Feel.ballad when brushes => _balladBrushBar(bar, beatsPerBar, random),
     Feel.ballad => _balladBar(bar, beatsPerBar, random),
     Feel.secondLine => _secondLineBar(bar, beatsPerBar, random),
+    Feel.afroSix => _afroSixBar(bar, beatsPerBar, random),
     // No drummer at all: the guitar's chop is the time. See [Feel.gypsy].
     Feel.gypsy => const <DrumHit>[],
   })
@@ -1205,6 +1208,85 @@ List<DrumHit> _secondLineBar(int bar, int beatsPerBar, math.Random random) {
         beat: (beatsPerBar - 1) + 0.5,
         velocity: 0.5 * _human(random),
         hard: true,
+      ),
+    );
+  }
+  return hits;
+}
+
+/// The standard bell, in eighths of its twelve-eighth cycle.
+///
+/// Seven strokes: the first on the downbeat, then the third, fifth,
+/// sixth, eighth, tenth and twelfth eighth. It is the same pattern
+/// whether it is written in 6/8, 12/8 or 3/4, which is why it is kept
+/// here as a cycle of eighths and laid over whatever bar it meets.
+const _bellEighths = [0, 2, 4, 5, 7, 9, 11];
+
+/// How long that cycle is in the band's beats: four pulses of three.
+const _bellBeats = 4;
+
+/// Afro 6/8: the bell over a compound bar.
+///
+/// Written as a cycle rather than as a bar, because the bell is twelve
+/// eighths long whatever the bar is: in 6/8 it takes two bars, in 12/8
+/// one, and on a tune in four it is the same seven strokes over a bar of
+/// triplets. [bar] says where in the cycle this bar starts.
+///
+/// The kick is the bombo, on the second beat of the cycle. The hi-hat
+/// closes on the two halves of it; where a hi-hat goes in this groove is
+/// the one thing the sources would not agree on, and a drummer who knows
+/// the music warns that the waltzy foot heard in some jazz versions is
+/// not Cuban practice, so it is kept to the halves and out of the way.
+List<DrumHit> _afroSixBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  // Where this bar begins inside the twelve-eighth cycle.
+  final start = (bar * beatsPerBar) % _bellBeats;
+  double? inThisBar(double atInCycle) {
+    final at = atInCycle - start;
+    return at >= 0 && at < beatsPerBar ? at : null;
+  }
+
+  for (final eighth in _bellEighths) {
+    final at = inThisBar(eighth / 3);
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.cowbell,
+        // The downbeat of the cycle carries the weight; the rest are the
+        // pattern going round.
+        velocity: (eighth == 0 ? 0.6 : 0.46) * _human(random),
+        beat: at,
+      ),
+    );
+  }
+  // The bombo, on the second beat of the cycle.
+  final bombo = inThisBar(1);
+  if (bombo != null) {
+    hits.add(
+      DrumHit(drum: Drum.kick, beat: bombo, velocity: 0.6 * _human(random)),
+    );
+  }
+  for (final half in [0.0, 2.0]) {
+    final at = inThisBar(half);
+    if (at != null) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: at,
+          velocity: 0.4 * _human(random),
+        ),
+      );
+    }
+  }
+  // The cross-stick the handouts call optional: now and then, on the
+  // half way round, where it answers the bell rather than doubling it.
+  final answer = inThisBar(2);
+  if (answer != null && random.nextDouble() < 0.4) {
+    hits.add(
+      DrumHit(
+        drum: Drum.crossStick,
+        beat: answer,
+        velocity: 0.4 * _human(random),
       ),
     );
   }

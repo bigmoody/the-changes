@@ -103,21 +103,36 @@ enum CompFigure {
   bool get startsEarly => this == pushed;
 
   /// Where the chord lands, given where the "and" falls inside the beat
-  /// ([and]: a half in an even feel, more than that when it swings).
+  /// ([and]: a half in an even feel, more than that when it swings) and
+  /// how many beats the bar has.
   ///
   /// A push lands on the "and" of the beat *before* the chord, so it is
   /// early by what is left of that beat rather than by the "and" itself.
   /// Pushing by the "and" put the chord on a triplet partial nobody
   /// plays, a third of a beat ahead of the bass.
-  List<CompStrike> strikes(double and) => switch (this) {
-    charleston => [(0, 0.6, 1), (1 + and, 1.4, 0.9)],
-    pushed => [(and - 1, 2.2, 1)],
-    offbeat => [(and, 0.7, 0.95), (2 + and, 1.1, 0.85)],
-    twice => [(0, 0.5, 1), (2 + and, 1.0, 0.85)],
-    three => [(0, 0.5, 1), (1 + and, 0.5, 0.8), (3, 0.9, 0.9)],
-    held => [(0, 3.2, 0.9)],
-    everyBeat => [(0, 0.5, 0.95), (1, 0.5, 0.8), (2, 0.5, 0.9), (3, 0.5, 0.8)],
-  };
+  ///
+  /// These are written as places in a bar rather than as beat numbers,
+  /// so a bar of three or five or a compound bar of two gets the figure
+  /// rather than the first four beats of it with the rest hanging off
+  /// the end. In four they are what they always were: the Charleston is
+  /// 1 and the "and" of 2 wherever it is played, and what moves with the
+  /// bar is the half way point and the last beat.
+  List<CompStrike> strikes(double and, {int beatsPerBar = 4}) {
+    final last = (beatsPerBar - 1).toDouble();
+    final half = (beatsPerBar ~/ 2).toDouble();
+    return switch (this) {
+      charleston => [(0, 0.6, 1), (1 + and, 1.4, 0.9)],
+      pushed => [(and - 1, 2.2, 1)],
+      offbeat => [(and, 0.7, 0.95), (half + and, 1.1, 0.85)],
+      twice => [(0, 0.5, 1), (half + and, 1.0, 0.85)],
+      three => [(0, 0.5, 1), (1 + and, 0.5, 0.8), (last, 0.9, 0.9)],
+      held => [(0, beatsPerBar - 0.8, 0.9)],
+      everyBeat => [
+        for (var beat = 0; beat < beatsPerBar; beat++)
+          (beat.toDouble(), 0.5, beat == 0 ? 0.95 : (beat.isEven ? 0.9 : 0.8)),
+      ],
+    };
+  }
 }
 
 /// The figures the band picks from for a new chord lasting a whole bar,
@@ -142,10 +157,12 @@ List<CompStrike> strikesAt(
   CompFigure figure,
   double and, {
   required bool canPush,
+  int beatsPerBar = 4,
 }) {
-  if (canPush || !figure.startsEarly) return figure.strikes(and);
+  final strikes = figure.strikes(and, beatsPerBar: beatsPerBar);
+  if (canPush || !figure.startsEarly) return strikes;
   return [
-    for (final (beat, length, weight) in figure.strikes(and))
+    for (final (beat, length, weight) in strikes)
       (beat < 0 ? 0 : beat, length, weight),
   ];
 }

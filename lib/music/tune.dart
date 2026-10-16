@@ -82,6 +82,16 @@ enum Feel {
   /// cymbal time in it at all.
   secondLine('Second Line'),
 
+  /// Afro 6/8: the standard bell over a compound bar, with the bombo on
+  /// the second beat of its four-pulse cycle.
+  ///
+  /// Called Afro 6/8 rather than bembé on purpose. Bembé is religious
+  /// ceremonial music, specific in every aspect, and the groove jazz
+  /// bands play is an approximation of it; drummers who know the
+  /// difference say Afro 6 or Afro-Cuban 6/8, so that is what it is
+  /// called here.
+  afroSix('Afro 6/8'),
+
   /// Gypsy jazz, after Django Reinhardt's Quintette: la pompe on the
   /// guitar, "the pump", four short downstrokes a bar with 2 and 4
   /// carrying the accent.
@@ -105,7 +115,10 @@ enum Feel {
       this == jazzWaltz ||
       this == ballad ||
       this == secondLine ||
-      this == gypsy;
+      this == gypsy ||
+      // Its bell is written in thirds of a beat, which is where a swung
+      // off-beat lands anyway: a compound bar swings by being compound.
+      this == afroSix;
 
   /// Where the off-beats sit before anybody touches the slider: the
   /// tempo's own swing for the feels that swing, even for the rest.
@@ -146,7 +159,40 @@ enum Feel {
     // Minor Swing was cut at better than two hundred, and the repertoire
     // runs faster still.
     gypsy => (slowest: 90, fastest: 300),
+    // The pulse, which in six eight is the dotted quarter: slow enough
+    // for a vamp, quick enough for the bright end of one.
+    afroSix => (slowest: 50, fastest: 160),
   };
+
+  /// Whether this groove has a figure for a bar of [meter].
+  ///
+  /// Some grooves are written beat by beat and fit any bar: swing, a
+  /// ballad, a waltz, and the bell, which is a cycle laid over whatever
+  /// bar it meets. Others *are* a bar-length figure: a clave, a 3-3-2, a
+  /// street beat, a samba's two bars. Cut to a bar of another length
+  /// they are not themselves but a fragment of themselves, which is how
+  /// a calypso counted in six eight came out as half a 3-3-2 with its
+  /// off-beats dragged onto triplets.
+  bool suits(Meter meter) =>
+      !_isAFigure || (meter.pulses == 4 && !meter.compound);
+
+  /// Whether what makes this groove itself is a figure that takes a bar
+  /// of four to play.
+  bool get _isAFigure =>
+      this == bossa ||
+      this == samba ||
+      this == funk ||
+      this == calypso ||
+      this == secondLine;
+
+  /// What the band plays instead where this groove has no figure for the
+  /// bar: the bell in compound time, and swing everywhere else, which is
+  /// written beat by beat and fits any bar there is.
+  ///
+  /// A stand-in and not a silent swap: wherever it happens the mixer
+  /// says which groove is playing and why.
+  Feel standIn(Meter meter) =>
+      suits(meter) ? this : (meter.compound ? afroSix : swing);
 
   /// Whether there is a drummer at all.
   ///
@@ -188,6 +234,7 @@ enum Genre {
     Feel.jazzWaltz => swing,
     Feel.ballad => ballad,
     Feel.secondLine || Feel.gypsy => swing,
+    Feel.afroSix => latin,
   };
 
   /// The genres that come from what a tune is rather than how it's played:
@@ -333,7 +380,10 @@ class BandStyle {
       Feel.gypsy => BassStyle.walking,
       // A ballad is held up by two notes a bar, not four: roots and
       // fifths, with the space left in.
-      Feel.ballad => BassStyle.twoFeel,
+      // Roots and fifths on the pulse under the bell. A 6/8 tumbao is
+      // its own line and is not written yet; this is the plain thing
+      // rather than a guess at one.
+      Feel.ballad || Feel.afroSix => BassStyle.twoFeel,
       Feel.bossa || Feel.samba => BassStyle.bossa,
       Feel.funk => BassStyle.funk,
       Feel.calypso => BassStyle.calypso,
@@ -348,13 +398,25 @@ class BandStyle {
       // what a ballad does not want.
       Feel.ballad => PianoStyle.held,
       Feel.calypso => PianoStyle.calypso,
-      Feel.bossa || Feel.funk || Feel.samba => PianoStyle.straight,
+      Feel.bossa ||
+      Feel.funk ||
+      Feel.samba ||
+      Feel.afroSix => PianoStyle.straight,
     },
   );
 
   final Feel drums;
   final BassStyle bass;
   final PianoStyle piano;
+
+  /// The band as it can actually be played in [meter].
+  ///
+  /// A groove whose figure needs a bar of four hands over to one that
+  /// does not, and the whole band goes with it: a bossa bass under a
+  /// bell is two different grooves at once.
+  BandStyle inMeter(Meter meter) => drums.suits(meter)
+      ? this
+      : BandStyle.of(drums.standIn(meter)).withFigure(figure).withSwing(swing);
 
   /// The one comping figure to play in every bar, or null to let the
   /// comper choose bar by bar as it always has.

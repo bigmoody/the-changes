@@ -566,6 +566,9 @@ Feel _feelOf(String style) {
   final s = style.toLowerCase();
   bool any(List<String> words) => words.any(s.contains);
   if (any(['calypso', 'soca', 'reggae', 'ska'])) return Feel.calypso;
+  // Before the rest of the Latin names: iReal Pro's own style for this
+  // is "Afro 12/8", and an afro anything else is a bossa to us.
+  if (any(['afro 12', 'afro 6', '12/8', '6/8'])) return Feel.afroSix;
   // Before the Latin names, so an Afro waltz is still played in three.
   if (any(['waltz', '3/4'])) return Feel.jazzWaltz;
   if (any(['second line', 'new orleans', 'dixieland', 'trad'])) {

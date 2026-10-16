@@ -113,6 +113,7 @@ String _styleFor(UserProgression progression) =>
       Feel.ballad => 'Ballad Swing',
       Feel.secondLine => 'Second Line',
       Feel.gypsy => 'Gypsy Jazz',
+      Feel.afroSix => 'Afro 12/8',
     };
 
 /// The chart itself, before it's scrambled.

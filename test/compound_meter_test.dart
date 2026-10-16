@@ -12,6 +12,10 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
+import 'package:play_along/audio/drum_patterns.dart';
+import 'package:play_along/audio/piano_comping.dart';
+import 'package:play_along/music/chord.dart';
+import 'package:play_along/music/comping.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/library/library_store.dart';
 import 'package:play_along/music/loop_range.dart';
@@ -115,6 +119,162 @@ void main() {
         swing: straight,
       );
       expect(swingForPass(request, 0), straight);
+    });
+  });
+
+  group('the bell', () {
+    List<double> bellIn(int beatsPerBar, int bar) => [
+      for (final hit in drumBar(
+        feel: Feel.afroSix,
+        bar: bar,
+        beatsPerBar: beatsPerBar,
+        random: math.Random(3),
+        swing: tripletSwing,
+      ))
+        if (hit.drum == Drum.cowbell) hit.beat,
+    ];
+
+    test('the standard bell, laid over whatever bar it meets', () {
+      // Seven strokes across twelve eighths: the first, third, fifth,
+      // sixth, eighth, tenth and twelfth. In 12/8 that is one bar of
+      // four pulses; in 6/8 it takes two bars of two.
+      const cycle = [0.0, 2 / 3, 4 / 3, 5 / 3, 7 / 3, 3.0, 11 / 3];
+      final twelve = bellIn(4, 0);
+      expect(twelve, hasLength(7));
+      for (final (i, at) in twelve.indexed) {
+        expect(at, closeTo(cycle[i], 1e-9));
+      }
+      // And in six eight the same cycle, half of it a bar.
+      expect(bellIn(2, 0), hasLength(4));
+      expect(bellIn(2, 1), hasLength(3));
+      expect(bellIn(2, 1).first, closeTo(1 / 3, 1e-9));
+      expect(bellIn(2, 2), bellIn(2, 0), reason: 'and round again');
+    });
+
+    test('the bombo is on the second beat, and no cymbal is touched', () {
+      final bar = drumBar(
+        feel: Feel.afroSix,
+        bar: 0,
+        beatsPerBar: 4,
+        random: math.Random(3),
+        swing: tripletSwing,
+      );
+      expect(bar.where((hit) => hit.drum == Drum.kick).map((hit) => hit.beat), [
+        1.0,
+      ]);
+      expect(
+        bar.where(
+          (hit) => hit.drum == Drum.ride || hit.drum == Drum.hiHatClosed,
+        ),
+        isEmpty,
+      );
+      expect(Feel.afroSix.hasDrums, isTrue);
+      expect(Genre.ofFeel(Feel.afroSix), Genre.latin);
+    });
+  });
+
+  group('a groove that does not fit the bar', () {
+    test('a bar-length figure is not cut to a bar of another length', () {
+      // What made a calypso counted in six eight sound wrong: half a
+      // 3-3-2 with its off-beats dragged onto triplets.
+      for (final feel in [
+        Feel.calypso,
+        Feel.bossa,
+        Feel.samba,
+        Feel.funk,
+        Feel.secondLine,
+      ]) {
+        expect(feel.suits(Meter.four), isTrue, reason: feel.name);
+        expect(feel.suits(const Meter(6, 8)), isFalse, reason: feel.name);
+        expect(feel.suits(const Meter(3, 4)), isFalse, reason: feel.name);
+      }
+      // The ones written beat by beat fit any bar there is.
+      for (final feel in [
+        Feel.swing,
+        Feel.ballad,
+        Feel.jazzWaltz,
+        Feel.afroSix,
+        Feel.gypsy,
+      ]) {
+        for (final meter in Meter.choices) {
+          expect(feel.suits(meter), isTrue, reason: '${feel.name} in $meter');
+        }
+      }
+    });
+
+    test(
+      'so the band hands over to one that does, and the whole band goes',
+      () {
+        expect(Feel.calypso.standIn(const Meter(6, 8)), Feel.afroSix);
+        expect(Feel.calypso.standIn(const Meter(5, 4)), Feel.swing);
+        expect(Feel.swing.standIn(const Meter(6, 8)), Feel.swing);
+        final calypso = BandStyle.of(Feel.calypso);
+        final inSix = calypso.inMeter(const Meter(6, 8));
+        expect(inSix.drums, Feel.afroSix);
+        expect(
+          inSix.bass,
+          BandStyle.of(Feel.afroSix).bass,
+          reason: 'a calypso bass under a bell is two grooves at once',
+        );
+        expect(calypso.inMeter(Meter.four), calypso);
+      },
+    );
+
+    test('and what is playing is said, not swapped quietly', () {
+      // The sheet reads it off the same rule the band plays by, so the
+      // two cannot come to disagree. This is that rule.
+      expect(Feel.calypso.suits(const Meter(6, 8)), isFalse);
+      expect(Feel.calypso.standIn(const Meter(6, 8)).label, 'Afro 6/8');
+    });
+  });
+
+  group('comping in other bars', () {
+    test('a chord that fills the bar gets a whole bar figure', () {
+      // A waltz used to be comped with one chord at the front of every
+      // bar: a three-beat chord was handed the half-bar figures,
+      // because the test was four beats rather than the bar.
+      for (final beats in [2, 3, 4, 5, 7]) {
+        final comper = Comper(math.Random(5));
+        final landings = <double>[];
+        for (var bar = 0; bar < 12; bar++) {
+          landings.addAll(
+            comper
+                .comp(
+                  Chord.parse(bar.isEven ? 'Dm7' : 'G7'),
+                  beats,
+                  Feel.swing,
+                  beatsPerBar: beats,
+                  swing: tripletSwing,
+                  bar: bar,
+                )
+                .map((hit) => hit.beat),
+          );
+        }
+        expect(
+          landings.where((at) => at > 0).length,
+          greaterThan(2),
+          reason: 'a bar of $beats is comped, not just struck on one',
+        );
+        // And nothing hangs off the end of the bar: a figure that does
+        // not fit is left out rather than cut short.
+        for (final at in landings) {
+          expect(at, lessThan(beats), reason: 'inside a bar of $beats');
+        }
+      }
+    });
+
+    test('the figures themselves move with the bar', () {
+      // The Charleston is 1 and the "and" of 2 wherever it is played;
+      // what moves is the half way point and the last beat.
+      expect(CompFigure.charleston.strikes(0.5, beatsPerBar: 3), [
+        (0.0, 0.6, 1.0),
+        (1.5, 1.4, 0.9),
+      ]);
+      expect(CompFigure.twice.strikes(0.5, beatsPerBar: 3).last.$1, 1.5);
+      expect(CompFigure.twice.strikes(0.5).last.$1, 2.5, reason: 'in four');
+      expect(CompFigure.three.strikes(0.5, beatsPerBar: 5).last.$1, 4.0);
+      expect(CompFigure.held.strikes(0.5, beatsPerBar: 3).single.$2, 2.2);
+      expect(CompFigure.everyBeat.strikes(0.5, beatsPerBar: 7), hasLength(7));
     });
   });
 

@@ -359,22 +359,43 @@ class Comper {
       );
     }
 
+    // Which set of figures: one for a chord that lasts a whole bar, one
+    // for a chord that has half of it, one for anything shorter. It used
+    // to be four beats and two beats flat, which is the same thing in
+    // 4/4 and the wrong thing everywhere else: a chord filling a bar of
+    // three was handed the half-bar figures, so a waltz was comped with
+    // one chord at the front of every bar and nothing else.
+    final wholeBar = beats >= beatsPerBar;
+    final halfBar = beats * 2 >= beatsPerBar;
+    // Where the figures that move with the bar land.
+    final last = (beatsPerBar - 1).toDouble();
+    final half = (beatsPerBar ~/ 2).toDouble();
+
+    /// Whether every strike of a figure falls inside the bar, so a
+    /// short bar is never given a figure that hangs off the end of it.
+    bool fits(_Pattern strikes) =>
+        strikes.every((strike) => strike.$1 < beatsPerBar);
+
     final patterns = <(String, int, _Pattern)>[
-      if (beats >= 4) ...[
+      if (wholeBar) ...[
         if (isNew) ...[
           // The figures themselves live in music/comping.dart, where the
           // screen that teaches them reads the same list, so what is
           // taught and what is played cannot drift apart.
           for (final (figure, weight) in bandFigures(canPush: canPush))
-            (figure.name, weight, figure.strikes(and)),
+            (
+              figure.name,
+              weight,
+              figure.strikes(and, beatsPerBar: beatsPerBar),
+            ),
         ] else if (intoSection) ...[
           // The bar before a new section: the one place in sixteen bars of
           // one chord where something is about to happen, so it is played
           // through rather than rested on however long the chord has sat.
           // Not without fail, because a turn figure on every eighth bar
           // exactly is a tell of its own.
-          ('turn', 7, [(1 + and, 0.6, 0.8), (3, 1.1, 0.9)]),
-          ('turn up', 5, [(2, 0.7, 0.75), (3 + and, 0.9, 0.9)]),
+          ('turn', 7, [(1 + and, 0.6, 0.8), (last, 1.1, 0.9)]),
+          ('turn up', 5, [(half, 0.7, 0.75), (last + and, 0.9, 0.9)]),
           ('rest', 2, const []),
         ] else if (canSlide) ...[
           // The second bar of a pair, on a tune whose chord has a slide.
@@ -398,18 +419,18 @@ class Comper {
           // a figure from repeating compares names, and these had
           // different names and the same landing, so it never noticed.
           ('remind', _held.isOdd ? 2 : 4, [(1 + and, 1.1, 0.75)]),
-          ('lift', 3, [(3 + and, 0.9, 0.8)]),
-          ('inside', 3, [(2 + and, 1.0, 0.8)]),
-          ('on four', 2, [(3, 0.9, 0.75)]),
-          ('echo', 3, [(1 + and, 0.7, 0.75), (3, 0.6, 0.65)]),
-          ('answer', 3, [(2, 0.5, 0.7), (3 + and, 0.9, 0.8)]),
+          ('lift', 3, [(last + and, 0.9, 0.8)]),
+          ('inside', 3, [(half + and, 1.0, 0.8)]),
+          ('on four', 2, [(last, 0.9, 0.75)]),
+          ('echo', 3, [(1 + and, 0.7, 0.75), (last, 0.6, 0.65)]),
+          ('answer', 3, [(half, 0.5, 0.7), (last + and, 0.9, 0.8)]),
           ('again', quiet ? 1 : 2, [(0, 1.2, 0.7)]),
           // Answering a chord that is simply still sounding is the figure's
           // own job on the record: Evans plays it into the gaps rather than
           // under the melody. Weighted to be heard without becoming the
           // only thing a vamp does.
         ],
-      ] else if (beats >= 2) ...[
+      ] else if (halfBar) ...[
         if (isNew) ...[
           ('half', 6, [(0, 0.6, 1)]),
           ('half held', 3, [(0, 1.6, 0.9)]),
@@ -424,6 +445,12 @@ class Comper {
         ('rest', isNew ? 1 : 6, const []),
       ],
     ];
+
+    // A bar of two pulses cannot hold a figure that lands on its third,
+    // and half of a figure is not the figure: anything that does not
+    // fit is left out rather than cut short.
+    patterns.removeWhere((pattern) => !fits(pattern.$3));
+    if (patterns.isEmpty) return const [];
 
     // Weighted pick, with last time's rhythm made less likely so the same
     // figure doesn't repeat back to back, and with anything that lands
@@ -498,7 +525,12 @@ class Comper {
     required int beatsPerBar,
     required bool isNew,
   }) {
-    final strikes = strikesAt(figure, and, canPush: canPush);
+    final strikes = strikesAt(
+      figure,
+      and,
+      canPush: canPush,
+      beatsPerBar: beatsPerBar,
+    );
     final end = beatInBar + beats;
     final out = <CompStrike>[];
     for (var bar = 0; bar * beatsPerBar < end; bar++) {

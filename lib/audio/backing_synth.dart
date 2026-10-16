@@ -391,9 +391,10 @@ double swingForPass(BackingRequest request, int firstChorus) =>
     // 12/8 and a band swinging in 4/4 are playing nearly the same thing.
     (request.tune.meter.compound
         ? tripletSwing
-        : request.tune.style.drums.swingBy(
-            tempoForChorus(request, firstChorus),
-          ));
+        : request.tune.style
+              .inMeter(request.tune.meter)
+              .drums
+              .swingBy(tempoForChorus(request, firstChorus)));
 
 /// The tempo on a given pass through the form: the tempo asked for, plus
 /// whatever a tempo ramp has added to it by then.
@@ -600,6 +601,10 @@ _Parts _renderParts(
   BandState state = const BandState(),
 }) {
   final tune = request.tune;
+  // What the band can actually play in this bar: a groove whose figure
+  // takes four beats hands over to one that fits, and the whole band
+  // goes with it. See [BandStyle.inMeter].
+  final style = tune.style.inMeter(tune.meter);
   final loop = request.loop;
   final bank = request.samples;
   // Who is actually playing the bass. An imported one has its own key map
@@ -716,7 +721,7 @@ _Parts _renderParts(
     return arrangement.plays(part, firstChorus + chorus, bar);
   }
 
-  final walk = switch (tune.style.bass) {
+  final walk = switch (style.bass) {
     BassStyle.walking => walkingBassLine,
     BassStyle.twoFeel => twoFeelBassLine,
     BassStyle.bossa => bossaBassLine,
@@ -726,7 +731,7 @@ _Parts _renderParts(
   // In two on the head, walking for the solos, but only where the bassist
   // would be walking to begin with.
   bool inTwo(int chorus) =>
-      tune.style.bass == BassStyle.walking &&
+      style.bass == BassStyle.walking &&
       arrangement.planFor(firstChorus + chorus).twoFeel;
 
   final List<BassNote> bassLine;
@@ -918,11 +923,11 @@ _Parts _renderParts(
         for (final hit in guitarist.comp(
           slot.chord,
           beats,
-          style: tune.style.piano,
-          groove: tune.style.drums,
+          style: style.piano,
+          groove: style.drums,
           next: compSlots[(index + 1) % compSlots.length].chord,
           tempo: tempoForChorus(request, firstChorus + chorus),
-          figure: tune.style.figure,
+          figure: style.figure,
           beatsPerBar: beatsPerBar,
           swing: swing,
           beatInBar: (tuneBeat % beatsPerBar).toDouble(),
@@ -945,7 +950,7 @@ _Parts _renderParts(
           final order = hit.strum == Strum.up
               ? hit.notes.reversed.toList()
               : hit.notes;
-          final feel = strokeFeel(tune.style.piano, hit.strum);
+          final feel = strokeFeel(style.piano, hit.strum);
           final gap = feel.gap;
           // One stroke's worth of humanising, shared by every string in
           // it: the hand is early or late, and hard or soft, for the whole
@@ -997,12 +1002,12 @@ _Parts _renderParts(
         for (final hit in comper.comp(
           slot.chord,
           beats,
-          tune.style.piano.feel,
+          style.piano.feel,
           next: next,
-          held: tune.style.piano == PianoStyle.held,
-          calypso: tune.style.piano == PianoStyle.calypso,
-          pompe: tune.style.piano == PianoStyle.laPompe,
-          figure: tune.style.figure,
+          held: style.piano == PianoStyle.held,
+          calypso: style.piano == PianoStyle.calypso,
+          pompe: style.piano == PianoStyle.laPompe,
+          figure: style.figure,
           beatsPerBar: beatsPerBar,
           swing: swing,
           beatInBar: (math.max(slot.startBeat, loop.startBeat) % beatsPerBar)
@@ -1044,7 +1049,7 @@ _Parts _renderParts(
       // Flatter than the band: a stream of eighths is not played as a
       // stream of dotted quavers, whatever the ride is doing. Straight
       // in a feel that leans its sixteenths rather than its eighths.
-      swing: tune.style.drums.swingsSixteenths ? straight : lineSwing(swing),
+      swing: style.drums.swingsSixteenths ? straight : lineSwing(swing),
       from: request.arpeggioStart,
       rate: request.arpeggioRate,
       reach: request.arpeggioReach,
@@ -1191,7 +1196,7 @@ _Parts _renderParts(
     // Funk takes the close microphones: the drum rather than the room
     // for the snare, and a kick that is the floor of the groove rather
     // than one heard across it.
-    final funk = tune.style.drums == Feel.funk;
+    final funk = style.drums == Feel.funk;
     final ours = switch (drum) {
       Drum.snare when funk => bank.snareTight,
       Drum.kick when funk => bank.kickClose,
@@ -1227,7 +1232,7 @@ _Parts _renderParts(
       final theirs = arrangement.drummerHas(firstChorus + chorus, i);
       final hits = theirs
           ? drumSoloBar(
-              feel: tune.style.drums,
+              feel: style.drums,
               bar: i % trading.bars,
               of: trading.bars,
               beatsPerBar: beatsPerBar,
@@ -1235,7 +1240,7 @@ _Parts _renderParts(
               swing: swing,
             )
           : drumBar(
-              feel: tune.style.drums,
+              feel: style.drums,
               bar: chorus * bars.length + i,
               beatsPerBar: beatsPerBar,
               random: drumRandom,
@@ -1374,7 +1379,7 @@ _Parts _renderParts(
     // drums stopped dead at the end of a chorus. The mix has a second of
     // room past the batch and the tail is carried into the next one, so
     // the ring crosses the loop rather than being cut at it.
-    addRoomReverb(drums.buffer, 0, sampleRate, wet: roomFor(tune.style.drums));
+    addRoomReverb(drums.buffer, 0, sampleRate, wet: roomFor(style.drums));
     // The reference the whole band's gain is worked out from has to be the
     // same sound, or the peak it reports is of a kit that is not the one
     // being played.
@@ -1383,7 +1388,7 @@ _Parts _renderParts(
         drumsAsRecorded.buffer,
         0,
         sampleRate,
-        wet: roomFor(tune.style.drums),
+        wet: roomFor(style.drums),
       );
     }
   }

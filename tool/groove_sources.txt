@@ -187,3 +187,70 @@ Sources in full:
   https://en.wikipedia.org/wiki/Gypsy_jazz
   https://www.allaboutjazz.com/clement-reboul-how-to-appreciate-and-learn-gypsy-jazz
   https://www.soundslice.com/lessons/gypsy-jazz-bass/
+
+
+AFRO 6/8 (_afroSixBar)
+
+The name first. The groove jazz bands play is an approximation of Cuban
+folkloric music, and a drummer who teaches it says plainly that Bembé
+"is religious ceremonial music, and is highly specific in every aspect;
+it's not really appropriate to refer to the groove/style used by US
+jazz musicians by that name. So I say Afro 6, or Afro-Cuban 6/8."
+  cruiseshipdrummer.com. The app says Afro 6/8.
+
+The bell: seven strokes across twelve eighths, on the first, third,
+fifth, sixth, eighth, tenth and twelfth.
+  Jeff Lindqvist / Language Log's clock model of the standard pattern
+  places the strikes at twelve, two, four, five, seven, nine and eleven
+  on a twelve-hour face, which is the same seven positions.
+  cruiseshipdrummer.com, on the same pattern: it is "the familiar 12/8
+  or 6/8 bell", written the same way in 3/4, 6/8 or 12/8 with nothing
+  changed but the bar lines. That is why the app keeps it as a cycle of
+  eighths and lays it over whatever bar it meets: in 12/8 one bar, in
+  6/8 two, on a tune in four the same seven strokes over triplets.
+
+The bell can be played on a cowbell, a ride, or the rim of a floor tom;
+the app plays it on the cowbell it has.
+  Nebraska Music Education Association all-state drum set packet, which
+  gives an Afro-Cuban 6/8 feel with the bell, a hi-hat with the foot
+  and an optional cross-stick on the snare. The app plays the
+  cross-stick now and then rather than every time round.
+
+The bass drum: "the bass drum note on 2 corresponds to the 'bombo' in
+Cuban music", so it is on the second beat of the four-pulse cycle and
+nowhere else.
+  cruiseshipdrummer.com.
+
+The hi-hat is the one thing the sources would not settle. The same
+writer warns that "the waltzy hihat part is not" Cuban practice, while
+the Nebraska packet has a foot part without spelling it out. So the app
+keeps the foot to the two halves of the cycle, out of the way of the
+bell, and that choice is the app's own.
+
+The bass plays roots and fifths on the pulse. A 6/8 tumbao is a line of
+its own and is not written yet; this is the plain thing rather than a
+guess at one.
+
+
+GROOVES THAT ARE A FIGURE, IN A BAR THEY DO NOT FIT
+
+Not a source, a rule, written down because it is a musical claim: some
+grooves here are written beat by beat and fit any bar (swing, a ballad,
+a waltz, and the bell, which is a cycle), while others *are* a
+bar-length figure: the bossa clave, the calypso 3-3-2, the samba's two
+bars, the funk riff, the second line's street beat. Cut to a bar of
+another length those are not themselves but a fragment of themselves.
+A calypso counted in six eight came out as half a 3-3-2 with its
+off-beats dragged onto triplets, which is nobody's music.
+
+So a groove whose figure takes a bar of four hands over, in any other
+bar, to one that fits: the bell in compound time, swing everywhere
+else. The whole band goes with it, because a bossa bass under a bell is
+two grooves at once, and the mixer says which groove is playing and
+why.
+
+Sources in full:
+  https://cruiseshipdrummer.com/2013/03/11/african-bell-pattern-and-its-inversions/
+  https://cruiseshipdrummer.com/bembe
+  https://languagelog.ldc.upenn.edu/nll/?p=1420
+  https://www.nmeanebraska.org/assets/docs/All-State/Jazz-Band/Jazz-Scales/Set-A/All-State%20Jazz%20Drum%20Set%20A.pdf
