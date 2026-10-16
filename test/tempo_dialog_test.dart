@@ -61,7 +61,7 @@ void main() {
     await tester.tap(find.textContaining('BPM').first);
     await tester.pumpAndSettle();
 
-    expect(find.text('As Written ($written)'), findsOneWidget);
+    expect(find.text('Reset'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tempo-as-written')));
     await tester.pumpAndSettle();
     expect(

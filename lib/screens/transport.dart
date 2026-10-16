@@ -269,7 +269,7 @@ class _TempoDialogState extends State<_TempoDialog> {
               widget.controller.resetTempo();
               _field.text = '${widget.controller.tempo}';
             },
-            child: Text('As Written (${widget.controller.writtenTempo})'),
+            child: const Text('Reset'),
           ),
         TextButton(
           onPressed: () => _done(_field.text),

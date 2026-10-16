@@ -238,7 +238,7 @@ class PracticeController extends ChangeNotifier {
 
   LoopRange _loop;
   int _tempo;
-  bool _countIn = true;
+  int _countInBars = 1;
   bool _isPlaying = false;
   bool _isPaused = false;
   bool _isPreparing = false;
@@ -272,7 +272,16 @@ class PracticeController extends ChangeNotifier {
   /// The loop shown on screen: the one being dragged out, if any.
   LoopRange get loop => _dragLoop ?? _loop;
   int get tempo => _tempo;
-  bool get countIn => _countIn;
+
+  /// How many bars of clicks before the band comes in, nought for none.
+  int get countInBars => _countInBars;
+
+  /// Whether there is one at all.
+  bool get countIn => _countInBars > 0;
+
+  /// What a count-in can be: none, a bar, or the two-bar count-off, which
+  /// in four is the eight beats somebody counts a band in with.
+  static const countInChoices = [0, 1, 2];
 
   /// True from Play until Stop, including while paused.
   bool get isPlaying => _isPlaying;
@@ -520,8 +529,9 @@ class PracticeController extends ChangeNotifier {
 
   // ── Options ────────────────────────────────────────────────────────────
 
-  void setCountIn(bool value) {
-    _countIn = value;
+  void setCountInBars(int bars) {
+    if (bars == _countInBars) return;
+    _countInBars = bars;
     notifyListeners();
   }
 
@@ -1092,7 +1102,7 @@ class PracticeController extends ChangeNotifier {
         tune: originalTune.transposed(take.semitones),
         loop: LoopRange(startBeat: take.loopStart, lengthBeats: take.loopBeats),
         tempo: take.tempo,
-        countInBars: _countIn ? 1 : 0,
+        countInBars: _countInBars,
         seed: take.seed,
         samples: player.samples,
         comping: settings.comping,
@@ -1113,7 +1123,7 @@ class PracticeController extends ChangeNotifier {
     tune: tune,
     loop: _loop,
     tempo: _tempo,
-    countInBars: _countIn ? 1 : 0,
+    countInBars: _countInBars,
     seed: _lastSeed == 0 ? 1 : _lastSeed,
     samples: player.samples,
     comping: settings.comping,
@@ -1296,7 +1306,7 @@ class PracticeController extends ChangeNotifier {
           tune: tune,
           loop: _loop,
           tempo: _tempo,
-          countInBars: withCountIn && _countIn ? 1 : 0,
+          countInBars: withCountIn ? _countInBars : 0,
           seed: _lastSeed,
           comping: settings.comping,
           bassSound: settings.bassSound,

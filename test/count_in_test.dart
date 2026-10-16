@@ -33,7 +33,7 @@ List<double> clicksIn(Uint8List wav) {
   return out;
 }
 
-List<double> countInFor(Meter meter, {int tempo = 120}) {
+List<double> countInFor(Meter meter, {int tempo = 120, int bars = 1}) {
   final tune = UserProgression(
     id: 'x',
     title: 'T',
@@ -49,7 +49,7 @@ List<double> countInFor(Meter meter, {int tempo = 120}) {
         tune: tune,
         loop: LoopRange.wholeTune(tune),
         tempo: tempo,
-        countInBars: 1,
+        countInBars: bars,
       ),
     ).countIn,
   );
@@ -71,6 +71,18 @@ void main() {
         expect(at, closeTo(i * gap, 0.01), reason: 'beat $i of $meter');
       }
     }
+  });
+
+  test('two bars is the count-off: the same bar, twice', () {
+    // "One, two, one two three four", which in four is eight beats.
+    final two = countInFor(Meter.four, bars: 2);
+    expect(two, hasLength(8));
+    for (final (i, at) in two.indexed) {
+      expect(at, closeTo(i * 0.5, 0.01));
+    }
+    // And in six eight it is both bars' eighths, twelve of them.
+    expect(countInFor(const Meter(6, 8), bars: 2), hasLength(12));
+    expect(countInFor(Meter.four, bars: 0), isEmpty);
   });
 
   test('and it follows the tempo', () {

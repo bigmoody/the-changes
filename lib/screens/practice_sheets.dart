@@ -465,18 +465,48 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ),
               ],
             ),
-            SwitchListTile(
-              key: const ValueKey('count-in'),
-              contentPadding: EdgeInsets.zero,
-              secondary: Icon(
-                controller.countIn
-                    ? Icons.timer_outlined
-                    : Icons.timer_off_outlined,
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('Count-In', style: theme.textTheme.titleSmall),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SegmentedButton<int>(
+                    key: const ValueKey('count-in'),
+                    showSelectedIcon: false,
+                    segments: [
+                      for (final bars in PracticeController.countInChoices)
+                        ButtonSegment(
+                          value: bars,
+                          label: Text(switch (bars) {
+                            0 => 'Off',
+                            1 => '1 Bar',
+                            _ => '2 Bars',
+                          }),
+                        ),
+                    ],
+                    selected: {controller.countInBars},
+                    onSelectionChanged: (value) =>
+                        controller.setCountInBars(value.first),
+                  ),
+                ),
+              ],
+            ),
+            // Two bars is what somebody counting a band in actually
+            // does: "one, two, one two three four". It is eight beats
+            // in four, six in a waltz, and twelve eighths in six eight.
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+              child: Text(
+                controller.countInBars == 2
+                    ? 'Two bars of clicks: the count-off.'
+                    : controller.countInBars == 1
+                    ? 'One bar of clicks first.'
+                    : 'The band starts where you do.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-              title: const Text('Count-In'),
-              subtitle: const Text('One bar of clicks first'),
-              value: controller.countIn,
-              onChanged: controller.setCountIn,
             ),
             SwitchListTile(
               key: const ValueKey('arpeggios'),
