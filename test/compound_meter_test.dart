@@ -77,6 +77,30 @@ void main() {
       expect(seven.bars.first.single.beats, 7);
     });
 
+    test('six eight can be counted in six as well as in two', () {
+      // Felt in two at most tempos, counted in six at slow ones, and
+      // which one a player wants is theirs to say. Both are offered.
+      const inTwo = Meter(6, 8);
+      const inSix = Meter(6, 8, countedIn: 6);
+      expect(inTwo.pulses, 2);
+      expect(inSix.pulses, 6);
+      expect(inSix.compound, isFalse, reason: 'an eighth does not divide in 3');
+      expect(inTwo == inSix, isFalse);
+      expect(Meter.choices, contains(inSix));
+      // The chart says the same thing at the front either way; only the
+      // chip that says how you are counting it tells them apart.
+      expect(inTwo.written, '6/8');
+      expect(inSix.written, '6/8');
+      expect(inSix.label, '6/8 (in 6)');
+      expect(Meter.parse(inSix.label), inSix);
+      expect(Meter.parse(inTwo.label), inTwo);
+      // And a bar of it holds six chords at the most, not two.
+      expect(
+        UserProgression.problemWith('C F G C Am Dm', meter: inSix),
+        isNull,
+      );
+    });
+
     test('a meter is saved and read back, and old charts are in four', () {
       final six = progression(meter: const Meter(6, 8));
       final again = UserProgression.fromJson(six.toJson());

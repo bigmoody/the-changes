@@ -152,7 +152,7 @@ void _heading(ui.Canvas canvas, Tune tune, {required int page, String? note}) {
   }
   final about = [
     'Key of ${tune.key}',
-    if (tune.meter != Meter.four) tune.meter.label,
+    if (tune.meter != Meter.four) tune.meter.written,
     '${tune.defaultTempo} bpm',
     ?note,
   ].join(' · ');

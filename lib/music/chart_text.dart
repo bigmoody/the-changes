@@ -26,7 +26,7 @@ String chartText(Tune tune, {int semitones = 0, String? note}) {
     ?moved.composer,
     ?moved.year?.toString(),
     'Key of ${moved.key}',
-    if (moved.meter != Meter.four) moved.meter.label,
+    if (moved.meter != Meter.four) moved.meter.written,
     '${moved.defaultTempo} bpm',
     if (moved.feel != Feel.swing) moved.feel.label,
   ];
