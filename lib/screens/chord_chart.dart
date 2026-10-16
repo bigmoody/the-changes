@@ -25,12 +25,24 @@ import '../theme.dart';
 /// with its rehearsal letter boxed in the margin, as on a Real Book chart,
 /// and a little extra space before it.
 class ChordChart extends StatefulWidget {
-  const ChordChart({super.key, required this.controller, this.stage = false});
+  const ChordChart({
+    super.key,
+    required this.controller,
+    this.stage = false,
+    this.follow = false,
+  });
 
   /// On the stage the chart is read, not marked up: a tap starts the band
   /// rather than setting a loop, so nobody changes what they're playing by
   /// touching the screen to get it going.
   final bool stage;
+
+  /// A few big rows that scroll with the band, rather than the whole tune
+  /// shrunk to the screen: on a stand a metre away, a forty-bar chart
+  /// fitted to a phone is too small to read, and nobody can scroll it
+  /// with a horn in their hands. It keeps the bar being played near the
+  /// top, with what is coming under it.
+  final bool follow;
 
   final PracticeController controller;
 
@@ -50,6 +62,10 @@ class _ChordChartState extends State<ChordChart> {
   /// scrolls rather than shrinking the chords back down.
   static const _readableRow = 30.0;
 
+  /// How many rows the stage shows at once when it follows the band: big
+  /// enough to read from a metre away, with the next line or two in view.
+  static const _stageRows = 5;
+
   final _scroll = ScrollController();
   int? _followedRow;
 
@@ -67,10 +83,12 @@ class _ChordChartState extends State<ChordChart> {
       if (!_scroll.hasClients) return;
       final position = _scroll.position;
       // Aim for a third of the way down, so what's coming next is visible.
-      final target = (rowTop - position.viewportDimension / 3).clamp(
-        0.0,
-        position.maxScrollExtent,
-      );
+      // Following on the stage, the line just played stays above it and
+      // the rest of the screen is what is coming.
+      final above = widget.follow
+          ? rowHeight + _spacing
+          : position.viewportDimension / 3;
+      final target = (rowTop - above).clamp(0.0, position.maxScrollExtent);
       _scroll.animateTo(
         target,
         duration: const Duration(milliseconds: 250),
@@ -112,8 +130,11 @@ class _ChordChartState extends State<ChordChart> {
         ];
         final fitted = (height - gaps.fold(0.0, (a, b) => a + b)) / rowCount;
         final readable = textScale > 1 ? _readableRow * textScale : 12.0;
-        final rowHeight = math.max(fitted, readable);
+        final big = widget.follow ? height / _stageRows : 0.0;
+        final rowHeight = math.max(fitted, math.max(readable, big));
         final scrolls = rowHeight > fitted + 0.5;
+        // Back to the whole chart, and the next follow starts afresh.
+        if (!scrolls) _followedRow = null;
         final railWidth = hasSections ? _railWidth : 0.0;
         final cellWidth =
             (width - railWidth - (columns - 1) * _spacing) / columns;

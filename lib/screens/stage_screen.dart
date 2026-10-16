@@ -14,6 +14,12 @@
 // That's also why a tap here doesn't set a loop the way it does while
 // you're practising: nobody wants to change what the band is playing by
 // touching the screen to get it going.
+//
+// There are two of it. Stage View is the whole tune fitted to the screen.
+// Scrolling Stage View is a few rows at a time, big, moving on as the band
+// moves down the tune, so the line being played is near the top and what
+// comes next is under it: a long chart fitted to a phone is too small to
+// read from a stand, and nobody can scroll it with a horn in their hands.
 
 import 'package:flutter/material.dart';
 
@@ -23,9 +29,13 @@ import 'chord_chart.dart' show ChordChart, CountInBubble;
 import 'play_shortcuts.dart';
 
 class StageScreen extends StatelessWidget {
-  const StageScreen({super.key, required this.controller});
+  const StageScreen({super.key, required this.controller, this.follow = false});
 
   final PracticeController controller;
+
+  /// The scrolling stage: a few big rows that move on with the band,
+  /// rather than the whole tune fitted to the screen.
+  final bool follow;
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -45,7 +55,11 @@ class StageScreen extends StatelessWidget {
                   onTap: controller.togglePlay,
                   child: Stack(
                     children: [
-                      ChordChart(controller: controller, stage: true),
+                      ChordChart(
+                        controller: controller,
+                        stage: true,
+                        follow: follow,
+                      ),
                       if (controller.countInBeat != null)
                         CountInBubble(beat: controller.countInBeat!),
                     ],

@@ -281,9 +281,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 // The same controller goes with it, so the band carries on
                 // playing as you walk on and off.
-                onStage: () => Navigator.of(context).push(
+                onStage: (follow) => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => StageScreen(controller: _controller),
+                    builder: (_) =>
+                        StageScreen(controller: _controller, follow: follow),
                   ),
                 ),
                 onRecord: () => showPracticeRecord(context, _controller),
@@ -558,8 +559,9 @@ class _MoreMenu extends StatelessWidget {
   final String title;
   final VoidCallback onShare;
 
-  /// Opens the stage: the chart and nothing else.
-  final VoidCallback onStage;
+  /// Opens the stage: the chart and nothing else, all of it at once or
+  /// scrolling with the band.
+  final void Function(bool follow) onStage;
 
   /// Opens the practice record for this tune.
   final VoidCallback onRecord;
@@ -597,7 +599,9 @@ class _MoreMenu extends StatelessWidget {
             case 'share':
               onShare();
             case 'stage':
-              onStage();
+              onStage(false);
+            case 'stage-scrolling':
+              onStage(true);
           }
         },
         itemBuilder: (context) => [
@@ -615,6 +619,14 @@ class _MoreMenu extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.fullscreen),
               title: Text('Stage View'),
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'stage-scrolling',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.swap_vert),
+              title: Text('Scrolling Stage View'),
             ),
           ),
           if (library != null) ...[
