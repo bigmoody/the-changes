@@ -688,20 +688,23 @@ _Parts _renderParts(
 
   // ── Count-in ───────────────────────────────────────────────────────────
   if (withCountIn) {
-    // One click a beat, whatever the bar is. The eighths of a compound
-    // bar were counted under it for a while, on the grounds that a count
-    // of two tells you nothing about the bar coming; what it actually
-    // did was count three times a beat, which at any real tempo is a
-    // blur rather than a count. A count-in is for finding the beat, and
-    // the beat is what the band is about to play.
+    // A compound bar is counted on its pulses, two of them in six
+    // eight, and two clicks is not a count of a bar of six: it says
+    // nothing about what is coming and gives you nothing to come in on.
+    // So the eighths are counted, all six of them, with the pulses
+    // louder: "one and a, two and a", which is the bar.
+    final subdivisions = tune.meter.compound ? 3 : 1;
     for (var beat = 0; beat < request.countInBars * beatsPerBar; beat++) {
-      clicks.tone(
-        beat * samplesPerBeat,
-        beat % beatsPerBar == 0 ? 1760 : 1320,
-        0.06,
-        0.35,
-        decay: 0.02,
-      );
+      for (var part = 0; part < subdivisions; part++) {
+        final onTheBeat = part == 0;
+        clicks.tone(
+          ((beat + part / subdivisions) * samplesPerBeat).round(),
+          beat % beatsPerBar == 0 && onTheBeat ? 1760 : 1320,
+          0.06,
+          onTheBeat ? 0.35 : 0.16,
+          decay: 0.02,
+        );
+      }
     }
   }
 

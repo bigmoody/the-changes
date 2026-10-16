@@ -1,11 +1,9 @@
-// The count-in: one click a beat, whatever the bar is.
+// The count-in: a click for each of the bar's written beats.
 //
-// It went wrong once, which is why this exists. A compound bar is
-// counted in two, and two clicks tells you nothing about the bar that
-// is coming, so the eighths were counted underneath it. What that
-// actually did was click three times a beat, which at any tempo a tune
-// is played at is a blur rather than a count, and the count-in stopped
-// being something you could come in on.
+// In a simple meter that is one a beat. In a compound one it is the
+// eighths, all six of a bar of six eight, with the pulses louder:
+// counting two is not counting a bar of six, and leaves you nothing to
+// come in on.
 
 import 'dart:typed_data';
 
@@ -58,17 +56,19 @@ List<double> countInFor(Meter meter, {int tempo = 120}) {
 }
 
 void main() {
-  test('a bar of clicks is a bar of beats, in any meter', () {
+  test('a bar of clicks is a bar of written beats, in any meter', () {
     for (final meter in Meter.choices) {
       final clicks = countInFor(meter);
       expect(
         clicks,
-        hasLength(meter.pulses),
-        reason: 'a bar of $meter is ${meter.pulses} beats',
+        hasLength(meter.beats),
+        reason: 'a bar of $meter is ${meter.beats} written beats',
       );
-      // Half a second a beat at 120, and every click on one.
+      // Half a second a beat at 120, and in compound time a third of
+      // that: the eighths of the bar, three to the pulse.
+      final gap = 0.5 / meter.perPulse;
       for (final (i, at) in clicks.indexed) {
-        expect(at, closeTo(i * 0.5, 0.01), reason: 'beat $i of $meter');
+        expect(at, closeTo(i * gap, 0.01), reason: 'beat $i of $meter');
       }
     }
   });
