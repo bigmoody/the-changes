@@ -40,8 +40,9 @@ import 'sound_shelf.dart';
 /// underneath that can't be scrolled away.
 Future<void> practiceSheet(
   BuildContext context,
-  Widget Function(BuildContext context) content,
-) => showModalBottomSheet<void>(
+  Widget Function(BuildContext context) content, {
+  bool scrollbar = false,
+}) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
@@ -56,10 +57,12 @@ Future<void> practiceSheet(
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: content(context),
-            ),
+            child: scrollbar
+                ? _ScrollingWithBar(content: content)
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: content(context),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -77,6 +80,46 @@ Future<void> practiceSheet(
     ),
   ),
 );
+
+/// A sheet's content with a scrollbar that is always showing, for a sheet
+/// long enough that what is below the fold looks like it is not there.
+///
+/// The mixer is: with the Done button pinned under it, the sheet looked
+/// as if it ended at the chords, and everything after them, the faders
+/// included, looked as if it had been taken out.
+class _ScrollingWithBar extends StatefulWidget {
+  const _ScrollingWithBar({required this.content});
+
+  final Widget Function(BuildContext context) content;
+
+  @override
+  State<_ScrollingWithBar> createState() => _ScrollingWithBarState();
+}
+
+class _ScrollingWithBarState extends State<_ScrollingWithBar> {
+  // The bar and the list have to share one, or the bar has nothing to
+  // follow and cannot be shown before the first scroll.
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scrollbar(
+    key: const ValueKey('sheet-scrollbar'),
+    controller: _scroll,
+    thumbVisibility: true,
+    child: SingleChildScrollView(
+      controller: _scroll,
+      // Room on the right so the bar does not sit on the controls.
+      padding: const EdgeInsets.fromLTRB(16, 0, 20, 8),
+      child: widget.content(context),
+    ),
+  );
+}
 
 /// What the chart shows, chosen while practising: the key it's written in,
 /// a fingering diagram and a chord tone to aim for. Everything else lives in
@@ -745,6 +788,7 @@ void showMixer(BuildContext context, PracticeController controller) {
         );
       },
     ),
+    scrollbar: true,
   );
 }
 

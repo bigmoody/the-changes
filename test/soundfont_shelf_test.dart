@@ -209,6 +209,20 @@ void main() {
       return controller;
     }
 
+    testWidgets('has a scrollbar, so what is below the fold looks there', (
+      tester,
+    ) async {
+      await openTheMixer(
+        tester,
+        SoundFontStore.inMemory(),
+        AppSettings.inMemory(),
+      );
+      final bar = tester.widget<Scrollbar>(
+        find.byKey(const ValueKey('sheet-scrollbar')),
+      );
+      expect(bar.thumbVisibility, isTrue);
+    });
+
     testWidgets('is offered on a device with nothing brought in yet', (
       tester,
     ) async {
