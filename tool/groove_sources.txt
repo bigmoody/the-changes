@@ -1,0 +1,95 @@
+Where the grooves come from.
+
+Every pattern in lib/audio/drum_patterns.dart is a claim about how a
+groove is played, and a claim that nobody can check is worth nothing. So
+each one is written down here with what it rests on, the way every sample
+has its source in sample_sources.txt. Anything added to that file should
+be added here too.
+
+A line is: the groove, then what the source says, then where it says it.
+Where two sources disagree, both are here and the code says which one it
+followed and why.
+
+
+JAZZ WALTZ (_jazzWaltzBar)
+
+Ride figure, "one, two, and-of-two, three": a skip note after the second
+beat and beat three left plain.
+  "The basic jazz waltz or 3/4 swing pattern consists of 'one, two,
+  and-of-two, three' on the ride cymbal, with the hi-hat on 'two'."
+  freedrumlessons.com, basic jazz pattern lesson.
+
+Hi-hat under 2 and 3: a listed variation of the same figure, the other
+common way being under beat 2 alone. The app follows 2 and 3, which is
+also what its own _backbeats rule gives a three-beat bar, so the waltz
+and every other groove close the hat in the same places.
+  Same source, which lists "the hi-hat on 'two' and 'three', or on all
+  three beats" among the variations.
+
+Snare answers on the "and" of 2 or on 3, now and then rather than every
+bar.
+  Same source: "adding the snare on the 'and-of-two' or on the
+  'and-of-one' and on 'three'."
+  soundbrenner.com, rhythm library: jazz waltz, on the drummer playing
+  sparsely and implying the pulse rather than hitting every beat.
+
+The bass walks three to the bar.
+  soundbrenner.com, same article: the bass may "walk in three", play "a
+  more spacious one-feel", or alternate strong downbeats with moving
+  quarter notes. The app walks, and the two-feel is reachable by
+  changing the bass on its own in the editor.
+
+Other syncopations (the skip reaching past the bar into the next one)
+are a quarter of bars rather than every bar.
+  Same article: other patterns "lift the 'and' of 2, or beats 2 and 3,
+  or different syncopations depending on the tune", given as options and
+  not as a fixed pattern.
+
+Feathered kick: soft enough to be felt and not heard, never struck hard.
+  The general rule for the swing kick, carried over: the bass drum is
+  played "only loud enough to be felt, but not heard".
+
+
+BALLAD, WITH BRUSHES (_balladBrushBar)
+
+The left hand circles the head without stopping, half a circle to a
+beat, and the change of direction marks the pulse.
+  "THE LEFT HAND stirs in a clockwise circle. There should be a slight
+  change in sound as the brush changes directions at the top and bottom
+  of the circle, this helps mark the quarter note pulse."
+  Nebraska Music Education Association all-state jazz drum set packet.
+  percussion.byu.edu, brushes page: start the left hand at nine o'clock
+  and swap hands with the right on beats 2 and 4; for ballads, stir the
+  hands in opposite directions towards the inside of the drum.
+
+The right hand does not keep time: it touches the head on 2 and 4, where
+the hands cross.
+  percussion.byu.edu, same page, on switching places on beats 2 and 4.
+  The Nebraska packet's medium-swing brush pattern taps the "2 a" and
+  "4 a" instead; that is the quicker tempo's version of the same hand,
+  and at a ballad the app plays it on the beat.
+
+Direction is the player's own choice, so nothing here depends on it.
+  Steve Fidyk, Modern Drummer brush workshop: "Some people naturally
+  move counterclockwise, and some people are more comfortable moving
+  clockwise."
+
+Nobody comments: no bombs, no fills, no snare answers. This one is the
+app's own decision rather than a quotation, and it is in the tests so
+that it stays deliberate.
+
+
+BALLAD, WITH STICKS (_balladBar)
+
+Quarters on the ride with one skip note at the end of the bar, the
+hi-hat under 2 and 4, and the same feathered kick. The brush kit is what
+a ballad is normally played with; this is the same part for a player who
+has chosen sticks, thinned out to match.
+
+
+Sources in full:
+  https://freedrumlessons.com/drum-lessons/basic-jazz-pattern.php
+  https://www.soundbrenner.com/blogs/articles/rhythm-library-jazz-waltz
+  https://www.nmeanebraska.org/assets/docs/All-State/Jazz-Band/Jazz-Scales/Set-D/NMEA%20All-State%20Jazz%20drum%20set%20D.pdf
+  https://percussion.byu.edu/brushes
+  https://www.moderndrummer.com (Steve Fidyk, brush basics workshop)

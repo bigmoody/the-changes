@@ -509,21 +509,30 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
 }
 
 /// Quick buttons that set the whole band to one feel.
+///
+/// One line that scrolls sideways, like the genres along the top of the
+/// Tunes tab, rather than a block that wraps. There will be more grooves
+/// than these, and a block of them would push the bars, which are what
+/// the player came here to write, further down the screen with every one
+/// added.
 class _Presets extends StatelessWidget {
   const _Presets({required this.onPick});
 
   final ValueChanged<Feel> onPick;
 
   @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    children: [
-      for (final feel in Feel.values)
-        ActionChip(
-          label: Text('All ${feel.label.toLowerCase()}'),
-          onPressed: () => onPick(feel),
-        ),
-    ],
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      spacing: 8,
+      children: [
+        for (final feel in Feel.values)
+          ActionChip(
+            label: Text('All ${feel.label.toLowerCase()}'),
+            onPressed: () => onPick(feel),
+          ),
+      ],
+    ),
   );
 }
 

@@ -165,9 +165,22 @@ void main() {
     }
 
     test('and none of them reaches for a swirl', () {
+      // The circle is the sound of a brush groove, so it belongs to the
+      // feels that are played with brushes at all: swing and the two it
+      // is the normal kit for, a jazz waltz and a ballad, plus the bossa,
+      // where it stands in for a shaker. Under a funk backbeat or a
+      // samba it would be somebody's mistake.
+      const circles = [Feel.swing, Feel.bossa, Feel.jazzWaltz, Feel.ballad];
       for (final feel in Feel.values) {
-        if (feel == Feel.swing || feel == Feel.bossa) continue;
+        if (circles.contains(feel)) continue;
         expect(countOf(played(feel, brushes: true), Drum.swirl), 0);
+      }
+      for (final feel in circles) {
+        expect(
+          countOf(played(feel, brushes: true), Drum.swirl),
+          greaterThan(0),
+          reason: '${feel.name} is a brush groove',
+        );
       }
     });
   });

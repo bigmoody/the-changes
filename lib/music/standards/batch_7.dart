@@ -23,6 +23,7 @@ final standardsBatch7 = <Tune>[
     year: 1944,
     key: 'E♭',
     description: 'Ballad, 16 bars',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 58,
     chart:
@@ -47,6 +48,7 @@ final standardsBatch7 = <Tune>[
     year: 1938,
     key: 'F',
     description: 'Ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 72,
     chart:
@@ -85,6 +87,7 @@ final standardsBatch7 = <Tune>[
     year: 1935,
     key: 'C',
     description: 'Ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 84,
     chart:
@@ -97,6 +100,7 @@ final standardsBatch7 = <Tune>[
     year: 1926,
     key: 'E♭',
     description: 'Ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 66,
     chart:
@@ -123,6 +127,7 @@ final standardsBatch7 = <Tune>[
     year: 1938,
     key: 'F',
     description: 'Ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 62,
     chart:

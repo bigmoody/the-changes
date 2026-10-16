@@ -67,6 +67,7 @@ final standardsBatch4 = <Tune>[
     year: 1953,
     key: 'C',
     description: 'Ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 66,
     chart:

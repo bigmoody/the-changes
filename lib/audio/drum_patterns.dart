@@ -10,6 +10,11 @@
 //    playing the bossa clave: a two-bar pattern, not a backbeat.
 //  • Funk: eighths on the hi-hat, snare backbeat on 2 and 4, and a
 //    syncopated kick that changes from bar to bar.
+//  • Jazz waltz: swing in three, with the skip note after 2 and beat 3
+//    left plain, and the hi-hat closing under 2 and 3.
+//  • Ballad: the slowest swing, with the brushes circling the head and
+//    the right hand touching the time in on 2 and 4 rather than keeping
+//    it on the cymbal.
 //  • Calypso: cowbell on the off-beats, toms instead of a snare backbeat,
 //    and the kick on the 3-3-2 (1, the "and" of 2, 4) with the bass. No
 //    clave (that's a bossa) and no backbeat over a kick on 1 and 3 (that's
@@ -131,6 +136,10 @@ List<DrumHit> drumBar({
     Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
     Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
     Feel.samba => _sambaBar(bar, beatsPerBar, random),
+    Feel.jazzWaltz when brushes => _jazzWaltzBrushBar(bar, beatsPerBar, random),
+    Feel.jazzWaltz => _jazzWaltzBar(bar, beatsPerBar, random),
+    Feel.ballad when brushes => _balladBrushBar(bar, beatsPerBar, random),
+    Feel.ballad => _balladBar(bar, beatsPerBar, random),
   })
     if (hit.beat < beatsPerBar)
       hit.at(keepsTime(hit.drum) ? hit.beat : leaned(hit.beat, feel, swing)),
@@ -872,6 +881,232 @@ List<DrumHit> _sambaBar(int bar, int beatsPerBar, math.Random random) {
         hard: true,
       ),
     );
+  }
+  return hits;
+}
+
+/// A jazz waltz: swing in three, with the lift after 2.
+///
+/// The ride plays the figure a waltz is taught as, "one, two, and-of-two,
+/// three": a skip note after the second beat and beat three left plain.
+/// That is the whole difference from swing counted in three, which puts a
+/// skip after every backbeat and comes out hurried. The hi-hat closes
+/// under 2 and 3 (under 2 alone is the other common way), the kick is
+/// feathered, and the snare answers now and then.
+///
+/// Beat one carries the accent. A waltz has a strong one in a way a swing
+/// bar does not, and the ride is where that is heard.
+List<DrumHit> _jazzWaltzBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  final closes = _backbeats(beatsPerBar);
+  // The second beat of the bar: where the lift goes, whatever the bar
+  // length, so a waltz figure asked for in four still leans where a
+  // waltz leans.
+  const lifts = 1;
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.ride,
+        beat: beat.toDouble(),
+        velocity: (beat == 0 ? 0.62 : 0.5) * _human(random),
+      ),
+    );
+    if (beat == lifts) {
+      hits.add(
+        DrumHit(
+          drum: Drum.ride,
+          beat: beat + 0.5,
+          velocity: 0.4 * _human(random),
+        ),
+      );
+    }
+    if (closes.contains(beat)) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.5 * _human(random),
+          hard: true,
+        ),
+      );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.16 * _human(random),
+      ),
+    );
+  }
+  // A second skip, after the last beat of the bar and into the next one.
+  // Where a waltz's other syncopations live, and not in every bar.
+  if (random.nextDouble() < 0.25) {
+    hits.add(
+      DrumHit(
+        drum: Drum.ride,
+        beat: beatsPerBar - 0.5,
+        velocity: 0.38 * _human(random),
+      ),
+    );
+  }
+  // Snare comping, on the "and" of 2 or on 3: the two places the waltz
+  // answers itself.
+  if (random.nextDouble() < 0.3) {
+    hits.add(
+      DrumHit(
+        drum: Drum.snare,
+        beat: random.nextBool() ? lifts + 0.5 : (beatsPerBar - 1).toDouble(),
+        velocity: 0.22 * _human(random),
+      ),
+    );
+  }
+  if (bar % 8 == 7 && random.nextDouble() < 0.35) {
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beatsPerBar - 1,
+          velocity: 0.5 * _human(random),
+        ),
+      )
+      ..add(DrumHit(drum: Drum.snare, beat: beatsPerBar - 0.5, velocity: 0.42));
+  }
+  return hits;
+}
+
+/// The same waltz, played with brushes.
+///
+/// The right hand taps the ride's figure on the head and the left hand
+/// turns one circle to the bar, so the circle and the bar begin together.
+/// Half a circle to a beat, as in four, would leave the third beat of
+/// every bar half way round.
+List<DrumHit> _jazzWaltzBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[
+    DrumHit(
+      drum: Drum.swirl,
+      beat: 0,
+      velocity: 0.26 * _human(random),
+      beats: beatsPerBar.toDouble(),
+    ),
+  ];
+  for (final hit in _jazzWaltzBar(bar, beatsPerBar, random)) {
+    hits.add(switch (hit.drum) {
+      // The time comes off the cymbal and onto the head, quieter than the
+      // ride's numbers look: the snare is the loudest thing an overhead
+      // hears, so the same velocity is a harder stroke there.
+      Drum.ride => DrumHit(
+        drum: Drum.snare,
+        beat: hit.beat,
+        velocity: hit.velocity * 0.68,
+      ),
+      _ => hit,
+    });
+  }
+  return hits;
+}
+
+/// A ballad, with sticks: the slowest swing there is, and nothing spare.
+///
+/// The ride keeps quarters with one skip note at the end of the bar
+/// rather than after every backbeat, the hi-hat closes under 2 and 4, the
+/// kick is feathered, and there are no bombs. A ballad is the one place
+/// a drummer is not commenting.
+List<DrumHit> _balladBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  final closes = _backbeats(beatsPerBar);
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.ride,
+        beat: beat.toDouble(),
+        velocity: (closes.contains(beat) ? 0.42 : 0.36) * _human(random),
+      ),
+    );
+    if (closes.contains(beat)) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.38 * _human(random),
+        ),
+      );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.12 * _human(random),
+      ),
+    );
+  }
+  // The one skip note, into the next bar.
+  hits.add(
+    DrumHit(
+      drum: Drum.ride,
+      beat: beatsPerBar - 0.5,
+      velocity: 0.3 * _human(random),
+    ),
+  );
+  return hits;
+}
+
+/// A ballad, with brushes: what the tune is normally played with.
+///
+/// The left hand circles the head without stopping, half a circle to a
+/// beat, and the change of direction at the top and bottom of the circle
+/// is what marks the pulse. The right hand does not keep time at all: it
+/// touches the head on 2 and 4, where the hands would cross. The hi-hat
+/// closes under those two beats, barely.
+List<DrumHit> _balladBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    if (beat.isEven) {
+      hits.add(
+        DrumHit(
+          drum: Drum.swirl,
+          beat: beat.toDouble(),
+          velocity: 0.24 * _human(random),
+        ),
+      );
+    }
+    if (_backbeats(beatsPerBar).contains(beat)) {
+      hits
+        ..add(
+          DrumHit(
+            drum: Drum.snare,
+            beat: beat.toDouble(),
+            velocity: 0.3 * _human(random),
+          ),
+        )
+        ..add(
+          DrumHit(
+            drum: Drum.hiHatPedal,
+            beat: beat.toDouble(),
+            velocity: 0.3 * _human(random),
+          ),
+        );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.1 * _human(random),
+      ),
+    );
+  }
+  // An odd bar leaves a half circle hanging: one circle over the whole
+  // bar instead, as the waltz does.
+  if (beatsPerBar.isOdd) {
+    hits
+      ..removeWhere((hit) => hit.drum == Drum.swirl)
+      ..add(
+        DrumHit(
+          drum: Drum.swirl,
+          beat: 0,
+          velocity: 0.24 * _human(random),
+          beats: beatsPerBar.toDouble(),
+        ),
+      );
   }
   return hits;
 }

@@ -109,6 +109,8 @@ String _styleFor(UserProgression progression) =>
       Feel.samba => 'Samba',
       Feel.funk => 'Funk',
       Feel.calypso => 'Calypso',
+      Feel.jazzWaltz => 'Jazz Waltz',
+      Feel.ballad => 'Ballad Swing',
     };
 
 /// The chart itself, before it's scrambled.

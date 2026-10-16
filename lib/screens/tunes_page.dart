@@ -373,6 +373,9 @@ class _TunesPageState extends State<TunesPage> {
 
   /// Just enough to choose by: who wrote it, what it is, and its key.
   Widget _tile(Tune tune, {String? letter}) {
+    // "Latin" for the bossa groove (Tunisia isn't a bossa); others by
+    // name. Swing is the one left unsaid, being most of them.
+    final feel = tune.feel == Feel.bossa ? Genre.latin.label : tune.feel.label;
     final details = [
       // In composer order the surname comes first, so the list reads down
       // the way it's sorted.
@@ -382,9 +385,11 @@ class _TunesPageState extends State<TunesPage> {
       if (tune.description.isNotEmpty) tune.description,
       'Key of ${tune.keyLabelBy(widget.settings.instrument.semitones)}',
       if (_order == TuneOrder.tempo) '${tune.defaultTempo} bpm',
-      // "Latin" for the bossa groove (Tunisia isn't a bossa); others by name.
-      if (tune.feel != Feel.swing)
-        tune.feel == Feel.bossa ? Genre.latin.label : tune.feel.label,
+      // Not twice: a ballad whose description already says what it is
+      // would otherwise read "Ballad · Key of A minor · Ballad".
+      if (tune.feel != Feel.swing &&
+          !tune.description.toLowerCase().contains(feel.toLowerCase()))
+        feel,
     ];
     final ref = TuneRef.of(tune);
     return ListTile(

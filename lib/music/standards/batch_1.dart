@@ -73,6 +73,7 @@ final standardsBatch1 = <Tune>[
     year: 1946,
     key: 'D minor',
     description: 'Ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 70,
     chart:
@@ -127,6 +128,7 @@ final standardsBatch1 = <Tune>[
     year: 1959,
     key: 'D minor',
     description: '10-bar ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 60,
     chart:
@@ -178,6 +180,7 @@ final standardsBatch1 = <Tune>[
     year: 1930,
     key: 'D♭',
     description: 'Ballad',
+    feel: Feel.ballad,
     tags: {Genre.ballad},
     defaultTempo: 60,
     chart:

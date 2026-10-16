@@ -570,6 +570,8 @@ Feel _feelOf(String style) {
   final s = style.toLowerCase();
   bool any(List<String> words) => words.any(s.contains);
   if (any(['calypso', 'soca', 'reggae', 'ska'])) return Feel.calypso;
+  // Before the Latin names, so an Afro waltz is still played in three.
+  if (any(['waltz', '3/4'])) return Feel.jazzWaltz;
   if (any([
     'bossa', 'latin', 'samba', 'afro', 'cuban', 'mambo', 'cha', 'rhumba', //
     'rumba', 'bolero', 'salsa', 'montuno', 'songo', 'tango', 'baiao',
@@ -582,6 +584,9 @@ Feel _feelOf(String style) {
   ])) {
     return Feel.funk;
   }
+  // Last, so that a Latin or even-eighths ballad keeps its own groove
+  // and only a swung one comes here.
+  if (any(['ballad', 'slow swing'])) return Feel.ballad;
   return Feel.swing;
 }
 

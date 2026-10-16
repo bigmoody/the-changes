@@ -48,7 +48,27 @@ enum Feel {
 
   /// Brazilian, and quicker than a bossa: the surdo answering on 2 and 4,
   /// a tamborim figure across the bar, sixteenths running underneath.
-  samba('Samba');
+  samba('Samba'),
+
+  /// Swing in three. The ride plays the figure a waltz is taught in,
+  /// "one, two, and-of-two, three", so the lift is after 2 and beat 3
+  /// is left plain, the hi-hat closes under 2 and 3, and the bass walks
+  /// three to the bar.
+  ///
+  /// Swing in a three-beat bar is already close to this, and that is the
+  /// point of giving the waltz its own name rather than leaving it to the
+  /// time signature: the skip note after every beat is what a swing
+  /// pattern does in four, and a waltz that keeps it sounds hurried.
+  jazzWaltz('Jazz Waltz'),
+
+  /// A slow swing played with the brushes: the left hand circling the
+  /// head, the right hand touching the time in on 2 and 4, the bass in
+  /// two and the chords held rather than comped.
+  ///
+  /// A ballad is not only a swing tune at a slow tempo. What changes is
+  /// who plays what: the time moves off the cymbal and onto the head,
+  /// the bass stops walking, and the piano stops answering.
+  ballad('Ballad');
 
   const Feel(this.label);
   final String label;
@@ -58,7 +78,8 @@ enum Feel {
   double get andOfBeat => swings ? 2 / 3 : 0.5;
 
   /// Whether this feel's eighths are long-short.
-  bool get swings => this == swing || this == shuffle;
+  bool get swings =>
+      this == swing || this == shuffle || this == jazzWaltz || this == ballad;
 
   /// Where the off-beats sit before anybody touches the slider: the
   /// tempo's own swing for the feels that swing, even for the rest.
@@ -87,6 +108,12 @@ enum Feel {
     samba => (slowest: 150, fastest: 260),
     funk => (slowest: 60, fastest: 140),
     calypso => (slowest: 100, fastest: 200),
+    // A waltz is played from a slow three up to a bright one; Someday My
+    // Prince Will Come and Bluesette sit near the middle of that.
+    jazzWaltz => (slowest: 80, fastest: 260),
+    // Faster than this and the brushes and the two-feel stop making
+    // sense: it is a medium swing tune by then, whatever it is called.
+    ballad => (slowest: 40, fastest: 85),
   };
 
   /// [tempo] brought into the range this feel is played at, staying as
@@ -119,6 +146,8 @@ enum Genre {
     Feel.bossa || Feel.samba => latin,
     Feel.calypso => calypso,
     Feel.funk => funk,
+    Feel.jazzWaltz => swing,
+    Feel.ballad => ballad,
   };
 
   /// The genres that come from what a tune is rather than how it's played:
@@ -249,13 +278,20 @@ class BandStyle {
     bass: switch (feel) {
       // A shuffle's bass walks like any other blues; the bounce is in the
       // drums and the comping, not in the notes it chooses.
-      Feel.swing || Feel.shuffle => BassStyle.walking,
+      // A waltz walks too, three to the bar rather than four.
+      Feel.swing || Feel.shuffle || Feel.jazzWaltz => BassStyle.walking,
+      // A ballad is held up by two notes a bar, not four: roots and
+      // fifths, with the space left in.
+      Feel.ballad => BassStyle.twoFeel,
       Feel.bossa || Feel.samba => BassStyle.bossa,
       Feel.funk => BassStyle.funk,
       Feel.calypso => BassStyle.calypso,
     },
     piano: switch (feel) {
-      Feel.swing || Feel.shuffle => PianoStyle.swing,
+      Feel.swing || Feel.shuffle || Feel.jazzWaltz => PianoStyle.swing,
+      // Long chords, one to a change. A comper answering every phrase is
+      // what a ballad does not want.
+      Feel.ballad => PianoStyle.held,
       Feel.calypso => PianoStyle.calypso,
       Feel.bossa || Feel.funk || Feel.samba => PianoStyle.straight,
     },
