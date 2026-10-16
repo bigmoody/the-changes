@@ -65,22 +65,26 @@ void main() {
   test('a bar holds one chord a beat, whatever the meter', () {
     // One a beat is as many as fit: the chord after that has no beat to
     // sound on, and the band is never handed one that lasts no time.
-    const chords = ['Dm7', 'G7', 'C6', 'A7', 'E7', 'B7'];
-    for (final beats in UserProgression.meters) {
+    const chords = [
+      'Dm7', 'G7', 'C6', 'A7', 'E7', 'B7', 'F6', 'Bb7', 'Eb6', //
+      'Ab7', 'Db6', 'Gb7', 'B6',
+    ];
+    for (final meter in UserProgression.meters) {
+      final beats = meter.pulses;
       String bar(int n) => chords.take(n).join(' ');
       expect(
-        UserProgression.problemWith(bar(beats), beatsPerBar: beats),
+        UserProgression.problemWith(bar(beats), meter: meter),
         isNull,
-        reason: '$beats chords fit a bar of $beats/4',
+        reason: '$beats chords fit a bar of $meter',
       );
       expect(
-        UserProgression.problemWith(bar(beats + 1), beatsPerBar: beats),
-        'At most $beats chords in a bar of $beats/4',
-        reason: 'one too many for $beats/4',
+        UserProgression.problemWith(bar(beats + 1), meter: meter),
+        'At most $beats chords in a bar of ${meter.label}',
+        reason: 'one too many for $meter',
       );
       // The other complaints still come first.
       expect(
-        UserProgression.problemWith('   ', beatsPerBar: beats),
+        UserProgression.problemWith('   ', meter: meter),
         contains('at least one'),
       );
     }

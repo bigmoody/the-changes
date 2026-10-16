@@ -147,6 +147,11 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('chord-aid')));
       await tester.pumpAndSettle();
       expect(find.text('Under the Chords'), findsOneWidget);
+      // The View sheet is longer than the screen, so the chips
+      // lower down have to be scrolled to before they can be
+      // tapped.
+      await tester.ensureVisible(find.byKey(const ValueKey('aid-off')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('aid-off')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('sheet-done')));

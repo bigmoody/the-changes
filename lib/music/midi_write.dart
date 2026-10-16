@@ -21,11 +21,19 @@ import 'dart:typed_data';
 import '../audio/drum_patterns.dart';
 import '../audio/piano_comping.dart';
 import '../audio/walking_bass.dart';
+import 'meter.dart';
 import 'tune.dart';
 
 /// Ticks to a quarter note. 480 divides by 2, 3, 4 and 5, so swung
 /// eighths, triplets and sixteenths all land on whole numbers.
-const _ticksPerBeat = 480;
+const _ticksPerQuarter = 480;
+
+/// Ticks to one of the band's beats. A beat is a quarter note in simple
+/// time and a dotted quarter in compound, which is where the app's beat
+/// and the file's quarter part company: everything inside is counted in
+/// beats, and a DAW counts in quarters.
+int _ticksPerBeatIn(Meter meter) =>
+    meter.compound ? _ticksPerQuarter * 3 ~/ 2 : _ticksPerQuarter;
 
 const _pianoChannel = 0;
 const _bassChannel = 1;
@@ -72,7 +80,7 @@ Uint8List midiFor(
     ..add(_int32(6))
     ..add(_int16(1))
     ..add(_int16(tracks.length))
-    ..add(_int16(_ticksPerBeat));
+    ..add(_int16(_ticksPerQuarter));
   for (final track in tracks) {
     out
       ..add(_ascii('MTrk'))
@@ -97,10 +105,26 @@ typedef _Event = ({int tick, List<int> bytes, int order});
 /// The tempo and the time signature, which a DAW reads before anything
 /// else.
 Uint8List _conductor(Tune tune, int tempo) {
+  final meter = tune.meter;
+  // A DAW reads the denominator as a power of two and the tempo as
+  // microseconds to a quarter note, neither of which is what the app
+  // counts in compound time: the tempo on a 6/8 chart is its dotted
+  // quarters, which is a quarter and a half of them.
+  final denominator = meter.unit == 8 ? 3 : 2;
+  final clocksPerClick = meter.compound ? 36 : 24;
+  final perQuarter = tune.meter.compound ? tempo * 1.5 : tempo.toDouble();
   final events = <_Event>[
     (tick: 0, order: 0, bytes: _meta(0x03, _ascii(tune.title))),
-    (tick: 0, order: 1, bytes: _meta(0x58, [tune.beatsPerBar, 2, 24, 8])),
-    (tick: 0, order: 2, bytes: _meta(0x51, _int24((60000000 / tempo).round()))),
+    (
+      tick: 0,
+      order: 1,
+      bytes: _meta(0x58, [meter.beats, denominator, clocksPerClick, 8]),
+    ),
+    (
+      tick: 0,
+      order: 2,
+      bytes: _meta(0x51, _int24((60000000 / perQuarter).round())),
+    ),
   ];
   return _track(events);
 }
@@ -152,6 +176,7 @@ Uint8List _piano(
             beats: hit.length,
             velocity: hit.velocity,
             order: order,
+            ticks: _ticksPerBeatIn(tune.meter),
           );
         }
       }
@@ -196,6 +221,7 @@ Uint8List _bass(
       beats: note.length,
       velocity: note.velocity,
       order: order,
+      ticks: _ticksPerBeatIn(tune.meter),
     );
   }
   return _track(events);
@@ -225,6 +251,7 @@ Uint8List _drums(
       beats: 0.25,
       velocity: beat % beatsPerBar == 0 ? 0.9 : 0.6,
       order: order,
+      ticks: _ticksPerBeatIn(tune.meter),
     );
   }
   for (var chorus = 0; chorus < choruses; chorus++) {
@@ -247,6 +274,7 @@ Uint8List _drums(
           beats: 0.25,
           velocity: hit.velocity,
           order: order,
+          ticks: _ticksPerBeatIn(tune.meter),
         );
       }
     }
@@ -283,10 +311,11 @@ int _note(
   required double beats,
   required double velocity,
   required int order,
+  required int ticks,
 }) {
   if (pitch < 0 || pitch > 127) return order;
-  final on = math.max(0, (beat * _ticksPerBeat).round());
-  final off = math.max(on + 1, ((beat + beats) * _ticksPerBeat).round());
+  final on = math.max(0, (beat * ticks).round());
+  final off = math.max(on + 1, ((beat + beats) * ticks).round());
   final strength = (velocity * 127).round().clamp(1, 127);
   events
     ..add((tick: on, order: order, bytes: [0x90 | channel, pitch, strength]))

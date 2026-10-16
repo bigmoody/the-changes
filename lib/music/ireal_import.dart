@@ -19,6 +19,8 @@
 
 import 'dart:convert';
 
+import 'meter.dart';
+
 import 'chord.dart';
 import 'tune.dart';
 import 'user_progression.dart';
@@ -143,18 +145,12 @@ ImportedSong? _parseSong(String text, {required bool scrambled}) {
 
   final notes = <String>[...chart.notes];
   final feel = _feelOf(style);
-  // 3/4, 5/4 and the like play as they're written; the compound ones
-  // (6/8, 12/8) have no groove of their own yet.
-  final beats = switch (chart.timeSignature) {
-    '3/4' => 3,
-    '2/4' => 2,
-    '5/4' => 5,
-    '6/4' => 6,
-    '7/4' => 7,
-    _ => 4,
-  };
+  // Whatever the chart says, where the app can count it. 6/8 and 12/8
+  // come over as themselves now, felt in two and in four; what is left
+  // over (9/8, and anything stranger) plays in 4/4 and says so.
+  final meter = Meter.parse(chart.timeSignature) ?? Meter.four;
   final progression = chart.toProgression()
-    ..beatsPerBar = beats
+    ..meter = meter
     ..title = title
     ..composer = composer
     ..tempo = tempo ?? _tempoOf(style)
@@ -162,7 +158,7 @@ ImportedSong? _parseSong(String text, {required bool scrambled}) {
     ..tags = _tagsOf(style);
   progression.key =
       _keyOf(keyField.trim()) ?? UserProgression.guessKey(progression.bars);
-  if (chart.timeSignature != '4/4' && beats == 4) {
+  if (chart.timeSignature != '4/4' && meter == Meter.four) {
     notes.add('In ${chart.timeSignature}: plays in 4/4 for now');
   }
   return ImportedSong(progression: progression, style: style, notes: notes);

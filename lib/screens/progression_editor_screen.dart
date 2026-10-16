@@ -6,6 +6,8 @@
 
 import 'package:flutter/material.dart';
 
+import '../music/meter.dart';
+
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
 import '../music/tune.dart';
@@ -205,7 +207,7 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
       ending: ending,
       hasEndings: hasEndings,
       canDelete: !isNew && _draft.bars.length > 1,
-      beatsPerBar: _draft.beatsPerBar,
+      meter: _draft.meter,
     ),
   );
 
@@ -379,23 +381,26 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // The time signature: 4/4, a waltz, or five.
+                // The time signature: 4/4, a waltz, five, or a bar of
+                // six eight counted in two.
                 SizedBox(
                   width: 112,
-                  child: DropdownButtonFormField<int>(
+                  child: DropdownButtonFormField<Meter>(
                     key: const ValueKey('meter'),
                     isExpanded: true,
-                    initialValue: _draft.beatsPerBar,
+                    initialValue: _draft.meter,
                     decoration: const InputDecoration(
                       labelText: 'Time',
                       border: OutlineInputBorder(),
                     ),
                     items: [
-                      for (final beats in UserProgression.meters)
-                        DropdownMenuItem(value: beats, child: Text('$beats/4')),
+                      for (final meter in UserProgression.meters)
+                        DropdownMenuItem(
+                          value: meter,
+                          child: Text(meter.label),
+                        ),
                     ],
-                    onChanged: (beats) =>
-                        _edit(() => _draft.beatsPerBar = beats!),
+                    onChanged: (meter) => _edit(() => _draft.meter = meter!),
                   ),
                 ),
               ],
@@ -497,7 +502,7 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
             const SizedBox(height: 8),
             _BarGrid(
               bars: _draft.bars,
-              beatsPerBar: _draft.beatsPerBar,
+              meter: _draft.meter,
               sections: _draft.sections,
               repeats: _draft.repeats,
               endings: _draft.endings,
@@ -648,7 +653,7 @@ class _TempoStepper extends StatelessWidget {
 class _BarGrid extends StatelessWidget {
   const _BarGrid({
     required this.bars,
-    required this.beatsPerBar,
+    required this.meter,
     required this.sections,
     required this.repeats,
     required this.endings,
@@ -661,7 +666,7 @@ class _BarGrid extends StatelessWidget {
   final List<String> bars;
 
   /// Beats in a bar, which is also the most chords one can hold.
-  final int beatsPerBar;
+  final Meter meter;
   final Map<int, String> sections;
   final Map<int, int> repeats;
   final Map<int, int> endings;
@@ -690,7 +695,7 @@ class _BarGrid extends StatelessWidget {
                 child: _BarTile(
                   number: i + 1,
                   text: bars[i],
-                  beatsPerBar: beatsPerBar,
+                  meter: meter,
                   section: sections[i],
                   repeats: repeats[i] ?? 1,
                   ending: endings[i],
@@ -797,7 +802,7 @@ class _BarTile extends StatelessWidget {
     required this.number,
     required this.text,
     required this.onTap,
-    required this.beatsPerBar,
+    required this.meter,
     this.section,
     this.repeats = 1,
     this.ending,
@@ -808,7 +813,7 @@ class _BarTile extends StatelessWidget {
   final VoidCallback onTap;
 
   /// Beats in a bar, which is also the most chords one can hold.
-  final int beatsPerBar;
+  final Meter meter;
 
   /// 1 or 2 if the bar is part of a 1st or 2nd ending.
   final int? ending;
@@ -820,7 +825,7 @@ class _BarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final problem = UserProgression.problemWith(text, beatsPerBar: beatsPerBar);
+    final problem = UserProgression.problemWith(text, meter: meter);
     final shown = problem == null
         ? UserProgression.symbolsIn(text)
               .map((s) => Chord.parse(s).display)
@@ -938,7 +943,7 @@ class _BarSheet extends StatefulWidget {
     required this.number,
     required this.text,
     required this.canDelete,
-    required this.beatsPerBar,
+    required this.meter,
     this.section,
     this.repeats = 1,
     this.ending,
@@ -950,7 +955,7 @@ class _BarSheet extends StatefulWidget {
   final bool canDelete;
 
   /// Beats in a bar, which is also the most chords one can hold.
-  final int beatsPerBar;
+  final Meter meter;
 
   /// 1 or 2 if the bar is part of a 1st or 2nd ending.
   final int? ending;
@@ -986,11 +991,7 @@ class _BarSheetState extends State<_BarSheet> {
     final symbols = UserProgression.symbolsIn(_field.text);
     return symbols.isNotEmpty &&
         !symbols.last.contains('/') &&
-        UserProgression.problemWith(
-              symbols.last,
-              beatsPerBar: widget.beatsPerBar,
-            ) ==
-            null;
+        UserProgression.problemWith(symbols.last, meter: widget.meter) == null;
   }
 
   void _setBass(String note) {
@@ -1051,7 +1052,7 @@ class _BarSheetState extends State<_BarSheet> {
     final symbols = _replaceNext
         ? <String>[]
         : UserProgression.symbolsIn(_field.text);
-    if (symbols.length >= widget.beatsPerBar) return;
+    if (symbols.length >= widget.meter.pulses) return;
     setState(() {
       _field.text = [...symbols, '$root$quality'].join(' ');
       _root = null;
@@ -1074,10 +1075,10 @@ class _BarSheetState extends State<_BarSheet> {
     final theme = Theme.of(context);
     final problem = UserProgression.problemWith(
       _field.text,
-      beatsPerBar: widget.beatsPerBar,
+      meter: widget.meter,
     );
     final full =
-        UserProgression.symbolsIn(_field.text).length >= widget.beatsPerBar;
+        UserProgression.symbolsIn(_field.text).length >= widget.meter.pulses;
     return Padding(
       // Stay above the keyboard while typing.
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -1098,7 +1099,7 @@ class _BarSheetState extends State<_BarSheet> {
                 labelText: 'Chords',
                 hintText: 'e.g. Dm7 G7',
                 helperText:
-                    'Up to ${_counts[widget.beatsPerBar] ?? widget.beatsPerBar}'
+                    'Up to ${_counts[widget.meter.pulses] ?? widget.meter.pulses}'
                     ', split evenly across the bar',
                 errorText: _field.text.trim().isEmpty ? null : problem,
                 border: const OutlineInputBorder(),

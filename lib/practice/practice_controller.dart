@@ -1,4 +1,7 @@
 import 'dart:async';
+
+import '../music/meter.dart';
+
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
@@ -63,10 +66,13 @@ class PracticeController extends ChangeNotifier {
        originalTune = tune,
        _ref = ref,
        _style = ref == null ? null : library?.styleFor(ref),
-       _tune = tune.withStyle(
-         (ref == null ? null : library?.styleFor(ref)) ?? tune.style,
-       ),
-       _chart = tune.transposed(settings.instrument.semitones),
+       _meter = ref == null ? null : library?.meterFor(ref),
+       _tune = _asChosen(tune, ref, library),
+       _chart = _asChosen(
+         tune,
+         ref,
+         library,
+       ).transposed(settings.instrument.semitones),
        _loop = LoopRange.wholeTune(tune),
        // Where you left off, if you have been here before. The written
        // tempo is what the tune is played at; this is what *you* play it
@@ -98,9 +104,51 @@ class PracticeController extends ChangeNotifier {
   /// for a chart that is not in the library at all.
   TuneRef? get ref => _ref;
 
+  /// The tune as the player keeps it: in the meter they count it in and
+  /// played the way they have chosen, before any transposition.
+  static Tune _asChosen(Tune tune, TuneRef? ref, LibraryStore? library) {
+    if (ref == null || library == null) return tune;
+    return tune
+        .inMeter(library.meterFor(ref) ?? tune.meter)
+        .withStyle(library.styleFor(ref) ?? tune.style);
+  }
+
   /// The way the player has chosen to have it played, over the way it was
   /// written. Null means as written.
   BandStyle? _style;
+
+  /// The meter the player counts it in, over the one it was written in.
+  /// Null means as written.
+  Meter? _meter;
+
+  /// What it is counted in now: the player's choice, or the tune's own.
+  Meter get meter => _meter ?? originalTune.meter;
+
+  /// Whether that is something the player chose rather than what the
+  /// tune was written in.
+  bool get meterIsChosen => _meter != null;
+
+  /// The tune before any transposition, counted the way the player
+  /// counts it. Everything that rebuilds the chart or the band starts
+  /// here, so the meter is never left behind by a key change.
+  Tune get _source => originalTune.inMeter(meter);
+
+  /// Counts it in [meter] from now on, and remembers it for next time. A
+  /// null [meter] puts it back to the one the tune was written in.
+  ///
+  /// The loop goes back to the whole tune: loops are counted in beats,
+  /// and a bar is not the same number of beats as it was.
+  void setMeter(Meter? meter) {
+    if (meter == _meter) return;
+    _meter = meter;
+    final ref = _ref;
+    if (ref != null) library?.setMeter(ref, meter);
+    _tune = _source.transposed(_semitones).withStyle(style);
+    _loop = LoopRange.wholeTune(_tune);
+    _updateChart();
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
 
   /// How the band is playing it: the player's choice, or the tune's own.
   BandStyle get style => _style ?? originalTune.style;
@@ -116,7 +164,7 @@ class PracticeController extends ChangeNotifier {
     _style = style;
     final ref = _ref;
     if (ref != null) library?.setStyle(ref, style);
-    _tune = originalTune.transposed(_semitones).withStyle(this.style);
+    _tune = _source.transposed(_semitones).withStyle(this.style);
     // A groove carries its tempo with it: a samba at 90 is not a slow
     // samba. The tempo only moves when it has to, so a medium swing that
     // becomes a shuffle stays where it was.
@@ -139,7 +187,7 @@ class PracticeController extends ChangeNotifier {
     _style = next;
     final ref = _ref;
     if (ref != null) library?.setStyle(ref, next);
-    _tune = originalTune.transposed(_semitones).withStyle(next);
+    _tune = _source.transposed(_semitones).withStyle(next);
     notifyListeners();
     _restartIfPlaying(delay: const Duration(milliseconds: 400));
   }
@@ -394,16 +442,14 @@ class PracticeController extends ChangeNotifier {
     final normalised = semitones % 12;
     if (normalised == _semitones) return;
     _semitones = normalised;
-    _tune = originalTune.transposed(normalised).withStyle(style);
+    _tune = _source.transposed(normalised).withStyle(style);
     _updateChart();
     _restartIfPlaying(delay: Duration.zero);
   }
 
   /// Rewrites the displayed chart after a key or instrument change.
   void _updateChart() {
-    _chart = originalTune.transposed(
-      _semitones + settings.instrument.semitones,
-    );
+    _chart = _source.transposed(_semitones + settings.instrument.semitones);
     // Turning the beat on or off changes how often the clock is read, and
     // somebody who turns it on while the band is going should feel it on
     // the next beat rather than the next tune.

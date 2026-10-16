@@ -16,6 +16,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
 
+import 'meter.dart';
 import '../theme.dart';
 import 'chart_layout.dart';
 import 'pdf_file.dart';
@@ -151,7 +152,7 @@ void _heading(ui.Canvas canvas, Tune tune, {required int page, String? note}) {
   }
   final about = [
     'Key of ${tune.key}',
-    if (tune.beatsPerBar != 4) '${tune.beatsPerBar}/4',
+    if (tune.meter != Meter.four) tune.meter.label,
     '${tune.defaultTempo} bpm',
     ?note,
   ].join(' · ');

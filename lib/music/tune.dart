@@ -1,4 +1,5 @@
 import 'chord.dart';
+import 'meter.dart';
 import 'swing.dart';
 import 'comping.dart';
 
@@ -456,6 +457,39 @@ enum QuartalSlide {
   up,
 }
 
+/// One bar's chords, given the beats of the bar to share between them.
+///
+/// They split it evenly and any leftover beat goes to the first chord,
+/// so three chords in 4/4 last 2 + 1 + 1. A bar holds only as many
+/// chords as it has beats for: the ones past that have nowhere to
+/// sound, so they are left off rather than written in with no beats.
+/// Nothing downstream, the band least of all, has any use for a chord
+/// that lasts no time.
+List<ChordSlot> _shareOut(
+  List<Chord> chords, {
+  required int barIndex,
+  required int pulses,
+}) {
+  final kept = chords.length > pulses ? chords.sublist(0, pulses) : chords;
+  final baseBeats = pulses ~/ kept.length;
+  final leftover = pulses % kept.length;
+  var beat = barIndex * pulses;
+  final slots = <ChordSlot>[];
+  for (var i = 0; i < kept.length; i++) {
+    final beats = baseBeats + (i < leftover ? 1 : 0);
+    slots.add(
+      ChordSlot(
+        chord: kept[i],
+        barIndex: barIndex,
+        startBeat: beat,
+        beats: beats,
+      ),
+    );
+    beat += beats;
+  }
+  return slots;
+}
+
 class Tune {
   const Tune._({
     required this.title,
@@ -466,7 +500,7 @@ class Tune {
     required this.feel,
     required this.style,
     required this.defaultTempo,
-    required this.beatsPerBar,
+    required this.meter,
     required this.bars,
     required this.sections,
     required this.tags,
@@ -496,8 +530,14 @@ class Tune {
     BandStyle? style,
     Set<Genre> tags = const {},
     int beatsPerBar = 4,
+    Meter? meter,
     QuartalSlide quartalSlide = QuartalSlide.none,
   }) {
+    // A tune says either what it counts (beatsPerBar, which is how every
+    // standard here is written) or what is on the chart (meter, which is
+    // the only way to say 6/8). They are the same thing in simple time.
+    final written = meter ?? Meter.ofPulses(beatsPerBar);
+    final pulses = written.pulses;
     final barTexts = chart
         .split('|')
         .map((bar) => bar.trim())
@@ -514,29 +554,16 @@ class Tune {
         text = text.substring(section.end);
       }
 
-      final written = text.split(RegExp(r'\s+'));
-      // One chord a beat at the most: the rest of the bar's chords have no
-      // room, and a slot of no beats is a chord nothing can play.
-      final symbols = written.length > beatsPerBar
-          ? written.sublist(0, beatsPerBar)
-          : written;
-      final baseBeats = beatsPerBar ~/ symbols.length;
-      final leftover = beatsPerBar % symbols.length;
-      var beat = barIndex * beatsPerBar;
-      final slots = <ChordSlot>[];
-      for (var i = 0; i < symbols.length; i++) {
-        final beats = baseBeats + (i < leftover ? 1 : 0);
-        slots.add(
-          ChordSlot(
-            chord: Chord.parse(symbols[i]),
-            barIndex: barIndex,
-            startBeat: beat,
-            beats: beats,
-          ),
-        );
-        beat += beats;
-      }
-      bars.add(slots);
+      bars.add(
+        _shareOut(
+          [
+            for (final symbol in text.split(RegExp(r'\s+')))
+              Chord.parse(symbol),
+          ],
+          barIndex: barIndex,
+          pulses: pulses,
+        ),
+      );
     }
 
     return Tune._(
@@ -548,7 +575,7 @@ class Tune {
       feel: feel,
       style: style ?? BandStyle.of(feel),
       defaultTempo: defaultTempo,
-      beatsPerBar: beatsPerBar,
+      meter: written,
       bars: bars,
       sections: sections,
       tags: tags,
@@ -571,7 +598,14 @@ class Tune {
   /// the chart says otherwise.
   final BandStyle style;
   final int defaultTempo;
-  final int beatsPerBar;
+
+  /// The time signature on the chart.
+  final Meter meter;
+
+  /// What the band counts in a bar: the same as the written beats except
+  /// in compound time, where a bar of 6/8 is counted in two.
+  int get beatsPerBar => meter.pulses;
+
   final List<List<ChordSlot>> bars;
 
   /// Section letters by the bar they start on, e.g. {0: 'A', 8: 'A', 16: 'B'}.
@@ -658,11 +692,45 @@ class Tune {
           feel: style.drums,
           style: style,
           defaultTempo: defaultTempo,
-          beatsPerBar: beatsPerBar,
+          meter: meter,
           sections: sections,
           tags: tags,
           quartalSlide: quartalSlide,
           bars: bars,
+        );
+
+  /// The same tune, counted in [meter].
+  ///
+  /// The bars keep their chords and the form keeps its letters. What
+  /// changes is how the beats inside each bar are shared out, which is
+  /// the whole of what a time signature decides here: Autumn Leaves in
+  /// three is its changes, two beats to the first chord of a bar and one
+  /// to the second. A bar with more chords than the new meter has beats
+  /// loses the ones there is no room for, exactly as a chart written
+  /// that way would.
+  Tune inMeter(Meter meter) => meter == this.meter
+      ? this
+      : Tune._(
+          title: title,
+          composer: composer,
+          year: year,
+          key: key,
+          description: description,
+          feel: feel,
+          style: style,
+          defaultTempo: defaultTempo,
+          meter: meter,
+          sections: sections,
+          tags: tags,
+          quartalSlide: quartalSlide,
+          bars: [
+            for (var i = 0; i < bars.length; i++)
+              _shareOut(
+                [for (final slot in bars[i]) slot.chord],
+                barIndex: i,
+                pulses: meter.pulses,
+              ),
+          ],
         );
 
   Tune transposed(int semitones) {
@@ -677,7 +745,7 @@ class Tune {
       feel: feel,
       style: style,
       defaultTempo: defaultTempo,
-      beatsPerBar: beatsPerBar,
+      meter: meter,
       sections: sections,
       tags: tags,
       quartalSlide: quartalSlide,

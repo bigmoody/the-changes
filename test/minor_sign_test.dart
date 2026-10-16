@@ -141,6 +141,11 @@ void main() {
 
     await tester.tap(find.text('View'));
     await tester.pumpAndSettle();
+    // The View sheet is longer than the screen, so the chips
+    // lower down have to be scrolled to before they can be
+    // tapped.
+    await tester.ensureVisible(find.byKey(const ValueKey('minor-minus')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('minor-minus')));
     await tester.pumpAndSettle();
     expect(settings.minorSign, MinorSign.minus);

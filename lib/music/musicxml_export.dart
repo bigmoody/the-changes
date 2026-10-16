@@ -13,6 +13,7 @@
 // the top of the bar.
 
 import 'chart_form.dart';
+import 'meter.dart';
 import 'chord.dart';
 import 'tune.dart';
 import 'user_progression.dart';
@@ -71,9 +72,15 @@ String fileNameFor(String title) {
   return name.isEmpty ? 'Chart' : name;
 }
 
-/// One beat is one division, which is as fine as a chart ever gets: a
-/// chord lasts a whole number of beats.
-const _divisions = 1;
+/// Divisions are counted per quarter note, and two of them is as fine as
+/// a chart ever gets: a chord lasts a whole number of beats, and the
+/// shortest beat here is the dotted quarter of a compound bar, which is
+/// three of these.
+const _divisions = 2;
+
+/// How long one of the band's beats is, in divisions: a quarter note in
+/// simple time, a dotted quarter in compound.
+int _perPulse(Meter meter) => meter.compound ? 3 : 2;
 
 void _measures(StringBuffer out, UserProgression progression, String? note) {
   final bars = progression.bars;
@@ -134,7 +141,7 @@ void _measures(StringBuffer out, UserProgression progression, String? note) {
         ..writeln('      </direction>');
     }
     if (i == 0) _tempo(out, progression, note);
-    _bar(out, bars[i], beatsPerBar);
+    _bar(out, bars[i], beatsPerBar, progression.meter);
     // The ending bracket and the repeat sign close on the right of it, as
     // does a double barline between sections and the end of the chart.
     final closesEnding = endingEnds[i];
@@ -178,8 +185,8 @@ void _attributes(StringBuffer out, UserProgression progression) {
     ..writeln('          <mode>${minor ? 'minor' : 'major'}</mode>')
     ..writeln('        </key>')
     ..writeln('        <time>')
-    ..writeln('          <beats>${progression.beatsPerBar}</beats>')
-    ..writeln('          <beat-type>4</beat-type>')
+    ..writeln('          <beats>${progression.meter.beats}</beats>')
+    ..writeln('          <beat-type>${progression.meter.unit}</beat-type>')
     ..writeln('        </time>')
     ..writeln('        <clef>')
     ..writeln('          <sign>G</sign>')
@@ -230,13 +237,14 @@ String _feelWords(UserProgression progression) {
 
 /// One bar: a chord symbol over each rest, for as long as that chord is
 /// played. A bar nobody has written in yet is a bar's rest on its own.
-void _bar(StringBuffer out, String bar, int beatsPerBar) {
+void _bar(StringBuffer out, String bar, int beatsPerBar, Meter meter) {
+  final perPulse = _perPulse(meter);
   final symbols = UserProgression.symbolsIn(bar);
   if (symbols.isEmpty) {
     out
       ..writeln('      <note>')
       ..writeln('        <rest measure="yes"/>')
-      ..writeln('        <duration>${beatsPerBar * _divisions}</duration>')
+      ..writeln('        <duration>${beatsPerBar * perPulse}</duration>')
       ..writeln('        <voice>1</voice>')
       ..writeln('      </note>');
     return;
@@ -251,7 +259,7 @@ void _bar(StringBuffer out, String bar, int beatsPerBar) {
     out
       ..writeln('      <note>')
       ..writeln('        <rest/>')
-      ..writeln('        <duration>${beats * _divisions}</duration>')
+      ..writeln('        <duration>${beats * perPulse}</duration>')
       ..writeln('        <voice>1</voice>')
       ..writeln('      </note>');
   }

@@ -9,6 +9,7 @@
 // this app, and none in what it writes out.
 
 import 'chart_layout.dart';
+import 'meter.dart';
 import 'tune.dart';
 
 /// How wide each bar is written, so the barlines line up under each other.
@@ -25,7 +26,7 @@ String chartText(Tune tune, {int semitones = 0, String? note}) {
     ?moved.composer,
     ?moved.year?.toString(),
     'Key of ${moved.key}',
-    if (moved.beatsPerBar != 4) '${moved.beatsPerBar}/4',
+    if (moved.meter != Meter.four) moved.meter.label,
     '${moved.defaultTempo} bpm',
     if (moved.feel != Feel.swing) moved.feel.label,
   ];

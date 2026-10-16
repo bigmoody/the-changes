@@ -146,6 +146,37 @@ class LoopBar extends StatelessWidget {
                             ),
                             const SizedBox(width: 8),
                           ],
+                          // The meter, when it is not the one the tune
+                          // was written in. Counting a standard another
+                          // way is a practice exercise and not a claim
+                          // about the tune, so the chart has to say so
+                          // where the chart is, not only in the sheet
+                          // where it was chosen.
+                          if (controller.meterIsChosen) ...[
+                            Tooltip(
+                              message:
+                                  '${controller.originalTune.title} is '
+                                  'written in '
+                                  '${controller.originalTune.meter.label}; '
+                                  'you are counting it in '
+                                  '${controller.meter.label}. Tap to '
+                                  'change it.',
+                              child: ActionChip(
+                                key: const ValueKey('chart-meter'),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () =>
+                                    showViewOptions(context, controller),
+                                label: Text(
+                                  controller.meter.label,
+                                  semanticsLabel:
+                                      'Counted in ${controller.meter.label}, '
+                                      'written in '
+                                      '${controller.originalTune.meter.label}',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           // What the small red line under each chord is.
                           // It is set in a sheet and then forgotten, and
                           // an unexplained row of letters under a chord is

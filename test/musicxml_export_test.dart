@@ -88,7 +88,9 @@ void main() {
       ];
       expect(
         durations.fold(0, (a, b) => a + b),
-        3,
+        // Durations are counted in divisions of a quarter note, and
+        // there are two to a quarter, so three beats is six of them.
+        6,
         reason: 'a bar of 3/4 holds three beats, however many chords',
       );
     }

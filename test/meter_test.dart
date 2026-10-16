@@ -145,25 +145,34 @@ void main() {
         style: BandStyle.of(Feel.swing),
         beatsPerBar: 3,
       );
-      expect(waltz.meter, '3/4');
+      expect(waltz.meter.label, '3/4');
       expect(waltz.toTune().beatsPerBar, 3);
       expect(waltz.toTune().totalBeats, 12);
       final again = UserProgression.fromJson(waltz.toJson());
       expect(again.beatsPerBar, 3);
       // Charts written before time signatures existed are in 4/4.
-      final old = waltz.toJson()..remove('beats');
+      final old = waltz.toJson()
+        ..remove('beats')
+        ..remove('meter');
       expect(UserProgression.fromJson(old).beatsPerBar, 4);
+      // And one saved when a chart said only how many beats a bar had
+      // is read as the quarter notes it was: the meter came later.
+      final beatsOnly = waltz.toJson()..remove('meter');
+      expect(UserProgression.fromJson(beatsOnly).meter.label, '3/4');
     });
 
-    test('an imported waltz keeps its 3/4; 6/8 says it plays in 4/4', () {
+    test('an imported waltz keeps its 3/4, and 6/8 its six eight', () {
       String link(String music) =>
           'irealbook://${Uri.encodeComponent('T=Doe Jane=Jazz Waltz=C=n=$music')}';
       final waltz = parseIrealPro(link('[T34C^7 |A-7 |D-7 |G7 Z')).single;
       expect(waltz.progression.beatsPerBar, 3);
       expect(waltz.notes, isEmpty);
+      // Compound time comes over as itself and is counted in two, which
+      // is what a 6/8 bar is: two dotted quarters, not six of anything.
       final compound = parseIrealPro(link('[T68C^7 |A-7 |D-7 |G7 Z')).single;
-      expect(compound.progression.beatsPerBar, 4);
-      expect(compound.notes.single, contains('6/8'));
+      expect(compound.progression.meter.label, '6/8');
+      expect(compound.progression.beatsPerBar, 2);
+      expect(compound.notes, isEmpty);
     });
   });
 }

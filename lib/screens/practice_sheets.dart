@@ -16,6 +16,7 @@ import '../music/chord_drill.dart';
 import '../music/comping.dart';
 import '../music/swing.dart';
 import 'swing_screen.dart' show ridePattern;
+import '../music/meter.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../practice/hiding_the_chart.dart';
@@ -115,6 +116,37 @@ Future<void> showViewOptions(
                   ),
               ],
             ),
+            heading('Counted In'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final meter in <Meter?>[null, ...Meter.choices])
+                  ChoiceChip(
+                    key: ValueKey('meter-${meter?.label ?? 'written'}'),
+                    label: Text(meter?.label ?? 'As Written'),
+                    selected: meter == null
+                        ? !controller.meterIsChosen
+                        : controller.meterIsChosen && controller.meter == meter,
+                    onSelected: (_) => controller.setMeter(meter),
+                  ),
+              ],
+            ),
+            if (controller.meterIsChosen)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '${controller.originalTune.title} is written in '
+                  '${controller.originalTune.meter.label}. Counting it '
+                  'another way is your exercise, not the tune: the bars '
+                  'keep their chords and the beats inside them are shared '
+                  'out again, and a bar with more chords than the new one '
+                  'has beats plays the ones that fit.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             heading('Chart Font'),
             Wrap(
               spacing: 8,

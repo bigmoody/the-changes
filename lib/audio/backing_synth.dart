@@ -385,7 +385,15 @@ class RenderedBacking {
 /// swinging at all: this is only how far.
 double swingForPass(BackingRequest request, int firstChorus) =>
     request.swing ??
-    request.tune.style.drums.swingBy(tempoForChorus(request, firstChorus));
+    // A compound bar is already in threes: the beat divides that way
+    // before anybody leans it, so the off-beats sit on the triplet
+    // whatever the tempo would otherwise have said. It is why a band in
+    // 12/8 and a band swinging in 4/4 are playing nearly the same thing.
+    (request.tune.meter.compound
+        ? tripletSwing
+        : request.tune.style.drums.swingBy(
+            tempoForChorus(request, firstChorus),
+          ));
 
 /// The tempo on a given pass through the form: the tempo asked for, plus
 /// whatever a tempo ramp has added to it by then.
