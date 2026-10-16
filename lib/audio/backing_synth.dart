@@ -1249,6 +1249,7 @@ _Parts _renderParts(
               swing: swing,
             )
           : drumBar(
+              compound: tune.meter.compound,
               feel: style.drums,
               bar: chorus * bars.length + i,
               beatsPerBar: beatsPerBar,

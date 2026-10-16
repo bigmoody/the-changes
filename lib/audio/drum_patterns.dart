@@ -122,6 +122,10 @@ class DrumHit {
 /// would come out as a brushed cymbal, which is the one part of the kit
 /// brushes make sound more metallic rather than less. A brush player
 /// moves the time onto the snare head and circles underneath it.
+/// [compound] is a bar whose beat divides in three: six eight, twelve
+/// eight. A swung groove plays its skip note on every beat there rather
+/// than on the backbeats alone, which is the difference between a
+/// twelve eight feel and a swing bar with the beats renamed.
 List<DrumHit> drumBar({
   required Feel feel,
   required int bar,
@@ -129,12 +133,18 @@ List<DrumHit> drumBar({
   required math.Random random,
   required double swing,
   bool brushes = false,
+  bool compound = false,
 }) => [
   // Figures written for a four-beat bar lose whatever falls past the end
   // of a shorter one (a waltz keeps the first two beats of the clave).
   for (final hit in switch (feel) {
-    Feel.swing when brushes => _swingBrushBar(bar, beatsPerBar, random),
-    Feel.swing => _swingBar(bar, beatsPerBar, random),
+    Feel.swing when brushes => _swingBrushBar(
+      bar,
+      beatsPerBar,
+      random,
+      compound: compound,
+    ),
+    Feel.swing => _swingBar(bar, beatsPerBar, random, compound: compound),
     Feel.bossa when brushes => _bossaBrushBar(bar, beatsPerBar, random),
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
@@ -144,7 +154,7 @@ List<DrumHit> drumBar({
     Feel.jazzWaltz when brushes => _jazzWaltzBrushBar(bar, beatsPerBar, random),
     Feel.jazzWaltz => _jazzWaltzBar(bar, beatsPerBar, random),
     Feel.ballad when brushes => _balladBrushBar(bar, beatsPerBar, random),
-    Feel.ballad => _balladBar(bar, beatsPerBar, random),
+    Feel.ballad => _balladBar(bar, beatsPerBar, random, compound: compound),
     Feel.secondLine => _secondLineBar(bar, beatsPerBar, random),
     Feel.afroSix => _afroSixBar(bar, beatsPerBar, random),
     // No drummer at all: the guitar's chop is the time. See [Feel.gypsy].
@@ -197,11 +207,18 @@ List<int> _backbeats(int beatsPerBar) => switch (beatsPerBar) {
 /// the same drum. The kit is balanced as an overhead hears it, where the
 /// snare is the loudest thing and the ride sits 3 dB under it, so the same
 /// velocity on the snare is a harder stroke than it was on the cymbal.
-List<DrumHit> _swingBrushBar(int bar, int beatsPerBar, math.Random random) {
+List<DrumHit> _swingBrushBar(
+  int bar,
+  int beatsPerBar,
+  math.Random random, {
+  bool compound = false,
+}) {
   final hits = <DrumHit>[];
   final backbeats = _backbeats(beatsPerBar);
   for (var beat = 0; beat < beatsPerBar; beat++) {
     final isBackbeat = backbeats.contains(beat);
+    // In compound time every beat carries the skip: see [_swingBar].
+    final skips = isBackbeat || compound;
     hits.add(
       DrumHit(
         drum: Drum.snare,
@@ -209,23 +226,24 @@ List<DrumHit> _swingBrushBar(int bar, int beatsPerBar, math.Random random) {
         velocity: (isBackbeat ? 0.41 : 0.35) * _human(random),
       ),
     );
+    if (skips) {
+      hits.add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beat + 0.5,
+          velocity: 0.27 * _human(random),
+        ),
+      );
+    }
     if (isBackbeat) {
-      hits
-        ..add(
-          DrumHit(
-            drum: Drum.snare,
-            beat: beat + 0.5,
-            velocity: 0.27 * _human(random),
-          ),
-        )
-        ..add(
-          DrumHit(
-            drum: Drum.hiHatPedal,
-            beat: beat.toDouble(),
-            velocity: 0.5 * _human(random),
-            hard: true,
-          ),
-        );
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.5 * _human(random),
+          hard: true,
+        ),
+      );
     }
     // One circle every two beats, started on the beat before the backbeat
     // so that it builds into it.
@@ -275,11 +293,24 @@ List<DrumHit> _swingBrushBar(int bar, int beatsPerBar, math.Random random) {
   return hits;
 }
 
-List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
+List<DrumHit> _swingBar(
+  int bar,
+  int beatsPerBar,
+  math.Random random, {
+  bool compound = false,
+}) {
   final hits = <DrumHit>[];
   final backbeats = _backbeats(beatsPerBar);
   for (var beat = 0; beat < beatsPerBar; beat++) {
     final isBackbeat = backbeats.contains(beat);
+    // Where the skip note goes. In four it is the "a" after 2 and 4,
+    // and the beats between are plain quarters. In a compound bar the
+    // beat is already in three and the ride takes the first and third
+    // of every one of them: "DA-da, DA-da", long-short all the way
+    // through, which is the twelve eight feel. A bar of six eight with
+    // skips on the backbeats alone is a swing bar with its beats
+    // renamed, and sounds like one.
+    final skips = isBackbeat || compound;
     hits.add(
       DrumHit(
         drum: Drum.ride,
@@ -287,9 +318,7 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
         velocity: (isBackbeat ? 0.62 : 0.52) * _human(random),
       ),
     );
-    if (isBackbeat) {
-      // The "a" after 2 and 4, written straight and leaned at the end,
-      // and the hi-hat closing underfoot.
+    if (skips) {
       hits.add(
         DrumHit(
           drum: Drum.ride,
@@ -297,6 +326,9 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
           velocity: 0.4 * _human(random),
         ),
       );
+    }
+    if (isBackbeat) {
+      // The hi-hat closing underfoot, on 2 and 4 as ever.
       hits.add(
         DrumHit(
           drum: Drum.hiHatPedal,
@@ -1020,7 +1052,12 @@ List<DrumHit> _jazzWaltzBrushBar(int bar, int beatsPerBar, math.Random random) {
 /// rather than after every backbeat, the hi-hat closes under 2 and 4, the
 /// kick is feathered, and there are no bombs. A ballad is the one place
 /// a drummer is not commenting.
-List<DrumHit> _balladBar(int bar, int beatsPerBar, math.Random random) {
+List<DrumHit> _balladBar(
+  int bar,
+  int beatsPerBar,
+  math.Random random, {
+  bool compound = false,
+}) {
   final hits = <DrumHit>[];
   final closes = _backbeats(beatsPerBar);
   for (var beat = 0; beat < beatsPerBar; beat++) {
@@ -1031,6 +1068,17 @@ List<DrumHit> _balladBar(int bar, int beatsPerBar, math.Random random) {
         velocity: (closes.contains(beat) ? 0.42 : 0.36) * _human(random),
       ),
     );
+    // A slow twelve eight is where the triplet ride belongs most of
+    // all: the beat and the last third of it, every beat.
+    if (compound) {
+      hits.add(
+        DrumHit(
+          drum: Drum.ride,
+          beat: beat + 0.5,
+          velocity: 0.28 * _human(random),
+        ),
+      );
+    }
     if (closes.contains(beat)) {
       hits.add(
         DrumHit(

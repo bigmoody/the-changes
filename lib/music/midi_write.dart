@@ -275,6 +275,7 @@ Uint8List _drums(
   for (var chorus = 0; chorus < choruses; chorus++) {
     for (var bar = 0; bar < tune.barCount; bar++) {
       for (final hit in drumBar(
+        compound: tune.meter.compound,
         feel: style.drums,
         bar: chorus * tune.barCount + bar,
         beatsPerBar: beatsPerBar,

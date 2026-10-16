@@ -254,3 +254,39 @@ Sources in full:
   https://cruiseshipdrummer.com/bembe
   https://languagelog.ldc.upenn.edu/nll/?p=1420
   https://www.nmeanebraska.org/assets/docs/All-State/Jazz-Band/Jazz-Scales/Set-A/All-State%20Jazz%20Drum%20Set%20A.pdf
+
+
+SWING IN COMPOUND TIME (_swingBar, _balladBar, compound: true)
+
+A swung bar of six eight or twelve eight takes the skip note on every
+beat rather than on the backbeats alone: the first and third of each
+triplet, "DA-da, DA-da", long-short all the way through.
+
+  The shuffle ride "often lands on 1 and let, then 2 and let", which
+  reads as "DA - da, DA - da" with the accent on the first of each
+  triplet, and the feel described as long-short across the beat.
+  soundbrenner.com, slow blues shuffle.
+
+  The notation is 12/8, "or equivalently 4/4 with eighth-note
+  triplets": one lesson writes its exercises as eighth-note triplets in
+  4/4 and says this is basically exactly equivalent to 12/8.
+
+  thedrumninja.com calls the basic blues beat "a triplet based pattern
+  in 12/8", with the twelve eighths "usually played on the hi-hat or
+  ride cymbal", which is the fuller version: all twelve rather than the
+  first and third of each group. bluesharmonica.com separates the two,
+  saying that in shuffles and swings "you commonly only hear the first
+  and third part of the triplet", while a slow blues often has all of
+  them. The app plays the sparse one, which is the jazz reading and
+  the one its own swing feel already has in four; the full twelve is a
+  slow-blues sound it does not claim to be.
+
+Why it matters here: without it a bar of six eight is the swing bar of
+four with its beats renamed, three strokes to a bar and nothing between
+them, and it sounds like four four at half speed. That is what it
+sounded like.
+
+Sources in full:
+  https://www.soundbrenner.com/blogs/articles/slow-blues-shuffle
+  https://thedrumninja.com/learn-how-to-play-blues-drums/
+  https://bluesharmonica.com/time_signature_my_blues

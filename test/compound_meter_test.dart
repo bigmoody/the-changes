@@ -135,6 +135,50 @@ void main() {
       expect(swingForPass(four, 0), swingAt(240));
     });
 
+    test('the ride takes the skip on every beat, not just the backbeats', () {
+      // The twelve eight feel: the first and third of every triplet,
+      // "DA-da, DA-da", long-short all the way through. Without it a
+      // bar of six eight is a swing bar with its beats renamed, which
+      // is what it sounded like.
+      List<double> rideIn({required int beats, required bool compound}) => [
+        for (final hit in drumBar(
+          feel: Feel.swing,
+          bar: 0,
+          beatsPerBar: beats,
+          random: math.Random(3),
+          swing: tripletSwing,
+          compound: compound,
+        ))
+          if (hit.drum == Drum.ride) hit.beat,
+      ];
+
+      // Six eight: both pulses carry a skip.
+      final six = rideIn(beats: 2, compound: true);
+      expect(six, hasLength(4));
+      expect(six[0], 0);
+      expect(six[1], closeTo(tripletSwing, 1e-9));
+      expect(six[2], 1);
+      expect(six[3], closeTo(1 + tripletSwing, 1e-9));
+      // Twelve eight: eight strokes, the same figure four times.
+      expect(rideIn(beats: 4, compound: true), hasLength(8));
+      // And four four is what it always was: the skip on 2 and 4 only.
+      final four = rideIn(beats: 4, compound: false);
+      expect(four, hasLength(6));
+      expect(four, isNot(contains(closeTo(tripletSwing, 1e-9))));
+    });
+
+    test('and the ballad does the same, which is where it belongs most', () {
+      final hits = drumBar(
+        feel: Feel.ballad,
+        bar: 0,
+        beatsPerBar: 4,
+        random: math.Random(3),
+        swing: tripletSwing,
+        compound: true,
+      ).where((hit) => hit.drum == Drum.ride);
+      expect(hits, hasLength(9), reason: 'four beats, four skips, one tail');
+    });
+
     test('a swing somebody has set by hand is still theirs', () {
       final request = BackingRequest(
         tune: progression(meter: const Meter(12, 8)).toTune(),
