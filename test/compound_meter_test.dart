@@ -219,7 +219,7 @@ void main() {
       expect(bellIn(2, 2), bellIn(2, 0), reason: 'and round again');
     });
 
-    test('the bombo is on the second beat, and no cymbal is touched', () {
+    test('the bombo is on the second beat, and no ride is touched', () {
       final bar = drumBar(
         feel: Feel.afroSix,
         bar: 0,
@@ -227,17 +227,55 @@ void main() {
         random: math.Random(3),
         swing: tripletSwing,
       );
-      expect(bar.where((hit) => hit.drum == Drum.kick).map((hit) => hit.beat), [
-        1.0,
-      ]);
       expect(
-        bar.where(
-          (hit) => hit.drum == Drum.ride || hit.drum == Drum.hiHatClosed,
-        ),
+        bar.where((hit) => hit.drum == Drum.kick).map((hit) => hit.beat).first,
+        1.0,
+        reason: 'the bombo',
+      );
+      expect(
+        bar.where((hit) => hit.drum == Drum.ride),
         isEmpty,
+        reason: 'a bell is not a ride',
       );
       expect(Feel.afroSix.hasDrums, isTrue);
       expect(Genre.ofFeel(Feel.afroSix), Genre.latin);
+    });
+
+    test('the shaker runs every pulse, the bell strokes among them harder', () {
+      // The axatse: "the eighth note version of what the gankogui
+      // plays". A bell on its own is a bell on its own, and it sounded
+      // like one.
+      final shaker = [
+        for (final hit in drumBar(
+          feel: Feel.afroSix,
+          bar: 0,
+          beatsPerBar: 4,
+          random: math.Random(3),
+          swing: tripletSwing,
+        ))
+          if (hit.drum == Drum.hiHatClosed) hit,
+      ];
+      expect(shaker, hasLength(12), reason: 'all twelve pulses');
+      for (final (i, hit) in shaker.indexed) {
+        expect(hit.beat, closeTo(i / 3, 1e-9));
+      }
+      // The ones that are also bell strokes are the gourd's down
+      // stroke, and are struck harder than the ones between.
+      expect(shaker[2].velocity, greaterThan(shaker[1].velocity));
+    });
+
+    test('and the feet hold the pulse down, every dotted quarter', () {
+      final feet = [
+        for (final hit in drumBar(
+          feel: Feel.afroSix,
+          bar: 0,
+          beatsPerBar: 4,
+          random: math.Random(3),
+          swing: tripletSwing,
+        ))
+          if (hit.drum == Drum.hiHatPedal) hit.beat,
+      ];
+      expect(feet, [0.0, 1.0, 2.0, 3.0]);
     });
   });
 

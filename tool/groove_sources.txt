@@ -227,6 +227,38 @@ the Nebraska packet has a foot part without spelling it out. So the app
 keeps the foot to the two halves of the cycle, out of the way of the
 bell, and that choice is the app's own.
 
+The shaker: every one of the twelve pulses, the bell's own strokes
+among them struck harder. In the ensemble this is the axatse, the
+gourd rattle, and it is what fills the groove in: its down strokes
+"sound the standard pattern" by striking the gourd against the knee
+and its up strokes "sound pulses in between the bell strokes". One
+description calls it "the eighth note version of what the gankogui
+plays".
+  en.wikipedia.org, Ewe music. The hi-hat is standing in for a gourd,
+  which is the app's own substitution and is why it is quiet.
+
+The same article gives the bell's positions in another notation, as a
+check on the ones above: 1, 1a, 2& 2a, 3&, 4, 4a of a twelve-pulse
+bar, which is the same seven eighths.
+
+The feet: a steady pulse rather than every other one. "Both feet hold
+down the groove by playing a steady dotted quarter note pattern", with
+splashing the hi-hat every other dotted quarter given as a variation
+rather than the base.
+  rhythmnotes.net, Afro-Cuban rhythms for drum set.
+
+The second kick: the bombo on the second beat of the cycle, and the
+one on the fourth most times round rather than every time, because the
+same source calls the kick "on beat three" optional, "especially if
+the groove is too heavy for the song".
+
+What is still missing, and known to be: the conga part. The sources
+agree that on a kit "the toms can imitate some of the basic conga
+parts", with the cross-stick as the slap and the toms as the open
+tones, but none of them notates the 6/8 tumbao, and a conga part
+guessed at is a conga part made up. Until there is a notated source it
+is left out, which is why the groove is a bell, a shaker and feet.
+
 The bass plays roots and fifths on the pulse. A 6/8 tumbao is a line of
 its own and is not written yet; this is the plain thing rather than a
 guess at one.
@@ -254,6 +286,8 @@ Sources in full:
   https://cruiseshipdrummer.com/bembe
   https://languagelog.ldc.upenn.edu/nll/?p=1420
   https://www.nmeanebraska.org/assets/docs/All-State/Jazz-Band/Jazz-Scales/Set-A/All-State%20Jazz%20Drum%20Set%20A.pdf
+  https://en.wikipedia.org/wiki/Ewe_music
+  https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/
 
 
 SWING IN COMPOUND TIME (_swingBar, _balladBar, compound: true)

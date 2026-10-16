@@ -1273,18 +1273,26 @@ const _bellEighths = [0, 2, 4, 5, 7, 9, 11];
 /// How long that cycle is in the band's beats: four pulses of three.
 const _bellBeats = 4;
 
-/// Afro 6/8: the bell over a compound bar.
+/// Afro 6/8: the bell, the shaker under it, and the feet.
 ///
 /// Written as a cycle rather than as a bar, because the bell is twelve
 /// eighths long whatever the bar is: in 6/8 it takes two bars, in 12/8
 /// one, and on a tune in four it is the same seven strokes over a bar of
 /// triplets. [bar] says where in the cycle this bar starts.
 ///
-/// The kick is the bombo, on the second beat of the cycle. The hi-hat
-/// closes on the two halves of it; where a hi-hat goes in this groove is
-/// the one thing the sources would not agree on, and a drummer who knows
-/// the music warns that the waltzy foot heard in some jazz versions is
-/// not Cuban practice, so it is kept to the halves and out of the way.
+/// Three things besides the bell, and all three are why a bell on its
+/// own sounded thin. The shaker runs every one of the twelve pulses,
+/// the bell's strokes among them louder: in the ensemble this is the
+/// axatse, "the eighth note version of what the gankogui plays", and
+/// the hi-hat is standing in for a gourd. The feet hold the pulse down,
+/// a steady dotted quarter rather than every other one. And the kick
+/// takes the bombo on the second beat of the cycle with the optional
+/// one on the fourth most times round, which is the part people leave
+/// out when the groove wants to be lighter.
+///
+/// It is a percussion section rather than one player, which is what the
+/// music is: in a room this is a bell, a gourd and drums, not a drummer
+/// with three hands.
 List<DrumHit> _afroSixBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
   // Where this bar begins inside the twelve-eighth cycle.
@@ -1307,24 +1315,44 @@ List<DrumHit> _afroSixBar(int bar, int beatsPerBar, math.Random random) {
       ),
     );
   }
-  // The bombo, on the second beat of the cycle.
+  // The shaker: all twelve pulses, the bell's own strokes among them
+  // struck harder, which is what the gourd's down stroke is.
+  for (var eighth = 0; eighth < 12; eighth++) {
+    final at = inThisBar(eighth / 3);
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.hiHatClosed,
+        beat: at,
+        velocity: (_bellEighths.contains(eighth) ? 0.2 : 0.13) * _human(random),
+      ),
+    );
+  }
+  // The bombo, on the second beat of the cycle, and the fourth most
+  // times round: the one that is left out to lighten the groove.
   final bombo = inThisBar(1);
   if (bombo != null) {
     hits.add(
       DrumHit(drum: Drum.kick, beat: bombo, velocity: 0.6 * _human(random)),
     );
   }
-  for (final half in [0.0, 2.0]) {
-    final at = inThisBar(half);
-    if (at != null) {
-      hits.add(
-        DrumHit(
-          drum: Drum.hiHatPedal,
-          beat: at,
-          velocity: 0.4 * _human(random),
-        ),
-      );
-    }
+  final second = inThisBar(3);
+  if (second != null && random.nextDouble() < 0.75) {
+    hits.add(
+      DrumHit(drum: Drum.kick, beat: second, velocity: 0.5 * _human(random)),
+    );
+  }
+  // The feet keep the pulse, every dotted quarter of it.
+  for (var pulse = 0; pulse < _bellBeats; pulse++) {
+    final at = inThisBar(pulse.toDouble());
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.hiHatPedal,
+        beat: at,
+        velocity: (pulse == 0 ? 0.42 : 0.34) * _human(random),
+      ),
+    );
   }
   // The cross-stick the handouts call optional: now and then, on the
   // half way round, where it answers the bell rather than doubling it.
