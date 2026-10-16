@@ -240,11 +240,20 @@ class UserProgression {
     };
   }
 
-  /// Up to four chords can share a bar (one a beat).
+  /// Up to four chords can share a bar of 4/4 (one a beat). A bar of
+  /// another meter holds its own number of beats: see [problemWith].
   static const maxChordsPerBar = 4;
 
   /// "4/4", "3/4" …
   String get meter => '$beatsPerBar/4';
+
+  /// The bars with more chords than this meter has beats, by bar number
+  /// (1 for the first), so the editor can say which bars no longer fit
+  /// before the extra chords are dropped from the chart.
+  List<int> get crowdedBars => [
+    for (var i = 0; i < bars.length; i++)
+      if (symbolsIn(bars[i]).length > beatsPerBar) i + 1,
+  ];
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -282,11 +291,15 @@ class UserProgression {
       .toList();
 
   /// What's wrong with a bar's chords, or null if they're fine.
-  static String? problemWith(String bar) {
+  ///
+  /// A bar holds one chord a beat at the most, so the limit is the meter's:
+  /// four in 4/4, three in a waltz. A fifth chord in 4/4 has no beat to
+  /// sound on, and the band is never given a chord that lasts no time.
+  static String? problemWith(String bar, {int beatsPerBar = 4}) {
     final symbols = symbolsIn(bar);
     if (symbols.isEmpty) return 'A bar needs at least one chord';
-    if (symbols.length > maxChordsPerBar) {
-      return 'At most $maxChordsPerBar chords in a bar';
+    if (symbols.length > beatsPerBar) {
+      return 'At most $beatsPerBar chords in a bar of $beatsPerBar/4';
     }
     for (final symbol in symbols) {
       try {
@@ -301,7 +314,8 @@ class UserProgression {
   /// Ready to play: a title (or a stand-in), at least one bar, every bar
   /// valid.
   bool get isPlayable =>
-      bars.isNotEmpty && bars.every((bar) => problemWith(bar) == null);
+      bars.isNotEmpty &&
+      bars.every((bar) => problemWith(bar, beatsPerBar: beatsPerBar) == null);
 
   String get displayTitle => title.trim().isEmpty ? 'Untitled' : title.trim();
 

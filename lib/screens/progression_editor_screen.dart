@@ -172,6 +172,19 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
     if (discard == true && mounted) Navigator.of(context).pop();
   }
 
+  /// "Bar 1 has too many chords for 3/4", naming up to three bars and
+  /// counting the rest, so that the line stays one line.
+  String _crowding(List<int> bars) {
+    final names = bars.take(3).map((n) => '$n').toList();
+    final rest = bars.length - names.length;
+    if (rest > 0) names.add('$rest more');
+    final named = names.length == 1
+        ? 'Bar ${names.single} has'
+        : 'Bars ${names.sublist(0, names.length - 1).join(', ')} '
+              'and ${names.last} have';
+    return '$named too many chords for ${_draft.meter}';
+  }
+
   Future<_BarEdit?> _openBar(
     int number,
     String text, {
@@ -192,6 +205,7 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
       ending: ending,
       hasEndings: hasEndings,
       canDelete: !isNew && _draft.bars.length > 1,
+      beatsPerBar: _draft.beatsPerBar,
     ),
   );
 
@@ -386,6 +400,24 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
                 ),
               ],
             ),
+            // Changing the time can leave bars with more chords than the
+            // new bar has beats. The chart plays only as many as fit, so
+            // say which bars those are rather than quietly dropping chords.
+            // One line, never wrapped: this sits between the dropdowns and
+            // the band, and a block that grows moves everything below it.
+            if (_draft.crowdedBars.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  key: const ValueKey('crowded-bars'),
+                  _crowding(_draft.crowdedBars),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
+              ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -465,6 +497,7 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
             const SizedBox(height: 8),
             _BarGrid(
               bars: _draft.bars,
+              beatsPerBar: _draft.beatsPerBar,
               sections: _draft.sections,
               repeats: _draft.repeats,
               endings: _draft.endings,
@@ -615,6 +648,7 @@ class _TempoStepper extends StatelessWidget {
 class _BarGrid extends StatelessWidget {
   const _BarGrid({
     required this.bars,
+    required this.beatsPerBar,
     required this.sections,
     required this.repeats,
     required this.endings,
@@ -625,6 +659,9 @@ class _BarGrid extends StatelessWidget {
   });
 
   final List<String> bars;
+
+  /// Beats in a bar, which is also the most chords one can hold.
+  final int beatsPerBar;
   final Map<int, String> sections;
   final Map<int, int> repeats;
   final Map<int, int> endings;
@@ -653,6 +690,7 @@ class _BarGrid extends StatelessWidget {
                 child: _BarTile(
                   number: i + 1,
                   text: bars[i],
+                  beatsPerBar: beatsPerBar,
                   section: sections[i],
                   repeats: repeats[i] ?? 1,
                   ending: endings[i],
@@ -759,6 +797,7 @@ class _BarTile extends StatelessWidget {
     required this.number,
     required this.text,
     required this.onTap,
+    required this.beatsPerBar,
     this.section,
     this.repeats = 1,
     this.ending,
@@ -767,6 +806,9 @@ class _BarTile extends StatelessWidget {
   final int number;
   final String text;
   final VoidCallback onTap;
+
+  /// Beats in a bar, which is also the most chords one can hold.
+  final int beatsPerBar;
 
   /// 1 or 2 if the bar is part of a 1st or 2nd ending.
   final int? ending;
@@ -778,7 +820,7 @@ class _BarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final problem = UserProgression.problemWith(text);
+    final problem = UserProgression.problemWith(text, beatsPerBar: beatsPerBar);
     final shown = problem == null
         ? UserProgression.symbolsIn(text)
               .map((s) => Chord.parse(s).display)
@@ -896,6 +938,7 @@ class _BarSheet extends StatefulWidget {
     required this.number,
     required this.text,
     required this.canDelete,
+    required this.beatsPerBar,
     this.section,
     this.repeats = 1,
     this.ending,
@@ -905,6 +948,9 @@ class _BarSheet extends StatefulWidget {
   final int number;
   final String text;
   final bool canDelete;
+
+  /// Beats in a bar, which is also the most chords one can hold.
+  final int beatsPerBar;
 
   /// 1 or 2 if the bar is part of a 1st or 2nd ending.
   final int? ending;
@@ -940,7 +986,11 @@ class _BarSheetState extends State<_BarSheet> {
     final symbols = UserProgression.symbolsIn(_field.text);
     return symbols.isNotEmpty &&
         !symbols.last.contains('/') &&
-        UserProgression.problemWith(symbols.last) == null;
+        UserProgression.problemWith(
+              symbols.last,
+              beatsPerBar: widget.beatsPerBar,
+            ) ==
+            null;
   }
 
   void _setBass(String note) {
@@ -974,6 +1024,9 @@ class _BarSheetState extends State<_BarSheet> {
     for (final quality in chordQualities) prettyQuality(quality.symbols.first),
   ];
 
+  /// One chord a beat is the most a bar holds, written as it's read.
+  static const _counts = {4: 'four', 3: 'three', 5: 'five'};
+
   /// Chords shown the way they're read (B♭Δ7 rather than Bb^7).
   static String _pretty(String text) =>
       UserProgression.symbolsIn(text)
@@ -998,7 +1051,7 @@ class _BarSheetState extends State<_BarSheet> {
     final symbols = _replaceNext
         ? <String>[]
         : UserProgression.symbolsIn(_field.text);
-    if (symbols.length >= UserProgression.maxChordsPerBar) return;
+    if (symbols.length >= widget.beatsPerBar) return;
     setState(() {
       _field.text = [...symbols, '$root$quality'].join(' ');
       _root = null;
@@ -1019,10 +1072,12 @@ class _BarSheetState extends State<_BarSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final problem = UserProgression.problemWith(_field.text);
+    final problem = UserProgression.problemWith(
+      _field.text,
+      beatsPerBar: widget.beatsPerBar,
+    );
     final full =
-        UserProgression.symbolsIn(_field.text).length >=
-        UserProgression.maxChordsPerBar;
+        UserProgression.symbolsIn(_field.text).length >= widget.beatsPerBar;
     return Padding(
       // Stay above the keyboard while typing.
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -1042,7 +1097,9 @@ class _BarSheetState extends State<_BarSheet> {
               decoration: InputDecoration(
                 labelText: 'Chords',
                 hintText: 'e.g. Dm7 G7',
-                helperText: 'Up to four, split evenly across the bar',
+                helperText:
+                    'Up to ${_counts[widget.beatsPerBar] ?? widget.beatsPerBar}'
+                    ', split evenly across the bar',
                 errorText: _field.text.trim().isEmpty ? null : problem,
                 border: const OutlineInputBorder(),
                 suffixIcon: IconButton(

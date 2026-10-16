@@ -479,6 +479,11 @@ class Tune {
   /// `[A]` at the start of a bar marks where a section of the form begins.
   /// Chords sharing a bar split its beats evenly; any leftover beat goes to
   /// the first chord (so three chords in 4/4 last 2 + 1 + 1 beats).
+  ///
+  /// A bar holds only as many chords as it has beats for: the chords past
+  /// that have nowhere to sound, so they are left off rather than written
+  /// in with no beats. Nothing downstream, the band least of all, has any
+  /// use for a chord that lasts no time.
   factory Tune.fromChart({
     required String title,
     required String key,
@@ -509,7 +514,12 @@ class Tune {
         text = text.substring(section.end);
       }
 
-      final symbols = text.split(RegExp(r'\s+'));
+      final written = text.split(RegExp(r'\s+'));
+      // One chord a beat at the most: the rest of the bar's chords have no
+      // room, and a slot of no beats is a chord nothing can play.
+      final symbols = written.length > beatsPerBar
+          ? written.sublist(0, beatsPerBar)
+          : written;
       final baseBeats = beatsPerBar ~/ symbols.length;
       final leftover = beatsPerBar % symbols.length;
       var beat = barIndex * beatsPerBar;

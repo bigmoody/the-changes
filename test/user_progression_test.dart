@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/music/chart_layout.dart';
+import 'package:play_along/music/loop_range.dart';
 import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/user_progression.dart';
 import 'package:play_along/settings/progression_store.dart';
@@ -58,6 +60,83 @@ void main() {
     expect(UserProgression.problemWith('  '), contains('at least one'));
     expect(UserProgression.problemWith('C D E F G'), contains('At most'));
     expect(UserProgression.problemWith('Dm7 Hm7'), contains('"Hm7"'));
+  });
+
+  test('a bar holds one chord a beat, whatever the meter', () {
+    // One a beat is as many as fit: the chord after that has no beat to
+    // sound on, and the band is never handed one that lasts no time.
+    const chords = ['Dm7', 'G7', 'C6', 'A7', 'E7', 'B7'];
+    for (final beats in UserProgression.meters) {
+      String bar(int n) => chords.take(n).join(' ');
+      expect(
+        UserProgression.problemWith(bar(beats), beatsPerBar: beats),
+        isNull,
+        reason: '$beats chords fit a bar of $beats/4',
+      );
+      expect(
+        UserProgression.problemWith(bar(beats + 1), beatsPerBar: beats),
+        'At most $beats chords in a bar of $beats/4',
+        reason: 'one too many for $beats/4',
+      );
+      // The other complaints still come first.
+      expect(
+        UserProgression.problemWith('   ', beatsPerBar: beats),
+        contains('at least one'),
+      );
+    }
+    // Without a meter it is 4/4, as it always was.
+    expect(UserProgression.problemWith('Dm7 G7 C6 A7'), isNull);
+  });
+
+  test('the bars too full for the meter are named', () {
+    final tight = UserProgression(
+      id: '2',
+      title: 'Crowded',
+      key: 'C',
+      tempo: 120,
+      bars: ['Dm7 G7 C6 A7', 'Dm7 G7', 'C6', 'Dm7 G7 C6'],
+      style: BandStyle.of(Feel.swing),
+    );
+    expect(tight.crowdedBars, isEmpty, reason: 'all fit 4/4');
+    expect(tight.isPlayable, isTrue);
+    tight.beatsPerBar = 3;
+    expect(tight.crowdedBars, [1]);
+    tight.beatsPerBar = 2;
+    expect(tight.crowdedBars, [1, 4]);
+  });
+
+  test('the band is never handed a chord with no beats', () {
+    // Four chords written in a bar, then the time changed to 3/4: the
+    // fourth has nowhere to sound, so the bar plays the three that fit
+    // rather than a chord of no beats, which crashes the bassist.
+    final tight = UserProgression(
+      id: '3',
+      title: 'Crowded',
+      key: 'C',
+      tempo: 120,
+      bars: ['Dm7 G7 C6 A7', 'Dm7 G7', 'C6', 'A7'],
+      style: BandStyle.of(Feel.swing),
+      beatsPerBar: 3,
+    );
+    final tune = tight.toTune();
+    expect(tune.bars.first.map((s) => s.chord.display), ['Dm7', 'G7', 'C6']);
+    for (final bar in tune.bars) {
+      for (final slot in bar) {
+        expect(slot.beats, greaterThan(0), reason: slot.chord.display);
+      }
+    }
+    expect(tune.totalBeats, 4 * 3);
+    expect(
+      () => renderBacking(
+        BackingRequest(
+          tune: tune,
+          loop: LoopRange.bars(tune, 0, tune.barCount - 1),
+          tempo: 120,
+          countInBars: 0,
+        ),
+      ),
+      returnsNormally,
+    );
   });
 
   test('guesses the key the progression comes home to', () {

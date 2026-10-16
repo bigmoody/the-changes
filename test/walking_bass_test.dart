@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/swing.dart';
 import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/walking_bass.dart';
@@ -219,5 +220,38 @@ void main() {
     }
     expect(bars.length, greaterThan(8), reason: 'distinct bars');
     expect(roots, greaterThan(20), reason: 'mostly starts on the root');
+  });
+
+  test('a chord that lasts no time is passed over, not played', () {
+    // The app's own charts never make one, but an imported chart can carry
+    // anything, and the bassist used to throw on it rather than play on.
+    final crowded = [
+      (Chord.parse('Dm7'), 1),
+      (Chord.parse('G7'), 1),
+      (Chord.parse('C6'), 1),
+      (Chord.parse('A7'), 0),
+    ];
+    final notes = walkingBassLine(
+      crowded,
+      choruses: 2,
+      random: math.Random(7),
+      swing: tripletSwing,
+      beatsPerBar: 3,
+    );
+    expect(notes, isNotEmpty);
+    // Three beats a chorus: the silent chord takes none of the time.
+    expect(notes.every((n) => n.beat < 6), isTrue);
+    for (final style in [twoFeelBassLine, bossaBassLine]) {
+      expect(
+        () => style(
+          crowded,
+          choruses: 1,
+          random: math.Random(7),
+          swing: tripletSwing,
+          beatsPerBar: 3,
+        ),
+        returnsNormally,
+      );
+    }
   });
 }

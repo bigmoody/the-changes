@@ -171,6 +171,9 @@ List<BassNote> _play(
   for (var chorus = 0; chorus < choruses; chorus++) {
     for (var i = 0; i < chords.length; i++) {
       final (chord, beats) = chords[i];
+      // A chart from elsewhere can carry a chord that lasts no time. There
+      // is nothing to play on it, so the bassist is never asked.
+      if (beats <= 0) continue;
       // The last chord leads back to the first, because the section repeats.
       final (next, _) = chords[(i + 1) % chords.length];
       final isVeryLast = chorus == choruses - 1 && i == chords.length - 1;
