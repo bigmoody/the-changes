@@ -95,25 +95,31 @@ class SampledNote {
   /// How many samples pass before the recording is heard.
   ///
   /// A file starts when the engineer pressed record; the note starts when
-  /// the player's hand did. Between the two sit a little silence and the
-  /// beginning of the rise, and for the upright bass here that is eleven
-  /// milliseconds on average and as much as forty on one take. Played
-  /// from the front, every bass note lands that far behind its own beat,
-  /// and a different distance behind it each time, which is a bass that
-  /// drags and wanders without anybody having asked it to.
+  /// the player's hand did, and the note is *heard* later still. Between
+  /// the three sit a little silence and the climb of the attack, and how
+  /// long that climb takes depends on the instrument: a kick or a ride is
+  /// at full strength within a millisecond, while a plucked upright at
+  /// the bottom of its range takes the best part of fifty to get there,
+  /// because the ear needs several cycles of a low string before it can
+  /// hear that there is a note at all.
   ///
-  /// So the band plays to attacks: [Mixer.addRecording] starts a file
-  /// this much earlier, and what the ear hears lands where the beat is.
+  /// So a bass played from the front of its file lands behind the kit on
+  /// every note, by twenty-six milliseconds on average here and by a
+  /// different amount on each take, which is a bass that drags and
+  /// wanders without anybody having asked it to. Starting it where the
+  /// sound first appears is not enough either: that only lines up the
+  /// moment the string is touched, and the kit is already loud by the
+  /// time the bass is audible.
   ///
-  /// Measured against the recording's own peak, so a soft take is not
-  /// judged by a loud one, and capped: a sound still climbing after
-  /// [_mostLead] is one that swells rather than one that is late, and
-  /// dragging a brush swirl forward by a third of its circle would be a
-  /// different kind of wrong.
+  /// What the band lines up instead is the half-way point of each
+  /// attack, which is about where a listener puts a note. Measured
+  /// against the recording's own peak, so a soft take is not judged by a
+  /// loud one, and capped at [_mostLead]: a sound still climbing after
+  /// that is one that swells rather than one that is late.
   late final int lead = _leadIn();
 
-  /// Where the sound starts: a sixth of the way up to the peak of its own
-  /// attack, which is about where a listener puts the note.
+  /// Where the sound is heard: half way up to the peak of its own
+  /// attack.
   int _leadIn() {
     final look = math.min(samples.length, _attackWindow);
     var peak = 0;
@@ -122,7 +128,7 @@ class SampledNote {
       if (level > peak) peak = level;
     }
     if (peak == 0) return 0;
-    final threshold = peak ~/ 6;
+    final threshold = peak ~/ 2;
     for (var i = 0; i < math.min(look, _mostLead); i++) {
       if (samples[i].abs() >= threshold) return i;
     }
@@ -134,8 +140,11 @@ class SampledNote {
 /// which is past the attack of anything struck or plucked.
 const _attackWindow = 11025;
 
-/// The furthest a recording is ever moved: twenty-five milliseconds.
-const _mostLead = 1102;
+/// The furthest a recording is ever moved: sixty milliseconds, which is
+/// past the slowest attack in the bank (a low upright string, at fifty
+/// three) and well short of anything that would drag a swelling sound
+/// out of its place.
+const _mostLead = 2646;
 
 /// How an instrument's recordings of one note differ from each other.
 enum Takes {

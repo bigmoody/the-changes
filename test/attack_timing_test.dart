@@ -9,8 +9,10 @@
 // kit on every note, and by a different amount each time, which is a
 // bassist nobody would hire.
 //
-// So each recording is started by its own lead-in. These tests measure
-// what comes out rather than what the code says it does.
+// So each recording is started by its own lead-in, measured to the half
+// way point of its attack, which is about where a listener puts a note.
+// These tests measure what comes out rather than what the code says it
+// does.
 
 import 'dart:io';
 import 'dart:math' as math;
@@ -21,16 +23,16 @@ import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/audio/wav_file.dart';
 
-/// Where the sound starts in [wav]: the first sample at a sixth of its
-/// peak, in seconds.
-double attackAt(Uint8List wav) {
+/// Where the note is heard in [wav]: the first sample at half its peak,
+/// which is the point the band lines its instruments up by.
+double heardAt(Uint8List wav, {double share = 0.5}) {
   final audio = readWav(wav);
   var peak = 0.0;
   for (final sample in audio.samples) {
     final level = sample.abs().toDouble();
     if (level > peak) peak = level;
   }
-  final threshold = peak / 6;
+  final threshold = peak * share;
   for (var i = 0; i < audio.samples.length; i++) {
     if (audio.samples[i].abs() >= threshold) return i / audio.sampleRate;
   }
@@ -54,11 +56,7 @@ void main() {
         final wav = renderSnippet(bank, [
           (pitch: pitch, start: at, length: 0.4, velocity: 0.8, bass: true),
         ], room: false);
-        expect(
-          attackAt(wav),
-          closeTo(at, 0.005),
-          reason: 'pitch $pitch at $at',
-        );
+        expect(heardAt(wav), closeTo(at, 0.005), reason: 'pitch $pitch at $at');
       }
     }
   });
@@ -68,7 +66,7 @@ void main() {
     final piano = renderSnippet(bank, [
       (pitch: 60, start: at, length: 0.4, velocity: 0.8, bass: false),
     ], room: false);
-    expect(attackAt(piano), closeTo(at, 0.005), reason: 'piano');
+    expect(heardAt(piano), closeTo(at, 0.005), reason: 'piano');
 
     final guitar = renderSnippet(
       bank,
@@ -76,7 +74,7 @@ void main() {
       guitar: true,
       room: false,
     );
-    expect(attackAt(guitar), closeTo(at, 0.005), reason: 'guitar');
+    expect(heardAt(guitar), closeTo(at, 0.005), reason: 'guitar');
   });
 
   test('every recording in the bank knows its own lead-in', () {
@@ -87,7 +85,7 @@ void main() {
     final leads = <int>[];
     for (final takes in bank.bass.notes.values) {
       for (final take in takes) {
-        expect(take.lead, lessThanOrEqualTo(1102));
+        expect(take.lead, lessThanOrEqualTo(2646));
         expect(take.lead, greaterThanOrEqualTo(0));
         leads.add(take.lead);
       }

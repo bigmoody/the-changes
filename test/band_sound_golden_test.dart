@@ -56,6 +56,17 @@ void main() {
     };
   }
 
+  // All four re-pinned again, in the same sitting, when lining the
+  // recordings up by where their sound begins turned out not to be
+  // enough. The bass still dragged, for two reasons the measurements
+  // then showed: some takes have more lead-in than the cap allowed, so
+  // they were still landing forty milliseconds late, and lining up the
+  // moment a low string is touched still leaves the kit loud before the
+  // bass is audible at all. The band now lines up the half-way point of
+  // each attack, which is about where a listener puts a note: every
+  // instrument reaches it exactly on the beat, where before the bass
+  // reached it five to thirteen milliseconds after the kit did.
+  //
   // All four re-pinned when the band was aligned to what is heard rather
   // than to where each file begins. A recording starts when the engineer
   // pressed record; the note starts when the player's hand did, and
@@ -160,9 +171,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 5525381812483916226,
-        'Bass': 4245351487094944998,
-        'Drums': 814838138144222885,
+        'Chords': 3472801845732758842,
+        'Bass': -3418563627230748945,
+        'Drums': 6188043410601096521,
       },
     );
   });
@@ -189,10 +200,10 @@ void main() {
         ),
       ),
       {
-        'Chords': 6527700344875204544,
-        'Bass': -3225105516617071802,
-        'Drums': 2019636322395589479,
-        'Arpeggios': 4995653481501121600,
+        'Chords': 5703650463560110613,
+        'Bass': -6074272712222692044,
+        'Drums': -4616112643317203807,
+        'Arpeggios': 6015232619698731699,
       },
     );
   });
@@ -218,10 +229,10 @@ void main() {
         ),
       ),
       {
-        'Chords': -4696714396329603028,
-        'Bass': -4065909586483082180,
-        'Drums': 437623311349435502,
-        'Arpeggios': -8772562335645325426,
+        'Chords': 6648002725168722921,
+        'Bass': 8393598293308164611,
+        'Drums': -5504983935100262175,
+        'Arpeggios': -7665756823794843562,
       },
     );
   });
@@ -246,9 +257,9 @@ void main() {
         ),
       ),
       {
-        'Chords': 8415008604115905155,
-        'Bass': 9125810705783794679,
-        'Drums': 6584768289030924414,
+        'Chords': -6595165179281268849,
+        'Bass': -4289258013056155582,
+        'Drums': 3454292715409885943,
       },
     );
   });
