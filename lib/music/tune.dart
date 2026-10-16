@@ -343,6 +343,15 @@ enum DrumSound {
   /// most of its ping.
   brushes('Brushes'),
 
+  /// The drums of an eight-bit console, made the way that console made
+  /// them: noise for the hats and the snare, a fast fall in pitch for
+  /// the kick and the toms, a square blip for anything short.
+  ///
+  /// Synthesised rather than sampled, which is not a shortcut: those
+  /// machines had no drums to sample, and this is how the sounds were
+  /// got out of them.
+  chiptune('Chiptune'),
+
   /// A drum kit out of an imported SoundFont. Each drum falls back to the
   /// band's own when the kit does not have it, so a font with no cowbell
   /// costs you a cowbell and not a calypso.

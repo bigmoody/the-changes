@@ -377,6 +377,9 @@ class SampleBank {
         DrumSound.kit => ours,
         DrumSound.brushes => brushes[drum] ?? ours,
         DrumSound.imported => importedDrums[drum] ?? ours,
+        // Nothing recorded: a chiptune kit is made rather than sampled,
+        // and the band reaches for it before it gets this far.
+        DrumSound.chiptune => null,
       };
 
   /// Whether an imported kit has anything in it at all.

@@ -666,6 +666,12 @@ _Parts _renderParts(
   final human = math.Random(seed + 1);
   final takesRandom = math.Random(seed + 2);
   final kit = bank == null ? DrumKit(sampleRate, math.Random(seed + 3)) : null;
+  // The console's kit, where somebody has asked for it. It is made
+  // rather than recorded, so it does not need the bank and it is not in
+  // it: the drums of a machine that had none to play.
+  final chiptune = request.drumSound == DrumSound.chiptune
+      ? ChiptuneKit(sampleRate)
+      : null;
   final pianoCache = <(int, int), Float32List>{};
 
   // Which pass through the form a beat belongs to, within this batch.
@@ -1201,7 +1207,9 @@ _Parts _renderParts(
   /// wins over both: somebody who imported a snare wants to hear it, and
   /// somebody playing a funk tune with brushes has asked for brushes.
   DrumSamples? recordedDrum(Drum drum) {
-    if (bank == null) return null;
+    // A chiptune kit is played instead of the recordings, not beside
+    // them: every drum of it is made, so nothing falls back.
+    if (bank == null || chiptune != null) return null;
     // Funk takes the close microphones: the drum rather than the room
     // for the snare, and a kick that is the floor of the groove rather
     // than one heard across it.
@@ -1214,17 +1222,19 @@ _Parts _renderParts(
     return bank.playingDrum(drum, request.drumSound, ours);
   }
 
-  Float32List? synthesisedDrum(Drum drum) => switch (drum) {
-    Drum.ride => kit?.ride[takesRandom.nextInt(kit.ride.length)],
-    Drum.hiHatPedal => kit?.hiHatPedal,
-    Drum.hiHatClosed || Drum.hiHatOpen => kit?.closedHat,
-    Drum.kick => kit?.kick,
-    // The synthesised kit has no snare; its cross-stick stands in.
-    Drum.snare || Drum.crossStick || Drum.cowbell => kit?.crossStick,
-    Drum.tomHigh || Drum.tomLow => kit?.kick,
-    // Nothing in the synthesised kit sounds remotely like a brush.
-    Drum.swirl => null,
-  };
+  Float32List? synthesisedDrum(Drum drum) =>
+      chiptune?.of(drum) ??
+      switch (drum) {
+        Drum.ride => kit?.ride[takesRandom.nextInt(kit.ride.length)],
+        Drum.hiHatPedal => kit?.hiHatPedal,
+        Drum.hiHatClosed || Drum.hiHatOpen => kit?.closedHat,
+        Drum.kick => kit?.kick,
+        // The synthesised kit has no snare; its cross-stick stands in.
+        Drum.snare || Drum.crossStick || Drum.cowbell => kit?.crossStick,
+        Drum.tomHigh || Drum.tomLow => kit?.kick,
+        // Nothing in the synthesised kit sounds remotely like a brush.
+        Drum.swirl => null,
+      };
 
   // The tune bars the loop covers (a loop can start mid-bar).
   final bars = <int>[];

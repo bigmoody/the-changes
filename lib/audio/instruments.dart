@@ -16,6 +16,8 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'drum_patterns.dart' show Drum;
+
 double midiToFrequency(int note) =>
     440 * math.pow(2, (note - 69) / 12).toDouble();
 
@@ -365,4 +367,263 @@ void saturate(Float32List buffer, {required double drive}) {
   for (var i = 0; i < buffer.length; i++) {
     buffer[i] = tanh(drive * buffer[i] / peak) / top;
   }
+}
+
+// ── A chiptune kit ───────────────────────────────────────────────────────
+//
+// The drums of an eight-bit console, made the way that console made them,
+// because it had no drum samples to play: two square channels, a triangle,
+// and a noise generator.
+//
+//  • Noise is where the hats, the cymbals and the snare come from. Its
+//    "period" is what makes it hiss or rattle, and the short-period mode
+//    is a tone rather than a hiss, which is what gives a chip snare its
+//    metallic edge.
+//  • The triangle has no volume control of its own, so it is used for the
+//    bass, and a kick is made by dropping its pitch quickly: a note that
+//    falls fast enough stops being a note and becomes a thump.
+//  • A square blip stands in for anything wooden or metallic and short,
+//    which here is the cross-stick and the cowbell.
+//
+// What makes any of it sound like a drum is the envelope: a fast fall to
+// nothing, the way a tracker writes a volume column that counts down.
+//
+// There is no swirl. A brush is a thing you drag across a drumhead, and
+// nothing in a console sounds remotely like one; a brush groove on this
+// kit plays its other drums and leaves the circle out.
+
+/// The noise generator: a linear feedback shift register, as the console
+/// has, rather than a random number source.
+///
+/// Fifteen bits, exclusive-or of two taps shifted back in at the top. The
+/// short mode taps six bits along instead of one, which makes the sequence
+/// repeat in ninety-three steps rather than thirty-two thousand, and a
+/// sequence that short is heard as a pitch.
+class _Noise {
+  _Noise({this.short = false}) : _register = 1;
+  final bool short;
+  int _register;
+
+  double next() {
+    final other = short ? (_register >> 6) & 1 : (_register >> 1) & 1;
+    final feedback = (_register & 1) ^ other;
+    _register = (_register >> 1) | (feedback << 14);
+    // The console's output is the bottom bit: on or off, nothing between.
+    return (_register & 1) == 1 ? 1.0 : -1.0;
+  }
+}
+
+/// A noise hit: [seconds] long, falling to nothing over [decay], with the
+/// generator stepped every [period] samples.
+Float32List _chipNoise(
+  int sampleRate, {
+  required double seconds,
+  required double decay,
+  required int period,
+  bool short = false,
+  double level = 0.5,
+}) {
+  final out = Float32List((seconds * sampleRate).round());
+  final noise = _Noise(short: short);
+  var value = noise.next();
+  var countdown = period;
+  for (var i = 0; i < out.length; i++) {
+    if (--countdown <= 0) {
+      value = noise.next();
+      countdown = period;
+    }
+    final t = i / sampleRate;
+    out[i] = value * level * math.exp(-t / decay);
+  }
+  _fadeIn(out, (0.001 * sampleRate).round());
+  return out;
+}
+
+/// A triangle note whose pitch falls from [from] to [to] over [sweep]
+/// seconds: the console's way of making a kick or a tom.
+///
+/// Sixteen steps to the triangle, as the hardware has, so it keeps the
+/// stepped edge that makes it sound like itself rather than like a sine.
+Float32List _chipDrop(
+  int sampleRate, {
+  required double from,
+  required double to,
+  required double sweep,
+  required double seconds,
+  required double decay,
+  double level = 0.6,
+}) {
+  final out = Float32List((seconds * sampleRate).round());
+  var phase = 0.0;
+  for (var i = 0; i < out.length; i++) {
+    final t = i / sampleRate;
+    final through = math.min(t / sweep, 1.0);
+    final hertz = from + (to - from) * through;
+    phase = (phase + hertz / sampleRate) % 1;
+    // A triangle in sixteen steps, as the chip's counter gives it.
+    final triangle = 1 - 4 * (phase - 0.5).abs();
+    final stepped = (triangle * 8).round() / 8;
+    out[i] = stepped * level * math.exp(-t / decay);
+  }
+  _fadeIn(out, (0.001 * sampleRate).round());
+  return out;
+}
+
+/// A square blip at [hertz]: short, and gone.
+Float32List _chipBlip(
+  int sampleRate, {
+  required double hertz,
+  required double seconds,
+  required double decay,
+  double duty = 0.5,
+  double level = 0.4,
+}) {
+  final out = Float32List((seconds * sampleRate).round());
+  var phase = 0.0;
+  for (var i = 0; i < out.length; i++) {
+    final t = i / sampleRate;
+    phase = (phase + hertz / sampleRate) % 1;
+    out[i] = (phase < duty ? 1.0 : -1.0) * level * math.exp(-t / decay);
+  }
+  _fadeIn(out, (0.001 * sampleRate).round());
+  return out;
+}
+
+/// The kit of an eight-bit console, drum by drum.
+///
+/// One sound each rather than layers: a console had one noise channel and
+/// one triangle, and what varies between a quiet hit and a loud one there
+/// is the volume column, which is what the band's velocity already is.
+class ChiptuneKit {
+  ChiptuneKit(int sampleRate)
+    : ride = _chipNoise(
+        sampleRate,
+        seconds: 0.5,
+        decay: 0.16,
+        period: 4,
+        level: 0.3,
+      ),
+      hiHatClosed = _chipNoise(
+        sampleRate,
+        seconds: 0.07,
+        decay: 0.014,
+        period: 3,
+        level: 0.32,
+      ),
+      hiHatOpen = _chipNoise(
+        sampleRate,
+        seconds: 0.3,
+        decay: 0.1,
+        period: 3,
+        level: 0.3,
+      ),
+      hiHatPedal = _chipNoise(
+        sampleRate,
+        seconds: 0.05,
+        decay: 0.01,
+        period: 5,
+        level: 0.26,
+      ),
+      // The snare: noise in the short mode, which is where its ring comes
+      // from, under a quick drop that gives it a body to crack against.
+      snare = _mix(
+        _chipNoise(
+          sampleRate,
+          seconds: 0.22,
+          decay: 0.07,
+          period: 12,
+          short: true,
+          level: 0.42,
+        ),
+        _chipDrop(
+          sampleRate,
+          from: 420,
+          to: 180,
+          sweep: 0.02,
+          seconds: 0.12,
+          decay: 0.04,
+          level: 0.22,
+        ),
+      ),
+      kick = _chipDrop(
+        sampleRate,
+        from: 220,
+        to: 48,
+        sweep: 0.035,
+        seconds: 0.3,
+        decay: 0.09,
+      ),
+      tomHigh = _chipDrop(
+        sampleRate,
+        from: 400,
+        to: 180,
+        sweep: 0.05,
+        seconds: 0.3,
+        decay: 0.12,
+        level: 0.5,
+      ),
+      tomLow = _chipDrop(
+        sampleRate,
+        from: 260,
+        to: 110,
+        sweep: 0.06,
+        seconds: 0.35,
+        decay: 0.14,
+        level: 0.5,
+      ),
+      crossStick = _chipBlip(
+        sampleRate,
+        hertz: 1200,
+        seconds: 0.05,
+        decay: 0.01,
+        duty: 0.25,
+      ),
+      cowbell = _chipBlip(
+        sampleRate,
+        hertz: 800,
+        seconds: 0.14,
+        decay: 0.045,
+        duty: 0.125,
+        level: 0.34,
+      );
+
+  final Float32List ride;
+  final Float32List hiHatClosed;
+  final Float32List hiHatOpen;
+  final Float32List hiHatPedal;
+  final Float32List snare;
+  final Float32List kick;
+  final Float32List tomHigh;
+  final Float32List tomLow;
+  final Float32List crossStick;
+  final Float32List cowbell;
+
+  /// What this kit plays for [drum], or null where it has nothing: the
+  /// swirl, which is a brush dragged across a head and is not a sound a
+  /// console can make.
+  Float32List? of(Drum drum) => switch (drum) {
+    Drum.ride => ride,
+    Drum.hiHatClosed => hiHatClosed,
+    Drum.hiHatOpen => hiHatOpen,
+    Drum.hiHatPedal => hiHatPedal,
+    Drum.snare => snare,
+    Drum.kick => kick,
+    Drum.tomHigh => tomHigh,
+    Drum.tomLow => tomLow,
+    Drum.crossStick => crossStick,
+    Drum.cowbell => cowbell,
+    Drum.swirl => null,
+  };
+}
+
+/// Two sounds laid on top of each other, as long as the longer one.
+Float32List _mix(Float32List a, Float32List b) {
+  final out = Float32List(math.max(a.length, b.length));
+  for (var i = 0; i < a.length; i++) {
+    out[i] += a[i];
+  }
+  for (var i = 0; i < b.length; i++) {
+    out[i] += b[i];
+  }
+  return out;
 }
