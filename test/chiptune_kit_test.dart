@@ -68,10 +68,27 @@ void main() {
     expect(crossings(0, half), greaterThan(crossings(half, half * 2)));
   });
 
-  test('the hats are short and the ride rings', () {
-    expect(lengthOf(kit.hiHatClosed, 44100), lessThan(0.08));
-    expect(lengthOf(kit.hiHatOpen, 44100), greaterThan(0.1));
-    expect(lengthOf(kit.ride, 44100), greaterThan(0.2));
+  test('nothing rings: a console has no room and no cymbal', () {
+    // Which is the whole character of the kit. The closed hat is a
+    // tick, the open one is longer, the ride longer again, and the
+    // longest thing in the kit is still under a quarter of a second.
+    final closed = lengthOf(kit.hiHatClosed, 44100);
+    final open = lengthOf(kit.hiHatOpen, 44100);
+    final ride = lengthOf(kit.ride, 44100);
+    expect(closed, lessThan(0.03));
+    expect(open, greaterThan(closed * 3));
+    expect(ride, greaterThan(open));
+    for (final drum in Drum.values) {
+      final sound = kit.of(drum);
+      if (sound == null) continue;
+      expect(
+        sound.length / 44100,
+        lessThan(0.25),
+        reason: '${drum.name} is still going',
+      );
+      // And it ends on silence rather than on a step, which is a click.
+      expect(sound.last.abs(), lessThan(0.001), reason: drum.name);
+    }
   });
 
   test('the noise is the console\'s own, not a random number source', () {

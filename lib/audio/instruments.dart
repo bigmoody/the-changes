@@ -320,6 +320,18 @@ void _fadeIn(Float32List samples, int count) {
   }
 }
 
+/// Takes the last [count] samples down to nothing.
+///
+/// An exponential decay never actually reaches zero, so a sound cut at
+/// the end of its buffer ends on a step, which is a click. This ends it
+/// on silence instead.
+void _fadeOut(Float32List samples, int count) {
+  final from = math.max(0, samples.length - count);
+  for (var i = from; i < samples.length; i++) {
+    samples[i] *= (samples.length - i) / (samples.length - from);
+  }
+}
+
 /// Lifts everything above [hertz] by [gain] (1.0 ≈ +6 dB), leaving the low
 /// end alone: a presence boost.
 ///
@@ -392,6 +404,18 @@ void saturate(Float32List buffer, {required double drive}) {
 // nothing in a console sounds remotely like one; a brush groove on this
 // kit plays its other drums and leaves the circle out.
 
+/// How long a chip drum lasts, as a multiple of its decay.
+///
+/// The periods above it are in samples rather than in the console's own
+/// clock, and they are chosen by what each drum has to be: a few samples
+/// between steps is a hiss for a hat, a dozen is a body for a snare.
+///
+/// Four: by then the envelope is at two per cent and what is left is
+/// under everything else in the band. Any longer and the kit rings, and
+/// a console's drums do not ring: there is no room in a chip and no
+/// cymbal to hold one.
+const _chipTail = 4.0;
+
 /// The noise generator: a linear feedback shift register, as the console
 /// has, rather than a random number source.
 ///
@@ -417,13 +441,12 @@ class _Noise {
 /// generator stepped every [period] samples.
 Float32List _chipNoise(
   int sampleRate, {
-  required double seconds,
   required double decay,
   required int period,
   bool short = false,
   double level = 0.5,
 }) {
-  final out = Float32List((seconds * sampleRate).round());
+  final out = Float32List((decay * _chipTail * sampleRate).round());
   final noise = _Noise(short: short);
   var value = noise.next();
   var countdown = period;
@@ -436,6 +459,7 @@ Float32List _chipNoise(
     out[i] = value * level * math.exp(-t / decay);
   }
   _fadeIn(out, (0.001 * sampleRate).round());
+  _fadeOut(out, (0.002 * sampleRate).round());
   return out;
 }
 
@@ -449,11 +473,10 @@ Float32List _chipDrop(
   required double from,
   required double to,
   required double sweep,
-  required double seconds,
   required double decay,
   double level = 0.6,
 }) {
-  final out = Float32List((seconds * sampleRate).round());
+  final out = Float32List((decay * _chipTail * sampleRate).round());
   var phase = 0.0;
   for (var i = 0; i < out.length; i++) {
     final t = i / sampleRate;
@@ -466,6 +489,7 @@ Float32List _chipDrop(
     out[i] = stepped * level * math.exp(-t / decay);
   }
   _fadeIn(out, (0.001 * sampleRate).round());
+  _fadeOut(out, (0.002 * sampleRate).round());
   return out;
 }
 
@@ -473,12 +497,11 @@ Float32List _chipDrop(
 Float32List _chipBlip(
   int sampleRate, {
   required double hertz,
-  required double seconds,
   required double decay,
   double duty = 0.5,
   double level = 0.4,
 }) {
-  final out = Float32List((seconds * sampleRate).round());
+  final out = Float32List((decay * _chipTail * sampleRate).round());
   var phase = 0.0;
   for (var i = 0; i < out.length; i++) {
     final t = i / sampleRate;
@@ -486,6 +509,7 @@ Float32List _chipBlip(
     out[i] = (phase < duty ? 1.0 : -1.0) * level * math.exp(-t / decay);
   }
   _fadeIn(out, (0.001 * sampleRate).round());
+  _fadeOut(out, (0.002 * sampleRate).round());
   return out;
 }
 
@@ -496,95 +520,65 @@ Float32List _chipBlip(
 /// is the volume column, which is what the band's velocity already is.
 class ChiptuneKit {
   ChiptuneKit(int sampleRate)
-    : ride = _chipNoise(
-        sampleRate,
-        seconds: 0.5,
-        decay: 0.16,
-        period: 4,
-        level: 0.3,
-      ),
+    : ride = _chipNoise(sampleRate, decay: 0.05, period: 4, level: 0.3),
       hiHatClosed = _chipNoise(
         sampleRate,
-        seconds: 0.07,
-        decay: 0.014,
-        period: 3,
-        level: 0.32,
-      ),
-      hiHatOpen = _chipNoise(
-        sampleRate,
-        seconds: 0.3,
-        decay: 0.1,
-        period: 3,
-        level: 0.3,
-      ),
-      hiHatPedal = _chipNoise(
-        sampleRate,
-        seconds: 0.05,
-        decay: 0.01,
+        decay: 0.006,
         period: 5,
-        level: 0.26,
+        level: 0.546,
       ),
+      hiHatOpen = _chipNoise(sampleRate, decay: 0.03, period: 3, level: 0.3),
+      hiHatPedal = _chipNoise(sampleRate, decay: 0.005, period: 5, level: 0.26),
       // The snare: noise in the short mode, which is where its ring comes
       // from, under a quick drop that gives it a body to crack against.
       snare = _mix(
         _chipNoise(
           sampleRate,
-          seconds: 0.22,
-          decay: 0.07,
-          period: 12,
+          decay: 0.022,
+          period: 14,
           short: true,
-          level: 0.42,
+          level: 0.728,
         ),
         _chipDrop(
           sampleRate,
           from: 420,
           to: 180,
-          sweep: 0.02,
-          seconds: 0.12,
-          decay: 0.04,
-          level: 0.22,
+          sweep: 0.012,
+          decay: 0.012,
+          level: 0.39,
         ),
       ),
       kick = _chipDrop(
         sampleRate,
         from: 220,
         to: 48,
-        sweep: 0.035,
-        seconds: 0.3,
-        decay: 0.09,
+        sweep: 0.025,
+        decay: 0.028,
+        level: 1.04,
       ),
       tomHigh = _chipDrop(
         sampleRate,
         from: 400,
         to: 180,
-        sweep: 0.05,
-        seconds: 0.3,
-        decay: 0.12,
-        level: 0.5,
+        sweep: 0.035,
+        decay: 0.035,
+        level: 0.858,
       ),
       tomLow = _chipDrop(
         sampleRate,
         from: 260,
         to: 110,
-        sweep: 0.06,
-        seconds: 0.35,
-        decay: 0.14,
-        level: 0.5,
+        sweep: 0.04,
+        decay: 0.04,
+        level: 0.858,
       ),
-      crossStick = _chipBlip(
-        sampleRate,
-        hertz: 1200,
-        seconds: 0.05,
-        decay: 0.01,
-        duty: 0.25,
-      ),
+      crossStick = _chipBlip(sampleRate, hertz: 1200, decay: 0.005, duty: 0.25),
       cowbell = _chipBlip(
         sampleRate,
         hertz: 800,
-        seconds: 0.14,
-        decay: 0.045,
+        decay: 0.018,
         duty: 0.125,
-        level: 0.34,
+        level: 0.585,
       );
 
   final Float32List ride;

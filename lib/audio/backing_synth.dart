@@ -1399,7 +1399,16 @@ _Parts _renderParts(
     // drums stopped dead at the end of a chorus. The mix has a second of
     // room past the batch and the tail is carried into the next one, so
     // the ring crosses the loop rather than being cut at it.
-    addRoomReverb(drums.buffer, 0, sampleRate, wet: roomFor(style.drums));
+    // Except a chiptune kit, which gets none. There is no room in a
+    // chip: those drums were made by a machine wired to a television
+    // and they are dead dry, and a room put round them is a tail on
+    // every hit of a kit whose whole character is that it stops.
+    addRoomReverb(
+      drums.buffer,
+      0,
+      sampleRate,
+      wet: chiptune != null ? 0 : roomFor(style.drums),
+    );
     // The reference the whole band's gain is worked out from has to be the
     // same sound, or the peak it reports is of a kit that is not the one
     // being played.
