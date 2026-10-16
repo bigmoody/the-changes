@@ -536,8 +536,15 @@ class PracticeController extends ChangeNotifier {
   }
 
   /// What a part is called on screen: the chords are "Piano" or "Guitar".
-  String partName(Instrument part) =>
-      part == Instrument.chords ? settings.comping.label : part.label;
+  ///
+  /// Piano or Guitar for the chords, which say who is playing them. An
+  /// imported sound is "Chords": "Imported Sound" says where it came
+  /// from rather than what it plays, and does not fit beside a fader.
+  String partName(Instrument part) => part == Instrument.chords
+      ? (settings.comping == Comping.imported
+            ? part.label
+            : settings.comping.label)
+      : part.label;
 
   /// The parts with a mixer channel: the band, plus the arpeggios when
   /// they're on and an imported part when there is one.
