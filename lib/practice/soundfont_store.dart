@@ -34,6 +34,17 @@ import 'recording_store.dart' show RecordingFiles;
 enum SoundFontRole {
   chords('Chords', 'The Chords', 'The band\'s piano', 'instrument.tcsi'),
   bass('Bass', 'The Bass', 'The band\'s upright', 'bass.tcsi'),
+
+  /// The arpeggios, which are a part of their own: they are what you
+  /// play along to rather than what the band comps with, and hearing
+  /// them on something other than the chords is most of the use of
+  /// having them at all.
+  arpeggio(
+    'Arpeggios',
+    'The Arpeggios',
+    'Whatever plays the chords',
+    'arpeggio.tcsi',
+  ),
   drums('Drums', 'The Drums', 'The band\'s own kit', 'drums.tcsi');
 
   const SoundFontRole(this.label, this.part, this.ours, this.fileName);
@@ -66,6 +77,7 @@ class SoundFontStore extends ChangeNotifier {
   SoundFontStore.inMemory({
     SampledInstrument? chords,
     SampledInstrument? bass,
+    SampledInstrument? arpeggio,
     Map<Drum, DrumSamples>? drums,
     String drumsName = 'Kit',
   }) : _storage = MemoryStorage(),
@@ -77,10 +89,12 @@ class SoundFontStore extends ChangeNotifier {
        _names = {
          SoundFontRole.chords: ?chords?.name,
          SoundFontRole.bass: ?bass?.name,
+         SoundFontRole.arpeggio: ?arpeggio?.name,
        },
        _instruments = {
          SoundFontRole.chords: ?chords,
          SoundFontRole.bass: ?bass,
+         SoundFontRole.arpeggio: ?arpeggio,
        };
 
   static Future<SoundFontStore> load({
@@ -163,6 +177,10 @@ class SoundFontStore extends ChangeNotifier {
 
   SampledInstrument? get chords => _instruments[SoundFontRole.chords];
   SampledInstrument? get bass => _instruments[SoundFontRole.bass];
+
+  /// The font for the arpeggios, where somebody has imported one of
+  /// their own for them. Null means they play whatever the chords do.
+  SampledInstrument? get arpeggio => _instruments[SoundFontRole.arpeggio];
 
   /// The imported drums, drum by drum. Empty when there are none.
   Map<Drum, DrumSamples> get drums => _drums;

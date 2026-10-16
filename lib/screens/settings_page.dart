@@ -252,6 +252,7 @@ class SettingsPage extends StatelessWidget {
                             for (final role in [
                               SoundFontRole.chords,
                               SoundFontRole.bass,
+                              SoundFontRole.arpeggio,
                             ])
                               if (store.nameFor(role) case final name?)
                                 '${role.label}: $name',

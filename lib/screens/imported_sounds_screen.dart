@@ -253,7 +253,11 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
       return;
     }
     final role = await _pickOne<SoundFontRole>('${preset.name} plays', [
-      for (final role in [SoundFontRole.chords, SoundFontRole.bass])
+      for (final role in [
+        SoundFontRole.chords,
+        SoundFontRole.bass,
+        SoundFontRole.arpeggio,
+      ])
         (key: 'play-as-${role.name}', label: role.part, value: role),
     ]);
     if (role == null || !mounted) return;
@@ -281,6 +285,8 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
           await widget.settings?.setComping(Comping.imported);
         case SoundFontRole.bass:
           await widget.settings?.setBassSound(BassSound.imported);
+        case SoundFontRole.arpeggio:
+          await widget.settings?.setArpeggioSound(Comping.imported);
         case SoundFontRole.drums:
           break;
       }
@@ -413,7 +419,11 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
               // Every part, tappable to change it: the question people
               // actually arrive with is about a part, not about a file.
               const SectionHeader('The Band Plays'),
-              for (final role in [SoundFontRole.chords, SoundFontRole.bass])
+              for (final role in [
+                SoundFontRole.chords,
+                SoundFontRole.bass,
+                SoundFontRole.arpeggio,
+              ])
                 _PartRow(
                   key: ValueKey('playing-${role.name}'),
                   title: role.part,

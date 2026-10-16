@@ -913,7 +913,7 @@ _Parts _renderParts(
   // shapes a hand makes on a neck, and putting an organ through them
   // would be a strange thing to hear.
   final chordSound = bank?.playing(request.comping);
-  final arpeggioSound = bank?.playing(request.arpeggioSound);
+  final arpeggioSound = bank?.playingArpeggio(request.arpeggioSound);
 
   final loopBars =
       (loop.endBeat - 1) ~/ beatsPerBar - loop.startBeat ~/ beatsPerBar + 1;

@@ -259,6 +259,7 @@ class SampleBank {
     required this.tomHigh,
     required this.tomLow,
     this.importedChords,
+    this.importedArpeggio,
     this.importedBass,
     required this.snareTight,
     required this.kickClose,
@@ -292,6 +293,11 @@ class SampleBank {
   final SampledInstrument? importedChords;
   final SampledInstrument? importedBass;
 
+  /// A third, for the arpeggios, so they can be something other than
+  /// whatever is comping. Null means they follow the chords, which is
+  /// what they did when there was only one font to go round.
+  final SampledInstrument? importedArpeggio;
+
   /// The brush kit, drum by drum. A whole second set of recordings rather
   /// than the stick kit played quietly, because a brush is not a softer
   /// stick: it answers with a wash where a stick answers with a crack.
@@ -310,6 +316,7 @@ class SampleBank {
   SampleBank withImported({
     SampledInstrument? chords,
     SampledInstrument? bass,
+    SampledInstrument? arpeggio,
     Map<Drum, DrumSamples> drums = const {},
   }) => SampleBank(
     // this.bass, because the named argument above is the imported one.
@@ -331,6 +338,7 @@ class SampleBank {
     brushes: brushes,
     importedChords: chords,
     importedBass: bass,
+    importedArpeggio: arpeggio,
     importedDrums: drums,
   );
 
@@ -339,6 +347,18 @@ class SampleBank {
     Comping.piano => piano,
     Comping.guitar => guitar,
     Comping.imported => importedChords ?? piano,
+  };
+
+  /// Who plays the arpeggios, given what somebody chose.
+  ///
+  /// Their own imported font if there is one, and otherwise the chords'
+  /// font: before there was a font of their own, choosing the imported
+  /// sound for the arpeggios meant the one the chords were using, and
+  /// anybody who set it up that way should keep hearing it.
+  SampledInstrument playingArpeggio(Comping comping) => switch (comping) {
+    Comping.piano => piano,
+    Comping.guitar => guitar,
+    Comping.imported => importedArpeggio ?? importedChords ?? piano,
   };
 
   /// Who plays the bass, given what somebody chose.
