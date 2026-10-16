@@ -259,6 +259,18 @@ class _TempoDialogState extends State<_TempoDialog> {
         ],
       ),
       actions: [
+        // Everything else the player can move has a way back to what the
+        // tune says: the band style, the meter, the swing. This is that,
+        // and it says the number so you know what you are going back to.
+        if (widget.controller.tempoIsChosen)
+          TextButton(
+            key: const ValueKey('tempo-as-written'),
+            onPressed: () {
+              widget.controller.resetTempo();
+              _field.text = '${widget.controller.tempo}';
+            },
+            child: Text('As Written (${widget.controller.writtenTempo})'),
+          ),
         TextButton(
           onPressed: () => _done(_field.text),
           child: const Text('Done'),

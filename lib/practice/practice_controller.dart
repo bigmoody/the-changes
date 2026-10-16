@@ -479,6 +479,18 @@ class PracticeController extends ChangeNotifier {
 
   // ── Tempo ──────────────────────────────────────────────────────────────
 
+  /// What the tune is written at, which is not always where it opens: a
+  /// tune you have been working on opens at the tempo you last got it up
+  /// to, which is the useful thing and also the thing you sometimes want
+  /// to get out of.
+  int get writtenTempo => originalTune.defaultTempo;
+
+  /// Whether the tempo has been moved off the written one.
+  bool get tempoIsChosen => _tempo != writtenTempo;
+
+  /// Back to the written tempo.
+  void resetTempo() => setTempo(writtenTempo);
+
   void setTempo(int bpm) {
     final clamped = bpm.clamp(minTempo, maxTempo);
     if (clamped == _tempo) return;
