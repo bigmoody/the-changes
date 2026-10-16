@@ -529,9 +529,67 @@ class ChartFollower {
         window[i] = _heard[start + i];
       }
       notes = listenForNotes(window, sampleRate: sampleRate, most: 8);
+      _pitched = _howPitched(window);
     }
     _move(_beats == 0 ? null : notes, (frame * _hop + _frame / 2) / sampleRate);
   }
+
+  /// How much what was heard has notes in it, from 0 to 1.
+  var _pitched = 1.0;
+
+  /// How much of what is in [window] is notes, from 0 to 1.
+  ///
+  /// Drums alone (a drum solo, trading fours) have pitches of a kind, and
+  /// the ear finds eight "notes" in a cymbal; set against the chart those
+  /// pull the guess to wherever their accidental notes fit, and it loses
+  /// its place in a bar or two. So what is heard is asked how much of it
+  /// is notes: sharp peaks standing well clear of the spectrum round them,
+  /// where the bass and the chords live. A note is a peak; a cymbal, a
+  /// snare and a room's hiss are a floor. Measured on the band, the drums
+  /// alone put a tenth of their sound or less into peaks, and the band
+  /// with a loud room over it still a fifth or more, so it is averaged
+  /// over a few beats and the chords count in proportion between the two.
+  double _howPitched(Float32List window) {
+    final spectrum = magnitudeSpectrum(window, size: _chordWindow);
+    final low = (60 * _chordWindow / sampleRate).round();
+    final high = (1500 * _chordWindow / sampleRate).round();
+    var inPeaks = 0.0;
+    var total = 0.0;
+    var logs = 0.0;
+    for (var i = low; i < high; i++) {
+      logs += math.log(spectrum[i] + 1e-9);
+      final around = [
+        for (
+          var j = math.max(0, i - 30);
+          j <= math.min(spectrum.length - 1, i + 30);
+          j++
+        )
+          spectrum[j],
+      ]..sort();
+      final floor = around[around.length ~/ 2];
+      total += spectrum[i];
+      if (spectrum[i] > floor * 4) inPeaks += spectrum[i] - floor;
+    }
+    final share = total == 0 ? 0.0 : inPeaks / total;
+    _peaks += 0.3 * (share - _peaks);
+    // And how flat the spectrum is: notes are spiky and drums are flat,
+    // measured on the band below 0.47 for anything with the bass or the
+    // piano in it and above 0.52 for the drums alone. A room's hiss is
+    // flat too, which is why this is the second question and not the
+    // only one: music under a loud room fails it and passes the first,
+    // and the drums alone fail both.
+    final n = high - low;
+    final flatness = total == 0 ? 1.0 : math.exp(logs / n) / (total / n);
+    _flatness += 0.3 * (flatness - _flatness);
+    final spiky = ((0.55 - _flatness) / 0.1).clamp(0.0, 1.0);
+    final peaky = ((_peaks - 0.16) / 0.08).clamp(0.0, 1.0);
+    return math.max(spiky, peaky);
+  }
+
+  var _flatness = 0.3;
+
+  /// The share of the sound in peaks, over the last few beats.
+  var _peaks = 0.3;
 
   /// The guess is of the beat now beginning. What was heard up to now is
   /// the beat that has just ended, which is where the guess was, so it is
@@ -549,7 +607,7 @@ class ChartFollower {
       }
 
       for (var k = 0; k < n; k++) {
-        _guess[k] *= math.exp(_sharpness * (fits[k] - best));
+        _guess[k] *= math.exp(_pitched * _sharpness * (fits[k] - best));
       }
     }
     var total = 0.0;

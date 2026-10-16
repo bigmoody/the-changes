@@ -29,6 +29,7 @@ Tune _standard(String title) =>
   Tune tune,
   int tempo, {
   int seed = 1,
+  Set<Instrument>? only,
 }) {
   final backing = renderBacking(
     BackingRequest(
@@ -40,8 +41,12 @@ Tune _standard(String title) =>
     ),
   );
   Float32List? mix;
-  for (final stem in backing.stems.values) {
+  for (final MapEntry(key: who, value: stem) in backing.stems.entries) {
     final wav = readWav(stem);
+    if (only != null && !only.contains(who)) {
+      mix ??= Float32List(wav.frames);
+      continue;
+    }
     final frames = wav.frames;
     mix ??= Float32List(frames);
     for (var i = 0; i < math.min(frames, mix.length); i++) {
@@ -403,5 +408,35 @@ void main() {
       print('  after tapping: ${(share * 100).toStringAsFixed(1)}%');
       expect(share, greaterThan(0.85));
     });
+  }
+
+  // Under a solo the piano often lays out and it is bass and drums; in a
+  // drum solo, or trading fours, it is the drums alone. Eight bars of the
+  // whole band, then the rest without.
+  for (final (name, who, needs) in [
+    ('bass and drums', {Instrument.bass, Instrument.drums}, 0.9),
+    ('the drums alone', {Instrument.drums}, 0.85),
+  ]) {
+    for (final title in ['Autumn Leaves', 'Blue Bossa', 'Cherokee']) {
+      test('keeps its place through $name ($title)', () {
+        final tune = _standard(title);
+        final whole = _band(bank, tune, 160);
+        final without = _band(bank, tune, 160, only: who);
+        final split = (whole.countInBeats + 32) * whole.samplesPerBeat;
+        final track = Float32List(whole.audio.length)
+          ..setRange(0, split, whole.audio)
+          ..setRange(split, whole.audio.length, without.audio, split);
+        final follower = ChartFollower(tune: tune, tempo: 160);
+        _feed(follower, track);
+        final share = _onTheBar(
+          follower,
+          whole,
+          settle: (split + 4 * whole.samplesPerBeat) / 44100,
+        );
+        // ignore: avoid_print
+        print('$title, $name: ${(share * 100).toStringAsFixed(1)}%');
+        expect(share, greaterThan(needs));
+      });
+    }
   }
 }
