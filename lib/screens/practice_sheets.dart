@@ -378,13 +378,16 @@ void showMixer(BuildContext context, PracticeController controller) {
                   child: Text('Mixer', style: theme.textTheme.titleLarge),
                 ),
                 TextButton(
-                  onPressed: controller.resetMix,
+                  key: const ValueKey('mixer-reset'),
+                  onPressed: controller.resetSheet,
                   child: const Text('Reset'),
                 ),
               ],
             ),
             Text(
-              'Mute your own part, or solo one to hear it alone.',
+              'Mute your own part, or solo one to hear it alone. Reset '
+              'puts the band, the levels and the count-in back; the kit '
+              'and who plays the chords are yours and stay.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

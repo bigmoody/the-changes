@@ -746,6 +746,27 @@ class PracticeController extends ChangeNotifier {
     _applyMix();
   }
 
+  /// Everything the mixer sheet changes about *this tune*, put back.
+  ///
+  /// The levels, the mutes and the solos, which is what Reset used to
+  /// do on its own, and now also the band: the groove, the bass, the
+  /// comping, the figure and the swing all go back to the way the tune
+  /// is written, the count-in to a bar, the arpeggios off. The sheet
+  /// grew from a mixer into the whole band, and a button at the top of
+  /// it saying Reset that only moved the faders was answering a
+  /// question nobody asked.
+  ///
+  /// What it leaves alone is what is not this tune's: which kit and
+  /// which instrument plays the chords are settings that follow the
+  /// player from tune to tune, and a reset here is not a reason to
+  /// forget them.
+  void resetSheet() {
+    setStyle(null);
+    setCountInBars(1);
+    setArpeggios(false);
+    resetMix();
+  }
+
   /// Sends the effective volume of every instrument to the audio engine.
   /// This happens instantly, without restarting playback.
   void _applyMix() {
