@@ -177,9 +177,18 @@ class GuitarComper {
     }
     final voicing = _comper.voice(chord, next);
     if (voicing.isEmpty) return const [];
-    final notes = groove == Feel.funk && style == PianoStyle.straight
-        ? voicing.sublist(voicing.length - 3) // small, high shapes
-        : voicing;
+    final notes = switch (style) {
+      PianoStyle.straight when groove == Feel.funk => voicing.sublist(
+        voicing.length - 3,
+      ), // small, high shapes
+      // La pompe is played on small grips, three or four strings of it.
+      // There is a bassist for the bottom, and a chop that has to be in
+      // and out inside a fraction of a beat cannot be six strings wide:
+      // the low ones arrive late and the chord blurs where it should
+      // crack.
+      PianoStyle.laPompe => voicing.sublist(math.max(0, voicing.length - 4)),
+      _ => voicing,
+    };
 
     if (style == PianoStyle.held) {
       return [
@@ -246,18 +255,25 @@ class GuitarComper {
         // mutes straight after the stroke, which is where the drum-like
         // sound comes from and why the lengths here are so short.
         //
-        // The quick upstroke that lifts into 1 and 3 is a grace note: it
-        // is played at the same speed whatever the tempo, so it is
-        // written as a tenth of a beat before the stroke it leads to.
-        // The one before beat 1 belongs to the bar before, which is
-        // where it sounds, so each bar carries the lift into the next.
+        // The quick upstroke that lifts into 1 and 3 is a grace note,
+        // and a grace note is a length of time rather than a fraction of
+        // a beat: it is "played very quickly no matter what the tempo
+        // is". So it is twenty-five milliseconds before the stroke it
+        // leads to, worked back into beats at this tempo. Written as a
+        // fixed fraction of a beat it dragged further and further off
+        // the beat as the tempo came down, which is the sound of a
+        // player who is not quite with it.
+        //
+        // The lift into beat 1 belongs to the bar before, which is where
+        // it sounds, so each bar carries the one into the next.
+        final grace = 0.025 * tempo / 60;
         return [
           (0, 0.22, 0.62, Strum.down),
           (1, 0.3, 0.85, Strum.down),
-          (1.9, 0.1, 0.3, Strum.up),
+          (2 - grace, 0.08, 0.28, Strum.up),
           (2, 0.22, 0.62, Strum.down),
           (3, 0.3, 0.85, Strum.down),
-          (3.9, 0.1, 0.3, Strum.up),
+          (4 - grace, 0.08, 0.28, Strum.up),
         ];
       case PianoStyle.held || PianoStyle.swing:
         return const [];

@@ -78,6 +78,35 @@ const guitarTimingSpread = 0.012;
 /// within one vary far less, and that is the small figure below.
 const guitarVelocitySpread = 0.18;
 
+/// How a stroke is played: how long the pick takes to cross the strings,
+/// how far the hand strays from the beat, and how much the strength
+/// wanders from what was written.
+///
+/// Comping and chopping are not the same hand. A comper is never exactly
+/// on the grid, and the wander is what stops a guitar part sounding like
+/// a sampler. La pompe is the opposite job: it is the time, in a band
+/// with no drummer, and a gypsy rhythm guitar that wanders is the one
+/// thing it must not do. So the stroke is faster across the strings, it
+/// lands where it says it lands, and it is struck at the strength it was
+/// written at. Tight and even is the sound, not a lack of one.
+({double gap, double timing, double velocity}) strokeFeel(
+  PianoStyle style,
+  Strum strum,
+) => style == PianoStyle.laPompe
+    ? (
+        // A chop, not a roll: the pick is through the strings in a few
+        // milliseconds. Six strings at the comping gap took longer than
+        // the chop itself is meant to last.
+        gap: 0.0022,
+        timing: guitarTimingSpread * 0.2,
+        velocity: guitarVelocitySpread * 0.3,
+      )
+    : (
+        gap: strum == Strum.together ? 0.002 : 0.007,
+        timing: guitarTimingSpread,
+        velocity: guitarVelocitySpread,
+      );
+
 /// How loud a guitar note is played, before velocity and the mixer.
 ///
 /// Set by measurement rather than by taste: the whole guitar set is
@@ -908,21 +937,18 @@ _Parts _renderParts(
           final order = hit.strum == Strum.up
               ? hit.notes.reversed.toList()
               : hit.notes;
-          final gap = switch (hit.strum) {
-            Strum.down => 0.007,
-            Strum.up => 0.007,
-            Strum.together => 0.002,
-          };
+          final feel = strokeFeel(tune.style.piano, hit.strum);
+          final gap = feel.gap;
           // One stroke's worth of humanising, shared by every string in
           // it: the hand is early or late, and hard or soft, for the whole
           // chord rather than string by string.
           final push =
               ((human.nextDouble() + human.nextDouble()) / 2 * 2 - 1) *
-              guitarTimingSpread;
+              feel.timing;
           final strength =
               1 +
               ((human.nextDouble() + human.nextDouble()) / 2 * 2 - 1) *
-                  guitarVelocitySpread;
+                  feel.velocity;
           final nudge = (push * sampleRate).round();
           for (var v = 0; v < order.length; v++) {
             final offset =

@@ -147,15 +147,25 @@ drum-like sound comes from, and why the app's strokes are so short.
 
 The quick upstroke before 1 and 3 is a grace note: "its time value is
 not relative to the overall tempo of the song. It is played very
-quickly no matter what the tempo is." So the app writes it a tenth of a
-beat before the stroke it leads into, and each bar carries the lift
-into the next, which is where it sounds.
+quickly no matter what the tempo is." So the app writes it twenty-five
+milliseconds before the stroke it leads into, worked back into beats at
+whatever tempo the tune is going at, and each bar carries the lift into
+the next, which is where it sounds. Written as a fixed fraction of a
+beat instead, it dragged further off the beat the slower the tune got.
   Disputed, and recorded as disputed: players on the DjangoBooks forum
   differ over whether the upstrokes are part of the pattern at all, one
   calling it "an effect that you can do, but don't have to". What is
   agreed is that the main beats are always downstrokes, which is what
   the app plays; the upstrokes are quiet enough to be the grace notes
   the primer describes.
+
+Tight, and on small grips. The chop is three or four strings, not six:
+there is a bassist for the bottom, and a stroke that has to be in and
+out inside a fraction of a beat cannot be six strings wide without the
+low ones arriving late. The app's comping hand wanders a little on
+purpose, which is what stops a guitar part sounding like a sampler;
+this one does not, because in a band with no drummer it is the time.
+That is the app's own reading, and it is what [strokeFeel] says.
 
 No drummer. The Quintette du Hot Club de France had none, and "the
 guitars and bass had to provide both the harmony and the rhythmic

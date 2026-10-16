@@ -19,6 +19,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/drum_patterns.dart';
+import 'package:play_along/audio/backing_synth.dart';
 import 'package:play_along/audio/guitar_comping.dart';
 import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/ireal_export.dart';
@@ -300,7 +301,7 @@ void main() {
     test('la pompe is four short chops with 2 and 4 carrying', () {
       final guitar = GuitarComper(math.Random(7));
       final hits = guitar.comp(
-        Chord.parse('Am6')!,
+        Chord.parse('Am6'),
         4,
         style: PianoStyle.laPompe,
         groove: Feel.gypsy,
@@ -318,17 +319,68 @@ void main() {
       expect(on2.velocity, greaterThan(on1.velocity));
       // The grace upstroke that lifts into 1 and 3, written where it
       // sounds: just before the stroke it leads to.
-      final ups = hits.where((hit) => hit.strum == Strum.up);
-      expect(ups.map((hit) => hit.beat), [1.9, 3.9]);
+      final ups = hits.where((hit) => hit.strum == Strum.up).toList();
+      expect(ups, hasLength(2));
       for (final up in ups) {
         expect(up.velocity, lessThan(0.4), reason: 'a grace note, not a beat');
       }
+      // And it is a length of time, not a fraction of a beat: the
+      // quicker the tune, the larger a share of the beat it takes.
+      double lift(int tempo) {
+        final bar = GuitarComper(math.Random(7)).comp(
+          Chord.parse('Am6'),
+          4,
+          style: PianoStyle.laPompe,
+          groove: Feel.gypsy,
+          beatInBar: 0,
+          bar: 0,
+          tempo: tempo,
+          swing: tripletSwing,
+        );
+        return 2 - bar.firstWhere((hit) => hit.strum == Strum.up).beat;
+      }
+
+      expect(lift(240), greaterThan(lift(120)));
+      expect(lift(240) / lift(120), closeTo(2, 0.01));
     });
 
     test('and the band it belongs to', () {
       expect(BandStyle.of(Feel.gypsy).piano, PianoStyle.laPompe);
       expect(figuresApply(PianoStyle.laPompe, Comping.guitar), isFalse);
       expect(Feel.gypsy.swings, isTrue);
+    });
+  });
+
+  group('la pompe is the time, so it is tight', () {
+    test('a chop is a few milliseconds wide, and lands where it says', () {
+      // The numbers are the claim: a comper wanders, and that wander is
+      // what stops a guitar sounding like a sampler. A rhythm guitar in
+      // a band with no drummer is doing the drummer's job instead.
+      final pompe = strokeFeel(PianoStyle.laPompe, Strum.down);
+      final comping = strokeFeel(PianoStyle.swing, Strum.down);
+      expect(pompe.gap, lessThan(comping.gap / 2));
+      expect(pompe.timing, lessThan(comping.timing / 2));
+      expect(pompe.velocity, lessThan(comping.velocity / 2));
+    });
+
+    test('and it is a small grip, not six strings', () {
+      final guitar = GuitarComper(math.Random(7));
+      final hits = guitar.comp(
+        Chord.parse('F#m6'),
+        4,
+        style: PianoStyle.laPompe,
+        groove: Feel.gypsy,
+        beatInBar: 0,
+        bar: 0,
+        swing: tripletSwing,
+      );
+      for (final hit in hits) {
+        expect(
+          hit.notes.length,
+          lessThanOrEqualTo(4),
+          reason: 'at ${hit.beat}',
+        );
+      }
     });
   });
 
