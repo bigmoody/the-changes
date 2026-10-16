@@ -19,6 +19,7 @@ import 'library/library_store.dart';
 import 'screens/home_screen.dart';
 import 'screens/hush_snippets.dart';
 import 'screens/note_ink.dart';
+import 'screens/sound_shelf.dart' show SoundFonts;
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
 import 'practice/part_store.dart';
@@ -156,11 +157,17 @@ class TheChangesApp extends StatelessWidget {
         // Above the navigator rather than around the home screen, so that
         // a chord tone named three pushes deep is still in the colour its
         // reader sees it in.
-        builder: (context, child) => NoteInk(
-          settings: settings,
-          child: _Handover(
-            progressions: progressions,
-            child: child ?? const SizedBox(),
+        //
+        // The SoundFonts too, so the mixer can offer them from any tune
+        // without every screen on the way handing them down.
+        builder: (context, child) => SoundFonts(
+          store: soundFont,
+          child: NoteInk(
+            settings: settings,
+            child: _Handover(
+              progressions: progressions,
+              child: child ?? const SizedBox(),
+            ),
           ),
         ),
         home: HomeScreen(

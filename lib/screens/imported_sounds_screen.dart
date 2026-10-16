@@ -22,26 +22,23 @@
 // good free ones carry licences that would have to be honoured one at a
 // time, and a font somebody found is theirs and not ours.
 //
-// Only the chosen sounds are kept (see instrument_file.dart). The .sf2 is
-// let go as soon as it has been read.
+// A file brought in stays, on the shelf (see soundfont_store.dart), so
+// that changing the snare a second time, or trying the next piano along,
+// is a list and a tap rather than the file picker again. Each part's row
+// opens that list; the file picker only comes up for a file that is not
+// here yet.
 
 import 'dart:typed_data';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../audio/drum_patterns.dart' show Drum, importableDrums;
-import '../audio/imported_kit.dart';
-import '../audio/sample_bank.dart';
-import '../audio/soundfont.dart';
-import '../audio/what_file.dart';
+import '../audio/soundfont.dart' show SoundFontException;
 import '../music/tune.dart' show BassSound, Comping, DrumSound;
 import '../practice/soundfont_store.dart';
 import '../settings/app_settings.dart';
+import 'sound_shelf.dart';
 import 'tunes_page.dart' show SectionHeader;
-
-/// A kit found in a file, ready to take drums out of.
-typedef FoundKit = ({String name, Map<Drum, DrumSamples> drums});
 
 class ImportedSoundsScreen extends StatefulWidget {
   const ImportedSoundsScreen({
@@ -67,192 +64,179 @@ class ImportedSoundsScreen extends StatefulWidget {
 }
 
 class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
-  /// The file being browsed, when somebody came in that way.
-  SoundFont? _font;
+  /// The font on the shelf whose sounds are listed, if one is.
+  String? _openId;
   String? _problem;
   var _busy = false;
 
-  // ── Getting a file ─────────────────────────────────────────────────────
+  PickFiles? get _pick => switch (widget.pick) {
+    null => null,
+    final pick => () async => [?await pick()],
+  };
 
-  Future<({String name, Uint8List bytes})?> _pickFile() async {
-    // Any file rather than only .sf2: the extension is not reliable on
-    // every platform, and saying what a file actually is beats a picker
-    // that silently offers nothing to choose.
-    final picked = await FilePicker.platform.pickFiles(withData: true);
-    final file = picked?.files.singleOrNull;
-    final bytes = file?.bytes;
-    if (bytes == null) return null;
-    return (name: file!.name, bytes: bytes);
+  ShelvedFont? get _open {
+    for (final font in widget.store.shelf) {
+      if (font.id == _openId) return font;
+    }
+    return null;
   }
 
-  /// A file, read, or null when they backed out or it was not one.
-  ///
-  /// The wrong kind of file is named rather than refused: somebody who
-  /// has brought a MIDI file here has the right file and the wrong door.
-  Future<SoundFont?> _readAFile() async {
+  /// Runs [work], which puts the spinner up itself while it is reading
+  /// rather than while a list is open, and says what went wrong.
+  Future<void> _while(
+    Future<({ShelfOutcome outcome, String? problem})> Function() work, {
+    Future<void> Function(ShelfOutcome outcome)? then,
+  }) async {
+    setState(() => _problem = null);
+    final done = await work();
+    if (then != null) await then(done.outcome);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _problem = done.problem;
+    });
+  }
+
+  void _working(bool working) {
+    if (mounted) setState(() => _busy = working);
+  }
+
+  // ── The shelf ──────────────────────────────────────────────────────────
+
+  Future<void> _bringIn() async {
     setState(() {
       _busy = true;
       _problem = null;
     });
-    try {
-      final picked = await (widget.pick ?? _pickFile)();
-      if (!mounted) return null;
-      if (picked == null) {
-        setState(() => _busy = false);
-        return null;
-      }
-      final kind = whatIsThisFile(picked.bytes);
-      if (kind != FileKind.soundFont) {
-        setState(() {
-          _busy = false;
-          _problem = wrongKind(
-            kind,
-            wanted: FileKind.soundFont,
-            instead: switch (kind) {
-              FileKind.midi => 'Add it as a part from the tune you want it on.',
-              FileKind.wav =>
-                'Recordings of real players go in from the tune they were '
-                    'played over.',
-              _ => null,
-            },
-          );
-        });
-        return null;
-      }
-      final font = SoundFont.read(picked.bytes, fileName: picked.name);
-      if (!mounted) return null;
-      setState(() => _busy = false);
-      return font;
-    } on SoundFontException catch (e) {
-      if (!mounted) return null;
-      setState(() {
-        _busy = false;
-        _problem = e.message;
-      });
-      return null;
-    }
+    final brought = await bringIn(widget.store, pick: _pick);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _problem = brought.problem;
+      // What came in is opened, because looking at what is in it is
+      // why somebody brings a file in from here.
+      if (brought.added.isNotEmpty) _openId = brought.added.last.id;
+    });
   }
 
-  /// Every kit in [font], already mapped onto the band's drums.
-  List<FoundKit> _kitsIn(SoundFont font) {
-    final kits = <FoundKit>[];
-    for (final preset in font.presets) {
-      if (!preset.isPercussion) continue;
-      final drums = kitFromGeneralMidi(font.drumKitFor(preset));
-      if (drums.isEmpty) continue;
-      kits.add((name: _nameOf(preset, font), drums: drums));
-    }
-    return kits;
+  Future<void> _remove(ShelvedFont font) async {
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Remove ${font.name}?'),
+        content: const Text(
+          'The copy on this phone is deleted, and its sounds go from the '
+          'list. Anything already playing from it keeps playing.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep It'),
+          ),
+          TextButton(
+            key: const ValueKey('really-remove-font'),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (sure != true) return;
+    if (_openId == font.id) setState(() => _openId = null);
+    await widget.store.remove(font);
   }
-
-  /// The font's name as well as the preset's, because kits are named
-  /// generically: two fonts both calling theirs "Drum Kit" would be
-  /// indistinguishable in the very list that says where each drum is from.
-  String _nameOf(SoundFontPreset preset, SoundFont font) =>
-      preset.name == font.name ? preset.name : '${preset.name} · ${font.name}';
 
   // ── Coming in from the part ────────────────────────────────────────────
 
-  /// Changes one drum, starting from the drum.
-  Future<void> _chooseDrum(Drum drum) async {
-    final font = await _readAFile();
-    if (font == null || !mounted) return;
-    final kits = _kitsIn(font);
-    // Only the kits that actually have this drum: offering one that does
-    // not, and then failing, would be the app wasting somebody's tap.
-    final withIt = [
-      for (final kit in kits)
-        if (kit.drums.containsKey(drum)) kit,
-    ];
-    if (withIt.isEmpty) {
-      setState(
-        () => _problem = kits.isEmpty
-            ? 'There are no drum kits in that file.'
-            : 'No kit in that file has a ${drum.label.toLowerCase()}.',
-      );
-      return;
-    }
-    final chosen = await _pickOne(
-      withIt.length == 1 ? null : 'Which kit\'s ${drum.label.toLowerCase()}',
-      [
-        for (final (i, kit) in withIt.indexed)
-          (key: 'kit-$i', label: kit.name, value: kit),
-      ],
-    );
-    if (chosen == null || !mounted) return;
-    await widget.store.keepDrum(drum, chosen.name, chosen.drums[drum]!);
-    await widget.settings?.setDrumSound(DrumSound.imported);
-  }
+  Future<void> _chooseInstrument(SoundFontRole role) => _while(
+    () => chooseInstrument(
+      context,
+      widget.store,
+      role,
+      pick: _pick,
+      working: _working,
+    ),
+    then: (outcome) async {
+      switch (outcome) {
+        case ShelfOutcome.chosen:
+          await _putOn(role);
+        case ShelfOutcome.ours:
+          await widget.store.forget(role);
+        case ShelfOutcome.nothing:
+          break;
+      }
+    },
+  );
 
-  /// Changes the chords or the bass, starting from the part.
-  Future<void> _chooseInstrument(SoundFontRole role) async {
-    final font = await _readAFile();
-    if (font == null || !mounted) return;
-    final pitched = [
-      for (final preset in font.presets)
-        if (!preset.isPercussion) preset,
-    ];
-    if (pitched.isEmpty) {
-      setState(
-        () => _problem = 'There are no instruments in that file, only kits.',
-      );
-      return;
+  Future<void> _chooseDrum(Drum drum) => _while(
+    () =>
+        chooseDrum(context, widget.store, drum, pick: _pick, working: _working),
+    then: (outcome) async {
+      switch (outcome) {
+        case ShelfOutcome.chosen:
+          await widget.settings?.setDrumSound(DrumSound.imported);
+        case ShelfOutcome.ours:
+          await widget.store.forgetDrum(drum);
+        case ShelfOutcome.nothing:
+          break;
+      }
+    },
+  );
+
+  /// And put it on. Anybody who has just picked a sound wants to hear it,
+  /// and leaving it to a second trip through Settings makes the app look
+  /// broken to everyone who does not make that trip.
+  Future<void> _putOn(SoundFontRole role) async {
+    switch (role) {
+      case SoundFontRole.chords:
+        await widget.settings?.setComping(Comping.imported);
+      case SoundFontRole.bass:
+        await widget.settings?.setBassSound(BassSound.imported);
+      case SoundFontRole.arpeggio:
+        await widget.settings?.setArpeggioSound(Comping.imported);
+      case SoundFontRole.drums:
+        await widget.settings?.setDrumSound(DrumSound.imported);
     }
-    final chosen = await _pickOne(
-      'Which sound plays ${role.part.toLowerCase()}',
-      [
-        for (final preset in pitched)
-          (key: 'sound-${preset.index}', label: preset.name, value: preset),
-      ],
-    );
-    if (chosen == null || !mounted) return;
-    await _keepInstrument(chosen, role);
   }
 
   // ── Coming in from the file ────────────────────────────────────────────
 
-  Future<void> _browse() async {
-    final font = await _readAFile();
-    if (font == null || !mounted) return;
-    setState(() => _font = font);
-  }
-
-  /// A preset tapped in the file's own list, which has to ask what it is
-  /// for because the file does not know.
-  Future<void> _assign(SoundFontPreset preset) async {
-    final font = _font;
-    if (font == null) return;
-    if (preset.isPercussion) {
-      final kit = kitFromGeneralMidi(font.drumKitFor(preset));
-      if (kit.isEmpty) {
+  /// A sound tapped in a font's own list, which has to ask what it is for
+  /// because the font does not know.
+  Future<void> _assign(ShelvedFont font, ShelvedSound sound) async {
+    if (sound.isKit) {
+      if (sound.drums.isEmpty) {
         setState(
           () => _problem =
-              '${preset.name} has no drums where the General MIDI map puts '
+              '${sound.name} has no drums where the General MIDI map puts '
               'them, so the band would not know what to hit.',
         );
         return;
       }
-      final taken = await _pickOne<({Drum? drum})>('Take from ${preset.name}', [
+      final taken = await _pickOne<({Drum? drum})>('Take from ${sound.name}', [
         (key: 'take-whole-kit', label: 'The Whole Kit', value: (drum: null)),
         for (final drum in Drum.values)
-          if (kit.containsKey(drum))
+          if (sound.drums.contains(drum))
             (key: 'take-${drum.name}', label: drum.label, value: (drum: drum)),
       ]);
       if (taken == null || !mounted) return;
-      final from = _nameOf(preset, font);
-      if (taken.drum case final drum?) {
-        await widget.store.keepDrum(drum, from, kit[drum]!);
-      } else {
-        await widget.store.keepKit(from, kit);
+      final ok = await _trying(() async {
+        if (taken.drum case final drum?) {
+          await widget.store.chooseDrum(drum, font, sound);
+        } else {
+          await widget.store.chooseKit(font, sound);
+        }
+        await widget.settings?.setDrumSound(DrumSound.imported);
+      });
+      if (ok) {
+        _say(
+          '${sound.name} will play '
+          '${taken.drum == null ? 'the drums' : 'the ${taken.drum!.label.toLowerCase()}'}',
+        );
       }
-      await widget.settings?.setDrumSound(DrumSound.imported);
-      _say(
-        '${preset.name} will play '
-        '${taken.drum == null ? 'the drums' : 'the ${taken.drum!.label.toLowerCase()}'}',
-      );
       return;
     }
-    final role = await _pickOne<SoundFontRole>('${preset.name} plays', [
+    final role = await _pickOne<SoundFontRole>('${sound.name} plays', [
       for (final role in [
         SoundFontRole.chords,
         SoundFontRole.bass,
@@ -261,85 +245,70 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
         (key: 'play-as-${role.name}', label: role.part, value: role),
     ]);
     if (role == null || !mounted) return;
-    await _keepInstrument(preset, role);
-    _say('${preset.name} will play ${role.part.toLowerCase()}');
+    final ok = await _trying(() async {
+      // Reading the samples out is the slow part, and it happens once.
+      await widget.store.choose(role, font, sound);
+      await _putOn(role);
+    });
+    if (ok) _say('${sound.name} will play ${role.part.toLowerCase()}');
   }
 
-  Future<void> _keepInstrument(
-    SoundFontPreset preset,
-    SoundFontRole role,
-  ) async {
-    final font = _font ?? await _readAFile();
-    if (font == null || !mounted) return;
-    setState(() => _busy = true);
+  /// Does [work] with the spinner up, and says so if the font would not
+  /// give the sound up.
+  Future<bool> _trying(Future<void> Function() work) async {
+    setState(() {
+      _busy = true;
+      _problem = null;
+    });
     try {
-      // Reading the samples out is the slow part, and it happens once.
-      final SampledInstrument instrument = font.instrumentFor(preset);
-      await widget.store.keep(role, instrument);
-      // And put it on. Anybody who has just picked a sound out of a file
-      // wants to hear it, and leaving it to a second trip through
-      // Settings makes the app look broken to everyone who does not make
-      // that trip.
-      switch (role) {
-        case SoundFontRole.chords:
-          await widget.settings?.setComping(Comping.imported);
-        case SoundFontRole.bass:
-          await widget.settings?.setBassSound(BassSound.imported);
-        case SoundFontRole.arpeggio:
-          await widget.settings?.setArpeggioSound(Comping.imported);
-        case SoundFontRole.drums:
-          break;
-      }
-      if (!mounted) return;
-      setState(() => _busy = false);
+      await work();
+      if (mounted) setState(() => _busy = false);
+      return true;
     } on SoundFontException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _problem = e.message;
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _problem = e.message;
+        });
+      }
+      return false;
     }
   }
 
-  void _say(String what) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(what)));
+  void _say(String what) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(what)));
+  }
 
   // ── Asking ─────────────────────────────────────────────────────────────
 
-  /// One of [choices], or the only one when there is no question to ask.
+  /// One of [choices].
   Future<T?> _pickOne<T>(
-    String? title,
+    String title,
     List<({String key, String label, T value})> choices,
-  ) async {
-    if (choices.length == 1 && title == null) return choices.single.value;
-    return showModalBottomSheet<T>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            if (title != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-            for (final choice in choices)
-              ListTile(
-                key: ValueKey(choice.key),
-                title: Text(choice.label),
-                onTap: () => Navigator.of(context).pop(choice.value),
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
+  ) => showModalBottomSheet<T>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          ),
+          for (final choice in choices)
+            ListTile(
+              key: ValueKey(choice.key),
+              title: Text(choice.label),
+              onTap: () => Navigator.of(context).pop(choice.value),
+            ),
+          const SizedBox(height: 8),
+        ],
       ),
-    );
-  }
+    ),
+  );
 
   Future<void> _forgetEverything() async {
     final sure = await showDialog<bool>(
@@ -347,9 +316,9 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Play the Whole Band Again?'),
         content: const Text(
-          'Every sound you have imported is thrown away, and the band goes '
-          'back to its own piano, upright and kit. The SoundFonts you took '
-          'them from are untouched.',
+          'Every sound the band is playing from a SoundFont is let go, and '
+          'it goes back to its own piano, upright and kit. Your SoundFonts '
+          'stay in the list to choose from again.',
         ),
         actions: [
           TextButton(
@@ -380,7 +349,7 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final font = _font;
+    final open = _open;
     return Scaffold(
       appBar: AppBar(title: const Text('Imported Sounds')),
       body: SafeArea(
@@ -393,8 +362,8 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Text(
                   'Any of the band can be played from a SoundFont (.sf2) of '
-                  'your own. Tap the part you want to change, or open a file '
-                  'and see what is in it.',
+                  'your own. Bring a file in once and every sound in it stays '
+                  'here to choose from, on this screen and in the mixer.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
@@ -416,6 +385,65 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
                     ),
                   ),
                 ),
+              const SectionHeader('Your SoundFonts'),
+              for (final (i, font) in widget.store.shelf.indexed) ...[
+                ListTile(
+                  key: ValueKey('font-$i'),
+                  leading: Icon(
+                    font.id == _openId ? Icons.expand_less : Icons.expand_more,
+                  ),
+                  title: Text(font.name),
+                  subtitle: Text(font.summary),
+                  trailing: IconButton(
+                    key: ValueKey('remove-font-$i'),
+                    tooltip: 'Remove',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _remove(font),
+                  ),
+                  onTap: () => setState(
+                    () => _openId = font.id == _openId ? null : font.id,
+                  ),
+                ),
+                if (font.id == open?.id) ...[
+                  if (font.sounds.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(32, 0, 16, 8),
+                      child: Text(
+                        'There is nothing playable in this file.',
+                        key: const ValueKey('nothing-offered'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  for (final sound in font.sounds)
+                    ListTile(
+                      key: ValueKey('preset-${sound.index}'),
+                      dense: true,
+                      contentPadding: const EdgeInsets.only(
+                        left: 56,
+                        right: 16,
+                      ),
+                      title: Text(sound.name),
+                      subtitle: Text(
+                        sound.isKit
+                            ? 'A drum kit'
+                            : 'Bank ${sound.bank}, program ${sound.program}',
+                      ),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: _busy ? null : () => _assign(font, sound),
+                    ),
+                ],
+              ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: OutlinedButton.icon(
+                  key: const ValueKey('choose-soundfont'),
+                  onPressed: _busy ? null : _bringIn,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add a SoundFont'),
+                ),
+              ),
               // Every part, tappable to change it: the question people
               // actually arrive with is about a part, not about a file.
               const SectionHeader('The Band Plays'),
@@ -462,44 +490,6 @@ class _ImportedSoundsScreenState extends State<ImportedSoundsScreen> {
                     label: const Text('Play the Band\'s Own Kit'),
                   ),
                 ),
-              const SectionHeader('Or Open a File'),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: OutlinedButton.icon(
-                  key: const ValueKey('choose-soundfont'),
-                  onPressed: _busy ? null : _browse,
-                  icon: const Icon(Icons.folder_open),
-                  label: Text(
-                    font == null ? 'Choose a File' : 'Choose Another',
-                  ),
-                ),
-              ),
-              if (font != null && !_busy) ...[
-                SectionHeader(font.name),
-                if (font.presets.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                    child: Text(
-                      'There is nothing playable in this file.',
-                      key: const ValueKey('nothing-offered'),
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                for (final preset in font.presets)
-                  ListTile(
-                    key: ValueKey('preset-${preset.index}'),
-                    title: Text(preset.name),
-                    subtitle: Text(
-                      preset.isPercussion
-                          ? 'A drum kit'
-                          : 'Bank ${preset.bank}, program ${preset.program}',
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _assign(preset),
-                  ),
-              ],
               if (widget.store.anything)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),

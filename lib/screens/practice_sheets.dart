@@ -22,12 +22,14 @@ import '../music/tuning.dart';
 import '../practice/hiding_the_chart.dart';
 import '../practice/practice_controller.dart';
 import '../practice/practice_record.dart';
+import '../practice/soundfont_store.dart' show SoundFontRole;
 import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
 import 'bring_in_sheet.dart';
 import 'import_recording_sheet.dart';
+import 'sound_shelf.dart';
 
 /// The practice screen's sheets, all opened the same way.
 ///
@@ -355,6 +357,74 @@ String _listenLine(PracticeController controller) {
   };
 }
 
+/// Which of the imported sounds a part plays, chosen without leaving the
+/// tune.
+///
+/// The segments above say piano, guitar or imported; this says which
+/// imported, and opens every sound on the shelf to change it. It is only
+/// there once something has been brought in that could play the part.
+class _FromTheShelf extends StatelessWidget {
+  const _FromTheShelf({required this.controller, required this.role});
+
+  final PracticeController controller;
+  final SoundFontRole role;
+
+  bool get _isOn => switch (role) {
+    SoundFontRole.chords => controller.settings.comping == Comping.imported,
+    SoundFontRole.bass => controller.settings.bassSound == BassSound.imported,
+    SoundFontRole.arpeggio =>
+      controller.settings.arpeggioSound == Comping.imported,
+    SoundFontRole.drums => controller.settings.drumSound == DrumSound.imported,
+  };
+
+  Future<void> _putOn() async {
+    // Already on: the setting does not change, so the band is told.
+    if (_isOn) return controller.soundsChanged();
+    switch (role) {
+      case SoundFontRole.chords:
+        await controller.setComping(Comping.imported);
+      case SoundFontRole.bass:
+        await controller.setBassSound(BassSound.imported);
+      case SoundFontRole.arpeggio:
+        await controller.setArpeggioSound(Comping.imported);
+      case SoundFontRole.drums:
+        await controller.setDrumSound(DrumSound.imported);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = SoundFonts.maybeOf(context);
+    if (store == null) return const SizedBox.shrink();
+    final drums = role == SoundFontRole.drums;
+    if (!(drums ? store.hasKitsToChoose : store.hasInstrumentsToChoose)) {
+      return const SizedBox.shrink();
+    }
+    final name = drums ? store.drumsFrom : store.nameFor(role);
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: TextButton.icon(
+        key: ValueKey('shelf-${role.name}'),
+        icon: const Icon(Icons.graphic_eq, size: 18),
+        label: Text(
+          name == null ? 'Choose an Imported Sound' : 'Imported: $name',
+          overflow: TextOverflow.ellipsis,
+        ),
+        onPressed: () async {
+          final done = drums
+              ? await chooseKit(context, store)
+              : await chooseInstrument(context, store, role, offerOurs: false);
+          if (done.outcome == ShelfOutcome.chosen) await _putOn();
+          if (done.problem case final problem? when context.mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(problem)));
+          }
+        },
+      ),
+    );
+  }
+}
+
 /// A bottom sheet with a volume slider, mute and solo for each instrument.
 void showMixer(BuildContext context, PracticeController controller) {
   // As tall as it needs (the arpeggios add a channel), scrolling if the
@@ -365,6 +435,7 @@ void showMixer(BuildContext context, PracticeController controller) {
       listenable: controller,
       builder: (context, _) {
         final theme = Theme.of(context);
+        final shelf = SoundFonts.maybeOf(context);
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,11 +489,13 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ),
               ],
             ),
+            _FromTheShelf(controller: controller, role: SoundFontRole.chords),
             const SizedBox(height: 8),
             // And who plays the bass, which is only a choice once somebody
             // has imported something for it.
             if (controller.settings.bassSound == BassSound.imported ||
-                controller.hasImportedBass)
+                controller.hasImportedBass ||
+                (shelf?.hasInstrumentsToChoose ?? false))
               Row(
                 children: [
                   Text('Bass', style: theme.textTheme.titleSmall),
@@ -442,6 +515,7 @@ void showMixer(BuildContext context, PracticeController controller) {
                   ),
                 ],
               ),
+            _FromTheShelf(controller: controller, role: SoundFontRole.bass),
             const SizedBox(height: 8),
             // Always shown now there are two kits in the app. It used to
             // appear only once something had been imported, which was
@@ -468,6 +542,7 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ),
               ],
             ),
+            _FromTheShelf(controller: controller, role: SoundFontRole.drums),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -544,6 +619,11 @@ void showMixer(BuildContext context, PracticeController controller) {
                     ),
                   ],
                 ),
+              ),
+            if (controller.arpeggios)
+              _FromTheShelf(
+                controller: controller,
+                role: SoundFontRole.arpeggio,
               ),
             if (controller.arpeggios)
               Padding(

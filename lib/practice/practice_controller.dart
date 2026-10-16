@@ -658,6 +658,14 @@ class PracticeController extends ChangeNotifier {
     _restartIfPlaying(delay: Duration.zero);
   }
 
+  /// A different sound on a part that was already imported: the setting
+  /// is the same, so nothing above notices, and the band has to be told
+  /// to play it.
+  void soundsChanged() {
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
   Future<void> setComping(Comping value) async {
     if (value == settings.comping) return;
     await settings.setComping(value);
