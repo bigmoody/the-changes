@@ -1881,7 +1881,7 @@ class _Mix {
   /// to repeat. A one-shot, which is every built-in recording, simply runs
   /// out, and the loop costs it nothing.
   void addRecording(
-    int start,
+    int at,
     SampledNote note,
     double gain, {
     double rate = 1,
@@ -1890,6 +1890,11 @@ class _Mix {
   }) {
     final sample = note.samples;
     final speed = rate * note.rate;
+    // [at] is where the note is heard, not where the file begins. The
+    // quiet front of the recording is played before it, so the attack
+    // lands on the beat; at the very top of a take there is nowhere for
+    // it to go, and it starts where it can.
+    final start = math.max(0, at - (note.lead / speed).round());
     final scale = gain / 32768;
     final loop = note.loop;
     // Where the readhead may not go: one short of the end, because reading

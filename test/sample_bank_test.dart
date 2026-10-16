@@ -557,10 +557,21 @@ void main() {
 
     final plain = renderSnippet(bank, notes);
     final bright = renderSnippet(bank, notes, bassTone: BassTone.bright);
+    // The phone-speaker figure is read off one note rather than off the
+    // arpeggio. A snippet is peak-normalised, so with several notes in it
+    // the gain it is scaled by depends on where their attacks happen to
+    // land against each other, and moving any of them by a few
+    // milliseconds moves the measurement without touching the shelf. One
+    // note has one attack and nothing to collide with.
+    const one = [
+      (pitch: 43, start: 0.0, length: 0.5, velocity: 0.8, bass: true),
+    ];
+    final onePlain = renderSnippet(bank, one);
+    final oneBright = renderSnippet(bank, one, bassTone: BassTone.bright);
     debugPrint(
       'bass above 1 kHz: ${(above(plain, 1000) * 100).toStringAsFixed(1)}% → '
       '${(above(bright, 1000) * 100).toStringAsFixed(1)}%; on a phone '
-      '${onAPhone(plain).round()} → ${onAPhone(bright).round()}',
+      '${onAPhone(onePlain).round()} → ${onAPhone(oneBright).round()}',
     );
     // The bright tone lifts the top so the bass carries on a phone
     // speaker. It used to reach a good deal further, by saturating the
@@ -571,7 +582,7 @@ void main() {
     // These are the floor of the shelf that was chosen, not a target to
     // aim at. If they fall, the shelf has been weakened or lost.
     expect(above(bright, 1000), greaterThan(above(plain, 1000) * 1.25));
-    expect(onAPhone(bright), greaterThan(onAPhone(plain) * 1.10));
+    expect(onAPhone(oneBright), greaterThan(onAPhone(onePlain) * 1.10));
   });
 
   test(

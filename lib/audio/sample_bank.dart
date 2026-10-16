@@ -75,7 +75,9 @@ class DrumSamples {
 /// plus a region to go round while the key is held. Without the loop an
 /// organ stops dead a third of a second in.
 class SampledNote {
-  const SampledNote(this.samples, {this.rate = 1, this.loop});
+  // Not const: [lead] is measured from the samples the first time it is
+  // asked for, and a const object cannot hold a field worked out later.
+  SampledNote(this.samples, {this.rate = 1, this.loop});
 
   final Int16List samples;
 
@@ -89,7 +91,51 @@ class SampledNote {
   final (int, int)? loop;
 
   int get length => samples.length;
+
+  /// How many samples pass before the recording is heard.
+  ///
+  /// A file starts when the engineer pressed record; the note starts when
+  /// the player's hand did. Between the two sit a little silence and the
+  /// beginning of the rise, and for the upright bass here that is eleven
+  /// milliseconds on average and as much as forty on one take. Played
+  /// from the front, every bass note lands that far behind its own beat,
+  /// and a different distance behind it each time, which is a bass that
+  /// drags and wanders without anybody having asked it to.
+  ///
+  /// So the band plays to attacks: [Mixer.addRecording] starts a file
+  /// this much earlier, and what the ear hears lands where the beat is.
+  ///
+  /// Measured against the recording's own peak, so a soft take is not
+  /// judged by a loud one, and capped: a sound still climbing after
+  /// [_mostLead] is one that swells rather than one that is late, and
+  /// dragging a brush swirl forward by a third of its circle would be a
+  /// different kind of wrong.
+  late final int lead = _leadIn();
+
+  /// Where the sound starts: a sixth of the way up to the peak of its own
+  /// attack, which is about where a listener puts the note.
+  int _leadIn() {
+    final look = math.min(samples.length, _attackWindow);
+    var peak = 0;
+    for (var i = 0; i < look; i++) {
+      final level = samples[i].abs();
+      if (level > peak) peak = level;
+    }
+    if (peak == 0) return 0;
+    final threshold = peak ~/ 6;
+    for (var i = 0; i < math.min(look, _mostLead); i++) {
+      if (samples[i].abs() >= threshold) return i;
+    }
+    return 0;
+  }
 }
+
+/// How far into a recording to look for its peak: a quarter of a second,
+/// which is past the attack of anything struck or plucked.
+const _attackWindow = 11025;
+
+/// The furthest a recording is ever moved: twenty-five milliseconds.
+const _mostLead = 1102;
 
 /// How an instrument's recordings of one note differ from each other.
 enum Takes {
