@@ -222,6 +222,8 @@ String _feelWords(UserProgression progression) {
     Feel.calypso => 'Calypso',
     Feel.jazzWaltz => 'Jazz Waltz',
     Feel.ballad => 'Ballad',
+    Feel.secondLine => 'Second Line',
+    Feel.gypsy => 'Gypsy Jazz',
   };
   return progression.tags.contains(Genre.ballad) ? 'Ballad ($feel)' : feel;
 }

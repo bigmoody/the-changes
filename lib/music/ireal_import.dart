@@ -572,6 +572,10 @@ Feel _feelOf(String style) {
   if (any(['calypso', 'soca', 'reggae', 'ska'])) return Feel.calypso;
   // Before the Latin names, so an Afro waltz is still played in three.
   if (any(['waltz', '3/4'])) return Feel.jazzWaltz;
+  if (any(['second line', 'new orleans', 'dixieland', 'trad'])) {
+    return Feel.secondLine;
+  }
+  if (any(['gypsy', 'manouche', 'django'])) return Feel.gypsy;
   if (any([
     'bossa', 'latin', 'samba', 'afro', 'cuban', 'mambo', 'cha', 'rhumba', //
     'rumba', 'bolero', 'salsa', 'montuno', 'songo', 'tango', 'baiao',

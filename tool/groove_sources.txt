@@ -93,3 +93,87 @@ Sources in full:
   https://www.nmeanebraska.org/assets/docs/All-State/Jazz-Band/Jazz-Scales/Set-D/NMEA%20All-State%20Jazz%20drum%20set%20D.pdf
   https://percussion.byu.edu/brushes
   https://www.moderndrummer.com (Steve Fidyk, brush basics workshop)
+
+
+SECOND LINE (_secondLineBar)
+
+The accent skeleton: "1, the a of 1, the and of 2, 3, the a of 3, the
+and of 4".
+  soundbrenner.com, rhythm library: second line. Given as a practice
+  pattern for the whole groove rather than for one drum.
+
+Bass drum on the downbeats and the off-beat pickups: 1, the "and" of 2,
+3, the "and" of 4.
+  The same article: low sounds on 1 and 3, then one moved to the "and"
+  of 4 as "an offbeat pickup into the next bar".
+  A second source describes the street beat as the downbeat plus the
+  syncopated "and" of 2 and "and" of 4, which is the same figure read
+  the other way round. The app plays both halves: downbeats on 1 and 3,
+  pickups after each backbeat.
+
+Snare: the backbeat on 2 and 4 with ghost notes around it, and
+"syncopation, rolls, buzzes, and street-beat vocabulary" besides. The
+app plays the backbeat and the ghosts, and an extra crack off the beat
+now and then; it has no press roll to play.
+
+No cymbal at all. A brass band is a bass drum and a snare, and that is
+what the kit part stands in for. This is the app's own reading of the
+sources rather than a quotation: none of them puts a ride in it.
+
+Swung, but not squarely: "often between swung eighths and loose
+sixteenths", less triplet-based than a shuffle and less smooth than
+swing. The app swings it on the same curve as everything else, which
+the Swing slider then moves.
+
+Tempo: "slower processional feels" up to "bright, fast street tempos".
+
+Bass: the tuba or bass "outlines bass motion and reinforces the walking
+feel", so it walks.
+
+
+GYPSY JAZZ, LA POMPE (PianoStyle.laPompe)
+
+Four staccato downstrokes a bar, with the accent on 2 and 4.
+  premierguitar.com, "Rhythm Rules: Gypsy Jazz Primer": the most basic
+  pattern is four staccato downstrokes per measure with a slight
+  emphasis on beats two and four. The same source notes beginners
+  mistake it for a two-beat because of that accent.
+
+The accent comes from the arm, not from a harder pick: for beat 2 "the
+hand lifts high and drops", using gravity rather than muscle.
+
+The left hand mutes immediately after the stroke, which is where the
+drum-like sound comes from, and why the app's strokes are so short.
+
+The quick upstroke before 1 and 3 is a grace note: "its time value is
+not relative to the overall tempo of the song. It is played very
+quickly no matter what the tempo is." So the app writes it a tenth of a
+beat before the stroke it leads into, and each bar carries the lift
+into the next, which is where it sounds.
+  Disputed, and recorded as disputed: players on the DjangoBooks forum
+  differ over whether the upstrokes are part of the pattern at all, one
+  calling it "an effect that you can do, but don't have to". What is
+  agreed is that the main beats are always downstrokes, which is what
+  the app plays; the upstrokes are quiet enough to be the grace notes
+  the primer describes.
+
+No drummer. The Quintette du Hot Club de France had none, and "the
+guitars and bass had to provide both the harmony and the rhythmic
+drive"; the rhythm guitar's "short, percussive attack" does what a kit
+otherwise would.
+  en.wikipedia.org, Gypsy jazz.
+  allaboutjazz.com, Clément Réboul interview, on the bass as "the base
+  of the groove" locked to la pompe.
+
+Bass: both a two-feel and walking four are standard, and players mix
+them. The app walks and leaves the two-feel a dropdown away.
+  Soundslice's gypsy jazz bass course teaches both on the same tunes.
+
+Sources in full:
+  https://www.soundbrenner.com/blogs/articles/second-line
+  https://www.premierguitar.com/rhythm-rules-gypsy-jazz-primer
+  https://www.jazzguitar.be/blog/gypsy-jazz-chords/
+  https://djangobooks.com/forum/discussion/3897
+  https://en.wikipedia.org/wiki/Gypsy_jazz
+  https://www.allaboutjazz.com/clement-reboul-how-to-appreciate-and-learn-gypsy-jazz
+  https://www.soundslice.com/lessons/gypsy-jazz-bass/

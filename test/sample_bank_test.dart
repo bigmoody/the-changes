@@ -200,19 +200,29 @@ void main() {
         ),
       );
       for (final instrument in backing.stems.keys) {
+        // Gypsy jazz has no drummer: the guitar's chop is the time, and
+        // a silent kit there is the arrangement rather than a fault.
+        if (instrument == Instrument.drums && !feel.hasDrums) {
+          expect(
+            rms(backing.stems[instrument]!),
+            0,
+            reason: '${feel.label} is played without a drummer',
+          );
+          continue;
+        }
         expect(
           rms(backing.stems[instrument]!),
           greaterThan(200),
           reason: '${feel.label}: ${instrument.label} is silent',
         );
       }
-      stems[feel] = backing.stems[Instrument.drums]!;
+      if (feel.hasDrums) stems[feel] = backing.stems[Instrument.drums]!;
     }
     // A groove you cannot tell from another one is not a groove. The two
     // that swing share a ride pattern, so they are compared on the whole
     // kit rather than on level alone.
-    for (final a in Feel.values) {
-      for (final b in Feel.values) {
+    for (final a in stems.keys) {
+      for (final b in stems.keys) {
         if (a.index >= b.index) continue;
         expect(
           listEquals(stems[a], stems[b]),

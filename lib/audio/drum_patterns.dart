@@ -15,6 +15,9 @@
 //  • Ballad: the slowest swing, with the brushes circling the head and
 //    the right hand touching the time in on 2 and 4 rather than keeping
 //    it on the cymbal.
+//  • Second line: the New Orleans street beat, kick and snare only, no
+//    cymbal, the kick picking up off the beat after each backbeat.
+//  • Gypsy jazz: nothing. The Quintette had no drummer.
 //  • Calypso: cowbell on the off-beats, toms instead of a snare backbeat,
 //    and the kick on the 3-3-2 (1, the "and" of 2, 4) with the bass. No
 //    clave (that's a bossa) and no backbeat over a kick on 1 and 3 (that's
@@ -140,6 +143,9 @@ List<DrumHit> drumBar({
     Feel.jazzWaltz => _jazzWaltzBar(bar, beatsPerBar, random),
     Feel.ballad when brushes => _balladBrushBar(bar, beatsPerBar, random),
     Feel.ballad => _balladBar(bar, beatsPerBar, random),
+    Feel.secondLine => _secondLineBar(bar, beatsPerBar, random),
+    // No drummer at all: the guitar's chop is the time. See [Feel.gypsy].
+    Feel.gypsy => const <DrumHit>[],
   })
     if (hit.beat < beatsPerBar)
       hit.at(keepsTime(hit.drum) ? hit.beat : leaned(hit.beat, feel, swing)),
@@ -1107,6 +1113,100 @@ List<DrumHit> _balladBrushBar(int bar, int beatsPerBar, math.Random random) {
           beats: beatsPerBar.toDouble(),
         ),
       );
+  }
+  return hits;
+}
+
+/// The second line: New Orleans' street beat.
+///
+/// The kick carries the figure. The accent skeleton a parade is taught
+/// by runs "1, the a of 1, the and of 2, 3, the a of 3, the and of 4",
+/// and the kick takes the downbeats and the off-beat pickups out of it:
+/// 1, the "and" of 2, 3 and the "and" of 4, that last one leaning into
+/// the next bar. The snare cracks the backbeat on 2 and 4 with ghost
+/// notes around it, and there is no cymbal at all: a brass band has two
+/// drummers, a bass drum and a snare, and this is them.
+///
+/// It is swung, but not squarely: the sources put it between swung
+/// eighths and loose sixteenths, which is what the feel's own swing
+/// setting does with it once the tempo is known.
+List<DrumHit> _secondLineBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  final backbeats = _backbeats(beatsPerBar);
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    if (beat.isEven) {
+      // The downbeats of the figure: 1 and 3 in four.
+      hits.add(
+        DrumHit(
+          drum: Drum.kick,
+          beat: beat.toDouble(),
+          velocity: (beat == 0 ? 0.72 : 0.6) * _human(random),
+          hard: beat == 0,
+        ),
+      );
+    } else {
+      // The pickup off the beat after each backbeat, which is what makes
+      // it a second line rather than a march.
+      hits.add(
+        DrumHit(
+          drum: Drum.kick,
+          beat: beat + 0.5,
+          velocity: 0.62 * _human(random),
+          hard: true,
+        ),
+      );
+    }
+    if (backbeats.contains(beat)) {
+      hits
+        ..add(
+          DrumHit(
+            drum: Drum.snare,
+            beat: beat.toDouble(),
+            velocity: 0.72 * _human(random),
+            hard: true,
+          ),
+        )
+        // The ghost notes the backbeat sits in: played, but under the
+        // band rather than on top of it.
+        ..add(
+          DrumHit(
+            drum: Drum.snare,
+            beat: beat + 0.5,
+            velocity: 0.18 * _human(random),
+          ),
+        );
+    } else {
+      hits.add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beat + 0.5,
+          velocity: 0.16 * _human(random),
+        ),
+      );
+    }
+    // The hi-hat keeps the walking pulse under all of it, on the
+    // backbeats as it does everywhere else in this file.
+    if (backbeats.contains(beat)) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.42 * _human(random),
+        ),
+      );
+    }
+  }
+  // The snare's own vocabulary: an extra crack off the beat, now and
+  // then, in place of a fill.
+  if (random.nextDouble() < 0.35) {
+    hits.add(
+      DrumHit(
+        drum: Drum.snare,
+        beat: (beatsPerBar - 1) + 0.5,
+        velocity: 0.5 * _human(random),
+        hard: true,
+      ),
+    );
   }
   return hits;
 }

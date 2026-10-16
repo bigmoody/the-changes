@@ -127,6 +127,7 @@ class Comper {
     Chord? next,
     bool held = false,
     bool calypso = false,
+    bool pompe = false,
     double beatInBar = 0,
     CompFigure? figure,
     int beatsPerBar = 4,
@@ -187,6 +188,8 @@ class Comper {
           };
     final pattern = held
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
+        : pompe
+        ? _pompePattern(beats, beatInBar)
         : calypso
         ? _calypsoPattern(beats, beatInBar)
         : _pickPattern(
@@ -262,6 +265,21 @@ class Comper {
 
   /// The part of a bar's strum that falls in a chord [beats] long starting
   /// [beatInBar] into the bar, so two chords sharing a bar share one strum.
+  /// La pompe, for whoever is holding the chords.
+  ///
+  /// It is a guitar part, and the guitarist plays it as strokes; a
+  /// pianist handed a gypsy tune plays the same shape of bar, which is
+  /// four short chords with 2 and 4 carrying. There are no grace notes
+  /// here: an upstroke on the bass strings is a thing a pick does and
+  /// not a thing a piano can do.
+  _Pattern _pompePattern(int beats, double beatInBar) => [
+    for (var beat = 0.0; beat < beats; beat++)
+      if ((beatInBar + beat) % 2 == 1)
+        (beat, 0.3, 0.85)
+      else
+        (beat, 0.22, 0.62),
+  ];
+
   _Pattern _calypsoPattern(int beats, double beatInBar) {
     if (beatInBar == 0 || _strum == null) {
       final weights = [for (final (w, _) in _calypsoStrums) w.toDouble()];

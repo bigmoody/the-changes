@@ -239,6 +239,26 @@ class GuitarComper {
                 (2.5, 0.4, 0.75, Strum.up),
                 (3.5, 0.45, 0.8, Strum.up),
               ];
+      case PianoStyle.laPompe:
+        // "The pump": four downstrokes a bar, all of them short, with 2
+        // and 4 the ones that carry. The accent comes from the arm
+        // dropping rather than from a harder pick, and the left hand
+        // mutes straight after the stroke, which is where the drum-like
+        // sound comes from and why the lengths here are so short.
+        //
+        // The quick upstroke that lifts into 1 and 3 is a grace note: it
+        // is played at the same speed whatever the tempo, so it is
+        // written as a tenth of a beat before the stroke it leads to.
+        // The one before beat 1 belongs to the bar before, which is
+        // where it sounds, so each bar carries the lift into the next.
+        return [
+          (0, 0.22, 0.62, Strum.down),
+          (1, 0.3, 0.85, Strum.down),
+          (1.9, 0.1, 0.3, Strum.up),
+          (2, 0.22, 0.62, Strum.down),
+          (3, 0.3, 0.85, Strum.down),
+          (3.9, 0.1, 0.3, Strum.up),
+        ];
       case PianoStyle.held || PianoStyle.swing:
         return const [];
       case PianoStyle.straight when groove == Feel.funk && tempo < 95:

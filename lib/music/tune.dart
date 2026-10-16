@@ -68,7 +68,27 @@ enum Feel {
   /// A ballad is not only a swing tune at a slow tempo. What changes is
   /// who plays what: the time moves off the cymbal and onto the head,
   /// the bass stops walking, and the piano stops answering.
-  ballad('Ballad');
+  ballad('Ballad'),
+
+  /// The New Orleans street beat: the kick carrying a syncopated figure
+  /// against a backbeat with ghost notes around it, and the whole thing
+  /// somewhere between swung eighths and loose sixteenths rather than
+  /// squarely either.
+  ///
+  /// Nothing on the cymbal. A parade has no ride, and on a kit what
+  /// stands in for the two drummers of a brass band is the kick and the
+  /// snare, which is why this is the one swung groove here with no
+  /// cymbal time in it at all.
+  secondLine('Second Line'),
+
+  /// Gypsy jazz, after Django Reinhardt's Quintette: la pompe on the
+  /// guitar, "the pump", four short downstrokes a bar with 2 and 4
+  /// carrying the accent.
+  ///
+  /// There is no drum part, because there was no drummer. The guitar's
+  /// chop is the time, and it is percussive on purpose: that is what
+  /// drives the music where a kit otherwise would.
+  gypsy('Gypsy Jazz');
 
   const Feel(this.label);
   final String label;
@@ -79,7 +99,12 @@ enum Feel {
 
   /// Whether this feel's eighths are long-short.
   bool get swings =>
-      this == swing || this == shuffle || this == jazzWaltz || this == ballad;
+      this == swing ||
+      this == shuffle ||
+      this == jazzWaltz ||
+      this == ballad ||
+      this == secondLine ||
+      this == gypsy;
 
   /// Where the off-beats sit before anybody touches the slider: the
   /// tempo's own swing for the feels that swing, even for the rest.
@@ -114,7 +139,20 @@ enum Feel {
     // Faster than this and the brushes and the two-feel stop making
     // sense: it is a medium swing tune by then, whatever it is called.
     ballad => (slowest: 40, fastest: 85),
+    // A parade walks, and then it does not: slow enough for a dirge
+    // coming back from the cemetery, bright enough for the street.
+    secondLine => (slowest: 70, fastest: 220),
+    // Minor Swing was cut at better than two hundred, and the repertoire
+    // runs faster still.
+    gypsy => (slowest: 90, fastest: 300),
   };
+
+  /// Whether there is a drummer at all.
+  ///
+  /// Gypsy jazz is the one groove here played without one: the
+  /// Quintette's rhythm was two guitars and a bass, and the chop does
+  /// what a kit would. Silence is the part, not a part missing.
+  bool get hasDrums => this != gypsy;
 
   /// [tempo] brought into the range this feel is played at, staying as
   /// close to it as the feel allows.
@@ -148,6 +186,7 @@ enum Genre {
     Feel.funk => funk,
     Feel.jazzWaltz => swing,
     Feel.ballad => ballad,
+    Feel.secondLine || Feel.gypsy => swing,
   };
 
   /// The genres that come from what a tune is rather than how it's played:
@@ -189,13 +228,17 @@ enum PianoStyle {
 
   /// Short chords in the calypso strum: 1, 2, the "and" of 2, the "and"
   /// of 3, 4, the "and" of 4; or a lighter version of it.
-  calypso('Calypso strum');
+  calypso('Calypso strum'),
+
+  /// La pompe, gypsy jazz's own: four short downstrokes a bar, 2 and 4
+  /// the ones that carry, and a quick upstroke lifting into 1 and 3.
+  laPompe('La Pompe');
 
   const PianoStyle(this.label);
   final String label;
 
   /// Whether the piano's eighths swing.
-  Feel get feel => this == swing ? Feel.swing : Feel.bossa;
+  Feel get feel => this == swing || this == laPompe ? Feel.swing : Feel.bossa;
 }
 
 /// Who plays the chords: the pianist, or a guitarist in their place.
@@ -207,7 +250,7 @@ enum PianoStyle {
 /// and nowhere else: in the Latin styles it plays the bossa guitar's own
 /// two-bar figures instead, which are a different thing entirely.
 bool figuresApply(PianoStyle style, Comping who) => switch (style) {
-  PianoStyle.held || PianoStyle.calypso => false,
+  PianoStyle.held || PianoStyle.calypso || PianoStyle.laPompe => false,
   PianoStyle.swing => true,
   PianoStyle.straight => who == Comping.piano,
 };
@@ -279,7 +322,14 @@ class BandStyle {
       // A shuffle's bass walks like any other blues; the bounce is in the
       // drums and the comping, not in the notes it chooses.
       // A waltz walks too, three to the bar rather than four.
-      Feel.swing || Feel.shuffle || Feel.jazzWaltz => BassStyle.walking,
+      // Second line walks too: the tuba or the bass holds the pulse the
+      // kick is playing against. So does a gypsy bass, which can play
+      // two instead, and the Bass dropdown is where that lives.
+      Feel.swing ||
+      Feel.shuffle ||
+      Feel.jazzWaltz ||
+      Feel.secondLine ||
+      Feel.gypsy => BassStyle.walking,
       // A ballad is held up by two notes a bar, not four: roots and
       // fifths, with the space left in.
       Feel.ballad => BassStyle.twoFeel,
@@ -288,7 +338,11 @@ class BandStyle {
       Feel.calypso => BassStyle.calypso,
     },
     piano: switch (feel) {
-      Feel.swing || Feel.shuffle || Feel.jazzWaltz => PianoStyle.swing,
+      Feel.swing ||
+      Feel.shuffle ||
+      Feel.jazzWaltz ||
+      Feel.secondLine => PianoStyle.swing,
+      Feel.gypsy => PianoStyle.laPompe,
       // Long chords, one to a change. A comper answering every phrase is
       // what a ballad does not want.
       Feel.ballad => PianoStyle.held,

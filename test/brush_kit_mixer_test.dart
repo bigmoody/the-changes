@@ -55,6 +55,10 @@ void main() {
 
   testWidgets('and the brushes can be chosen', (tester) async {
     await openMixer(tester);
+    // The kit sits below the grooves and the parts, so on a short
+    // screen it has to be scrolled to before it can be tapped.
+    await tester.ensureVisible(find.text('Brushes'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Brushes'));
     await tester.pumpAndSettle();
     final button = tester.widget<SegmentedButton<DrumSound>>(

@@ -35,7 +35,13 @@ void main() {
               random: math.Random(bar),
               swing: tripletSwing,
             );
-            expect(hits, isNotEmpty, reason: '$feel, bar $bar');
+            // Gypsy jazz has no drummer at all, which is the part
+            // rather than a part missing.
+            expect(
+              hits,
+              feel.hasDrums ? isNotEmpty : isEmpty,
+              reason: '$feel, bar $bar',
+            );
             for (final hit in hits) {
               expect(hit.beat, lessThan(beatsPerBar), reason: '$feel');
               expect(hit.beat, greaterThanOrEqualTo(0));

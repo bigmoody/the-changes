@@ -1,12 +1,16 @@
-// Two grooves a jazz band plays that the app could not: a waltz, and a
-// ballad.
+// The grooves a jazz band plays that the app could not: a waltz, a
+// ballad, the New Orleans street beat and gypsy jazz.
 //
-// Both were reachable before by picking swing and changing something
-// else, and that is exactly why they are worth naming. Swing counted in
+// The first two were reachable before by picking swing and changing
+// something else, and that is exactly why they are worth naming. Swing counted in
 // three puts a skip note after every backbeat, which is a hurried waltz;
 // swing at 60 beats a minute walks the bass and comps behind you, which
 // is a ballad nobody plays. What changes in each is who plays what, not
 // how fast it goes.
+//
+// The other two are not swing at all: a second line has no cymbal in it
+// and gypsy jazz has no drummer, so what carries the time is the kick
+// and the snare in one and the guitar's chop in the other.
 //
 // Where the patterns come from is written down in tool/groove_sources.txt
 // beside the samples' own sources.
@@ -15,6 +19,8 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/drum_patterns.dart';
+import 'package:play_along/audio/guitar_comping.dart';
+import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/ireal_export.dart';
 import 'package:play_along/music/ireal_import.dart';
 import 'package:play_along/music/swing.dart';
@@ -221,6 +227,108 @@ void main() {
       expect(Feel.ballad.tempoFor(200), 85);
       expect(Feel.ballad.tempoFor(60), 60);
       expect(Feel.jazzWaltz.tempoFor(60), 80);
+    });
+  });
+
+  group('the second line', () {
+    test('the kick picks up off the beat after each backbeat', () {
+      // "1, the a of 1, the and of 2, 3, the a of 3, the and of 4" is
+      // the skeleton; the kick takes the downbeats and the pickups.
+      expect(beatsOf(Feel.secondLine, Drum.kick, beatsPerBar: 4), [
+        0.0,
+        1.5,
+        2.0,
+        3.5,
+      ]);
+    });
+
+    test('and nothing touches a cymbal', () {
+      // A brass band has a bass drum and a snare. That is the band.
+      for (var i = 0; i < 16; i++) {
+        final hits = bar(Feel.secondLine, beatsPerBar: 4, bar: i, seed: i);
+        expect(
+          hits.where(
+            (hit) =>
+                hit.drum == Drum.ride ||
+                hit.drum == Drum.hiHatClosed ||
+                hit.drum == Drum.hiHatOpen,
+          ),
+          isEmpty,
+          reason: 'bar $i',
+        );
+      }
+    });
+
+    test('the backbeat cracks and the ghost notes stay under it', () {
+      final snares = bar(
+        Feel.secondLine,
+        beatsPerBar: 4,
+      ).where((hit) => hit.drum == Drum.snare).toList();
+      final cracks = snares.where((hit) => hit.hard);
+      expect(cracks.map((hit) => hit.beat), containsAll([1.0, 3.0]));
+      for (final ghost in snares.where((hit) => !hit.hard && hit.beat < 3.4)) {
+        expect(ghost.velocity, lessThan(0.25), reason: 'at ${ghost.beat}');
+      }
+    });
+
+    test('it swings, and the band walks under it', () {
+      expect(Feel.secondLine.swings, isTrue);
+      expect(BandStyle.of(Feel.secondLine).bass, BassStyle.walking);
+      expect(Feel.secondLine.hasDrums, isTrue);
+    });
+  });
+
+  group('gypsy jazz', () {
+    test('there is no drummer, in any bar or any metre', () {
+      for (final beats in [3, 4, 5]) {
+        for (var i = 0; i < 16; i++) {
+          expect(
+            bar(Feel.gypsy, beatsPerBar: beats, bar: i, seed: i),
+            isEmpty,
+            reason: '$beats/4, bar $i',
+          );
+          expect(
+            bar(Feel.gypsy, beatsPerBar: beats, bar: i, seed: i, brushes: true),
+            isEmpty,
+            reason: 'nor with brushes',
+          );
+        }
+      }
+      expect(Feel.gypsy.hasDrums, isFalse);
+    });
+
+    test('la pompe is four short chops with 2 and 4 carrying', () {
+      final guitar = GuitarComper(math.Random(7));
+      final hits = guitar.comp(
+        Chord.parse('Am6')!,
+        4,
+        style: PianoStyle.laPompe,
+        groove: Feel.gypsy,
+        beatInBar: 0,
+        bar: 0,
+        swing: tripletSwing,
+      );
+      final downs = hits.where((hit) => hit.strum == Strum.down).toList();
+      expect(downs.map((hit) => hit.beat), [0.0, 1.0, 2.0, 3.0]);
+      for (final hit in downs) {
+        expect(hit.length, lessThan(0.4), reason: 'the left hand mutes it');
+      }
+      final on2 = downs.firstWhere((hit) => hit.beat == 1);
+      final on1 = downs.firstWhere((hit) => hit.beat == 0);
+      expect(on2.velocity, greaterThan(on1.velocity));
+      // The grace upstroke that lifts into 1 and 3, written where it
+      // sounds: just before the stroke it leads to.
+      final ups = hits.where((hit) => hit.strum == Strum.up);
+      expect(ups.map((hit) => hit.beat), [1.9, 3.9]);
+      for (final up in ups) {
+        expect(up.velocity, lessThan(0.4), reason: 'a grace note, not a beat');
+      }
+    });
+
+    test('and the band it belongs to', () {
+      expect(BandStyle.of(Feel.gypsy).piano, PianoStyle.laPompe);
+      expect(figuresApply(PianoStyle.laPompe, Comping.guitar), isFalse);
+      expect(Feel.gypsy.swings, isTrue);
     });
   });
 

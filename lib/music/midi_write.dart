@@ -131,6 +131,7 @@ Uint8List _piano(
         next: next,
         held: tune.style.piano == PianoStyle.held,
         calypso: tune.style.piano == PianoStyle.calypso,
+        pompe: tune.style.piano == PianoStyle.laPompe,
         figure: tune.style.figure,
         beatsPerBar: beatsPerBar,
         swing: swing,

@@ -796,6 +796,10 @@ class _TheBand extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
+        // A block that wraps, not a row that scrolls sideways: this is
+        // where a player chooses the groove, and a groove they cannot
+        // see is one they will not find. The sheet itself scrolls, so
+        // the cost of another line here is paid there.
         Wrap(
           spacing: 6,
           runSpacing: 6,
@@ -839,6 +843,19 @@ class _TheBand extends StatelessWidget {
             ),
           ),
         ),
+        // A kit that plays nothing looks like one that is broken, so it
+        // says why. Picking any other groove brings the drummer back.
+        if (!style.drums.hasDrums)
+          Padding(
+            key: const ValueKey('no-drummer'),
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
+            child: Text(
+              'No drummer: the guitar\'s chop is the time.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         _BandPart<BassStyle>(
           label: 'Bass',
           value: style.bass,
