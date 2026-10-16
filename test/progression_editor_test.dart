@@ -136,6 +136,8 @@ void main() {
     final saved = store.all.single;
     expect(saved.title, 'My turnaround');
     expect(saved.bars, ['Em7 A7', 'Dm7 G7', 'C^7']);
+    // Written here, so it is one of Mine.
+    expect(saved.written, isTrue);
     expect(
       saved.style,
       const BandStyle(

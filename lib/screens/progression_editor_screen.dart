@@ -93,7 +93,8 @@ class ProgressionEditorScreen extends StatefulWidget {
 class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
   // Edits go to a copy; nothing is saved until Save is pressed.
   late final UserProgression _draft = widget.existing == null
-      ? UserProgression.starter(id: widget.store.newId())
+      // Started here, so it is the player's own: Mine, in My Changes.
+      ? (UserProgression.starter(id: widget.store.newId())..written = true)
       : UserProgression.fromJson(widget.existing!.toJson());
   late final _name = TextEditingController(text: _draft.title);
   var _changed = false;

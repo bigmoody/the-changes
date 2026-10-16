@@ -17,6 +17,7 @@ class UserProgression {
     required this.bars,
     required this.style,
     this.composer,
+    this.written = false,
     this.meter = Meter.four,
     int? beatsPerBar,
     Set<Genre>? tags,
@@ -80,6 +81,7 @@ class UserProgression {
         tempo: json['tempo'] as int,
         bars: [for (final bar in json['bars'] as List) bar as String],
         composer: json['composer'] as String?,
+        written: json['written'] as bool? ?? false,
         // Saved before meters were written down: every one of them was
         // counted in quarter notes.
         meter:
@@ -118,6 +120,14 @@ class UserProgression {
 
   /// Who wrote it, if anyone's named: an imported tune's composer.
   String? composer;
+
+  /// Whether it was written here, with New Progression, rather than
+  /// imported from iReal Pro, copied out of the book or made for a lick.
+  /// It is what My Changes calls Mine.
+  ///
+  /// Only known from when it started being written down: anything saved
+  /// before then reads as not written here, because there is no telling.
+  bool written;
 
   /// The time signature on the chart: 4/4, a waltz, six eight.
   Meter meter;
@@ -279,6 +289,7 @@ class UserProgression {
     'id': id,
     'title': title,
     if (composer != null) 'composer': composer,
+    if (written) 'written': true,
     // Both, so a chart saved here still opens in a version that only
     // knew how many beats a bar had: 'beats' is what the band counts.
     if (meter != Meter.four) ...{'beats': beatsPerBar, 'meter': meter.label},

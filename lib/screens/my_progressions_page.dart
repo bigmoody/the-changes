@@ -50,6 +50,9 @@ class MyProgressionsPage extends StatefulWidget {
 class _MyProgressionsPageState extends State<MyProgressionsPage> {
   Genre? _genre;
   var _order = TuneOrder.title;
+
+  /// Only the ones written here, not imported or copied in.
+  var _mine = false;
   var _starredOnly = false;
   var _query = '';
   final _scroll = ScrollController();
@@ -148,9 +151,13 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
     final genres = {for (final p in all) ...p.genres};
     // A genre whose last progression was deleted can't stay chosen.
     if (_genre != null && !genres.contains(_genre)) _genre = null;
+    final anyMine = all.any((p) => p.written);
+    // Nor can Mine, once there is nothing of yours left in the list.
+    if (!anyMine) _mine = false;
     final shown = sortedProgressions([
       for (final progression in all)
         if ((_genre == null || progression.genres.contains(_genre)) &&
+            (!_mine || progression.written) &&
             (!_starredOnly ||
                 widget.library.isFavourite(TuneRef.mine(progression.id))) &&
             _matches(progression))
@@ -205,11 +212,13 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
                     order: _order,
                     onOrder: (order) => setState(() => _order = order),
                   ),
-                  if (genres.length > 1)
+                  if (genres.length > 1 || anyMine)
                     GenreFilter(
-                      available: genres,
+                      available: genres.length > 1 ? genres : const {},
                       selected: _genre,
                       onChanged: (genre) => setState(() => _genre = genre),
+                      mine: anyMine ? _mine : null,
+                      onMine: (on) => setState(() => _mine = on),
                     ),
                   Expanded(
                     child: Stack(
