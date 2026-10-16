@@ -78,24 +78,6 @@ class Meter {
   /// time, one otherwise.
   int get perPulse => compound ? 3 : 1;
 
-  /// How many eighth notes one of the band's beats is worth.
-  ///
-  /// This is what makes a tempo comparable across meters. A beat is a
-  /// quarter in 4/4, a dotted quarter in 6/8 felt in two, and an eighth
-  /// in 6/8 counted in six, so the same music is 240, 160 and 480 beats
-  /// a minute in the three of them.
-  int get eighths => unit == 8 ? (compound ? 3 : 1) : 2;
-
-  /// [tempo], which counts [from]'s beats, counted in this meter's.
-  ///
-  /// The music keeps its speed and the number changes with the beat,
-  /// which is the only honest way to move a tune from four into six: a
-  /// dotted quarter at the tempo a quarter was going is a different and
-  /// much faster tune, and that is what counting Cherokee in six eight
-  /// used to do.
-  int tempoFrom(Meter from, int tempo) =>
-      (tempo * from.eighths / eighths).round();
-
   /// "4/4", "6/8", "6/8 in six" …
   String get label => pulses == beats && unit == 8
       ? '$beats/$unit (in $beats)'

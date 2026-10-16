@@ -379,40 +379,6 @@ void main() {
       }
     });
 
-    test('the tempo moves with the beat, because the beat has changed', () {
-      // Cherokee counted in six eight did not sound like six eight: its
-      // tempo is a quarter note's, and handing that number to a dotted
-      // quarter is a tune half as long again and nothing like the one
-      // you asked for.
-      const four = Meter.four;
-      const six = Meter(6, 8);
-      const sixInSix = Meter(6, 8, countedIn: 6);
-      expect(six.tempoFrom(four, 240), 160, reason: 'dotted quarters');
-      expect(four.tempoFrom(six, 160), 240, reason: 'and back again');
-      expect(sixInSix.tempoFrom(four, 120), 240, reason: 'the beat is an 8th');
-      expect(four.tempoFrom(four, 120), 120, reason: 'the same meter');
-      expect(const Meter(3, 4).tempoFrom(four, 120), 120, reason: 'both in 4');
-
-      final library = LibraryStore.inMemory();
-      final tune = standards.firstWhere((t) => t.title == 'Cherokee');
-      final controller = PracticeController(
-        tune: tune,
-        player: PracticePlayer(),
-        settings: AppSettings.inMemory(),
-        library: library,
-        ref: TuneRef.of(tune),
-      );
-      addTearDown(controller.dispose);
-      final written = controller.tempo;
-      controller.setMeter(six);
-      expect(controller.tempo, (written * 2 / 3).round());
-      // And what the tempo's own way back offers is the written tempo
-      // in the beats being counted now, not the raw number.
-      expect(controller.writtenTempo, (tune.defaultTempo * 2 / 3).round());
-      controller.setMeter(null);
-      expect(controller.tempo, written, reason: 'back where it started');
-    });
-
     test('and opening it again finds the same tune, not a longer one', () {
       // The loop and the tempo are both counted in beats, and a tune
       // kept in another meter has a different number of them: opening
@@ -432,7 +398,7 @@ void main() {
       expect(controller.tune.beatsPerBar, 2);
       expect(controller.loop.lengthBeats, controller.tune.totalBeats);
       expect(controller.loop.isWholeTune(controller.tune), isTrue);
-      expect(controller.tempo, (tune.defaultTempo * 2 / 3).round());
+      expect(controller.tempo, tune.defaultTempo);
     });
 
     test('but a tempo you left off at is already in your own beats', () {
