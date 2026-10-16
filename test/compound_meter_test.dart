@@ -264,6 +264,37 @@ void main() {
       expect(shaker[2].velocity, greaterThan(shaker[1].velocity));
     });
 
+    test('the congas: the segundo pairs, the tumba, the one low note', () {
+      // Read off a four-drum bembé in block notation, the kit playing
+      // the open tones on the toms and the slap on the cross-stick:
+      //   Seg:  | - - - - O O | - - - - O O |
+      //   Tum:  | - - S - - - | - - O - - - |
+      //   SupT: | O - - - - - | - - - - - - |
+      final bar = drumBar(
+        feel: Feel.afroSix,
+        bar: 0,
+        beatsPerBar: 4,
+        random: math.Random(3),
+        swing: tripletSwing,
+      );
+      List<double> beatsOf(Drum drum) => [
+        for (final hit in bar)
+          if (hit.drum == drum) hit.beat,
+      ];
+
+      // The segundo's two pairs, on the "and" and "a" of the second and
+      // fourth pulses.
+      final segundo = beatsOf(Drum.tomHigh);
+      expect(segundo, hasLength(4));
+      for (final (i, at) in segundo.indexed) {
+        expect(at, closeTo([4, 5, 10, 11][i] / 3, 1e-9));
+      }
+      // The tumba: a slap on the "a" of one, an open tone on the "a" of
+      // three, and the super tumba's single low note on the top.
+      expect(beatsOf(Drum.crossStick), [closeTo(2 / 3, 1e-9)]);
+      expect(beatsOf(Drum.tomLow)..sort(), [0, closeTo(8 / 3, 1e-9)]);
+    });
+
     test('and the feet hold the pulse down, every dotted quarter', () {
       final feet = [
         for (final hit in drumBar(

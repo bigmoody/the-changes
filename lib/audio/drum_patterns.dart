@@ -1273,7 +1273,29 @@ const _bellEighths = [0, 2, 4, 5, 7, 9, 11];
 /// How long that cycle is in the band's beats: four pulses of three.
 const _bellBeats = 4;
 
-/// Afro 6/8: the bell, the shaker under it, and the feet.
+/// The conga voices of a bembé, in eighths of the same cycle, as a kit
+/// plays them: the open tones on the toms and the slap on the
+/// cross-stick.
+///
+/// Read off a four-drum bembé written in block notation against the
+/// count "1 & a 2 & a | 3 & a 4 & a", which is the twelve pulses:
+///
+///   Qui:  | O S - O S - | O S - O S - |
+///   Seg:  | - - - - O O | - - - - O O |
+///   Tum:  | - - S - - - | - - O - - - |
+///   SupT: | O - - - - - | - - - - - - |
+///
+/// The quinto is the one voice left out. It plays an open tone and a
+/// slap on every pulse, and under a bell and a shaker that already
+/// sound every pulse it is a third part saying the same thing: on a kit
+/// there are two hands, and the segundo's answer is the one worth
+/// having.
+const _segundoOpens = [4, 5, 10, 11];
+const _tumbaSlap = 2;
+const _tumbaOpen = 8;
+const _superTumba = 0;
+
+/// Afro 6/8: the bell, the shaker under it, the congas and the feet.
 ///
 /// Written as a cycle rather than as a bar, because the bell is twelve
 /// eighths long whatever the bar is: in 6/8 it takes two bars, in 12/8
@@ -1354,16 +1376,42 @@ List<DrumHit> _afroSixBar(int bar, int beatsPerBar, math.Random random) {
       ),
     );
   }
-  // The cross-stick the handouts call optional: now and then, on the
-  // half way round, where it answers the bell rather than doubling it.
-  final answer = inThisBar(2);
-  if (answer != null && random.nextDouble() < 0.4) {
+  // The congas: the segundo's pairs of open tones, the tumba's slap and
+  // its answer, and the one low note the super tumba puts on the top of
+  // the cycle.
+  for (final eighth in _segundoOpens) {
+    final at = inThisBar(eighth / 3);
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.tomHigh,
+        beat: at,
+        // The second of each pair is the one that leans into the beat
+        // after it, so it is the louder of the two.
+        velocity: (eighth.isEven ? 0.34 : 0.42) * _human(random),
+      ),
+    );
+  }
+  final slap = inThisBar(_tumbaSlap / 3);
+  if (slap != null) {
     hits.add(
       DrumHit(
         drum: Drum.crossStick,
-        beat: answer,
-        velocity: 0.4 * _human(random),
+        beat: slap,
+        velocity: 0.38 * _human(random),
       ),
+    );
+  }
+  final low = inThisBar(_tumbaOpen / 3);
+  if (low != null) {
+    hits.add(
+      DrumHit(drum: Drum.tomLow, beat: low, velocity: 0.42 * _human(random)),
+    );
+  }
+  final top = inThisBar(_superTumba / 3);
+  if (top != null) {
+    hits.add(
+      DrumHit(drum: Drum.tomLow, beat: top, velocity: 0.34 * _human(random)),
     );
   }
   return hits;
