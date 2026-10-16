@@ -354,4 +354,54 @@ void main() {
     // a little ring from the last chord: not twenty-odd.
     expect(follower.heardBeats.length - before, lessThan(12));
   });
+
+  // A record is whatever speed it is, and the chart's tempo is whatever
+  // somebody last practised it at: half as fast again, or two thirds. It
+  // says it hears a groove it is not counting, and a few taps along with
+  // the record put it right.
+  for (final (told, played) in [(100, 150), (200, 130)]) {
+    test('told $told, the record at $played: tapping along puts it right', () {
+      final tune = _standard('Autumn Leaves');
+      final band = _band(bank, tune, played);
+      final follower = ChartFollower(tune: tune, tempo: told.toDouble());
+      // Eight bars of not keeping up.
+      final eightBars = (band.countInBeats + 32) * band.samplesPerBeat;
+      _feed(follower, Float32List.sublistView(band.audio, 0, eightBars));
+      // ignore: avoid_print
+      print(
+        'Told $told, played $played: hears a groove at '
+        '${follower.roomTempo?.toStringAsFixed(1)}',
+      );
+      final early = follower.heardBeats.where((b) => b.at > 6).toList();
+      // ignore: avoid_print
+      print(
+        '  before tapping: tempo ${follower.position?.tempo.toStringAsFixed(1)}, '
+        'music ${early.where((b) => b.hearsMusic).length}/${early.length}',
+      );
+      // It never claims to be following at the wrong tempo. It may or may
+      // not be able to say what the room's tempo is (two beats at 130
+      // and three at 195 line up, and so do others), which is why the
+      // screen asks for taps either way.
+      expect(early.where((b) => b.hearsMusic), isEmpty);
+      // Four taps on the beat, a little late as a hand is.
+      var at = eightBars;
+      for (var beat = 0; beat < 4; beat++) {
+        final tapAt =
+            eightBars + beat * band.samplesPerBeat + band.samplesPerBeat ~/ 10;
+        _feed(follower, Float32List.sublistView(band.audio, at, tapAt));
+        at = tapAt;
+        follower.tap();
+      }
+      _feed(follower, Float32List.sublistView(band.audio, at));
+      expect(follower.position!.tempo, closeTo(played, 4));
+      final share = _onTheBar(
+        follower,
+        band,
+        settle: (eightBars + 12 * band.samplesPerBeat) / 44100 + 8,
+      );
+      // ignore: avoid_print
+      print('  after tapping: ${(share * 100).toStringAsFixed(1)}%');
+      expect(share, greaterThan(0.85));
+    });
+  }
 }

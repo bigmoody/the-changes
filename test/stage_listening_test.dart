@@ -127,7 +127,10 @@ void main() {
     final stage = await openStage(tester);
     await tester.tap(find.byKey(const ValueKey('stage-listen')));
     await tester.pump();
-    expect(find.textContaining('hearing nothing yet'), findsOneWidget);
+    // Nothing heard yet: it says what to do, and there is a button to
+    // tap the beat on.
+    expect(find.textContaining('very quiet'), findsOneWidget);
+    expect(find.byKey(const ValueKey('stage-tap-tempo')), findsOneWidget);
 
     // Ten bars of the band, from the top.
     await play(tester, stage.room, from: 0, beats: 40);
@@ -152,5 +155,25 @@ void main() {
     expect(find.byKey(const ValueKey('stage-hearing')), findsNothing);
     await stage.controller.stop();
     await tester.pump();
+  });
+
+  testWidgets('tapping the beat gives the count its tempo', (tester) async {
+    // The record is half as fast again as the chart says: a few taps
+    // along with it and the count is on it.
+    final stage = await openStage(tester);
+    await tester.tap(find.byKey(const ValueKey('stage-listen')));
+    await tester.pump();
+    final record = tune.defaultTempo * 1.5;
+    final beat = (44100 * 60 / record).round();
+    // A bar of the track at its own speed would need a new render; the
+    // taps are what is being tested, so silence does for the sound.
+    for (var i = 0; i < 4; i++) {
+      stage.room.add(Float32List(beat));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('stage-tap-tempo')));
+      await tester.pump();
+    }
+    expect(stage.ear.position, isNotNull, reason: 'the taps start the count');
+    expect(stage.ear.position!.tempo, closeTo(record, record * 0.05));
   });
 }

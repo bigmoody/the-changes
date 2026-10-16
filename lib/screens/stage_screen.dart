@@ -145,7 +145,13 @@ class _StageScreenState extends State<StageScreen> {
                   ),
                 ),
                 if (_listening)
-                  _Hearing(level: _ear!.level, heard: heard, sure: sure),
+                  _Hearing(
+                    level: _ear!.level,
+                    heard: heard,
+                    sure: sure,
+                    roomTempo: _ear!.roomTempo,
+                    onTap: _ear!.tap,
+                  ),
                 const Divider(height: 1),
                 _StageBar(
                   controller: controller,
@@ -182,24 +188,43 @@ class _Hearing extends StatelessWidget {
     required this.level,
     required this.heard,
     required this.sure,
+    required this.roomTempo,
+    required this.onTap,
   });
 
   final double level;
   final FollowedPosition? heard;
   final bool sure;
 
+  /// The tempo of a groove heard off the count, which says the chart's
+  /// tempo is some way from the record's.
+  final double? roomTempo;
+
+  /// A tap on the beat, along with the music. Shown whenever it is
+  /// listening: it is the quickest way to give it the tempo, and the one
+  /// thing that settles a groove heard in two from one in four.
+  final VoidCallback onTap;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final text = heard == null
-        ? (level < 0.003
-              ? 'Listening, and hearing nothing yet.'
-              : 'Listening for the first beat.')
-        : sure
+    // Each says what to do next, because the person reading it has an
+    // instrument in their hands and no time to work it out.
+    final text = sure
         ? 'Following the room. Tap a bar to put it right.'
+        : roomTempo != null
+        ? 'The beat in the room is not at the chart\'s tempo. Tap the '
+              'beat along with it a few times.'
+        : heard == null
+        ? (level < 0.001
+              ? 'Listening, but it is very quiet. Turn the music up, or '
+                    'bring the device closer.'
+              : 'Start the music, then tap the beat along with it a few '
+                    'times.')
         : !heard!.hearsMusic
-        ? 'Waiting for the music.'
-        : 'Not sure where we are. Tap the bar you are on.';
+        ? 'Hearing sound, but no beat it can count. Tap the beat along '
+              'with the music a few times.'
+        : 'Not sure where in the tune we are. Tap the bar you are on.';
     return Padding(
       key: const ValueKey('stage-hearing'),
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
@@ -220,6 +245,12 @@ class _Hearing extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            key: const ValueKey('stage-tap-tempo'),
+            onPressed: onTap,
+            child: const Text('Tap the Beat'),
           ),
         ],
       ),

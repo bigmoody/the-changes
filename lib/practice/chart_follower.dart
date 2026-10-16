@@ -82,6 +82,7 @@ class ChartFollower {
     this.fromTheTop = true,
   }) : _period = 60 / tempo * sampleRate / _hop,
        _expected = 60 / tempo * sampleRate / _hop,
+       _told = 60 / tempo * sampleRate / _hop,
        _guess = Float64List(tune.totalBeats) {
     if (fromTheTop) {
       // The first beat heard is most likely the first of the tune: that
@@ -132,7 +133,7 @@ class ChartFollower {
   /// however much it stands out: in a quiet room a keyboard being typed
   /// on stands out from the silence too.
   var _frameLevel = 0.0;
-  static const _quiet = 0.003;
+  static const _quiet = 0.001;
   var _fluxSpread = 0.0;
 
   /// How far [frame]'s flux stands out above the room, in spreads.
@@ -146,7 +147,11 @@ class ChartFollower {
   /// by a fifth either way, which is a tempo nobody would call the same
   /// tune, and keeps it from settling on half or twice the beat.
   double _period;
-  final double _expected;
+  double _expected;
+
+  /// The beat as the follower was told it, which a retune is measured
+  /// against so it never wanders off by halves.
+  final double _told;
 
   /// When the next beat is expected, in frames. Null until the first
   /// attack has been heard.
@@ -196,39 +201,121 @@ class ChartFollower {
   /// How much the attacks of the last few seconds repeat themselves a
   /// beat later, or two: near 1 for a groove, whatever it accents, and
   /// near 0 for a room's knocks and chatter, which have no beat.
-  double _repeats() {
+  /// How much the attacks of the last few seconds repeat themselves
+  /// [lag] frames later, as a correlation: near 1 for a groove at that
+  /// spacing, near 0 for a room's knocks and chatter.
+  double _repeatsAfter(int lag, int start, double mean) {
+    var together = 0.0;
+    var alone = 0.0;
+    for (var i = start + lag; i < _flux.length; i++) {
+      final a = _flux[i] - mean;
+      final b = _flux[i - lag] - mean;
+      together += a * b;
+      alone += a * a;
+    }
+    return alone == 0 ? 0 : together / alone;
+  }
+
+  /// The groove the room has: how strongly its attacks repeat at the
+  /// beat being counted (one or two beats on, whatever it accents), and
+  /// how strongly at whatever spacing they repeat best, and what that is.
+  ({double counted, double anywhere, double spacing}) _groove() {
     final span = math.min(_flux.length, (4 * sampleRate / _hop).round());
-    if (span < _period * 3) return 0;
+    final shortest = _framesPerBeatAt(_fastest).round();
+    if (span < shortest * 4) return (counted: 0, anywhere: 0, spacing: 0);
     final start = _flux.length - span;
     var mean = 0.0;
     for (var i = start; i < _flux.length; i++) {
       mean += _flux[i];
     }
     mean /= span;
-    double at(int lag) {
-      var together = 0.0;
-      var alone = 0.0;
-      for (var i = start + lag; i < _flux.length; i++) {
-        final a = _flux[i] - mean;
-        final b = _flux[i - lag] - mean;
-        together += a * b;
-        alone += a * a;
-      }
-      return alone == 0 ? 0 : together / alone;
-    }
-
-    var best = 0.0;
-    for (final beats in [1, 2]) {
+    final reach = span ~/ 3;
+    var counted = 0.0;
+    for (var beats = 1; beats <= 2; beats++) {
       final lag = (_period * beats).round();
+      if (lag + 2 > reach) break;
       for (var d = -2; d <= 2; d++) {
-        best = math.max(best, at(lag + d));
+        counted = math.max(counted, _repeatsAfter(lag + d, start, mean));
       }
     }
-    return best;
+    var anywhere = 0.0;
+    var spacing = 0.0;
+    final longest = math.min(_framesPerBeatAt(_slowest).round(), reach);
+    for (var lag = shortest; lag <= longest; lag++) {
+      final here = _repeatsAfter(lag, start, mean);
+      if (here > anywhere) {
+        anywhere = here;
+        spacing = lag.toDouble();
+      }
+    }
+    return (counted: counted, anywhere: anywhere, spacing: spacing);
   }
+
+  /// How many frames a beat lasts at [tempo].
+  double _framesPerBeatAt(double tempo) => 60 / tempo * sampleRate / _hop;
+
+  /// The tempos anything here will consider.
+  static const _slowest = 50.0;
+  static const _fastest = 280.0;
+
+  /// How many beats in a row the room has had a groove the count is not
+  /// on.
+  var _offTempo = 0;
+
+  /// The tempo the room's groove most likely is, when the count is not on
+  /// it: of the spacing its attacks repeat at, and whole fractions and
+  /// twice it, the one nearest what the follower was told. A guess, and
+  /// said as one: a ride pattern repeats every two beats, a waltz every
+  /// bar, and the sound alone cannot always say which is the beat.
+  double? _roomTempo;
+
+  /// Taps on the beat, in frames, while somebody is tapping along.
+  final _taps = <int>[];
+
+  /// The beat, tapped along with the music: the count takes its tempo
+  /// from the taps and its beats from where they fell.
+  ///
+  /// The way through what the sound cannot settle: whether a groove is
+  /// in two or in four, at half time or double. Three taps are enough.
+  void tap() {
+    final now = _frames;
+    if (_taps.isNotEmpty &&
+        now - _taps.last > _framesPerBeatAt(_slowest) * 1.5) {
+      _taps.clear();
+    }
+    _taps.add(now);
+    if (_taps.length > 8) _taps.removeAt(0);
+    if (_taps.length < 3) return;
+    final gaps = [
+      for (var i = 1; i < _taps.length; i++)
+        (_taps[i] - _taps[i - 1]).toDouble(),
+    ]..sort();
+    final beat = gaps[gaps.length ~/ 2].clamp(
+      _framesPerBeatAt(_fastest),
+      _framesPerBeatAt(_slowest),
+    );
+    _expected = beat;
+    _period = beat;
+    _offTempo = 0;
+    _roomTempo = null;
+    _quietFor = 0;
+    if (_next == null) {
+      // Not counting yet: the taps start it.
+      _hitThisBeat = true;
+      _beatAt(_taps.last.toDouble());
+    }
+    _next = _taps.last + beat;
+  }
+
+  /// The tempo of the room, when it has a groove the count is not on.
+  double? get roomTempo => _roomTempo;
 
   /// Below this the attacks are not a groove.
   static const _aGroove = 0.35;
+
+  /// Above this, somewhere, they plainly are: higher than [_aGroove],
+  /// because looking at every spacing finds something in noise too.
+  static const _plainly = 0.55;
 
   /// Every beat it has heard, in order: what the tests look back over.
   final heardBeats = <FollowedPosition>[];
@@ -249,7 +336,8 @@ class ChartFollower {
     // after it has gone by, and stopping short of it by a quarter: two
     // beats more than the window is room enough, at the slowest tempo the
     // count will go to.
-    final keep = _chordWindow + (2 * _expected * 1.25 * _hop).ceil() + _frame;
+    final keep =
+        _chordWindow + (2 * _framesPerBeatAt(_slowest) * _hop).ceil() + _frame;
     final start = _frames * _hop - _heardFrom;
     if (start > keep * 2) {
       final drop = start - keep;
@@ -489,13 +577,51 @@ class ChartFollower {
     for (var k = 1; k < n; k++) {
       if (_guess[k] > _guess[at]) at = k;
     }
+    final heard = first ? null : _groove();
+    // Whether the spacing the room's attacks repeat at best is a whole
+    // number of the beats being counted, or half of one. A count at the
+    // wrong tempo can still line up now and then (two beats at 100 are
+    // three at 150), but the room's own strongest repeat will not be a
+    // whole number of its beats.
+    final onTheCount =
+        heard != null &&
+        (heard.anywhere < _plainly ||
+            [0.5, 1.0, 2.0, 3.0, 4.0].any(
+              (beats) => (heard.spacing / _period / beats - 1).abs() < 0.07,
+            ));
+    final groove = heard != null && heard.counted >= _aGroove && onTheCount;
+    if (heard != null) {
+      // A groove plainly there, and not at the beat being counted.
+      _offTempo = !onTheCount ? _offTempo + 1 : 0;
+      if (_offTempo >= 4) {
+        final candidates =
+            [
+                  for (final k in [1, 2, 3, 4]) heard.spacing / k,
+                  heard.spacing * 2,
+                ]
+                .where(
+                  (p) =>
+                      p >= _framesPerBeatAt(_fastest) &&
+                      p <= _framesPerBeatAt(_slowest),
+                )
+                .toList()
+              ..sort(
+                (a, b) =>
+                    (math.log(a / _told))
+                        .abs()
+                        .compareTo((math.log(b / _told)).abs()),
+              );
+        _roomTempo = candidates.isEmpty
+            ? null
+            : 60 * sampleRate / (candidates.first * _hop);
+      } else if (_offTempo == 0) {
+        _roomTempo = null;
+      }
+    }
     if (!first) {
       _musical = [
         ..._musical.skip(_musical.length >= _remembered ? 1 : 0),
-        _hitThisBeat &&
-            notes != null &&
-            !notes.isEmpty &&
-            _repeats() >= _aGroove,
+        _hitThisBeat && notes != null && !notes.isEmpty && groove,
       ];
     }
     final musical = _musical.where((m) => m).length;

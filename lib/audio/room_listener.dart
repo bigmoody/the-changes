@@ -139,6 +139,16 @@ class RoomListener extends ChangeNotifier {
     }
   }
 
+  /// The tempo of a groove heard that the count is not on, if there is
+  /// one: a sign the chart's tempo is some way from the record's.
+  double? get roomTempo => _follower.roomTempo;
+
+  /// A tap on the beat, along with the music.
+  void tap() {
+    _follower.tap();
+    notifyListeners();
+  }
+
   /// "We are here": the bar a finger landed on, now beginning.
   void placeAt(int bar) {
     _follower.placeAt(bar * tune.beatsPerBar);
