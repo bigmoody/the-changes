@@ -5,7 +5,6 @@
 // picker: one file, one sound out of it, and the whole trip again for the
 // next. "Extremely tedious." These are about never having to do that.
 
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/drum_patterns.dart' show Drum;
@@ -239,9 +238,7 @@ void main() {
       expect(find.text('Choose an Imported Sound'), findsNWidgets(3));
     });
 
-    testWidgets('chooses a sound off the shelf and puts it on', (
-      tester,
-    ) async {
+    testWidgets('chooses a sound off the shelf and puts it on', (tester) async {
       final store = SoundFontStore.inMemory();
       final settings = AppSettings.inMemory();
       await tester.runAsync(() => store.add('band.sf2', band));

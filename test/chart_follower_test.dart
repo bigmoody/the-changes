@@ -125,6 +125,10 @@ void main() {
         'tempo heard ${follower.position?.tempo.toStringAsFixed(1)}',
       );
       expect(share, greaterThan(0.9));
+      // And it knows it is hearing music, or the stage would mark nothing.
+      final heard = follower.heardBeats.where((beat) => beat.at > 6);
+      final musical = heard.where((beat) => beat.hearsMusic).length;
+      expect(musical / heard.length, greaterThan(0.9));
     });
   }
 
@@ -233,7 +237,121 @@ void main() {
           '${follower.position?.tempo.toStringAsFixed(1)}',
         );
         expect(share, greaterThan(needs));
+        final heard = follower.heardBeats.where((beat) => beat.at > 6);
+        final musical = heard.where((beat) => beat.hearsMusic).length;
+        expect(musical / heard.length, greaterThan(0.9));
       });
     }
   }
+
+  test('nor is a noisy one with no band in it', () {
+    // Hiss and knocks at the level of a room people are talking in, with
+    // nothing playing: it stands out, it has notes in it, and it has no
+    // beat.
+    final tune = _standard('Autumn Leaves');
+    for (final level in [0.01, 0.05]) {
+      final random = math.Random(5);
+      final room = Float32List(44100 * 30);
+      for (var i = 0; i < room.length; i++) {
+        room[i] = (random.nextDouble() * 2 - 1) * level;
+      }
+      for (
+        var at = 4410;
+        at < room.length - 3000;
+        at += 9000 + random.nextInt(20000)
+      ) {
+        for (var i = 0; i < 2000; i++) {
+          room[at + i] += math.sin(i * 0.3) * level * 8 * math.exp(-i / 300);
+        }
+      }
+      final follower = ChartFollower(tune: tune, tempo: 140);
+      _feed(follower, room);
+      expect(
+        follower.heardBeats.where((beat) => beat.hearsMusic),
+        isEmpty,
+        reason: 'noise at $level',
+      );
+    }
+  });
+
+  test('switched on mid-song, it finds its place by itself', () {
+    // The usual way it will be used: the band is already playing when
+    // somebody turns the ear on. It starts out thinking it is at the top,
+    // which is wrong, and the chords have to talk it out of that.
+    final tune = _standard('Blue Bossa');
+    final band = _band(bank, tune, 150);
+    final follower = ChartFollower(tune: tune, tempo: 150);
+    final from =
+        (band.countInBeats + 20 * tune.beatsPerBar + 2) * band.samplesPerBeat;
+    _feed(follower, Float32List.sublistView(band.audio, from));
+    final offset = from / 44100;
+    var right = 0;
+    var counted = 0;
+    for (final heard in follower.heardBeats) {
+      if (heard.at < 20) continue;
+      final actual =
+          (((heard.at + offset) * 44100 / band.samplesPerBeat).round() -
+              band.countInBeats) %
+          tune.totalBeats;
+      counted++;
+      if (actual ~/ 4 == heard.bar) right++;
+    }
+    final share = right / counted;
+    // ignore: avoid_print
+    print('Switched on mid-song: ${(share * 100).toStringAsFixed(1)}%');
+    expect(share, greaterThan(0.85));
+  });
+
+  test('a tap on a bar puts it there at once', () {
+    final tune = _standard('Autumn Leaves');
+    final band = _band(bank, tune, 140);
+    final follower = ChartFollower(tune: tune, tempo: 140);
+    // Two bars in, it is told it is on bar 17, which is wrong: a finger
+    // can be wrong too, and it has to be believed now and corrected by
+    // what it hears after.
+    final twoBars = (band.countInBeats + 8) * band.samplesPerBeat;
+    _feed(follower, Float32List.sublistView(band.audio, 0, twoBars));
+    follower.placeAt(16 * tune.beatsPerBar);
+    expect(follower.position!.bar, 16);
+    _feed(follower, Float32List.sublistView(band.audio, twoBars));
+    // And it comes back to where the band really is.
+    final share = _onTheBar(follower, band, settle: 30);
+    // ignore: avoid_print
+    print('After a wrong tap: ${(share * 100).toStringAsFixed(1)}%');
+    expect(share, greaterThan(0.85));
+  });
+
+  test('a quiet room is not taken for a band', () {
+    // What the simulator's microphone hears, and a stand between tunes:
+    // a faint hiss with the odd click in it, which stands out from the
+    // silence round it but is not music.
+    final tune = _standard('Autumn Leaves');
+    final random = math.Random(3);
+    final room = Float32List(44100 * 20);
+    for (var i = 0; i < room.length; i++) {
+      room[i] = (random.nextDouble() * 2 - 1) * 0.0005;
+    }
+    for (var at = 44100; at < room.length; at += 44100 * 7 ~/ 10) {
+      for (var i = 0; i < 200; i++) {
+        room[at + i] += (random.nextDouble() * 2 - 1) * 0.002;
+      }
+    }
+    final follower = ChartFollower(tune: tune, tempo: 140);
+    _feed(follower, room);
+    expect(follower.heardBeats.where((beat) => beat.hearsMusic), isEmpty);
+  });
+
+  test('when the band stops, it holds rather than counting on', () {
+    final tune = _standard('Autumn Leaves');
+    final band = _band(bank, tune, 140);
+    final follower = ChartFollower(tune: tune, tempo: 140);
+    final eightBars = (band.countInBeats + 32) * band.samplesPerBeat;
+    _feed(follower, Float32List.sublistView(band.audio, 0, eightBars));
+    final before = follower.heardBeats.length;
+    // Ten seconds of nothing.
+    _feed(follower, Float32List(44100 * 10));
+    // Two bars of beats counted into the silence before it gives up, and
+    // a little ring from the last chord: not twenty-odd.
+    expect(follower.heardBeats.length - before, lessThan(12));
+  });
 }

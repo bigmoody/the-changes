@@ -110,6 +110,6 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>The tuner listens to your instrument through the microphone to tell you whether each string is in tune, and Check My Playing listens while the band plays to tell you whether you landed on the note. Nothing is recorded or saved.</string>
+	<string>The tuner listens to your instrument through the microphone to tell you whether each string is in tune, and Check My Playing listens while the band plays to tell you whether you landed on the note. Scrolling Stage View can listen to the music in the room to keep the chart on the bar being played. Nothing is recorded or saved.</string>
 </dict>
 </plist>

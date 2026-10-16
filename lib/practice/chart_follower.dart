@@ -47,7 +47,14 @@ class FollowedPosition {
     required this.confidence,
     required this.tempo,
     required this.at,
+    this.hearsMusic = true,
   });
+
+  /// Whether most of the last few beats had music in them: an attack
+  /// where the beat was, and notes. Without that the place is only
+  /// counted on from a guess, however sure the guess looks, and a quiet
+  /// room or somebody talking should not read as a band being followed.
+  final bool hearsMusic;
 
   /// The beat of the form, counting from 0 at the top, as the chart's
   /// own beats count: the bar is [bar].
@@ -77,9 +84,11 @@ class ChartFollower {
        _expected = 60 / tempo * sampleRate / _hop,
        _guess = Float64List(tune.totalBeats) {
     if (fromTheTop) {
-      // The first beat heard is the first of the tune: a count-in, or a
-      // tap on the first bar, says so.
-      _guess[0] = 1;
+      // The first beat heard is most likely the first of the tune: that
+      // is how a tune starts. Not certainly, though: somebody who turns
+      // the ear on halfway through a chorus should not have to wait for
+      // the chords to talk it out of a certainty it never had.
+      _spread(0, _atTheTop);
     } else {
       _guess.fillRange(0, _guess.length, 1 / _guess.length);
     }
@@ -118,6 +127,12 @@ class ChartFollower {
   /// and a big band's shout are both heard, and so is a hit over a fan
   /// or a crowd, whose steady noise raises the level but not the spikes.
   var _fluxMean = 0.0;
+
+  /// How loud the last frame was. Below [_quiet] nothing counts as a hit,
+  /// however much it stands out: in a quiet room a keyboard being typed
+  /// on stands out from the silence too.
+  var _frameLevel = 0.0;
+  static const _quiet = 0.003;
   var _fluxSpread = 0.0;
 
   /// How far [frame]'s flux stands out above the room, in spreads.
@@ -147,17 +162,94 @@ class ChartFollower {
   /// Where it thinks the music is, once it has heard a beat.
   FollowedPosition? get position => _position;
 
+  /// How sure it starts that the first beat is the top of the tune.
+  static const _atTheTop = 0.7;
+
+  /// [share] of the guess on [beat], the rest spread everywhere.
+  void _spread(int beat, double share) {
+    final n = _guess.length;
+    _guess.fillRange(0, n, (1 - share) / n);
+    _guess[beat % n] += share;
+  }
+
+  /// Told where the music is: the beat now beginning is [beat].
+  ///
+  /// What a tap on a bar means: "we are here". Nearly, but not entirely,
+  /// believed, in case the finger was a bar out.
+  void placeAt(int beat) {
+    _spread(beat, 0.9);
+    final at = _position;
+    _position = FollowedPosition(
+      beat: beat % _guess.length,
+      beatsPerBar: tune.beatsPerBar,
+      confidence: 0.9,
+      tempo: at?.tempo ?? 60 * sampleRate / (_period * _hop),
+      at: at?.at ?? 0,
+    );
+  }
+
+  /// How loud the room is, 0 to 1, for a meter that says the ear can
+  /// hear anything at all.
+  double get level => _level;
+  var _level = 0.0;
+
+  /// How much the attacks of the last few seconds repeat themselves a
+  /// beat later, or two: near 1 for a groove, whatever it accents, and
+  /// near 0 for a room's knocks and chatter, which have no beat.
+  double _repeats() {
+    final span = math.min(_flux.length, (4 * sampleRate / _hop).round());
+    if (span < _period * 3) return 0;
+    final start = _flux.length - span;
+    var mean = 0.0;
+    for (var i = start; i < _flux.length; i++) {
+      mean += _flux[i];
+    }
+    mean /= span;
+    double at(int lag) {
+      var together = 0.0;
+      var alone = 0.0;
+      for (var i = start + lag; i < _flux.length; i++) {
+        final a = _flux[i] - mean;
+        final b = _flux[i - lag] - mean;
+        together += a * b;
+        alone += a * a;
+      }
+      return alone == 0 ? 0 : together / alone;
+    }
+
+    var best = 0.0;
+    for (final beats in [1, 2]) {
+      final lag = (_period * beats).round();
+      for (var d = -2; d <= 2; d++) {
+        best = math.max(best, at(lag + d));
+      }
+    }
+    return best;
+  }
+
+  /// Below this the attacks are not a groove.
+  static const _aGroove = 0.35;
+
   /// Every beat it has heard, in order: what the tests look back over.
   final heardBeats = <FollowedPosition>[];
 
   /// Feeds it more of the sound, as it arrives: mono, -1 to 1.
   void hear(Float32List samples) {
+    var energy = 0.0;
+    for (final sample in samples) {
+      energy += sample * sample;
+    }
+    _level = samples.isEmpty ? 0 : math.sqrt(energy / samples.length);
     _heard.addAll(samples);
     while (_heard.length - (_frames * _hop - _heardFrom) >= _frame) {
       _analyseFrame();
     }
-    // Keep only what the chords are listened to over, and a frame.
-    final keep = math.max(_chordWindow, _frame) + _hop;
+    // Keep what the chords are listened to over, reaching back from a
+    // beat that is only counted once a little more than a fifth of a beat
+    // after it has gone by, and stopping short of it by a quarter: two
+    // beats more than the window is room enough, at the slowest tempo the
+    // count will go to.
+    final keep = _chordWindow + (2 * _expected * 1.25 * _hop).ceil() + _frame;
     final start = _frames * _hop - _heardFrom;
     if (start > keep * 2) {
       final drop = start - keep;
@@ -169,9 +261,12 @@ class ChartFollower {
   void _analyseFrame() {
     final at = _frames * _hop - _heardFrom;
     final frame = Float32List(_frame);
+    var energy = 0.0;
     for (var i = 0; i < _frame; i++) {
       frame[i] = _heard[at + i];
+      energy += frame[i] * frame[i];
     }
+    _frameLevel = math.sqrt(energy / _frame);
     final spectrum = magnitudeSpectrum(frame, size: _frame);
     // Logarithmic, so a quiet hit is a rise as well as a loud one.
     for (var i = 0; i < spectrum.length; i++) {
@@ -216,7 +311,8 @@ class ChartFollower {
     if (next == null) {
       // The first real attack is the first beat, once there has been
       // long enough to know what the room sounds like.
-      if (_flux.length > 40 && _standsOut(now) > 2) {
+      if (_flux.length > 40 && _standsOut(now) > 2 && _frameLevel > _quiet) {
+        _hitThisBeat = true;
         _beatAt(now.toDouble());
         _next = now + _period;
       }
@@ -227,7 +323,18 @@ class ChartFollower {
     if (now < next + reach) return;
     final best = _strongestNear(next, reach);
     var heardAt = next;
-    if (best != null && _standsOut(best) > 0.5) {
+    final hit = best != null && _standsOut(best) > 0.5 && _frameLevel > _quiet;
+    _hitThisBeat = hit;
+    _quietFor = hit ? 0 : _quietFor + 1;
+    // Two bars and more with nothing on the beat: the music has stopped.
+    // Rather than count on into nothing, it holds where it is and waits
+    // for the next attack to be the next beat.
+    if (_quietFor >= 2 * tune.beatsPerBar) {
+      _next = null;
+      _quietFor = 0;
+      return;
+    }
+    if (hit) {
       final error = best - next;
       heardAt = next + error * 0.5;
       _period = (_period + error * 0.1).clamp(
@@ -263,6 +370,16 @@ class ChartFollower {
     }
     return best;
   }
+
+  /// Whether each of the last few beats had both an attack on it and
+  /// notes in it.
+  var _musical = <bool>[];
+  static const _remembered = 8;
+
+  /// Whether the beat being counted now had an attack on it. The first
+  /// beat always did: an attack is what it was taken from.
+  var _hitThisBeat = true;
+  var _quietFor = 0;
 
   /// How strongly things begin on the beats being counted, and halfway
   /// between them, over the last several beats.
@@ -335,13 +452,14 @@ class ChartFollower {
     final n = _guess.length;
     final first = _beats == 0;
     _beats++;
+    var best = -double.infinity;
     if (notes != null && !notes.isEmpty) {
       final fits = Float64List(n);
-      var best = -double.infinity;
       for (var k = 0; k < n; k++) {
         fits[k] = _fit(_templates[k], notes);
         best = math.max(best, fits[k]);
       }
+
       for (var k = 0; k < n; k++) {
         _guess[k] *= math.exp(_sharpness * (fits[k] - best));
       }
@@ -371,12 +489,23 @@ class ChartFollower {
     for (var k = 1; k < n; k++) {
       if (_guess[k] > _guess[at]) at = k;
     }
+    if (!first) {
+      _musical = [
+        ..._musical.skip(_musical.length >= _remembered ? 1 : 0),
+        _hitThisBeat &&
+            notes != null &&
+            !notes.isEmpty &&
+            _repeats() >= _aGroove,
+      ];
+    }
+    final musical = _musical.where((m) => m).length;
     final position = FollowedPosition(
       beat: at,
       beatsPerBar: tune.beatsPerBar,
       confidence: _guess[at],
       tempo: 60 * sampleRate / (_period * _hop),
       at: seconds,
+      hearsMusic: musical >= _remembered ~/ 2,
     );
     _position = position;
     heardBeats.add(position);
