@@ -393,6 +393,27 @@ class ChartFollower {
     _countBeats();
   }
 
+  /// Whether there were notes sounding, loud enough to be music, in the
+  /// moments before [frame]: a band already playing, rather than one
+  /// starting from silence. A room's hiss is not notes.
+  bool _alreadyPlaying(int frame) {
+    final end = frame * _hop - _heardFrom;
+    final start = end - _chordWindow;
+    if (start < 0) return false;
+    final before = Float32List(_chordWindow);
+    var energy = 0.0;
+    for (var i = 0; i < _chordWindow; i++) {
+      before[i] = _heard[start + i];
+      energy += before[i] * before[i];
+    }
+    if (math.sqrt(energy / _chordWindow) < _quiet * 2) return false;
+    // Notes, not hiss: a loud room before the band starts is loud
+    // enough, but its spectrum is flat (about 0.8 here), and a record
+    // already playing, even heard quietly from a laptop's speakers, is
+    // not (0.4 on the first one tried).
+    return _pitchOf(before).flatness < 0.5;
+  }
+
   /// How far either side of where a beat is expected an attack is taken
   /// as that beat, as a share of the beat. Wide enough for a player
   /// pushing or laying back, narrow enough not to take the swung "and".
@@ -406,6 +427,15 @@ class ChartFollower {
       // long enough to know what the room sounds like.
       if (_flux.length > 40 && _standsOut(now) > 2 && _frameLevel > _quiet) {
         _hitThisBeat = true;
+        if (_awaitingTheTop && _alreadyPlaying(now)) {
+          // The music was going before the ear was: this is not the top,
+          // and counting from it as if it were would be wrong from the
+          // first beat. It looks for where it is instead, and the screen
+          // asks for a tap on the bar.
+          _awaitingTheTop = false;
+          _locked = false;
+          _guess.fillRange(0, _guess.length, 1 / _guess.length);
+        }
         _beatAt(now.toDouble());
         _next = now + _period;
       }
@@ -430,7 +460,10 @@ class ChartFollower {
     if (hit) {
       final error = best - next;
       heardAt = next + error * 0.5;
-      _period = (_period + error * 0.1).clamp(
+      // Quicker to give way before the music has been heard on the count:
+      // a record thirty beats a minute off the chart took seven seconds to
+      // reach, with nothing followed in the meantime.
+      _period = (_period + error * (_confirmed ? 0.1 : 0.2)).clamp(
         _expected * 0.8,
         _expected * 1.25,
       );
@@ -560,6 +593,27 @@ class ChartFollower {
   /// with a loud room over it still a fifth or more, so it is averaged
   /// over a few beats and the chords count in proportion between the two.
   double _howPitched(Float32List window) {
+    final heard = _pitchOf(window);
+    _peaks += 0.3 * (heard.share - _peaks);
+    // And how flat the spectrum is: notes are spiky and drums are flat,
+    // measured on the band below 0.47 for anything with the bass or the
+    // piano in it and above 0.52 for the drums alone. A room's hiss is
+    // flat too, which is why this is the second question and not the
+    // only one: music under a loud room fails it and passes the first,
+    // and the drums alone fail both.
+    _flatness += 0.3 * (heard.flatness - _flatness);
+    final spiky = ((0.55 - _flatness) / 0.1).clamp(0.0, 1.0);
+    final peaky = ((_peaks - 0.16) / 0.08).clamp(0.0, 1.0);
+    // This beat on its own, for deciding whether the band has started:
+    // an average would carry the first notes over into the noise before
+    // them, or the noise into the first notes.
+    _pitchedNow = heard.flatness < 0.5 || heard.share > 0.2;
+    return math.max(spiky, peaky);
+  }
+
+  /// How much of [window] is in sharp peaks, and how flat its spectrum
+  /// is, where the bass and the chords live; nothing remembered.
+  ({double share, double flatness}) _pitchOf(Float32List window) {
     final spectrum = magnitudeSpectrum(window, size: _chordWindow);
     final low = (60 * _chordWindow / sampleRate).round();
     final high = (1500 * _chordWindow / sampleRate).round();
@@ -580,29 +634,17 @@ class ChartFollower {
       total += spectrum[i];
       if (spectrum[i] > floor * 4) inPeaks += spectrum[i] - floor;
     }
-    final share = total == 0 ? 0.0 : inPeaks / total;
-    _peaks += 0.3 * (share - _peaks);
-    // And how flat the spectrum is: notes are spiky and drums are flat,
-    // measured on the band below 0.47 for anything with the bass or the
-    // piano in it and above 0.52 for the drums alone. A room's hiss is
-    // flat too, which is why this is the second question and not the
-    // only one: music under a loud room fails it and passes the first,
-    // and the drums alone fail both.
     final n = high - low;
-    final flatness = total == 0 ? 1.0 : math.exp(logs / n) / (total / n);
-    _flatness += 0.3 * (flatness - _flatness);
-    final spiky = ((0.55 - _flatness) / 0.1).clamp(0.0, 1.0);
-    final peaky = ((_peaks - 0.16) / 0.08).clamp(0.0, 1.0);
-    // This beat on its own, for deciding whether the band has started:
-    // an average would carry the first notes over into the noise before
-    // them, or the noise into the first notes.
-    _pitchedNow = flatness < 0.5 || share > 0.2;
-    return math.max(spiky, peaky);
+    return (
+      share: total == 0 ? 0.0 : inPeaks / total,
+      flatness: total == 0 ? 1.0 : math.exp(logs / n) / (total / n),
+    );
   }
 
-  var _pitchedNow = false;
-
   var _flatness = 0.3;
+
+  /// Whether the last beat on its own had notes in it.
+  var _pitchedNow = false;
 
   /// The share of the sound in peaks, over the last few beats.
   var _peaks = 0.3;
