@@ -18,21 +18,17 @@ import 'package:record/record.dart';
 
 import '../music/tune.dart';
 import '../practice/chart_follower.dart';
+import '../practice/room_follower.dart';
 
 /// Somewhere sound comes from, a few milliseconds at a time: mono, -1 to
 /// 1, at [RoomListener.sampleRate]. The microphone, or a test's track.
 typedef SoundSource = Future<Stream<Float32List>> Function();
 
 class RoomListener extends ChangeNotifier {
-  RoomListener({
-    required this.tune,
-    required this.tempo,
-    this.fromTheTop = true,
-    SoundSource? source,
-    bool? keepWhatItHears,
-  }) : keepWhatItHears = keepWhatItHears ?? kDebugMode,
-       // ignore: prefer_initializing_formals
-       _source = source;
+  RoomListener({required this.tune, SoundSource? source, bool? keepWhatItHears})
+    : keepWhatItHears = keepWhatItHears ?? kDebugMode,
+      // ignore: prefer_initializing_formals
+      _source = source;
 
   /// Whether to keep what it hears, to be saved and listened back to when
   /// it has not followed something it should have. Only while the app is
@@ -54,20 +50,15 @@ class RoomListener extends ChangeNotifier {
   /// The tune at concert pitch, which is what the room plays.
   final Tune tune;
 
-  /// The tempo to start counting at, before anything has been heard.
-  final double tempo;
-  final bool fromTheTop;
   final SoundSource? _source;
 
   static const sampleRate = 44100;
 
-  late ChartFollower _follower = _fresh();
-  ChartFollower _fresh() => ChartFollower(
-    tune: tune,
-    tempo: tempo,
-    sampleRate: sampleRate,
-    fromTheTop: fromTheTop,
-  );
+  // Told nothing about the tempo: it hears it (see room_follower.dart).
+  // The tempo on the chart is whatever it was last practised at, and on
+  // a stand there is no time to look up what the band counted off.
+  late RoomFollower _follower = _fresh();
+  RoomFollower _fresh() => RoomFollower(tune: tune, sampleRate: sampleRate);
 
   AudioRecorder? _recorder;
   StreamSubscription<Float32List>? _subscription;
@@ -82,7 +73,7 @@ class RoomListener extends ChangeNotifier {
 
   /// What is listening, for a test to look into.
   @visibleForTesting
-  ChartFollower get follower => _follower;
+  RoomFollower get follower => _follower;
 
   /// Where the music is, once a beat has been heard.
   FollowedPosition? get position => _follower.position;
@@ -103,7 +94,7 @@ class RoomListener extends ChangeNotifier {
     _log
       ..clear()
       ..writeln(
-        '# ${tune.title}, ${tune.key}, told ${tempo.round()} BPM, '
+        '# ${tune.title}, ${tune.key}, tempo heard not told, '
         '${tune.meter.label}, ${tune.barCount} bars',
       )
       ..writeln('# seconds  event');

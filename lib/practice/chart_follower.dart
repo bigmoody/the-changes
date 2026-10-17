@@ -48,7 +48,15 @@ class FollowedPosition {
     required this.tempo,
     required this.at,
     this.hearsMusic = true,
+    this.fits,
   });
+
+  /// How much better what was heard on this beat fits the chord the chart
+  /// has here than the chords it has anywhere else, on average: above 0
+  /// when the place is right, about 0 when it is no better than chance.
+  /// Null on a beat with no notes in it. What tells the right tempo from
+  /// half or twice it, which count just as confidently.
+  final double? fits;
 
   /// Whether most of the last few beats had music in them: an attack
   /// where the beat was, and notes. Without that the place is only
@@ -167,6 +175,9 @@ class ChartFollower {
 
   /// Where it thinks the music is, once it has heard a beat.
   FollowedPosition? get position => _position;
+
+  /// The tempo it is counting at, in beats a minute.
+  double get tempo => 60 * sampleRate / (_period * _hop);
 
   /// Told where the music is: the beat now beginning is [beat].
   ///
@@ -315,12 +326,101 @@ class ChartFollower {
   /// The tempo of the room, when it has a groove the count is not on.
   double? get roomTempo => _roomTempo;
 
+  /// The pulse in what has been heard so far, whatever the count: how
+  /// strongly the attacks repeat, and how far apart in seconds. What
+  /// finding the tempo starts from.
+  ///
+  /// The shortest spacing that repeats nearly as strongly as any does,
+  /// because the beat repeats every beat and also every two and every
+  /// bar, and the shortest of those is the beat (or half of it, which
+  /// finding the tempo also tries). Only a true peak counts, never the
+  /// longest spacing looked at, which would only say that the peak lies
+  /// further out than there is yet enough sound to look.
+  ({double strength, double seconds}) get pulse {
+    final span = math.min(_flux.length, (6 * sampleRate / _hop).round());
+    final shortest = _framesPerBeatAt(_fastest).round();
+    final longest = math.min(_framesPerBeatAt(_slowest).round(), span ~/ 2);
+    if (longest <= shortest + 2) return (strength: 0, seconds: 0);
+    final start = _flux.length - span;
+    var mean = 0.0;
+    for (var i = start; i < _flux.length; i++) {
+      mean += _flux[i];
+    }
+    mean /= span;
+    final at = [
+      for (var lag = 0; lag <= longest + 1; lag++)
+        lag < shortest - 1 ? 0.0 : _repeatsAfter(lag, start, mean),
+    ];
+    final peaks = [
+      for (var lag = shortest; lag < longest; lag++)
+        if (at[lag] > at[lag - 1] && at[lag] >= at[lag + 1]) lag,
+    ];
+    if (peaks.isEmpty) return (strength: 0, seconds: 0);
+    final strongest = peaks.map((lag) => at[lag]).reduce(math.max);
+    final lag = peaks.firstWhere((lag) => at[lag] >= strongest * 0.75);
+    // Between frames, from the shape of the peak.
+    final before = at[lag - 1];
+    final after = at[lag + 1];
+    final bend = before - 2 * at[lag] + after;
+    final shift = bend == 0 ? 0.0 : 0.5 * (before - after) / bend;
+    return (
+      strength: at[lag],
+      seconds: (lag + shift.clamp(-0.5, 0.5)) * _hop / sampleRate,
+    );
+  }
+
   /// Below this the attacks are not a groove.
   static const _aGroove = 0.35;
 
   /// Above this, somewhere, they plainly are: higher than [_aGroove],
   /// because looking at every spacing finds something in noise too.
   static const _plainly = 0.55;
+
+  /// For each of the last beats counted, how well what was heard on it
+  /// fits each beat of the tune, or null where it had no notes.
+  final beatFits = <Float64List?>[];
+
+  /// How clearly the chart explains the last beats heard, wherever in the
+  /// tune they are: the beats are slid along the chart to every place
+  /// they could start, and this is how much the place they fit best
+  /// stands above the average place. High when the beats being counted
+  /// are the tune's beats; low when they are half or twice them, which
+  /// line the chords up nowhere in particular.
+  double get chartExplains {
+    final heard = beatFits;
+    final n = tune.totalBeats;
+    if (heard.where((f) => f != null).length < 8) return 0;
+    final places = Float64List(n);
+    for (var start = 0; start < n; start++) {
+      var here = 0.0;
+      var counted = 0;
+      for (var b = 0; b < heard.length; b++) {
+        final fits = heard[b];
+        if (fits == null) continue;
+        here += fits[(start + b) % n];
+        counted++;
+      }
+      places[start] = here / counted;
+    }
+    // How far the best place stands out from the spread of all of them,
+    // in spreads. Measured in spreads rather than plainly, because a few
+    // beats slid along a long tune fit somewhere well by chance alone,
+    // and a slow tempo has had fewer beats than a quick one in the same
+    // few seconds: few beats, a wide spread, and it counts for less.
+    var mean = 0.0;
+    var best = -double.infinity;
+    for (final place in places) {
+      mean += place;
+      best = math.max(best, place);
+    }
+    mean /= n;
+    var spread = 0.0;
+    for (final place in places) {
+      spread += (place - mean) * (place - mean);
+    }
+    spread = math.sqrt(spread / n);
+    return spread == 0 ? 0 : (best - mean) / spread;
+  }
 
   /// Every beat it has heard, in order: what the tests look back over.
   final heardBeats = <FollowedPosition>[];
@@ -656,8 +756,10 @@ class ChartFollower {
     final n = _guess.length;
     final first = _beats == 0;
     _beats++;
+    Float64List? heardFits;
     if (notes != null && !notes.isEmpty) {
       final fits = Float64List(n);
+      heardFits = fits;
       var best = -double.infinity;
       for (var k = 0; k < n; k++) {
         fits[k] = _fit(_templates[k], notes);
@@ -784,9 +886,30 @@ class ChartFollower {
       tempo: 60 * sampleRate / (_period * _hop),
       at: seconds,
       hearsMusic: musical >= _remembered ~/ 2,
+      fits: _fitHere(heardFits, at),
     );
+    if (!first) {
+      // What was heard on the beat just ended, against every place in the
+      // tune: kept for a while, so how well the chart explains what has
+      // been heard can be asked without trusting where it has counted to.
+      beatFits.add(_pitched >= 0.5 ? heardFits : null);
+      if (beatFits.length > 64) beatFits.removeAt(0);
+    }
     _position = position;
     heardBeats.add(position);
+  }
+
+  /// How much better [fits] is at the beat that just ended, which is the
+  /// one before [at], than its average over the whole tune.
+  double? _fitHere(Float64List? fits, int at) {
+    if (fits == null || _pitched < 0.5) return null;
+    final n = fits.length;
+    var mean = 0.0;
+    for (final fit in fits) {
+      mean += fit;
+    }
+    mean /= n;
+    return fits[(at - 1 + n) % n] - mean;
   }
 
   /// How hard what was heard pulls the guess toward the chords it fits.

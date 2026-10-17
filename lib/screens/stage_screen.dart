@@ -90,12 +90,7 @@ class _StageScreenState extends State<StageScreen> {
     }
     // The band and the room at once would be the ear hearing the band.
     if (controller.isPlaying) await controller.stop();
-    final ear = _ear ??=
-        widget.listener ??
-        RoomListener(
-          tune: controller.tune,
-          tempo: controller.currentTempo.toDouble(),
-        );
+    final ear = _ear ??= widget.listener ?? RoomListener(tune: controller.tune);
     // Rebuilt to listen to the ear, which did not exist until now.
     setState(() {});
     final started = await ear.start();
@@ -248,8 +243,8 @@ class _Hearing extends StatelessWidget {
         ? (level < 0.001
               ? 'Listening, but it is very quiet. Turn the music up, or '
                     'bring the device closer.'
-              : 'Play the record from the top, or tap the bar it is on. '
-                    'If the tempo is off, tap the beat a few times.')
+              : 'Listening for the beat and the chords. Tap the bar it is '
+                    'on if you know it, or tap the beat to hurry it.')
         : !heard!.hearsMusic
         ? 'Hearing sound, but no beat it can count. Tap the beat along '
               'with the music a few times.'

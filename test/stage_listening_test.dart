@@ -85,7 +85,6 @@ void main() {
     });
     final ear = RoomListener(
       tune: controller.tune,
-      tempo: tune.defaultTempo.toDouble(),
       source: () async => room.stream,
     );
     await tester.pumpWidget(
@@ -132,12 +131,13 @@ void main() {
     expect(find.textContaining('very quiet'), findsOneWidget);
     expect(find.byKey(const ValueKey('stage-tap-tempo')), findsOneWidget);
 
-    // Ten bars of the band, from the top.
-    await play(tester, stage.room, from: 0, beats: 40);
+    // Sixteen bars of the band, from the top: it is told nothing about
+    // the tempo, and hears it in the first few bars.
+    await play(tester, stage.room, from: 0, beats: 64);
     expect(find.textContaining('Following the room'), findsOneWidget);
-    // On bar ten, or just into the eleventh: the last piece of sound
-    // handed over runs up to its barline.
-    expect(stage.ear.position!.bar, inInclusiveRange(9, 10));
+    // On bar sixteen, or just into the seventeenth: the last piece of
+    // sound handed over runs up to its barline.
+    expect(stage.ear.position!.bar, inInclusiveRange(15, 16));
 
     // A tap on a bar is believed at once.
     await tester.tap(find.text('1').first);
@@ -173,15 +173,16 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('stage-tap-tempo')));
       await tester.pump();
     }
-    expect(stage.ear.position, isNotNull, reason: 'the taps start the count');
-    expect(stage.ear.position!.tempo, closeTo(record, record * 0.05));
+    // Three taps are enough to choose the tempo, without waiting to hear it.
+    final following = stage.ear.follower.following;
+    expect(following, isNotNull, reason: 'the taps choose the tempo');
+    expect(following!.tempo, closeTo(record, record * 0.05));
   });
 
   test('what it heard can be saved and read back', () async {
     final room = StreamController<Float32List>();
     final ear = RoomListener(
       tune: tune,
-      tempo: tune.defaultTempo.toDouble(),
       source: () async => room.stream,
       keepWhatItHears: true,
     );
@@ -205,7 +206,6 @@ void main() {
     final room = StreamController<Float32List>();
     final ear = RoomListener(
       tune: tune,
-      tempo: tune.defaultTempo.toDouble(),
       source: () async => room.stream,
       keepWhatItHears: false,
     );
