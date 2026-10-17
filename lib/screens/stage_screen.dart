@@ -21,23 +21,26 @@
 // comes next is under it: a long chart fitted to a phone is too small to
 // read from a stand, and nobody can scroll it with a horn in their hands.
 //
-// The scrolling one can follow the room instead of the band: Listen, and
-// it hears whatever is playing (a record, the band on the stand), counts
-// the beats and checks them against the chords to work out where in the
-// tune it is (see chart_follower.dart). While it listens a tap on a bar
-// means "we are here", for when it has lost its place or was started in
-// the middle, and it says when it is not sure rather than marking a bar
-// it is guessing at.
+// The scrolling one can follow a band that is not the app's: a record, or
+// the band on the stand. It is told where they are rather than hearing
+// it (see tap_follower.dart): the beat tapped along, the top of each
+// chorus, a bar on the chart, by finger or by a page-turner pedal.
+//
+// Listening for itself is here too, in builds being worked on only
+// (see chart_follower.dart). It follows iReal Pro's backing and not a
+// real record, so nobody else is shown it until it does.
 
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../audio/room_listener.dart';
 import '../practice/chart_follower.dart';
 import '../practice/practice_controller.dart';
+import '../practice/tap_follower.dart';
 import '../theme.dart';
 import 'chord_chart.dart' show ChordChart, CountInBubble;
 import 'play_shortcuts.dart';
@@ -48,6 +51,7 @@ class StageScreen extends StatefulWidget {
     required this.controller,
     this.follow = false,
     this.listener,
+    this.taps,
   });
 
   final PracticeController controller;
@@ -60,6 +64,9 @@ class StageScreen extends StatefulWidget {
   /// the microphone. Made here otherwise, when Listen is first pressed.
   final RoomListener? listener;
 
+  /// The count, for a test to hand in one on its own clock.
+  final TapFollower? taps;
+
   @override
   State<StageScreen> createState() => _StageScreenState();
 }
@@ -68,6 +75,10 @@ class _StageScreenState extends State<StageScreen> {
   PracticeController get controller => widget.controller;
 
   RoomListener? _ear;
+
+  /// Following by taps, once it has been turned on.
+  TapFollower? _taps;
+  var _tapping = false;
 
   /// The ear says whether it is listening, so the screen and the
   /// microphone cannot disagree about it.
@@ -80,7 +91,22 @@ class _StageScreenState extends State<StageScreen> {
   @override
   void dispose() {
     _ear?.dispose();
+    if (widget.taps == null) _taps?.dispose();
     super.dispose();
+  }
+
+  Future<void> _toggleTapping() async {
+    if (_tapping) {
+      _taps?.stop();
+      setState(() => _tapping = false);
+      return;
+    }
+    // Following somebody else's band: the app's own would only be in the
+    // way, and so would the ear.
+    if (controller.isPlaying) await controller.stop();
+    await _ear?.stop();
+    _taps ??= widget.taps ?? TapFollower(tune: controller.tune);
+    setState(() => _tapping = true);
   }
 
   Future<void> _toggleListening() async {
@@ -90,6 +116,7 @@ class _StageScreenState extends State<StageScreen> {
     }
     // The band and the room at once would be the ear hearing the band.
     if (controller.isPlaying) await controller.stop();
+    if (_tapping) await _toggleTapping();
     final ear = _ear ??= widget.listener ?? RoomListener(tune: controller.tune);
     // Rebuilt to listen to the ear, which did not exist until now.
     setState(() {});
@@ -125,84 +152,212 @@ class _StageScreenState extends State<StageScreen> {
 
   Future<void> _togglePlay() async {
     // Starting the band stops the ear, for the same reason, even one
-    // still coming on.
+    // still coming on, and the count.
     await _ear?.stop();
+    if (_tapping) await _toggleTapping();
     await controller.togglePlay();
   }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([controller, ?_ear]),
+    listenable: Listenable.merge([controller, ?_ear, ?_taps]),
     // The spacebar as well as the whole chart. On a stand a metre away a
     // keyboard may be the only thing within reach.
     builder: (context, _) {
       final heard = _listening ? _ear?.position : null;
       final sure =
           heard != null && heard.hearsMusic && heard.confidence >= _sureEnough;
-      return PlayPauseShortcut(
-        onPlayPause: _togglePlay,
-        child: Scaffold(
-          body: SafeArea(
-            child: Column(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    key: const ValueKey('stage-chart'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _listening ? null : _togglePlay,
-                    child: Stack(
-                      children: [
-                        ChordChart(
-                          controller: controller,
-                          stage: true,
-                          follow: widget.follow,
-                          heardBeat: sure ? heard.beat : null,
-                          onBarTapped: _listening ? _ear!.placeAt : null,
-                        ),
-                        if (controller.countInBeat != null)
-                          CountInBubble(beat: controller.countInBeat!),
-                      ],
+      final taps = _tapping ? _taps : null;
+      final tapped = taps?.beat;
+      // The beat marked: the count's, the ear's, or (with neither) the
+      // band's own, which the chart reads for itself.
+      final followed = taps != null
+          ? tapped
+          : sure
+          ? heard.beat
+          : null;
+      final following = taps != null || _listening;
+      final tempo = taps != null
+          ? taps.tempo?.round()
+          : _listening
+          // A tempo it has not heard is a guess, like a bar it has not
+          // heard: shown only once it is following.
+          ? (sure ? heard.tempo.round() : null)
+          : controller.currentTempo;
+      return _Pedals(
+        // Tapping, the spacebar and a page-turner's right pedal tap the
+        // beat and its left pedal is the top of the chorus; otherwise the
+        // spacebar starts and stops the band.
+        onBeat: taps?.tapBeat,
+        onTop: taps?.topOfChorus,
+        child: PlayPauseShortcut(
+          onPlayPause: taps != null ? taps.tapBeat : _togglePlay,
+          child: Scaffold(
+            body: SafeArea(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      key: const ValueKey('stage-chart'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: following ? null : _togglePlay,
+                      child: Stack(
+                        children: [
+                          ChordChart(
+                            controller: controller,
+                            stage: true,
+                            follow: widget.follow,
+                            heardBeat: followed,
+                            onBarTapped: taps != null
+                                ? taps.placeAtBar
+                                : _listening
+                                ? _ear!.placeAt
+                                : null,
+                          ),
+                          if (controller.countInBeat != null)
+                            CountInBubble(beat: controller.countInBeat!),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                if (_listening)
-                  _Hearing(
-                    level: _ear!.level,
-                    heard: heard,
-                    sure: sure,
-                    roomTempo: _ear!.roomTempo,
-                    onTap: _ear!.tap,
+                  if (taps != null) _Tapping(taps: taps),
+                  if (_listening)
+                    _Hearing(
+                      level: _ear!.level,
+                      heard: heard,
+                      sure: sure,
+                      roomTempo: _ear!.roomTempo,
+                      onTap: _ear!.tap,
+                    ),
+                  const Divider(height: 1),
+                  _StageBar(
+                    controller: controller,
+                    onPlay: _togglePlay,
+                    tapping: _tapping,
+                    onTapping: widget.follow ? _toggleTapping : null,
+                    listening: _listening,
+                    // Listening for itself follows iReal Pro and not a real
+                    // record, so it is only offered while it is worked on.
+                    onListen: widget.follow && kDebugMode
+                        ? _toggleListening
+                        : null,
+                    onSave:
+                        kDebugMode && !_listening && (_ear?.hasKept ?? false)
+                        ? _saveWhatItHeard
+                        : null,
+                    chord: following
+                        ? (followed == null
+                              ? null
+                              : controller.chart
+                                    .slotAtBeat(followed)
+                                    .chord
+                                    .display)
+                        : controller.shownSlot.chord.display,
+                    tempo: tempo,
                   ),
-                const Divider(height: 1),
-                _StageBar(
-                  controller: controller,
-                  onPlay: _togglePlay,
-                  listening: _listening,
-                  onListen: widget.follow ? _toggleListening : null,
-                  onSave: kDebugMode && !_listening && (_ear?.hasKept ?? false)
-                      ? _saveWhatItHeard
-                      : null,
-                  chord: _listening
-                      ? (sure
-                            ? controller.chart
-                                  .slotAtBeat(heard.beat)
-                                  .chord
-                                  .display
-                            : null)
-                      : controller.shownSlot.chord.display,
-                  // A tempo it has not heard is a guess, like a bar it
-                  // has not heard: shown only once it is following.
-                  tempo: _listening
-                      ? (sure ? heard.tempo.round() : null)
-                      : controller.currentTempo,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       );
     },
   );
+}
+
+/// A page-turner pedal is a keyboard with two keys: which two depends on
+/// the pedal (arrows, page up and down), so all of them are taken.
+class _Pedals extends StatelessWidget {
+  const _Pedals({
+    required this.onBeat,
+    required this.onTop,
+    required this.child,
+  });
+
+  final VoidCallback? onBeat;
+  final VoidCallback? onTop;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final beat = onBeat;
+    final top = onTop;
+    if (beat == null || top == null) return child;
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.arrowRight): beat,
+        const SingleActivator(LogicalKeyboardKey.arrowDown): beat,
+        const SingleActivator(LogicalKeyboardKey.pageDown): beat,
+        const SingleActivator(LogicalKeyboardKey.arrowLeft): top,
+        const SingleActivator(LogicalKeyboardKey.arrowUp): top,
+        const SingleActivator(LogicalKeyboardKey.pageUp): top,
+      },
+      child: child,
+    );
+  }
+}
+
+/// Following by taps: what to do next, and the two things it can be told.
+class _Tapping extends StatelessWidget {
+  const _Tapping({required this.taps});
+
+  final TapFollower taps;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tempo = taps.tempo;
+    final text = taps.counting && tempo != null
+        ? 'Counting at ${tempo.round()} BPM. Top of the Chorus at each '
+              'chorus, or tap the bar the band is on.'
+        : taps.taps > 0
+        ? 'Keep tapping the beat.'
+        : 'Count the band in on Tap the Beat, and bar 1 comes on the next '
+              'beat. Already playing? Tap the beat, then the bar it is on. '
+              'A page-turner pedal works too.';
+    return Padding(
+      key: const ValueKey('stage-tapping'),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              // Big, because they are hit with a thumb between phrases.
+              Expanded(
+                child: FilledButton(
+                  key: const ValueKey('stage-tap-beat'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                  ),
+                  onPressed: taps.tapBeat,
+                  child: const Text('Tap the Beat'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  key: const ValueKey('stage-top'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(56),
+                  ),
+                  onPressed: taps.topOfChorus,
+                  child: const Text('Top of the Chorus'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// What the ear makes of the room, in a line: whether it can hear
@@ -288,6 +443,8 @@ class _StageBar extends StatelessWidget {
   const _StageBar({
     required this.controller,
     required this.onPlay,
+    required this.tapping,
+    required this.onTapping,
     required this.listening,
     required this.onListen,
     required this.chord,
@@ -300,6 +457,11 @@ class _StageBar extends StatelessWidget {
 
   final PracticeController controller;
   final VoidCallback onPlay;
+
+  /// Following by taps, and the way to turn it on and off: null on the
+  /// stage that does not scroll.
+  final bool tapping;
+  final VoidCallback? onTapping;
   final bool listening;
 
   /// Null on the stage that does not scroll, which has nothing to follow
@@ -329,6 +491,20 @@ class _StageBar extends StatelessWidget {
               tooltip: playing ? 'Stop' : 'Play',
               onPressed: onPlay,
             ),
+            if (onTapping != null) ...[
+              const SizedBox(width: 4),
+              IconButton(
+                key: const ValueKey('stage-follow-taps'),
+                iconSize: 28,
+                isSelected: tapping,
+                icon: const Icon(Icons.touch_app_outlined),
+                selectedIcon: const Icon(Icons.touch_app),
+                tooltip: tapping
+                    ? 'Stop Following by Taps'
+                    : 'Follow a Band by Taps',
+                onPressed: onTapping,
+              ),
+            ],
             if (onListen != null) ...[
               const SizedBox(width: 4),
               IconButton(
