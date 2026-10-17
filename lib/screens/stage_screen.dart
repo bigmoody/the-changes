@@ -219,8 +219,8 @@ class _Hearing extends StatelessWidget {
         ? (level < 0.001
               ? 'Listening, but it is very quiet. Turn the music up, or '
                     'bring the device closer.'
-              : 'Start the music, then tap the beat along with it a few '
-                    'times.')
+              : 'Play the record from the top, or tap the bar it is on. '
+                    'If the tempo is off, tap the beat a few times.')
         : !heard!.hearsMusic
         ? 'Hearing sound, but no beat it can count. Tap the beat along '
               'with the music a few times.'

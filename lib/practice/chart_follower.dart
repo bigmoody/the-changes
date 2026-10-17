@@ -85,11 +85,12 @@ class ChartFollower {
        _told = 60 / tempo * sampleRate / _hop,
        _guess = Float64List(tune.totalBeats) {
     if (fromTheTop) {
-      // The first beat heard is most likely the first of the tune: that
-      // is how a tune starts. Not certainly, though: somebody who turns
-      // the ear on halfway through a chorus should not have to wait for
-      // the chords to talk it out of a certainty it never had.
-      _spread(0, _atTheTop);
+      // The first beat heard is the first of the tune, and from there it
+      // counts. Somebody who turns the ear on in the middle taps the bar
+      // they are on, which is quicker and surer than any guess.
+      _guess[0] = 1;
+      _locked = true;
+      _awaitingTheTop = true;
     } else {
       _guess.fillRange(0, _guess.length, 1 / _guess.length);
     }
@@ -167,27 +168,23 @@ class ChartFollower {
   /// Where it thinks the music is, once it has heard a beat.
   FollowedPosition? get position => _position;
 
-  /// How sure it starts that the first beat is the top of the tune.
-  static const _atTheTop = 0.7;
-
-  /// [share] of the guess on [beat], the rest spread everywhere.
-  void _spread(int beat, double share) {
-    final n = _guess.length;
-    _guess.fillRange(0, n, (1 - share) / n);
-    _guess[beat % n] += share;
-  }
-
   /// Told where the music is: the beat now beginning is [beat].
   ///
   /// What a tap on a bar means: "we are here". Nearly, but not entirely,
   /// believed, in case the finger was a bar out.
   void placeAt(int beat) {
-    _spread(beat, 0.9);
+    _guess.fillRange(0, _guess.length, 0);
+    _guess[beat % _guess.length] = 1;
+    _locked = true;
+    _awaitingTheTop = false;
+    _confirmed = true;
+    _placedByHand = true;
+    _counted = beat % _guess.length;
     final at = _position;
     _position = FollowedPosition(
       beat: beat % _guess.length,
       beatsPerBar: tune.beatsPerBar,
-      confidence: 0.9,
+      confidence: 1,
       tempo: at?.tempo ?? 60 * sampleRate / (_period * _hop),
       at: at?.at ?? 0,
     );
@@ -297,6 +294,14 @@ class ChartFollower {
     _expected = beat;
     _period = beat;
     _offTempo = 0;
+    // Somebody tapping the beat is somebody telling it the count was
+    // wrong: wherever the count has got to at the wrong speed is not
+    // where the music is. Unless they have tapped the bar they are on,
+    // it looks for its place instead, and counts on once it is sure.
+    if (!_placedByHand && !_awaitingTheTop) {
+      _locked = false;
+      _guess.fillRange(0, _guess.length, 1 / _guess.length);
+    }
     _roomTempo = null;
     _quietFor = 0;
     if (_next == null) {
@@ -494,6 +499,11 @@ class ChartFollower {
     _onTheBeat += pace * (strength(beat) - _onTheBeat);
     _between += pace * (strength(beat - _period / 2) - _between);
     _sinceSwapped++;
+    // Only while it is still finding the beat. Once the music has been
+    // heard on the count, a soloist's eighths can make the "and" ring
+    // louder than the beat for a chorus at a time, and every move over
+    // would put the count half a beat out with nothing to bring it back.
+    if (_confirmed) return;
     if (_sinceSwapped > 8 && _between > _onTheBeat * 1.4) {
       _next = beat + _period / 2;
       _swapPending = true;
@@ -583,8 +593,14 @@ class ChartFollower {
     _flatness += 0.3 * (flatness - _flatness);
     final spiky = ((0.55 - _flatness) / 0.1).clamp(0.0, 1.0);
     final peaky = ((_peaks - 0.16) / 0.08).clamp(0.0, 1.0);
+    // This beat on its own, for deciding whether the band has started:
+    // an average would carry the first notes over into the noise before
+    // them, or the noise into the first notes.
+    _pitchedNow = flatness < 0.5 || share > 0.2;
     return math.max(spiky, peaky);
   }
+
+  var _pitchedNow = false;
 
   var _flatness = 0.3;
 
@@ -598,26 +614,28 @@ class ChartFollower {
     final n = _guess.length;
     final first = _beats == 0;
     _beats++;
-    var best = -double.infinity;
     if (notes != null && !notes.isEmpty) {
       final fits = Float64List(n);
+      var best = -double.infinity;
       for (var k = 0; k < n; k++) {
         fits[k] = _fit(_templates[k], notes);
         best = math.max(best, fits[k]);
       }
-
+      // Once it knows where it is the chords only settle which beat of
+      // the bar it is on; they count for less, so a soloist's notes
+      // outside the chord cannot drag it about.
+      final sharpness = _locked ? _lockedSharpness : _sharpness;
       for (var k = 0; k < n; k++) {
-        _guess[k] *= math.exp(_pitched * _sharpness * (fits[k] - best));
+        _guess[k] *= math.exp(_pitched * sharpness * (fits[k] - best));
       }
     }
-    var total = 0.0;
-    for (final g in _guess) {
-      total += g;
-    }
-    // Never quite certain: a share everywhere, so it can find its way
-    // back from a wrong turn.
-    for (var k = 0; k < n; k++) {
-      _guess[k] = 0.995 * _guess[k] / total + 0.005 / n;
+    _normalise();
+    if (!_locked) {
+      // Still looking: never quite certain, a share everywhere, so the
+      // chords can bring it to the right place from anywhere.
+      for (var k = 0; k < n; k++) {
+        _guess[k] = 0.995 * _guess[k] + 0.005 / n;
+      }
     }
     if (!first) {
       // Mostly one on; a little held back for a missed beat and a little
@@ -630,11 +648,29 @@ class ChartFollower {
             _slip * _guess[(k - 2 + n) % n];
       }
       _guess.setAll(0, moved);
+      if (_locked) {
+        // Where counting puts it, and no further than a couple of beats
+        // either side. Tunes say the same thing in different places (an
+        // A section and the last A, a ii-V in the bridge and one in the
+        // A), and a chord heard is never reason to leap to another of
+        // them: the music goes forward a beat at a time, and so does
+        // this. Only a tap moves it further.
+        final centre = (_counted + 1) % n;
+        final reach = math.min(_nudge, tune.beatsPerBar ~/ 2);
+        for (var k = 0; k < n; k++) {
+          var off = (k - centre).abs();
+          off = math.min(off, n - off);
+          if (off > reach) _guess[k] = 0;
+        }
+        _normalise();
+      }
     }
     var at = 0;
     for (var k = 1; k < n; k++) {
       if (_guess[k] > _guess[at]) at = k;
     }
+    if (!_locked && _guess[at] >= _sureToLock) _locked = true;
+    _counted = at;
     final heard = first ? null : _groove();
     // Whether the spacing the room's attacks repeat at best is a whole
     // number of the beats being counted, or half of one. A count at the
@@ -683,6 +719,22 @@ class ChartFollower {
       ];
     }
     final musical = _musical.where((m) => m).length;
+    if (_musical.isNotEmpty && _musical.last) _confirmed = true;
+    if (_awaitingTheTop && !first) {
+      final pitchedHit =
+          _hitThisBeat && notes != null && !notes.isEmpty && _pitchedNow;
+      if (!pitchedHit) {
+        // Before the band: a cough, a door or a room's hiss is not bar
+        // one. It stays at the top until a beat with notes in it.
+        at = 0;
+        _guess.fillRange(0, n, 0);
+        _guess[0] = 1;
+        _counted = 0;
+      } else {
+        // The band, and the top: counting from here.
+        _awaitingTheTop = false;
+      }
+    }
     final position = FollowedPosition(
       beat: at,
       beatsPerBar: tune.beatsPerBar,
@@ -697,6 +749,47 @@ class ChartFollower {
 
   /// How hard what was heard pulls the guess toward the chords it fits.
   static const _sharpness = 3.0;
+
+  /// The same, once it knows where it is.
+  static const _lockedSharpness = 1.0;
+
+  /// How far a chord may nudge the count, in beats, either way.
+  static const _nudge = 1;
+
+  /// How sure it has to be before it stops looking and starts counting.
+  static const _sureToLock = 0.8;
+
+  /// Whether it knows where it is, and is counting on from there rather
+  /// than looking.
+  var _locked = false;
+
+  /// Started from the top and waiting for the music to begin: held at
+  /// the first beat until it does, so a cough or a door before the band
+  /// comes in is not taken for bar one.
+  var _awaitingTheTop = false;
+
+  /// Whether a beat has been heard as music at the tempo being counted
+  /// since counting started: until then, the count may be at the wrong
+  /// speed and the place it has counted to is not to be trusted.
+  var _confirmed = false;
+
+  /// Whether somebody has tapped the bar they are on, which is believed
+  /// over anything the ear makes of it.
+  var _placedByHand = false;
+
+  /// The beat it last said, which the next is counted on from.
+  var _counted = 0;
+
+  void _normalise() {
+    var total = 0.0;
+    for (final g in _guess) {
+      total += g;
+    }
+    if (total == 0) return;
+    for (var k = 0; k < _guess.length; k++) {
+      _guess[k] /= total;
+    }
+  }
 
   /// How likely the count is to have missed a beat, or counted one twice.
   /// Small, because the count is mostly right; not nothing, because when

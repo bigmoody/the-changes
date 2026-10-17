@@ -104,6 +104,95 @@ double _onTheBar(
   return counted == 0 ? 0 : right / counted;
 }
 
+/// How many times the follower moved more than two beats from where
+/// counting on from its last beat would have put it: a leap to some other
+/// place in the tune, which is what it must not do once it knows where
+/// it is.
+int _leaps(ChartFollower follower, {double after = 0}) {
+  final total = follower.tune.totalBeats;
+  var leaps = 0;
+  int? last;
+  for (final heard in follower.heardBeats) {
+    if (heard.at < after) continue;
+    if (last != null) {
+      var off = (heard.beat - (last + 1)) % total;
+      if (off > total ~/ 2) off -= total;
+      if (off.abs() > 2) leaps++;
+    }
+    last = heard.beat;
+  }
+  return leaps;
+}
+
+/// A soloist over the band: swung eighths of any note at all, chromatic
+/// and outside the chords as often as in, as loud as the band. Harder
+/// than a real soloist, who plays the changes most of the time.
+Float32List _withASoloist(Float32List band, int samplesPerBeat, int from) {
+  final out = Float32List.fromList(band);
+  final random = math.Random(11);
+  var peak = 0.0;
+  for (final sample in band) {
+    peak = math.max(peak, sample.abs());
+  }
+  var at = from;
+  var long = true;
+  while (at < out.length) {
+    final length = (samplesPerBeat * (long ? 2 / 3 : 1 / 3)).round();
+    long = !long;
+    if (random.nextDouble() < 0.85) {
+      final pitch = 60 + random.nextInt(24);
+      final hz = 440 * math.pow(2, (pitch - 69) / 12);
+      for (var i = 0; i < length && at + i < out.length; i++) {
+        final t = i / 44100;
+        final envelope = math.min(1, i / 400) * math.exp(-t * 3);
+        var tone = 0.0;
+        for (var h = 1; h <= 6; h++) {
+          tone += math.sin(2 * math.pi * hz * h * t) / h;
+        }
+        out[at + i] += tone * envelope * peak * 0.35;
+      }
+    }
+    at += length;
+  }
+  return out;
+}
+
+/// A room round it: a plain reverb of the old kind, four echoes feeding
+/// back and two smearing, a second and more of tail.
+Float32List _inARoom(Float32List dry) {
+  final wet = Float32List(dry.length);
+  for (final (delay, feedback) in [
+    (1557, 0.84),
+    (1617, 0.83),
+    (1491, 0.85),
+    (1422, 0.84),
+  ]) {
+    final line = Float32List(delay);
+    var at = 0;
+    for (var i = 0; i < dry.length; i++) {
+      final out = line[at];
+      line[at] = dry[i] + out * feedback;
+      wet[i] += out * 0.25;
+      at = (at + 1) % delay;
+    }
+  }
+  for (final delay in [225, 556]) {
+    final line = Float32List(delay);
+    var at = 0;
+    for (var i = 0; i < wet.length; i++) {
+      final buffered = line[at];
+      final input = wet[i];
+      final out = -input + buffered;
+      line[at] = input + buffered * 0.5;
+      wet[i] = out;
+      at = (at + 1) % delay;
+    }
+  }
+  return Float32List.fromList([
+    for (var i = 0; i < dry.length; i++) dry[i] * 0.7 + wet[i] * 0.5,
+  ]);
+}
+
 void main() {
   late SampleBank bank;
 
@@ -130,6 +219,7 @@ void main() {
         'tempo heard ${follower.position?.tempo.toStringAsFixed(1)}',
       );
       expect(share, greaterThan(0.9));
+      expect(_leaps(follower), 0, reason: 'it goes forward, never leaps');
       // And it knows it is hearing music, or the stage would mark nothing.
       final heard = follower.heardBeats.where((beat) => beat.at > 6);
       final musical = heard.where((beat) => beat.hearsMusic).length;
@@ -285,7 +375,8 @@ void main() {
     // which is wrong, and the chords have to talk it out of that.
     final tune = _standard('Blue Bossa');
     final band = _band(bank, tune, 150);
-    final follower = ChartFollower(tune: tune, tempo: 150);
+    // Not told it is at the top: it looks, and once sure it counts on.
+    final follower = ChartFollower(tune: tune, tempo: 150, fromTheTop: false);
     final from =
         (band.countInBeats + 20 * tune.beatsPerBar + 2) * band.samplesPerBeat;
     _feed(follower, Float32List.sublistView(band.audio, from));
@@ -307,23 +398,52 @@ void main() {
     expect(share, greaterThan(0.85));
   });
 
-  test('a tap on a bar puts it there at once', () {
+  test('a tap on a bar puts it there, and it counts on from it', () {
+    // Turned on in the middle, at bar 17, and told so with a tap as the
+    // bar comes round.
     final tune = _standard('Autumn Leaves');
     final band = _band(bank, tune, 140);
     final follower = ChartFollower(tune: tune, tempo: 140);
-    // Two bars in, it is told it is on bar 17, which is wrong: a finger
-    // can be wrong too, and it has to be believed now and corrected by
-    // what it hears after.
+    final bar17 =
+        (band.countInBeats + 16 * tune.beatsPerBar) * band.samplesPerBeat;
+    // A little of bar 16 heard first, as it would be.
+    final from = bar17 - 2 * band.samplesPerBeat;
+    final tapAt = bar17 + band.samplesPerBeat ~/ 10;
+    _feed(follower, Float32List.sublistView(band.audio, from, tapAt));
+    follower.placeAt(16 * tune.beatsPerBar);
+    expect(follower.position!.bar, 16);
+    _feed(follower, Float32List.sublistView(band.audio, tapAt));
+    final offset = from / 44100;
+    var right = 0;
+    var counted = 0;
+    for (final heard in follower.heardBeats) {
+      if (heard.at + offset < tapAt / 44100 + 1) continue;
+      final actual =
+          (((heard.at + offset) * 44100 / band.samplesPerBeat).round() -
+              band.countInBeats) %
+          tune.totalBeats;
+      counted++;
+      if (actual ~/ 4 == heard.bar) right++;
+    }
+    // ignore: avoid_print
+    print(
+      'From a tap at bar 17: ${(right / counted * 100).toStringAsFixed(1)}%',
+    );
+    expect(right / counted, greaterThan(0.9));
+    expect(_leaps(follower, after: (tapAt - from) / 44100 + 1), 0);
+  });
+
+  test('a wrong tap is believed: it counts on from where it was told', () {
+    // Nothing it hears moves it a section away, not even to put right a
+    // tap; another tap does that. What it may do is settle the beat.
+    final tune = _standard('Autumn Leaves');
+    final band = _band(bank, tune, 140);
+    final follower = ChartFollower(tune: tune, tempo: 140);
     final twoBars = (band.countInBeats + 8) * band.samplesPerBeat;
     _feed(follower, Float32List.sublistView(band.audio, 0, twoBars));
     follower.placeAt(16 * tune.beatsPerBar);
-    expect(follower.position!.bar, 16);
     _feed(follower, Float32List.sublistView(band.audio, twoBars));
-    // And it comes back to where the band really is.
-    final share = _onTheBar(follower, band, settle: 30);
-    // ignore: avoid_print
-    print('After a wrong tap: ${(share * 100).toStringAsFixed(1)}%');
-    expect(share, greaterThan(0.85));
+    expect(_leaps(follower, after: twoBars / 44100 + 1), 0);
   });
 
   test('a quiet room is not taken for a band', () {
@@ -438,5 +558,32 @@ void main() {
         expect(share, greaterThan(needs));
       });
     }
+  }
+
+  // A real record: a soloist playing all over the changes, the band
+  // under them, a room round it all. It must keep its place by counting
+  // and never leap to some other section that shares the chords.
+  for (final title in ['Autumn Leaves', 'Cherokee', 'Blue Bossa']) {
+    test('keeps its place under a soloist, in a room ($title)', () {
+      final tune = _standard(title);
+      final band = _band(bank, tune, 160);
+      final record = _inARoom(
+        _withASoloist(
+          band.audio,
+          band.samplesPerBeat,
+          band.countInBeats * band.samplesPerBeat,
+        ),
+      );
+      final follower = ChartFollower(tune: tune, tempo: 160);
+      _feed(follower, record);
+      final share = _onTheBar(follower, band, settle: 4);
+      // ignore: avoid_print
+      print(
+        '$title, soloist in a room: ${(share * 100).toStringAsFixed(1)}%, '
+        '${_leaps(follower)} leaps',
+      );
+      expect(_leaps(follower), 0);
+      expect(share, greaterThan(0.9));
+    });
   }
 }
