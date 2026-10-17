@@ -176,4 +176,45 @@ void main() {
     expect(stage.ear.position, isNotNull, reason: 'the taps start the count');
     expect(stage.ear.position!.tempo, closeTo(record, record * 0.05));
   });
+
+  test('what it heard can be saved and read back', () async {
+    final room = StreamController<Float32List>();
+    final ear = RoomListener(
+      tune: tune,
+      tempo: tune.defaultTempo.toDouble(),
+      source: () async => room.stream,
+      keepWhatItHears: true,
+    );
+    await ear.start();
+    final second = Float32List.sublistView(track, leadIn, leadIn + 44100);
+    room.add(second);
+    await Future<void>.delayed(Duration.zero);
+    ear.tap();
+    await ear.stop();
+    final heard = ear.whatItHeard()!;
+    final wav = readWav(heard.wav);
+    expect(wav.sampleRate, 44100);
+    expect(wav.frames, 44100);
+    expect(heard.log, contains('TAP THE BEAT'));
+    expect(heard.log, contains(tune.title));
+    unawaited(room.close());
+    ear.dispose();
+  });
+
+  test('and nothing is kept unless asked', () async {
+    final room = StreamController<Float32List>();
+    final ear = RoomListener(
+      tune: tune,
+      tempo: tune.defaultTempo.toDouble(),
+      source: () async => room.stream,
+      keepWhatItHears: false,
+    );
+    await ear.start();
+    room.add(Float32List(4410));
+    await Future<void>.delayed(Duration.zero);
+    await ear.stop();
+    expect(ear.whatItHeard(), isNull);
+    unawaited(room.close());
+    ear.dispose();
+  });
 }

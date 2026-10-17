@@ -29,6 +29,10 @@
 // the middle, and it says when it is not sure rather than marking a bar
 // it is guessing at.
 
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../audio/room_listener.dart';
@@ -102,6 +106,28 @@ class _StageScreenState extends State<StageScreen> {
     }
   }
 
+  /// Saves what the ear heard and what it made of it, for working out
+  /// why it did not follow something. Debug builds only.
+  Future<void> _saveWhatItHeard() async {
+    final heard = _ear?.whatItHeard();
+    if (heard == null) return;
+    try {
+      final wav = await FilePicker.platform.saveFile(
+        dialogTitle: 'Save What the Ear Heard',
+        fileName: '${heard.name}.wav',
+        bytes: heard.wav,
+      );
+      if (wav == null) return;
+      await FilePicker.platform.saveFile(
+        dialogTitle: 'Save What It Made of It',
+        fileName: '${heard.name}.txt',
+        bytes: Uint8List.fromList(utf8.encode(heard.log)),
+      );
+    } catch (e) {
+      debugPrint('Could not save what the ear heard: $e');
+    }
+  }
+
   Future<void> _togglePlay() async {
     // Starting the band stops the ear, for the same reason, even one
     // still coming on.
@@ -158,6 +184,9 @@ class _StageScreenState extends State<StageScreen> {
                   onPlay: _togglePlay,
                   listening: _listening,
                   onListen: widget.follow ? _toggleListening : null,
+                  onSave: kDebugMode && !_listening && (_ear?.hasKept ?? false)
+                      ? _saveWhatItHeard
+                      : null,
                   chord: _listening
                       ? (sure
                             ? controller.chart
@@ -268,7 +297,11 @@ class _StageBar extends StatelessWidget {
     required this.onListen,
     required this.chord,
     required this.tempo,
+    this.onSave,
   });
+
+  /// Saving what the ear heard, in a build being worked on.
+  final VoidCallback? onSave;
 
   final PracticeController controller;
   final VoidCallback onPlay;
@@ -313,6 +346,13 @@ class _StageBar extends StatelessWidget {
                 onPressed: onListen,
               ),
             ],
+            if (onSave != null)
+              IconButton(
+                key: const ValueKey('stage-save-heard'),
+                icon: const Icon(Icons.save_alt),
+                tooltip: 'Save What It Heard',
+                onPressed: onSave,
+              ),
             const SizedBox(width: 12),
             // The chart says where you are; this says what you're on, big
             // enough to catch out of the corner of an eye.

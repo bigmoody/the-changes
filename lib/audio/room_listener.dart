@@ -11,6 +11,7 @@
 // plays it.
 
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
@@ -28,9 +29,27 @@ class RoomListener extends ChangeNotifier {
     required this.tempo,
     this.fromTheTop = true,
     SoundSource? source,
-  })
-    // ignore: prefer_initializing_formals
-    : _source = source;
+    bool? keepWhatItHears,
+  }) : keepWhatItHears = keepWhatItHears ?? kDebugMode,
+       // ignore: prefer_initializing_formals
+       _source = source;
+
+  /// Whether to keep what it hears, to be saved and listened back to when
+  /// it has not followed something it should have. Only while the app is
+  /// being worked on (debug builds): nothing is kept in the app people
+  /// use, which is what the microphone's purpose string promises.
+  final bool keepWhatItHears;
+
+  /// What it heard, as 16-bit samples, and what happened while it did:
+  /// each beat it counted, and every tap.
+  final _kept = <Int16List>[];
+  var _keptSamples = 0;
+  final _log = StringBuffer();
+
+  /// Five minutes, which is a tune and then some.
+  static const _keepAtMost = sampleRate * 300;
+
+  bool get hasKept => _keptSamples > 0;
 
   /// The tune at concert pitch, which is what the room plays.
   final Tune tune;
@@ -79,6 +98,15 @@ class RoomListener extends ChangeNotifier {
     _problem = null;
     _follower = _fresh();
     _lastBeat = null;
+    _kept.clear();
+    _keptSamples = 0;
+    _log
+      ..clear()
+      ..writeln(
+        '# ${tune.title}, ${tune.key}, told ${tempo.round()} BPM, '
+        '${tune.meter.label}, ${tune.barCount} bars',
+      )
+      ..writeln('# seconds  event');
     try {
       final stream = await (_source ?? _microphone)();
       // Stopped while the microphone was still coming on: the band was
@@ -128,8 +156,32 @@ class RoomListener extends ChangeNotifier {
     return samples;
   }
 
+  double get _now => _keptSamples / sampleRate;
+
+  void _keep(Float32List samples) {
+    if (!keepWhatItHears || _keptSamples >= _keepAtMost) return;
+    final chunk = Int16List(samples.length);
+    for (var i = 0; i < samples.length; i++) {
+      chunk[i] = (samples[i].clamp(-1.0, 1.0) * 32767).round().toInt();
+    }
+    _kept.add(chunk);
+    _keptSamples += chunk.length;
+  }
+
   void _hear(Float32List samples) {
+    _keep(samples);
+    final before = _follower.heardBeats.length;
     _follower.hear(samples);
+    if (keepWhatItHears) {
+      for (final beat in _follower.heardBeats.skip(before)) {
+        _log.writeln(
+          '${beat.at.toStringAsFixed(3)}  beat ${beat.beat} bar '
+          '${beat.bar + 1} sure ${beat.confidence.toStringAsFixed(2)} '
+          'music ${beat.hearsMusic} tempo ${beat.tempo.toStringAsFixed(1)} '
+          'level ${_follower.level.toStringAsFixed(4)}',
+        );
+      }
+    }
     // Told once a beat, not every few milliseconds: nothing on screen
     // changes in between.
     final beat = _follower.position?.beat;
@@ -145,12 +197,14 @@ class RoomListener extends ChangeNotifier {
 
   /// A tap on the beat, along with the music.
   void tap() {
+    _log.writeln('${_now.toStringAsFixed(3)}  TAP THE BEAT');
     _follower.tap();
     notifyListeners();
   }
 
   /// "We are here": the bar a finger landed on, now beginning.
   void placeAt(int bar) {
+    _log.writeln('${_now.toStringAsFixed(3)}  TAPPED BAR ${bar + 1}');
     _follower.placeAt(bar * tune.beatsPerBar);
     _lastBeat = _follower.position?.beat;
     notifyListeners();
@@ -160,6 +214,53 @@ class RoomListener extends ChangeNotifier {
   /// is true from the moment Listen is pressed, before the microphone has
   /// come on.
   var _wanted = false;
+
+  /// What it heard (a WAV) and what it made of it (a log), with a name
+  /// for them. Null if nothing was kept.
+  ({String name, Uint8List wav, String log})? whatItHeard() {
+    if (!hasKept) return null;
+    final stamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(RegExp(r'[:.]'), '-')
+        .substring(0, 19);
+    return (
+      name:
+          'heard-${tune.title.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')}-$stamp',
+      wav: _wavOf(_kept, _keptSamples),
+      log: _log.toString(),
+    );
+  }
+
+  static Uint8List _wavOf(List<Int16List> chunks, int samples) {
+    final bytes = ByteData(44 + samples * 2);
+    void text(int at, String s) {
+      for (var i = 0; i < s.length; i++) {
+        bytes.setUint8(at + i, s.codeUnitAt(i));
+      }
+    }
+
+    text(0, 'RIFF');
+    bytes.setUint32(4, 36 + samples * 2, Endian.little);
+    text(8, 'WAVE');
+    text(12, 'fmt ');
+    bytes.setUint32(16, 16, Endian.little);
+    bytes.setUint16(20, 1, Endian.little);
+    bytes.setUint16(22, 1, Endian.little);
+    bytes.setUint32(24, sampleRate, Endian.little);
+    bytes.setUint32(28, sampleRate * 2, Endian.little);
+    bytes.setUint16(32, 2, Endian.little);
+    bytes.setUint16(34, 16, Endian.little);
+    text(36, 'data');
+    bytes.setUint32(40, samples * 2, Endian.little);
+    var at = 44;
+    for (final chunk in chunks) {
+      for (final sample in chunk) {
+        bytes.setInt16(at, sample, Endian.little);
+        at += 2;
+      }
+    }
+    return bytes.buffer.asUint8List();
+  }
 
   Future<void> stop() async {
     _wanted = false;
