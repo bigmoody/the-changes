@@ -339,7 +339,12 @@ class _StageScreenState extends State<StageScreen> {
                         ? _toggleListening
                         : null,
                     onSave:
-                        kDebugMode && !_listening && (_ear?.hasKept ?? false)
+                        // Not beside the broadcast's own save, which looks
+                        // the same and keeps something else.
+                        kDebugMode &&
+                            !_listening &&
+                            !_hearingOthers &&
+                            (_ear?.hasKept ?? false)
                         ? _saveWhatItHeard
                         : null,
                     hearingOthers: _hearingOthers,
