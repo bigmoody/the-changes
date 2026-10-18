@@ -36,6 +36,7 @@
 // the recordings and checked on the other half.
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -214,7 +215,12 @@ class TapFollower extends ChangeNotifier {
   /// A barline Beat This! heard, [ago] before now.
   void heardBarline(Duration ago) {
     final at = _clock() - ago;
-    _heard.add(at);
+    // Kept in the order they were played, which is not always the order
+    // they are heard in: a barline two looks only agree on late comes
+    // after ones played later.
+    _heard
+      ..add(at)
+      ..sort();
     if (_heard.length > 8) _heard.removeAt(0);
     if (counting) {
       _nudge(at);
@@ -224,7 +230,9 @@ class TapFollower extends ChangeNotifier {
   }
 
   /// Starts counting from the barlines heard alone, once the last five
-  /// have come evenly: each gap within 6% of the middle one, and the bar
+  /// have come evenly: each gap a whole number of bars (one, two or three:
+  /// a barline Beat This! was not sure of is left out, not guessed), each
+  /// within 6% of it, at least two of them a single bar, and the bar
   /// between 0.8 and 4 seconds (quicker is half bars). A bar already
   /// tapped keeps its place; otherwise the count starts on bar 1.
   void _startFromHeard() {
@@ -233,10 +241,19 @@ class TapFollower extends ChangeNotifier {
     final gaps = [
       for (var i = 1; i < last.length; i++)
         (last[i] - last[i - 1]).inMicroseconds,
-    ]..sort();
-    final bar = (gaps[1] + gaps[2]) / 2;
+    ];
+    // The shortest gap as a first guess at a bar, then the bar the whole
+    // stretch says, counting each gap as the bars it spans.
+    final guess = gaps.reduce(min);
+    final spans = [for (final gap in gaps) (gap / guess).round()];
+    if (spans.any((n) => n < 1 || n > 3)) return;
+    if (spans.where((n) => n == 1).length < 2) return;
+    final bar =
+        (last.last - last.first).inMicroseconds / spans.reduce((a, b) => a + b);
     if (bar < 800000 || bar > 4000000) return;
-    if (gaps.any((gap) => (gap - bar).abs() >= 0.06 * bar)) return;
+    for (var i = 0; i < gaps.length; i++) {
+      if ((gaps[i] / spans[i] - bar).abs() >= 0.06 * bar) return;
+    }
     final perBar = tune.beatsPerBar;
     final length = Duration(microseconds: (bar / perBar).round());
     final placed = _anchor;

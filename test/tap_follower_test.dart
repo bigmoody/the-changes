@@ -222,6 +222,20 @@ void main() {
       taps.stop();
     });
 
+    test('a barline left out does not stop it starting', () {
+      final taps = follower();
+      // Bars every 2 s from 0; the one at 4 s was not heard.
+      for (final at in [0, 2, 6, 8, 10]) {
+        now = Duration(seconds: at);
+        taps.heardBarline(Duration.zero);
+      }
+      expect(taps.counting, isTrue);
+      expect(taps.tempo, closeTo(120, 0.5));
+      now = const Duration(seconds: 11);
+      expect(taps.beat, 2);
+      taps.stop();
+    });
+
     test('half bars do not start it', () {
       final taps = follower();
       hear(taps, 8, every: const Duration(milliseconds: 600));
