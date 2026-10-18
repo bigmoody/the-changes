@@ -17,6 +17,9 @@
 // app's own clock is: so the taps made in the app while it played can be
 // put where they belong in it.
 //
+// The last half minute also goes, as it comes, into a ring the app reads
+// (see SoundRing.swift), for Beat This! to follow while it plays.
+//
 // Apple Music plays nothing here, and neither does anything else whose
 // sound is protected: a screen recording is given silence for it.
 //
@@ -92,6 +95,11 @@ class SampleHandler: RPBroadcastSampleHandler {
   private var ringAt = 0
   private var ringFull = false
 
+  #if DEBUG
+  /// The ring the app follows from.
+  private var shared: SoundRing?
+  #endif
+
   override func broadcastStarted(withSetupInfo setupInfo: [String: NSObject]?) {
     report(state: "started")
   }
@@ -149,7 +157,8 @@ class SampleHandler: RPBroadcastSampleHandler {
       )
     }
 
-    measure(sampleBuffer, basic: basic, frames: count)
+    let played = expectedTime.map { CMTimeGetSeconds($0) } ?? now
+    measure(sampleBuffer, basic: basic, frames: count, endingAt: played)
 
     if now - lastReport >= SampleHandler.reportEvery {
       lastReport = now
@@ -180,13 +189,19 @@ class SampleHandler: RPBroadcastSampleHandler {
     ring = [Int16](repeating: 0, count: Int(sampleRate * SampleHandler.keptSeconds))
     ringAt = 0
     ringFull = false
+    #if DEBUG
+    shared = folder.flatMap {
+      SoundRing(writingTo: $0.appendingPathComponent("broadcast-ring.raw"), sampleRate: sampleRate)
+    }
+    #endif
   }
 
   /// How loud the buffer is, and its sound kept in the ring.
   private func measure(
     _ sampleBuffer: CMSampleBuffer,
     basic: AudioStreamBasicDescription,
-    frames count: Int
+    frames count: Int,
+    endingAt played: Double
   ) {
     var needed = 0
     CMSampleBufferGetAudioBufferListWithRetainedBlockBuffer(
@@ -248,6 +263,8 @@ class SampleHandler: RPBroadcastSampleHandler {
     let channelCount = max(1, channels)
     var sum = 0.0
     var loudest = 0.0
+    var mono = [Int16]()
+    mono.reserveCapacity(count)
     for frame in 0..<count {
       var mixed = 0.0
       for channel in 0..<channelCount {
@@ -264,8 +281,10 @@ class SampleHandler: RPBroadcastSampleHandler {
         mixed += value
       }
       mixed /= Double(channelCount)
+      let sample = Int16(max(-1, min(1, mixed)) * 32767)
+      mono.append(sample)
       if !ring.isEmpty {
-        ring[ringAt] = Int16(max(-1, min(1, mixed)) * 32767)
+        ring[ringAt] = sample
         ringAt += 1
         if ringAt == ring.count {
           ringAt = 0
@@ -273,6 +292,9 @@ class SampleHandler: RPBroadcastSampleHandler {
         }
       }
     }
+    #if DEBUG
+    shared?.append(mono, endingAt: played)
+    #endif
     let values = count * channelCount
     level = values > 0 ? (sum / Double(values)).squareRoot() : 0
     peak = loudest

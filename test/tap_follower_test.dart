@@ -177,4 +177,99 @@ void main() {
       taps.stop();
     });
   });
+
+  group('barlines heard by Beat This!', () {
+    const bar = Duration(milliseconds: 2000); // four beats at 120
+
+    /// Barlines [every] apart, from [from], each heard [late] after it.
+    void hear(
+      TapFollower taps,
+      int count, {
+      Duration every = bar,
+      Duration? from,
+      Duration late = Duration.zero,
+    }) {
+      var at = from ?? now;
+      for (var i = 0; i < count; i++) {
+        now = at + late;
+        taps.heardBarline(late);
+        at += every;
+      }
+      now = at - every + late;
+    }
+
+    test('five steady barlines start the count, on bar 1', () {
+      final taps = follower();
+      hear(taps, 4);
+      expect(taps.counting, isFalse, reason: 'four are not yet steady');
+      hear(taps, 1, from: bar * 4);
+      expect(taps.counting, isTrue);
+      expect(taps.tempo, closeTo(120, 0.5));
+      // The fifth barline was bar 1; half a bar on is still bar 1.
+      now = bar * 4 + bar ~/ 2;
+      expect(taps.beat, 2);
+      taps.stop();
+    });
+
+    test('barlines heard late are put where they were', () {
+      final taps = follower();
+      hear(taps, 5, late: const Duration(milliseconds: 900));
+      // The fifth barline was at 8 s, heard at 8.9 s.
+      now = bar * 4 + const Duration(milliseconds: 100);
+      expect(taps.beat, 0);
+      now = bar * 4 + const Duration(milliseconds: 600);
+      expect(taps.beat, 1);
+      taps.stop();
+    });
+
+    test('half bars do not start it', () {
+      final taps = follower();
+      hear(taps, 8, every: const Duration(milliseconds: 600));
+      expect(taps.counting, isFalse);
+    });
+
+    test('a bar tapped before keeps its place when they start it', () {
+      final taps = follower();
+      taps.placeAtBar(4); // bar 5, at 0 s
+      hear(taps, 5, from: bar * 2);
+      // The barlines heard were bars 7 to 11: at 12 s, bar 11.
+      expect(taps.beat, 10 * tune.beatsPerBar);
+      taps.stop();
+    });
+
+    test('the count follows a band that slows down', () {
+      final taps = follower();
+      tapFour(taps); // 120, bar 1 at 2 s
+      // The band is at 116 from bar 1: a bar of about 2.07 s.
+      const slower = Duration(microseconds: 2068966);
+      hear(taps, 16, from: beat * 4, every: slower);
+      expect(taps.nudges, greaterThan(10));
+      expect(taps.tempo, closeTo(116, 1.5));
+      // The last barline heard is still a barline on the count.
+      final last = beat * 4 + slower * 15;
+      now = last + const Duration(milliseconds: 50);
+      expect(taps.beat! % tune.beatsPerBar, 0);
+      taps.stop();
+    });
+
+    test('never further than a tenth from the tempo it started at', () {
+      final taps = follower();
+      tapFour(taps);
+      // Barlines at half the tempo's bar length would be half bars, and
+      // gated out; these are slower, past where it may go.
+      hear(taps, 40, from: beat * 4, every: const Duration(milliseconds: 2350));
+      expect(taps.tempo, greaterThanOrEqualTo(120 / 1.1 - 0.5));
+      taps.stop();
+    });
+
+    test('a barline in the middle of a bar is not taken', () {
+      final taps = follower();
+      tapFour(taps);
+      now = beat * 4 + bar * 2 + bar ~/ 2;
+      taps.heardBarline(Duration.zero);
+      expect(taps.nudges, 0);
+      expect(taps.tempo, closeTo(120, 0.5));
+      taps.stop();
+    });
+  });
 }

@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/other_apps.dart';
 import 'package:play_along/audio/practice_player.dart';
@@ -179,8 +180,6 @@ void main() {
     await _openStage(tester, taps: taps);
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
-    await tester.pump();
     // Before the kept twenty seconds, then in them: 10 s to 30 s.
     _elapsed = const Duration(seconds: 5);
     taps.tapBeat();
@@ -212,8 +211,8 @@ void main() {
     await _openStage(tester, taps: taps, report: _playing());
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump(const Duration(milliseconds: 250));
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
-    await tester.pump(const Duration(milliseconds: 250));
+    // Hearing another app follows it by taps too.
+    expect(find.byKey(const ValueKey('stage-tapping')), findsOneWidget);
     for (var i = 0; i < 4; i++) {
       _elapsed += const Duration(milliseconds: 300);
       await tester.tap(find.byKey(const ValueKey('stage-tap-beat')));
@@ -250,6 +249,46 @@ void main() {
     expect(_leftTaps, contains('3.000  TAP THE BEAT'));
     await tester.tap(find.byKey(const ValueKey('stage-listen')));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+  });
+
+  testWidgets('follows the barlines Beat This! hears', (tester) async {
+    final taps = TapFollower(
+      tune: standards.firstWhere((tune) => tune.title == 'Cherokee'),
+      clock: () => _elapsed,
+    );
+    addTearDown(taps.dispose);
+    final asked = await _openStage(tester, taps: taps, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(asked, contains('follow'));
+    expect(find.textContaining('listening for the bars'), findsOneWidget);
+    // Five barlines 1.16 s apart, the last just now, by the phone's clock.
+    _elapsed = const Duration(seconds: 10);
+    final now = _phoneAhead + 10;
+    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+      otherAppsChannel.name,
+      otherAppsChannel.codec.encodeMethodCall(
+        MethodCall('heard', {
+          'downbeats': [for (var i = 4; i >= 0; i--) now - 1.16 * i],
+          'beats': <double>[],
+          'end': now,
+          'took': 0.05,
+        }),
+      ),
+      (_) {},
+    );
+    await tester.pump();
+    expect(taps.counting, isTrue);
+    expect(taps.tempo, closeTo(240 / 1.16, 0.5));
+    expect(
+      find.textContaining('heard 5 barlines, 50 ms a look'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+    expect(asked, contains('stopFollowing'));
+    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
     await tester.pump();
   });
 }

@@ -15,6 +15,11 @@
 // last minute it kept, in the ear's format (see
 // room_listener.dart), so a tracker's barlines can be checked against
 // where somebody listening put them.
+//
+// And it can be followed: Beat This! runs in the app on what the
+// broadcast hears, once a second (see BeatTracker.swift), and each new
+// barline it hears is handed on, as how long ago it was, for the count to
+// be nudged by (see tap_follower.dart).
 
 import 'dart:async';
 import 'dart:convert';
@@ -112,7 +117,9 @@ class OtherAppsSound extends ChangeNotifier {
     DateTime Function()? now,
     Duration Function()? clock,
   }) : _now = now ?? DateTime.now,
-       _clock = clock ?? _stopwatch;
+       _clock = clock ?? _stopwatch {
+    channel.setMethodCallHandler(_fromThePhone);
+  }
 
   /// Taken rather than reached for, so a test can answer as the phone.
   final MethodChannel channel;
@@ -203,6 +210,81 @@ class OtherAppsSound extends ChangeNotifier {
     } catch (e) {
       debugPrint('Could not read what the broadcast heard: $e');
     }
+  }
+
+  /// Told of each new barline Beat This! hears, as how long ago it was.
+  void Function(Duration ago)? onBarline;
+
+  /// Whether Beat This! has been asked to follow.
+  bool get following => _following;
+  var _following = false;
+
+  /// Why it cannot follow, or what it is waiting for, in words.
+  String? get problem => _problem;
+  String? _problem;
+  String? get waiting => _waiting;
+  String? _waiting;
+
+  /// How many barlines it has heard since it was asked to follow.
+  int get barlinesHeard => _barlinesHeard;
+  var _barlinesHeard = 0;
+
+  /// How long its last look took, in seconds.
+  double? get took => _took;
+  double? _took;
+
+  /// The last barline handed on, by the phone's clock.
+  double? _lastBarline;
+
+  /// Starts Beat This! on what the broadcast hears.
+  Future<void> follow() async {
+    _following = true;
+    _barlinesHeard = 0;
+    _lastBarline = null;
+    try {
+      _problem = await channel.invokeMethod<String>('follow');
+    } catch (e) {
+      _problem = 'Beat This! could not start: $e';
+    }
+    if (_offset == null) await _setClock();
+    notifyListeners();
+  }
+
+  Future<void> stopFollowing() async {
+    _following = false;
+    try {
+      await channel.invokeMethod<void>('stopFollowing');
+    } catch (e) {
+      debugPrint('Could not stop Beat This!: $e');
+    }
+    notifyListeners();
+  }
+
+  Future<dynamic> _fromThePhone(MethodCall call) async {
+    if (call.method != 'heard') return null;
+    final heard = Map<String, dynamic>.from(call.arguments as Map);
+    _problem = heard['problem'] as String?;
+    _waiting = heard['waiting'] as String?;
+    _took = (heard['took'] as num?)?.toDouble() ?? _took;
+    final downbeats = [
+      for (final d in heard['downbeats'] as List? ?? const [])
+        (d as num).toDouble(),
+    ]..sort();
+    final offset = _offset;
+    if (offset != null && _following) {
+      final now = _clock().inMicroseconds / 1e6 + offset;
+      for (final d in downbeats) {
+        // Only what is new: the same barline is in the next look too, a
+        // frame or two either way.
+        final last = _lastBarline;
+        if (last != null && d <= last + 0.2) continue;
+        _lastBarline = d;
+        _barlinesHeard++;
+        onBarline?.call(Duration(microseconds: ((now - d) * 1e6).round()));
+      }
+    }
+    notifyListeners();
+    return null;
   }
 
   /// Puts up the system's sheet for starting or stopping the broadcast.

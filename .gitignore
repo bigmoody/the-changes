@@ -49,3 +49,6 @@ app.*.map.json
 
 # What the ear heard, saved from debug builds to replay: recordings, never committed.
 ear_captures/
+
+# The Beat This! model for debug builds, made by tool/beat_this/convert.py: never committed.
+/ios/Models/

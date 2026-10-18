@@ -21,6 +21,9 @@ final class BroadcastBridge {
     forSecurityApplicationGroupIdentifier: "group.com.yaseminbridges.playAlong"
   )?.appendingPathComponent("Library", isDirectory: true)
 
+  /// Beat This!, listening to what the broadcast hears, while asked to.
+  private var listener: BeatListener?
+
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
       name: "the_changes/broadcast",
@@ -45,10 +48,35 @@ final class BroadcastBridge {
         result(CACurrentMediaTime())
       case "keepTaps":
         result(self.write(call.arguments as? String ?? "", to: "broadcast-taps.txt"))
+      case "follow":
+        result(self.follow())
+      case "stopFollowing":
+        self.listener?.stop()
+        self.listener = nil
+        result(nil)
       default:
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  /// Starts Beat This! on what the broadcast hears. Nil when started, or
+  /// what is missing.
+  private func follow() -> String? {
+    if listener != nil { return nil }
+    guard let folder else { return "There is no App Group to read the broadcast from." }
+    guard let model = Bundle.main.url(forResource: "BeatThis", withExtension: "mlmodelc") else {
+      return "This build has no Beat This! model. Run tool/beat_this/convert.py and build again."
+    }
+    let listener = BeatListener(
+      ring: folder.appendingPathComponent("broadcast-ring.raw"),
+      model: model
+    ) { [weak self] heard in
+      self?.channel.invokeMethod("heard", arguments: heard)
+    }
+    listener.start()
+    self.listener = listener
+    return nil
   }
 
   /// Puts up the system's sheet for starting a broadcast, with this
@@ -91,6 +119,73 @@ final class BroadcastBridge {
   private func read(_ name: String) -> Data? {
     guard let folder else { return nil }
     return try? Data(contentsOf: folder.appendingPathComponent(name))
+  }
+}
+/// Beat This! once a second on the last twenty seconds the broadcast
+/// heard, off the main thread. What it hears goes to [heard], on the main
+/// thread, by the phone's clock.
+final class BeatListener {
+  private let ring: URL
+  private let model: URL
+  private let heard: ([String: Any]) -> Void
+  private let queue = DispatchQueue(label: "the_changes.beat_this", qos: .userInitiated)
+  private var timer: DispatchSourceTimer?
+  private var tracker: BeatTracker?
+
+  init(ring: URL, model: URL, heard: @escaping ([String: Any]) -> Void) {
+    self.ring = ring
+    self.model = model
+    self.heard = heard
+  }
+
+  func start() {
+    let timer = DispatchSource.makeTimerSource(queue: queue)
+    timer.schedule(deadline: .now(), repeating: 1.0)
+    timer.setEventHandler { [weak self] in self?.look() }
+    timer.resume()
+    self.timer = timer
+  }
+
+  func stop() {
+    timer?.cancel()
+    timer = nil
+  }
+
+  private func look() {
+    do {
+      if tracker == nil {
+        let started = CACurrentMediaTime()
+        tracker = try BeatTracker(model: model)
+        tell(["loaded": CACurrentMediaTime() - started])
+      }
+      // Opened afresh each time: a new broadcast makes a new ring.
+      guard let shared = SoundRing(readingFrom: ring),
+        let latest = shared.latest(Double(BeatTracker.samples) / LogMel.sampleRate + 0.1)
+      else { return tell(["waiting": "Nothing from the broadcast yet."]) }
+      // Nothing new for a while: the broadcast has stopped, or the
+      // other app has.
+      let now = CACurrentMediaTime()
+      guard now - latest.end < 1.5 else {
+        return tell(["waiting": "Nothing has arrived from the broadcast for a while."])
+      }
+      let started = CACurrentMediaTime()
+      let sound = BeatTracker.resample(latest.sound, from: shared.sampleRate)
+      let found = try tracker!.track(sound)
+      // The window's last sample was played at the ring's end.
+      let windowStarts = latest.end - Double(BeatTracker.samples) / LogMel.sampleRate
+      tell([
+        "beats": found.beats.map { windowStarts + $0 },
+        "downbeats": found.downbeats.map { windowStarts + $0 },
+        "end": latest.end,
+        "took": CACurrentMediaTime() - started,
+      ])
+    } catch {
+      tell(["problem": "Beat This! could not run: \(error.localizedDescription)"])
+    }
+  }
+
+  private func tell(_ what: [String: Any]) {
+    DispatchQueue.main.async { [heard] in heard(what) }
   }
 }
 #endif

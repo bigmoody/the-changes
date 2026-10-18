@@ -23,8 +23,20 @@
 //
 // Between them it counts at the tempo tapped, and goes on doing so until
 // told otherwise. A band that drifts is put right with a few more taps.
+//
+// Or by Beat This!, in builds being worked on, hearing a record another
+// app is playing (see other_apps.dart). Each barline it hears may nudge
+// the count, never more: half way to where it heard the bar start, and
+// the bar a fifth of the way to the length that would have put it there,
+// never more than a tenth from the tempo the count started at. A barline
+// heard more than a fifth of a bar from where the count has one is not
+// taken: it is a half bar, or a guess. Heard steadily enough before
+// anything is tapped, the barlines start the count themselves. The
+// numbers are the ones a tryout on recorded jazz settled on, tuned on half
+// the recordings and checked on the other half.
 
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -50,6 +62,22 @@ class TapFollower extends ChangeNotifier {
   Duration? _beatLength;
 
   final _taps = <Duration>[];
+
+  /// The beat's length when the count last started, which a heard
+  /// barline may move it a tenth from at most.
+  Duration? _startLength;
+
+  /// The last barlines heard, for starting on its own.
+  final _heard = <Duration>[];
+
+  static const _nudgePlace = 0.5;
+  static const _nudgeLength = 0.2;
+  static const _nearEnough = 0.2;
+  static const _furthest = 0.1;
+
+  /// How many heard barlines have moved the count.
+  int get nudges => _nudges;
+  var _nudges = 0;
 
   /// Told of every tap as it comes: null for a beat, the bar for a bar.
   /// For keeping the taps beside a recording of what was tapped along to.
@@ -107,6 +135,7 @@ class TapFollower extends ChangeNotifier {
             _countingIn && placed != null && now < placed.at + _halfOf(length);
         final current = countingIn ? null : beat;
         _beatLength = length;
+        _startLength = length;
         if (current == null && placed != null && !countingIn) {
           // A bar was tapped before the tempo was: the band has gone on
           // from it since, by as many beats as there have been.
@@ -149,10 +178,85 @@ class TapFollower extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// A barline Beat This! heard, [ago] before now.
+  void heardBarline(Duration ago) {
+    final at = _clock() - ago;
+    _heard.add(at);
+    if (_heard.length > 8) _heard.removeAt(0);
+    if (counting) {
+      _nudge(at);
+    } else {
+      _startFromHeard();
+    }
+  }
+
+  /// Starts counting from the barlines heard alone, once the last five
+  /// have come evenly: each gap within 6% of the middle one, and the bar
+  /// between 0.8 and 4 seconds (quicker is half bars). A bar already
+  /// tapped keeps its place; otherwise the count starts on bar 1.
+  void _startFromHeard() {
+    if (_heard.length < 5) return;
+    final last = _heard.sublist(_heard.length - 5);
+    final gaps = [
+      for (var i = 1; i < last.length; i++)
+        (last[i] - last[i - 1]).inMicroseconds,
+    ]..sort();
+    final bar = (gaps[1] + gaps[2]) / 2;
+    if (bar < 800000 || bar > 4000000) return;
+    if (gaps.any((gap) => (gap - bar).abs() >= 0.06 * bar)) return;
+    final perBar = tune.beatsPerBar;
+    final length = Duration(microseconds: (bar / perBar).round());
+    final placed = _anchor;
+    var startsOn = 0;
+    if (placed != null) {
+      final bars = ((last.last - placed.at).inMicroseconds / bar).round();
+      startsOn = (placed.beat + bars * perBar) % tune.totalBeats;
+    }
+    _beatLength = length;
+    _startLength = length;
+    _anchor = (at: last.last, beat: startsOn);
+    _countingIn = false;
+    _taps.clear();
+    _run();
+    notifyListeners();
+  }
+
+  /// The count moved toward a barline heard at [at].
+  void _nudge(Duration at) {
+    final anchor = _anchor!;
+    final length = _beatLength!.inMicroseconds;
+    final perBar = tune.beatsPerBar;
+    final since = (at - anchor.at).inMicroseconds;
+    // Heard before the count was last put right: what it was told since
+    // knows better.
+    if (since <= 0) return;
+    final barline = ((anchor.beat + since / length) / perBar).round() * perBar;
+    final beats = barline - anchor.beat;
+    if (beats < 1) return;
+    final expected = anchor.at.inMicroseconds + beats * length;
+    final error = at.inMicroseconds - expected;
+    final bar = length * perBar;
+    if (error.abs() > _nearEnough * bar) return;
+    final bars = max(1, (beats / perBar).round());
+    final started = (_startLength ?? _beatLength!).inMicroseconds * perBar;
+    final nudged = (bar + _nudgeLength * error / bars).clamp(
+      started * (1 - _furthest),
+      started * (1 + _furthest),
+    );
+    _anchor = (
+      at: Duration(microseconds: (expected + _nudgePlace * error).round()),
+      beat: barline % tune.totalBeats,
+    );
+    _beatLength = Duration(microseconds: (nudged / perBar).round());
+    _nudges++;
+    notifyListeners();
+  }
+
   /// Stops counting.
   void stop() {
     _anchor = null;
     _taps.clear();
+    _heard.clear();
     _ticker?.cancel();
     _ticker = null;
     _lastBeat = null;

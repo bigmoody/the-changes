@@ -34,6 +34,7 @@
 // proof that a record playing in YouTube or Spotify reaches the app, with
 // a meter and the format it arrives in.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -156,15 +157,29 @@ class _StageScreenState extends State<StageScreen> {
     }
   }
 
-  void _toggleHearingOthers() {
+  /// Hearing another app follows it too: the count, started by its
+  /// barlines or by taps, and nudged by Beat This! from then on.
+  Future<void> _toggleHearingOthers() async {
     final others = _otherApps ??= widget.otherApps ?? OtherAppsSound();
     if (_hearingOthers) {
-      others.stopReading();
-    } else {
-      others.startReading();
+      others
+        ..stopReading()
+        ..onBarline = null;
+      unawaited(others.stopFollowing());
+      setState(() => _hearingOthers = false);
+      _keepTapsWithOthers();
+      return;
     }
-    setState(() => _hearingOthers = !_hearingOthers);
+    others
+      ..startReading()
+      // Only while following by taps: turned off, the count stays off.
+      ..onBarline = (ago) {
+        if (_tapping) _taps?.heardBarline(ago);
+      };
+    setState(() => _hearingOthers = true);
+    if (!_tapping) await _toggleTapping();
     _keepTapsWithOthers();
+    await others.follow();
   }
 
   /// Taps made while hearing another app are kept with what it heard,
@@ -570,6 +585,16 @@ class _OtherApps extends StatelessWidget {
         ? 'Sound is arriving, but it is silent. Protected music, like '
               'Apple Music, is silenced in a broadcast.'
         : 'Hearing the other app.';
+    final took = sound.took;
+    final following = !sound.following
+        ? null
+        : sound.problem ??
+              sound.waiting ??
+              (sound.barlinesHeard == 0
+                  ? 'Beat This! is listening for the bars. The count starts '
+                        'once it hears them steadily, or tap the bar it is on.'
+                  : 'Beat This! has heard ${sound.barlinesHeard} barlines'
+                        '${took == null ? '' : ', ${(took * 1000).round()} ms a look'}.');
     // Loudness on a decibel scale, 60 dB below full scale to full scale,
     // so a quiet record still moves it.
     final level = arriving && report != null && report.level > 0
@@ -610,6 +635,12 @@ class _OtherApps extends StatelessWidget {
               ),
             ],
           ),
+          if (following != null)
+            Text(
+              following,
+              key: const ValueKey('stage-other-apps-following'),
+              style: small,
+            ),
           if (report != null && report.buffers > 0) ...[
             Text(report.format, style: small),
             Text(
