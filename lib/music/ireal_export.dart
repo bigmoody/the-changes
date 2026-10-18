@@ -20,6 +20,7 @@
 // or happens to contain those sequences (X, y, Q, L and K are never
 // written), so swapping alone is enough.
 
+import 'chart_form.dart';
 import 'chord.dart';
 import 'tune.dart';
 import 'user_progression.dart';
@@ -108,31 +109,34 @@ String _styleFor(UserProgression progression) =>
       Feel.samba => 'Samba',
       Feel.funk => 'Funk',
       Feel.calypso => 'Calypso',
+      Feel.jazzWaltz => 'Jazz Waltz',
+      Feel.ballad => 'Ballad Swing',
+      Feel.secondLine => 'Second Line',
+      Feel.gypsy => 'Gypsy Jazz',
+      Feel.afroSix => 'Afro 12/8',
     };
 
 /// The chart itself, before it's scrambled.
 String _music(UserProgression progression) {
   final bars = progression.bars;
   final sections = progression.sections;
-  final starts = sections.keys.where((i) => i < bars.length).toList()..sort();
 
   // Where the repeat signs and ending brackets go, worked out a section at
-  // a time.
+  // a time by [chartForm], so this and the other exports write the same
+  // form.
   final opens = <int>{};
   final closes = <int>{};
   final endings = <int, int>{};
-  for (var s = 0; s < starts.length; s++) {
-    final start = starts[s];
-    final end = s + 1 < starts.length ? starts[s + 1] : bars.length;
-    final pair = _endingsOf(progression, start, end);
+  for (final section in chartForm(progression)) {
+    final pair = section.endings;
     if (pair != null) {
-      opens.add(start);
+      opens.add(section.start);
       closes.add(pair.firstEnd);
       endings[pair.firstStart] = 1;
       endings[pair.secondStart] = 2;
-    } else if (progression.repeatsOf(start) > 1) {
-      opens.add(start);
-      closes.add(end - 1);
+    } else if (section.times > 1) {
+      opens.add(section.start);
+      closes.add(section.end - 1);
     }
   }
 
@@ -151,38 +155,6 @@ String _music(UserProgression progression) {
   }
   out.write('Z');
   return out.toString();
-}
-
-/// Where a section's 1st and 2nd endings are, if it has a pair iReal Pro
-/// can write: a run of 1st-ending bars after some body, then as many
-/// 2nd-ending bars running to the end of the section. Anything else (an
-/// odd ending on its own, endings of different lengths, an ending in the
-/// middle of a section) has no repeat sign that would play it back the
-/// same way, so it's written out with no endings at all.
-({int firstStart, int firstEnd, int secondStart})? _endingsOf(
-  UserProgression progression,
-  int start,
-  int end,
-) {
-  List<int> marked(int ending) => [
-    for (var i = start; i < end; i++)
-      if (progression.endings[i] == ending) i,
-  ];
-  final first = marked(1);
-  final second = marked(2);
-  if (first.isEmpty || second.isEmpty) return null;
-  if (first.length != second.length) return null;
-  bool unbroken(List<int> bars) => bars.last - bars.first == bars.length - 1;
-  if (!unbroken(first) || !unbroken(second)) return null;
-  // The section needs bars of its own before the 1st ending, and the 2nd
-  // ending has to be the last of it.
-  if (first.first <= start) return null;
-  if (second.first != first.last + 1 || second.last != end - 1) return null;
-  return (
-    firstStart: first.first,
-    firstEnd: first.last,
-    secondStart: second.first,
-  );
 }
 
 /// iReal Pro's time signature mark. Its bar is as long as the app's, so

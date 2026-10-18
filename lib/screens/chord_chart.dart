@@ -25,12 +25,38 @@ import '../theme.dart';
 /// with its rehearsal letter boxed in the margin, as on a Real Book chart,
 /// and a little extra space before it.
 class ChordChart extends StatefulWidget {
-  const ChordChart({super.key, required this.controller, this.stage = false});
+  const ChordChart({
+    super.key,
+    required this.controller,
+    this.stage = false,
+    this.follow = false,
+    this.heardBeat,
+    this.onBarTapped,
+  });
+
+  /// Where the music in the room is, when the chart follows that rather
+  /// than the band: the beat to mark and scroll to, in place of the
+  /// band's. Null marks nothing, which is what an unsure ear should do.
+  final int? heardBeat;
+
+  /// Called with the bar a finger lands on, where a tap means "we are
+  /// here" rather than starting the band or setting a loop.
+  final ValueChanged<int>? onBarTapped;
+
+  /// Whether the chart is following an ear rather than the band.
+  bool get listening => onBarTapped != null;
 
   /// On the stage the chart is read, not marked up: a tap starts the band
   /// rather than setting a loop, so nobody changes what they're playing by
   /// touching the screen to get it going.
   final bool stage;
+
+  /// A few big rows that scroll with the band, rather than the whole tune
+  /// shrunk to the screen: on a stand a metre away, a forty-bar chart
+  /// fitted to a phone is too small to read, and nobody can scroll it
+  /// with a horn in their hands. It keeps the bar being played near the
+  /// top, with what is coming under it.
+  final bool follow;
 
   final PracticeController controller;
 
@@ -50,6 +76,10 @@ class _ChordChartState extends State<ChordChart> {
   /// scrolls rather than shrinking the chords back down.
   static const _readableRow = 30.0;
 
+  /// How many rows the stage shows at once when it follows the band: big
+  /// enough to read from a metre away, with the next line or two in view.
+  static const _stageRows = 5;
+
   final _scroll = ScrollController();
   int? _followedRow;
 
@@ -67,10 +97,12 @@ class _ChordChartState extends State<ChordChart> {
       if (!_scroll.hasClients) return;
       final position = _scroll.position;
       // Aim for a third of the way down, so what's coming next is visible.
-      final target = (rowTop - position.viewportDimension / 3).clamp(
-        0.0,
-        position.maxScrollExtent,
-      );
+      // Following on the stage, the line just played stays above it and
+      // the rest of the screen is what is coming.
+      final above = widget.follow
+          ? rowHeight + _spacing
+          : position.viewportDimension / 3;
+      final target = (rowTop - above).clamp(0.0, position.maxScrollExtent);
       _scroll.animateTo(
         target,
         duration: const Duration(milliseconds: 250),
@@ -112,8 +144,11 @@ class _ChordChartState extends State<ChordChart> {
         ];
         final fitted = (height - gaps.fold(0.0, (a, b) => a + b)) / rowCount;
         final readable = textScale > 1 ? _readableRow * textScale : 12.0;
-        final rowHeight = math.max(fitted, readable);
+        final big = widget.follow ? height / _stageRows : 0.0;
+        final rowHeight = math.max(fitted, math.max(readable, big));
         final scrolls = rowHeight > fitted + 0.5;
+        // Back to the whole chart, and the next follow starts afresh.
+        if (!scrolls) _followedRow = null;
         final railWidth = hasSections ? _railWidth : 0.0;
         final cellWidth =
             (width - railWidth - (columns - 1) * _spacing) / columns;
@@ -165,9 +200,10 @@ class _ChordChartState extends State<ChordChart> {
           return cell.bars.first;
         }
 
-        final currentBar = controller.currentBeat == null
-            ? null
-            : controller.currentBeat! ~/ tune.beatsPerBar;
+        final beat = widget.listening
+            ? widget.heardBeat
+            : controller.currentBeat;
+        final currentBar = beat == null ? null : beat ~/ tune.beatsPerBar;
         if (scrolls && currentBar != null) {
           final row = lines.indexWhere(
             (line) =>
@@ -198,6 +234,9 @@ class _ChordChartState extends State<ChordChart> {
 
         final chart = GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onTapUp: widget.onBarTapped == null
+              ? null
+              : (details) => widget.onBarTapped!(barAt(details.localPosition)),
           onPanStart: widget.stage
               ? null
               : (details) =>
@@ -234,6 +273,7 @@ class _ChordChartState extends State<ChordChart> {
                                 ? null
                                 : _BarCell(
                                     controller: controller,
+                                    beat: beat,
                                     cell: lines[row].cells[col]!,
                                     simile: similes[row][col],
                                     aids:
@@ -475,6 +515,7 @@ class BarLayout {
 class _BarCell extends StatelessWidget {
   const _BarCell({
     required this.controller,
+    required this.beat,
     required this.cell,
     required this.simile,
     required this.aids,
@@ -496,6 +537,9 @@ class _BarCell extends StatelessWidget {
 
   /// The size every chord on the chart is drawn at, if it fits.
   final double chordSize;
+
+  /// The beat being played, the band's or the one heard in the room.
+  final int? beat;
 
   final PracticeController controller;
 
@@ -528,7 +572,7 @@ class _BarCell extends StatelessWidget {
     final barIndex = cell.bars.first;
     final slots = tune.bars[barIndex];
     final inLoop = cell.bars.any((bar) => loop.overlapsBar(tune, bar));
-    final currentBeat = controller.currentBeat;
+    final currentBeat = beat;
     final currentBar = currentBeat == null
         ? null
         : currentBeat ~/ tune.beatsPerBar;
@@ -805,7 +849,6 @@ class _BarCell extends StatelessWidget {
   /// (whichever time through), dimmed if no time through is in the loop.
   Color _chordColour(ColorScheme scheme, int index) {
     final tune = controller.chart;
-    final beat = controller.currentBeat;
     final times = [for (final bar in cell.bars) tune.bars[bar][index]];
     // The colour somebody sees this root as, if they see roots as
     // colours. Lifted or dropped only as far as it must be to be read on
@@ -814,6 +857,7 @@ class _BarCell extends StatelessWidget {
     final ink = theirs == null
         ? scheme.onSurface
         : readableOn(theirs, scheme.surface);
+    final beat = this.beat;
     if (beat != null &&
         times.any((slot) => beat >= slot.startBeat && beat < slot.endBeat)) {
       // The bar being played is already boxed and tinted, so it does not

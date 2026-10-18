@@ -10,6 +10,16 @@
 //    playing the bossa clave: a two-bar pattern, not a backbeat.
 //  • Funk: eighths on the hi-hat, snare backbeat on 2 and 4, and a
 //    syncopated kick that changes from bar to bar.
+//  • Jazz waltz: swing in three, with the skip note after 2 and beat 3
+//    left plain, and the hi-hat closing under 2 and 3.
+//  • Ballad: the slowest swing, with the brushes circling the head and
+//    the right hand touching the time in on 2 and 4 rather than keeping
+//    it on the cymbal.
+//  • Second line: the New Orleans street beat, kick and snare only, no
+//    cymbal, the kick picking up off the beat after each backbeat.
+//  • Afro 6/8: the standard bell across a twelve-eighth cycle, the
+//    bombo on the second beat of it, the hi-hat closing on the halves.
+//  • Gypsy jazz: nothing. The Quintette had no drummer.
 //  • Calypso: cowbell on the off-beats, toms instead of a snare backbeat,
 //    and the kick on the 3-3-2 (1, the "and" of 2, 4) with the bass. No
 //    clave (that's a bossa) and no backbeat over a kick on 1 and 3 (that's
@@ -31,7 +41,16 @@ enum Drum {
   crossStick('Cross-Stick'),
   cowbell('Cowbell'),
   tomHigh('Tom, High'),
-  tomLow('Tom, Low');
+  tomLow('Tom, Low'),
+
+  /// The brush swirl: the left hand's circle on the snare head, which is
+  /// the sound of a brush groove rather than an ornament on one. Only the
+  /// brush kit has it; with sticks it is never asked for.
+  ///
+  /// Last in the list on purpose. A kit imported from a SoundFont is saved
+  /// by each drum's position here, so a value inserted anywhere else would
+  /// hand somebody's imported ride to their kick.
+  swirl('Brush Swirl');
 
   const Drum(this.label);
 
@@ -40,6 +59,15 @@ enum Drum {
   /// rather than by which hi-hat it is.
   final String label;
 }
+
+/// The drums something imported can stand in for: all of them but the
+/// swirl, which belongs to the brush kit. No SoundFont has a brush
+/// circling a drumhead, and a row offering to replace one would be
+/// offering something nobody can supply.
+final importableDrums = [
+  for (final drum in Drum.values)
+    if (drum != Drum.swirl) drum,
+];
 
 /// One hit: [beat] counts from the start of the bar.
 ///
@@ -53,6 +81,7 @@ class DrumHit {
     required this.beat,
     required this.velocity,
     this.hard = false,
+    this.beats = 2,
   });
 
   final Drum drum;
@@ -60,9 +89,24 @@ class DrumHit {
   final double velocity;
   final bool hard;
 
+  /// How long the sound lasts, in beats. Only the swirl reads it: the arm
+  /// turns one full circle in this many beats, and the band stretches the
+  /// recording to fit. A swing circle takes two beats, half a turn to a
+  /// beat, as it is taught; a bossa's is quicker, because what it is
+  /// standing in for there is a shaker and not a circle.
+  ///
+  /// Every other drum is struck and then left to ring for as long as it
+  /// rings, so for them this says nothing.
+  final double beats;
+
   /// The same hit, moved: how a straight pattern becomes a leaning one.
-  DrumHit at(double beat) =>
-      DrumHit(drum: drum, beat: beat, velocity: velocity, hard: hard);
+  DrumHit at(double beat) => DrumHit(
+    drum: drum,
+    beat: beat,
+    velocity: velocity,
+    hard: hard,
+    beats: beats,
+  );
 }
 
 /// The hits for one bar of [feel]. [bar] counts from the start of the loop,
@@ -73,22 +117,48 @@ class DrumHit {
 /// off-beats are moved once, at the end, so the slider leans a shuffle
 /// and a bossa the same way it leans a swing tune, and a pattern stays a
 /// description of what is played rather than of when.
+/// [brushes] changes what is played and not only what it is played on.
+/// Swapping the kit alone leaves the time on the ride, so a brush groove
+/// would come out as a brushed cymbal, which is the one part of the kit
+/// brushes make sound more metallic rather than less. A brush player
+/// moves the time onto the snare head and circles underneath it.
+/// [compound] is a bar whose beat divides in three: six eight, twelve
+/// eight. A swung groove plays its skip note on every beat there rather
+/// than on the backbeats alone, which is the difference between a
+/// twelve eight feel and a swing bar with the beats renamed.
 List<DrumHit> drumBar({
   required Feel feel,
   required int bar,
   required int beatsPerBar,
   required math.Random random,
   required double swing,
+  bool brushes = false,
+  bool compound = false,
 }) => [
   // Figures written for a four-beat bar lose whatever falls past the end
   // of a shorter one (a waltz keeps the first two beats of the clave).
   for (final hit in switch (feel) {
-    Feel.swing => _swingBar(bar, beatsPerBar, random),
+    Feel.swing when brushes => _swingBrushBar(
+      bar,
+      beatsPerBar,
+      random,
+      compound: compound,
+    ),
+    Feel.swing => _swingBar(bar, beatsPerBar, random, compound: compound),
+    Feel.bossa when brushes => _bossaBrushBar(bar, beatsPerBar, random),
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
     Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
     Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
     Feel.samba => _sambaBar(bar, beatsPerBar, random),
+    Feel.jazzWaltz when brushes => _jazzWaltzBrushBar(bar, beatsPerBar, random),
+    Feel.jazzWaltz => _jazzWaltzBar(bar, beatsPerBar, random),
+    Feel.ballad when brushes => _balladBrushBar(bar, beatsPerBar, random),
+    Feel.ballad => _balladBar(bar, beatsPerBar, random, compound: compound),
+    Feel.secondLine => _secondLineBar(bar, beatsPerBar, random),
+    Feel.afroSix => _afroSixBar(bar, beatsPerBar, random),
+    // No drummer at all: the guitar's chop is the time. See [Feel.gypsy].
+    Feel.gypsy => const <DrumHit>[],
   })
     if (hit.beat < beatsPerBar)
       hit.at(keepsTime(hit.drum) ? hit.beat : leaned(hit.beat, feel, swing)),
@@ -103,7 +173,12 @@ List<DrumHit> drumBar({
 ///
 /// Nothing is lost where the sixteenths are what lean: these patterns
 /// write the hat in eighths, and an eighth does not move then.
-bool keepsTime(Drum drum) => drum == Drum.hiHatClosed || drum == Drum.hiHatOpen;
+bool keepsTime(Drum drum) =>
+    drum == Drum.hiHatClosed ||
+    drum == Drum.hiHatOpen ||
+    // The circle is one unbroken motion of the arm. Leaning it would be
+    // asking the left hand to hesitate half way round.
+    drum == Drum.swirl;
 
 /// Where a hit lands once the feel's off-beats are leaned.
 double leaned(double beat, Feel feel, double swing) =>
@@ -120,11 +195,122 @@ List<int> _backbeats(int beatsPerBar) => switch (beatsPerBar) {
   _ => [for (var beat = 1; beat < beatsPerBar; beat += 2) beat],
 };
 
-List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
+/// Swing, played with brushes.
+///
+/// The same time, moved. The right hand taps the ride's rhythm on the
+/// snare head instead of on the cymbal, and the left hand keeps a circle
+/// going underneath: half a circle to a beat, so one full circle is two
+/// beats, building into the backbeat where the hi-hat closes. The cymbal
+/// is not touched at all, which is what the basic pattern asks for.
+///
+/// The taps are quieter than the ride's numbers look because they are not
+/// the same drum. The kit is balanced as an overhead hears it, where the
+/// snare is the loudest thing and the ride sits 3 dB under it, so the same
+/// velocity on the snare is a harder stroke than it was on the cymbal.
+List<DrumHit> _swingBrushBar(
+  int bar,
+  int beatsPerBar,
+  math.Random random, {
+  bool compound = false,
+}) {
   final hits = <DrumHit>[];
   final backbeats = _backbeats(beatsPerBar);
   for (var beat = 0; beat < beatsPerBar; beat++) {
     final isBackbeat = backbeats.contains(beat);
+    // In compound time every beat carries the skip: see [_swingBar].
+    final skips = isBackbeat || compound;
+    hits.add(
+      DrumHit(
+        drum: Drum.snare,
+        beat: beat.toDouble(),
+        velocity: (isBackbeat ? 0.41 : 0.35) * _human(random),
+      ),
+    );
+    if (skips) {
+      hits.add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beat + 0.5,
+          velocity: 0.27 * _human(random),
+        ),
+      );
+    }
+    if (isBackbeat) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.5 * _human(random),
+          hard: true,
+        ),
+      );
+    }
+    // One circle every two beats, started on the beat before the backbeat
+    // so that it builds into it.
+    if (beat.isEven) {
+      hits.add(
+        DrumHit(
+          drum: Drum.swirl,
+          beat: beat.toDouble(),
+          // Well under the taps. A circle is the texture and the taps are
+          // the time, and a wash is continuous where a tap is not, so the
+          // same velocity makes it the loudest thing in the kit: it was
+          // carrying more energy than anything else in either groove.
+          velocity: 0.26 * _human(random),
+        ),
+      );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.16 * _human(random),
+      ),
+    );
+  }
+  // A bar of three leaves a half circle hanging. Better one circle over
+  // the whole bar than two thirds of one.
+  if (beatsPerBar.isOdd) {
+    hits.removeWhere((hit) => hit.drum == Drum.swirl && hit.beat > 0);
+  }
+  // The fills are the stick kit's, which are snare fills already: a brush
+  // plays them with the edge of the fan rather than the tip.
+  if (bar % 8 == 7 && random.nextDouble() < 0.4) {
+    final from = (beatsPerBar - 2).toDouble();
+    hits
+      ..add(
+        DrumHit(drum: Drum.snare, beat: from, velocity: 0.5 * _human(random)),
+      )
+      ..add(DrumHit(drum: Drum.snare, beat: from + 0.5, velocity: 0.4))
+      ..add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: from + 1,
+          velocity: 0.55 * _human(random),
+        ),
+      );
+  }
+  return hits;
+}
+
+List<DrumHit> _swingBar(
+  int bar,
+  int beatsPerBar,
+  math.Random random, {
+  bool compound = false,
+}) {
+  final hits = <DrumHit>[];
+  final backbeats = _backbeats(beatsPerBar);
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    final isBackbeat = backbeats.contains(beat);
+    // Where the skip note goes. In four it is the "a" after 2 and 4,
+    // and the beats between are plain quarters. In a compound bar the
+    // beat is already in three and the ride takes the first and third
+    // of every one of them: "DA-da, DA-da", long-short all the way
+    // through, which is the twelve eight feel. A bar of six eight with
+    // skips on the backbeats alone is a swing bar with its beats
+    // renamed, and sounds like one.
+    final skips = isBackbeat || compound;
     hits.add(
       DrumHit(
         drum: Drum.ride,
@@ -132,9 +318,7 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
         velocity: (isBackbeat ? 0.62 : 0.52) * _human(random),
       ),
     );
-    if (isBackbeat) {
-      // The "a" after 2 and 4, written straight and leaned at the end,
-      // and the hi-hat closing underfoot.
+    if (skips) {
       hits.add(
         DrumHit(
           drum: Drum.ride,
@@ -142,6 +326,9 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
           velocity: 0.4 * _human(random),
         ),
       );
+    }
+    if (isBackbeat) {
+      // The hi-hat closing underfoot, on 2 and 4 as ever.
       hits.add(
         DrumHit(
           drum: Drum.hiHatPedal,
@@ -204,6 +391,84 @@ List<DrumHit> _swingBar(int bar, int beatsPerBar, math.Random random) {
 const _claveBarOne = [0.0, 1.5, 3.0];
 const _claveBarTwo = [1.0, 2.5];
 
+/// A bossa, played with brushes.
+///
+/// The steady eighths come off the hi-hat. They are the pulse of the
+/// groove and they are the one thing a brush cannot do: a fan of wire on
+/// a closed hi-hat is a thin scratch, so leaving them there was the worst
+/// of both, a brush kit sounding more metallic than the sticks it
+/// replaced.
+///
+/// What goes in their place is a circle on the head. That is not a
+/// substitution of convenience: in a bossa the brush is standing in for
+/// the ganza, the shaker running underneath everything, and filling
+/// between the clave is the job it is given. The circle turns once a beat
+/// rather than once in two, because a shaker is quicker than an arm.
+///
+/// Everything else is as it was. The clave stays where every source puts
+/// it, on the edge of the drum, and the surdo-like kick stays on 1 and 3.
+List<DrumHit> _bossaBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.swirl,
+        beat: beat.toDouble(),
+        // Leaning on 1 and 3 the way the hi-hat's eighths leaned on the
+        // beat, so the pulse is still where it was.
+        //
+        // Well under what those eighths were, though, and for the reason
+        // the swing circle is: a wash is continuous where a tick is not,
+        // so it carries far more energy at the same velocity. At 0.46 the
+        // circle alone was louder than everything else in the groove put
+        // together.
+        velocity: (beat.isEven ? 0.22 : 0.18) * _human(random),
+        beats: 1,
+      ),
+    );
+  }
+  for (final beat in (bar.isEven ? _claveBarOne : _claveBarTwo).where(
+    (beat) => beat < beatsPerBar,
+  )) {
+    hits.add(
+      DrumHit(
+        drum: Drum.crossStick,
+        beat: beat,
+        // Down from 0.7, which made the clave the loudest thing in the
+        // kit: 2.7 dB over the eighths that are the pulse. Five strokes
+        // in two bars is the clave and is not too many, but five strokes
+        // on top of the groove rather than inside it is what busy sounds
+        // like. The cross-stick recording is the quiet end of the
+        // library's range and it was being brought right back up again.
+        velocity: 0.42 * _human(random),
+      ),
+    );
+  }
+  hits
+    ..add(DrumHit(drum: Drum.kick, beat: 0, velocity: 0.5 * _human(random)))
+    ..add(DrumHit(drum: Drum.kick, beat: 2, velocity: 0.44 * _human(random)));
+  if (random.nextDouble() < 0.2) {
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beatsPerBar - 0.5,
+        velocity: 0.36 * _human(random),
+      ),
+    );
+  }
+  for (final beat in _backbeats(beatsPerBar)) {
+    hits.add(
+      DrumHit(
+        drum: Drum.hiHatPedal,
+        beat: beat.toDouble(),
+        velocity: 0.38 * _human(random),
+        hard: true,
+      ),
+    );
+  }
+  return hits;
+}
+
 List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
   // Straight eighths, on the hi-hat. A drummer moves to the ride for a whole
@@ -216,7 +481,14 @@ List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
       DrumHit(
         drum: onRide ? Drum.ride : Drum.hiHatClosed,
         beat: beat,
-        velocity: (eighth.isEven ? 0.34 : 0.24) * _human(random),
+        // The ride is a louder recording than the closed hat, so the
+        // same velocity on it came out 2.6 dB up and the pulse jumped
+        // every time the drummer moved across. It is the same part
+        // either way and should be the same level.
+        velocity:
+            (eighth.isEven ? 0.34 : 0.24) *
+            (onRide ? 0.74 : 1) *
+            _human(random),
       ),
     );
   }
@@ -229,7 +501,13 @@ List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
       DrumHit(
         drum: Drum.crossStick,
         beat: beat,
-        velocity: 0.7 * _human(random),
+        // Down from 0.7, which made the clave the loudest thing in the
+        // kit: 2.7 dB over the eighths that are the pulse. Five strokes
+        // in two bars is the clave and is not too many, but five strokes
+        // on top of the groove rather than inside it is what busy sounds
+        // like. The cross-stick recording is the quiet end of the
+        // library's range and it was being brought right back up again.
+        velocity: 0.42 * _human(random),
       ),
     );
   }
@@ -261,7 +539,7 @@ List<DrumHit> _bossaBar(int bar, int beatsPerBar, math.Random random) {
 }
 
 /// Kick figures, in eighths from the start of the bar.
-const _funkKicks = [
+const funkKicks = [
   [0.0, 1.5],
   [0.0, 1.5, 2.5],
   [0.0, 2.5, 3.5],
@@ -286,23 +564,42 @@ List<DrumHit> _funkBar(int bar, int beatsPerBar, math.Random random) {
     );
   }
   // Backbeat.
+  //
+  // Down from 0.95, which was a number read as "a funk backbeat is struck
+  // as hard as anything in the kit" without looking at what it was being
+  // multiplied by. The snare is the loudest recording in the bank, 22 dB
+  // over the kick, because the kit is balanced as an overhead hears it:
+  // the snare cracks and the kick is across the room. At 0.95 the
+  // backbeat came out 8 dB over the hats and 23 over the kick, and a
+  // funk groove with an inaudible kick is not a funk groove.
+  //
+  // Still hard, so it is the hard-struck recording and keeps its crack.
+  // Only the level of it has come down.
   for (final beat in _backbeats(beatsPerBar)) {
     hits.add(
       DrumHit(
         drum: Drum.snare,
         beat: beat.toDouble(),
-        velocity: 0.95 * _human(random),
+        velocity: 0.5 * _human(random),
         hard: true,
       ),
     );
   }
-  // Ghost snare between the backbeats, sometimes.
+  // Ghost snare between the backbeats, sometimes. Scaled with the
+  // backbeat: at a quarter against a backbeat of a half it would be
+  // louder than the thing it is a ghost of, because it is not struck
+  // hard and so is lifted to the loud layer's level by the levelling.
   if (random.nextDouble() < 0.4) {
     hits.add(
-      DrumHit(drum: Drum.snare, beat: 2.5, velocity: 0.25 * _human(random)),
+      DrumHit(drum: Drum.snare, beat: 2.5, velocity: 0.13 * _human(random)),
     );
   }
-  for (final beat in _funkKicks[random.nextInt(_funkKicks.length)]) {
+  // Taken from the bar rather than rolled, and held for two bars, because
+  // a funk kick is a riff. Rolling it a bar at a time gave a drummer who
+  // had never played the figure before and never would again. It is also
+  // what lets the bass play the same one: both work it out from the bar
+  // number rather than one of them having to be told.
+  for (final beat in funkKicksFor(bar)) {
     hits.add(
       DrumHit(
         drum: Drum.kick,
@@ -327,6 +624,10 @@ const _calypsoToms = [
   ([1.0, 1.5], [2.5, 3.0]),
   ([2.5], [1.0, 3.0]),
 ];
+
+/// The kick figure for [bar]: a two-bar riff, so the groove is something
+/// being played rather than something being chosen.
+List<double> funkKicksFor(int bar) => funkKicks[(bar ~/ 2) % funkKicks.length];
 
 List<DrumHit> _calypsoBar(int bar, int beatsPerBar, math.Random random) {
   final hits = <DrumHit>[];
@@ -620,6 +921,497 @@ List<DrumHit> _sambaBar(int bar, int beatsPerBar, math.Random random) {
         velocity: 0.55 * _human(random),
         hard: true,
       ),
+    );
+  }
+  return hits;
+}
+
+/// A jazz waltz: swing in three, with the lift after 2.
+///
+/// The ride plays the figure a waltz is taught as, "one, two, and-of-two,
+/// three": a skip note after the second beat and beat three left plain.
+/// That is the whole difference from swing counted in three, which puts a
+/// skip after every backbeat and comes out hurried. The hi-hat closes
+/// under 2 and 3 (under 2 alone is the other common way), the kick is
+/// feathered, and the snare answers now and then.
+///
+/// Beat one carries the accent. A waltz has a strong one in a way a swing
+/// bar does not, and the ride is where that is heard.
+List<DrumHit> _jazzWaltzBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  final closes = _backbeats(beatsPerBar);
+  // The second beat of the bar: where the lift goes, whatever the bar
+  // length, so a waltz figure asked for in four still leans where a
+  // waltz leans.
+  const lifts = 1;
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.ride,
+        beat: beat.toDouble(),
+        velocity: (beat == 0 ? 0.62 : 0.5) * _human(random),
+      ),
+    );
+    if (beat == lifts) {
+      hits.add(
+        DrumHit(
+          drum: Drum.ride,
+          beat: beat + 0.5,
+          velocity: 0.4 * _human(random),
+        ),
+      );
+    }
+    if (closes.contains(beat)) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.5 * _human(random),
+          hard: true,
+        ),
+      );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.16 * _human(random),
+      ),
+    );
+  }
+  // A second skip, after the last beat of the bar and into the next one.
+  // Where a waltz's other syncopations live, and not in every bar.
+  if (random.nextDouble() < 0.25) {
+    hits.add(
+      DrumHit(
+        drum: Drum.ride,
+        beat: beatsPerBar - 0.5,
+        velocity: 0.38 * _human(random),
+      ),
+    );
+  }
+  // Snare comping, on the "and" of 2 or on 3: the two places the waltz
+  // answers itself.
+  if (random.nextDouble() < 0.3) {
+    hits.add(
+      DrumHit(
+        drum: Drum.snare,
+        beat: random.nextBool() ? lifts + 0.5 : (beatsPerBar - 1).toDouble(),
+        velocity: 0.22 * _human(random),
+      ),
+    );
+  }
+  if (bar % 8 == 7 && random.nextDouble() < 0.35) {
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beatsPerBar - 1,
+          velocity: 0.5 * _human(random),
+        ),
+      )
+      ..add(DrumHit(drum: Drum.snare, beat: beatsPerBar - 0.5, velocity: 0.42));
+  }
+  return hits;
+}
+
+/// The same waltz, played with brushes.
+///
+/// The right hand taps the ride's figure on the head and the left hand
+/// turns one circle to the bar, so the circle and the bar begin together.
+/// Half a circle to a beat, as in four, would leave the third beat of
+/// every bar half way round.
+List<DrumHit> _jazzWaltzBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[
+    DrumHit(
+      drum: Drum.swirl,
+      beat: 0,
+      velocity: 0.26 * _human(random),
+      beats: beatsPerBar.toDouble(),
+    ),
+  ];
+  for (final hit in _jazzWaltzBar(bar, beatsPerBar, random)) {
+    hits.add(switch (hit.drum) {
+      // The time comes off the cymbal and onto the head, quieter than the
+      // ride's numbers look: the snare is the loudest thing an overhead
+      // hears, so the same velocity is a harder stroke there.
+      Drum.ride => DrumHit(
+        drum: Drum.snare,
+        beat: hit.beat,
+        velocity: hit.velocity * 0.68,
+      ),
+      _ => hit,
+    });
+  }
+  return hits;
+}
+
+/// A ballad, with sticks: the slowest swing there is, and nothing spare.
+///
+/// The ride keeps quarters with one skip note at the end of the bar
+/// rather than after every backbeat, the hi-hat closes under 2 and 4, the
+/// kick is feathered, and there are no bombs. A ballad is the one place
+/// a drummer is not commenting.
+List<DrumHit> _balladBar(
+  int bar,
+  int beatsPerBar,
+  math.Random random, {
+  bool compound = false,
+}) {
+  final hits = <DrumHit>[];
+  final closes = _backbeats(beatsPerBar);
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.ride,
+        beat: beat.toDouble(),
+        velocity: (closes.contains(beat) ? 0.42 : 0.36) * _human(random),
+      ),
+    );
+    // A slow twelve eight is where the triplet ride belongs most of
+    // all: the beat and the last third of it, every beat.
+    if (compound) {
+      hits.add(
+        DrumHit(
+          drum: Drum.ride,
+          beat: beat + 0.5,
+          velocity: 0.28 * _human(random),
+        ),
+      );
+    }
+    if (closes.contains(beat)) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.38 * _human(random),
+        ),
+      );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.12 * _human(random),
+      ),
+    );
+  }
+  // The one skip note, into the next bar.
+  hits.add(
+    DrumHit(
+      drum: Drum.ride,
+      beat: beatsPerBar - 0.5,
+      velocity: 0.3 * _human(random),
+    ),
+  );
+  return hits;
+}
+
+/// A ballad, with brushes: what the tune is normally played with.
+///
+/// The left hand circles the head without stopping, half a circle to a
+/// beat, and the change of direction at the top and bottom of the circle
+/// is what marks the pulse. The right hand does not keep time at all: it
+/// touches the head on 2 and 4, where the hands would cross. The hi-hat
+/// closes under those two beats, barely.
+List<DrumHit> _balladBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    if (beat.isEven) {
+      hits.add(
+        DrumHit(
+          drum: Drum.swirl,
+          beat: beat.toDouble(),
+          velocity: 0.24 * _human(random),
+        ),
+      );
+    }
+    if (_backbeats(beatsPerBar).contains(beat)) {
+      hits
+        ..add(
+          DrumHit(
+            drum: Drum.snare,
+            beat: beat.toDouble(),
+            velocity: 0.3 * _human(random),
+          ),
+        )
+        ..add(
+          DrumHit(
+            drum: Drum.hiHatPedal,
+            beat: beat.toDouble(),
+            velocity: 0.3 * _human(random),
+          ),
+        );
+    }
+    hits.add(
+      DrumHit(
+        drum: Drum.kick,
+        beat: beat.toDouble(),
+        velocity: 0.1 * _human(random),
+      ),
+    );
+  }
+  // An odd bar leaves a half circle hanging: one circle over the whole
+  // bar instead, as the waltz does.
+  if (beatsPerBar.isOdd) {
+    hits
+      ..removeWhere((hit) => hit.drum == Drum.swirl)
+      ..add(
+        DrumHit(
+          drum: Drum.swirl,
+          beat: 0,
+          velocity: 0.24 * _human(random),
+          beats: beatsPerBar.toDouble(),
+        ),
+      );
+  }
+  return hits;
+}
+
+/// The second line: New Orleans' street beat.
+///
+/// The kick carries the figure. The accent skeleton a parade is taught
+/// by runs "1, the a of 1, the and of 2, 3, the a of 3, the and of 4",
+/// and the kick takes the downbeats and the off-beat pickups out of it:
+/// 1, the "and" of 2, 3 and the "and" of 4, that last one leaning into
+/// the next bar. The snare cracks the backbeat on 2 and 4 with ghost
+/// notes around it, and there is no cymbal at all: a brass band has two
+/// drummers, a bass drum and a snare, and this is them.
+///
+/// It is swung, but not squarely: the sources put it between swung
+/// eighths and loose sixteenths, which is what the feel's own swing
+/// setting does with it once the tempo is known.
+List<DrumHit> _secondLineBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  final backbeats = _backbeats(beatsPerBar);
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    if (beat.isEven) {
+      // The downbeats of the figure: 1 and 3 in four.
+      hits.add(
+        DrumHit(
+          drum: Drum.kick,
+          beat: beat.toDouble(),
+          velocity: (beat == 0 ? 0.72 : 0.6) * _human(random),
+          hard: beat == 0,
+        ),
+      );
+    } else {
+      // The pickup off the beat after each backbeat, which is what makes
+      // it a second line rather than a march.
+      hits.add(
+        DrumHit(
+          drum: Drum.kick,
+          beat: beat + 0.5,
+          velocity: 0.62 * _human(random),
+          hard: true,
+        ),
+      );
+    }
+    if (backbeats.contains(beat)) {
+      hits
+        ..add(
+          DrumHit(
+            drum: Drum.snare,
+            beat: beat.toDouble(),
+            velocity: 0.72 * _human(random),
+            hard: true,
+          ),
+        )
+        // The ghost notes the backbeat sits in: played, but under the
+        // band rather than on top of it.
+        ..add(
+          DrumHit(
+            drum: Drum.snare,
+            beat: beat + 0.5,
+            velocity: 0.18 * _human(random),
+          ),
+        );
+    } else {
+      hits.add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beat + 0.5,
+          velocity: 0.16 * _human(random),
+        ),
+      );
+    }
+    // The hi-hat keeps the walking pulse under all of it, on the
+    // backbeats as it does everywhere else in this file.
+    if (backbeats.contains(beat)) {
+      hits.add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.42 * _human(random),
+        ),
+      );
+    }
+  }
+  // The snare's own vocabulary: an extra crack off the beat, now and
+  // then, in place of a fill.
+  if (random.nextDouble() < 0.35) {
+    hits.add(
+      DrumHit(
+        drum: Drum.snare,
+        beat: (beatsPerBar - 1) + 0.5,
+        velocity: 0.5 * _human(random),
+        hard: true,
+      ),
+    );
+  }
+  return hits;
+}
+
+/// The standard bell, in eighths of its twelve-eighth cycle.
+///
+/// Seven strokes: the first on the downbeat, then the third, fifth,
+/// sixth, eighth, tenth and twelfth eighth. It is the same pattern
+/// whether it is written in 6/8, 12/8 or 3/4, which is why it is kept
+/// here as a cycle of eighths and laid over whatever bar it meets.
+const _bellEighths = [0, 2, 4, 5, 7, 9, 11];
+
+/// How long that cycle is in the band's beats: four pulses of three.
+const _bellBeats = 4;
+
+/// The conga voices of a bembé, in eighths of the same cycle, as a kit
+/// plays them: the open tones on the toms and the slap on the
+/// cross-stick.
+///
+/// Read off a four-drum bembé written in block notation against the
+/// count "1 & a 2 & a | 3 & a 4 & a", which is the twelve pulses:
+///
+///   Qui:  | O S - O S - | O S - O S - |
+///   Seg:  | - - - - O O | - - - - O O |
+///   Tum:  | - - S - - - | - - O - - - |
+///   SupT: | O - - - - - | - - - - - - |
+///
+/// The quinto is the one voice left out. It plays an open tone and a
+/// slap on every pulse, and under a bell and a shaker that already
+/// sound every pulse it is a third part saying the same thing: on a kit
+/// there are two hands, and the segundo's answer is the one worth
+/// having.
+const _segundoOpens = [4, 5, 10, 11];
+const _tumbaSlap = 2;
+const _tumbaOpen = 8;
+const _superTumba = 0;
+
+/// Afro 6/8: the bell, the shaker under it, the congas and the feet.
+///
+/// Written as a cycle rather than as a bar, because the bell is twelve
+/// eighths long whatever the bar is: in 6/8 it takes two bars, in 12/8
+/// one, and on a tune in four it is the same seven strokes over a bar of
+/// triplets. [bar] says where in the cycle this bar starts.
+///
+/// Three things besides the bell, and all three are why a bell on its
+/// own sounded thin. The shaker runs every one of the twelve pulses,
+/// the bell's strokes among them louder: in the ensemble this is the
+/// axatse, "the eighth note version of what the gankogui plays", and
+/// the hi-hat is standing in for a gourd. The feet hold the pulse down,
+/// a steady dotted quarter rather than every other one. And the kick
+/// takes the bombo on the second beat of the cycle with the optional
+/// one on the fourth most times round, which is the part people leave
+/// out when the groove wants to be lighter.
+///
+/// It is a percussion section rather than one player, which is what the
+/// music is: in a room this is a bell, a gourd and drums, not a drummer
+/// with three hands.
+List<DrumHit> _afroSixBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  // Where this bar begins inside the twelve-eighth cycle.
+  final start = (bar * beatsPerBar) % _bellBeats;
+  double? inThisBar(double atInCycle) {
+    final at = atInCycle - start;
+    return at >= 0 && at < beatsPerBar ? at : null;
+  }
+
+  for (final eighth in _bellEighths) {
+    final at = inThisBar(eighth / 3);
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.cowbell,
+        // The downbeat of the cycle carries the weight; the rest are the
+        // pattern going round.
+        velocity: (eighth == 0 ? 0.6 : 0.46) * _human(random),
+        beat: at,
+      ),
+    );
+  }
+  // The shaker: all twelve pulses, the bell's own strokes among them
+  // struck harder, which is what the gourd's down stroke is.
+  for (var eighth = 0; eighth < 12; eighth++) {
+    final at = inThisBar(eighth / 3);
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.hiHatClosed,
+        beat: at,
+        velocity: (_bellEighths.contains(eighth) ? 0.2 : 0.13) * _human(random),
+      ),
+    );
+  }
+  // The bombo, on the second beat of the cycle, and the fourth most
+  // times round: the one that is left out to lighten the groove.
+  final bombo = inThisBar(1);
+  if (bombo != null) {
+    hits.add(
+      DrumHit(drum: Drum.kick, beat: bombo, velocity: 0.6 * _human(random)),
+    );
+  }
+  final second = inThisBar(3);
+  if (second != null && random.nextDouble() < 0.75) {
+    hits.add(
+      DrumHit(drum: Drum.kick, beat: second, velocity: 0.5 * _human(random)),
+    );
+  }
+  // The feet keep the pulse, every dotted quarter of it.
+  for (var pulse = 0; pulse < _bellBeats; pulse++) {
+    final at = inThisBar(pulse.toDouble());
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.hiHatPedal,
+        beat: at,
+        velocity: (pulse == 0 ? 0.42 : 0.34) * _human(random),
+      ),
+    );
+  }
+  // The congas: the segundo's pairs of open tones, the tumba's slap and
+  // its answer, and the one low note the super tumba puts on the top of
+  // the cycle.
+  for (final eighth in _segundoOpens) {
+    final at = inThisBar(eighth / 3);
+    if (at == null) continue;
+    hits.add(
+      DrumHit(
+        drum: Drum.tomHigh,
+        beat: at,
+        // The second of each pair is the one that leans into the beat
+        // after it, so it is the louder of the two.
+        velocity: (eighth.isEven ? 0.34 : 0.42) * _human(random),
+      ),
+    );
+  }
+  final slap = inThisBar(_tumbaSlap / 3);
+  if (slap != null) {
+    hits.add(
+      DrumHit(
+        drum: Drum.crossStick,
+        beat: slap,
+        velocity: 0.38 * _human(random),
+      ),
+    );
+  }
+  final low = inThisBar(_tumbaOpen / 3);
+  if (low != null) {
+    hits.add(
+      DrumHit(drum: Drum.tomLow, beat: low, velocity: 0.42 * _human(random)),
+    );
+  }
+  final top = inThisBar(_superTumba / 3);
+  if (top != null) {
+    hits.add(
+      DrumHit(drum: Drum.tomLow, beat: top, velocity: 0.34 * _human(random)),
     );
   }
   return hits;

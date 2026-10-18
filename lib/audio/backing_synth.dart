@@ -78,6 +78,35 @@ const guitarTimingSpread = 0.012;
 /// within one vary far less, and that is the small figure below.
 const guitarVelocitySpread = 0.18;
 
+/// How a stroke is played: how long the pick takes to cross the strings,
+/// how far the hand strays from the beat, and how much the strength
+/// wanders from what was written.
+///
+/// Comping and chopping are not the same hand. A comper is never exactly
+/// on the grid, and the wander is what stops a guitar part sounding like
+/// a sampler. La pompe is the opposite job: it is the time, in a band
+/// with no drummer, and a gypsy rhythm guitar that wanders is the one
+/// thing it must not do. So the stroke is faster across the strings, it
+/// lands where it says it lands, and it is struck at the strength it was
+/// written at. Tight and even is the sound, not a lack of one.
+({double gap, double timing, double velocity}) strokeFeel(
+  PianoStyle style,
+  Strum strum,
+) => style == PianoStyle.laPompe
+    ? (
+        // A chop, not a roll: the pick is through the strings in a few
+        // milliseconds. Six strings at the comping gap took longer than
+        // the chop itself is meant to last.
+        gap: 0.0022,
+        timing: guitarTimingSpread * 0.2,
+        velocity: guitarVelocitySpread * 0.3,
+      )
+    : (
+        gap: strum == Strum.together ? 0.002 : 0.007,
+        timing: guitarTimingSpread,
+        velocity: guitarVelocitySpread,
+      );
+
 /// How loud a guitar note is played, before velocity and the mixer.
 ///
 /// Set by measurement rather than by taste: the whole guitar set is
@@ -104,6 +133,47 @@ enum Instrument {
 
   const Instrument(this.label);
   final String label;
+
+  /// Where the part sits across the stereo image, from −1 (left) to 1.
+  ///
+  /// The band was in one place, which is the place a mono mix puts
+  /// everything: on top of itself. Spread out, you can hear the comping
+  /// apart from the arpeggios while both are going, which is the whole
+  /// reason to be able to have both.
+  ///
+  /// Where each one goes is where it goes on a record of this music. Bass
+  /// and drums down the middle, because a bass panned anywhere is a bass
+  /// you cannot place and only half of on one earbud, and because the kit
+  /// sits behind the band. The piano off to one side as a pianist sits,
+  /// the arpeggios opposite it, an imported part out of the way of both.
+  ///
+  /// Modestly, and not hard over. Somebody practising with one earbud in
+  /// has to be able to hear the part they are playing against, and a part
+  /// at the far side of the image is a part they have lost. A third of
+  /// the way out is audible as width and survives being halved.
+  double get pan => switch (this) {
+    bass || drums => 0,
+    chords => -0.35,
+    arpeggio => 0.35,
+    imported => 0.2,
+  };
+}
+
+/// How much of a sound at [pan] goes to each side.
+///
+/// The engine's own law, taken from its source rather than guessed at:
+/// the left gain is the cosine of the angle and the right is the sine, so
+/// the two always square up to one and a part does not get louder as it
+/// crosses the middle. A centred part is 0.707 either side, which is 3 dB
+/// down on both and the same 3 dB for everything, so the balance between
+/// the parts is untouched.
+///
+/// Written out here so the export can place a part exactly where the
+/// player places it. Two laws would have meant the file not being the
+/// thing anybody heard.
+({double left, double right}) panGains(double pan) {
+  final angle = (pan + 1) * math.pi / 4;
+  return (left: math.cos(angle), right: math.sin(angle));
 }
 
 class BackingRequest {
@@ -121,6 +191,8 @@ class BackingRequest {
     this.arpeggios = false,
     this.arpeggioSound = Comping.piano,
     this.arpeggioStart = ArpeggioStart.root,
+    this.arpeggioRate = ArpeggioRate.eighths,
+    this.arpeggioReach = ArpeggioReach.plain,
     this.arrangement = Arrangement.keepGoing,
     this.imported,
     this.drumLevels = const DrumLevels(),
@@ -170,6 +242,12 @@ class BackingRequest {
   /// Which chord tone they start from.
   final ArpeggioStart arpeggioStart;
 
+  /// How fast the arpeggio goes by.
+  final ArpeggioRate arpeggioRate;
+
+  /// How far up the chord it goes.
+  final ArpeggioReach arpeggioReach;
+
   /// How the band plays the form: how many choruses, and what happens on
   /// each of them.
   final Arrangement arrangement;
@@ -201,6 +279,8 @@ class BackingRequest {
     arpeggios: arpeggios,
     arpeggioSound: arpeggioSound,
     arpeggioStart: arpeggioStart,
+    arpeggioRate: arpeggioRate,
+    arpeggioReach: arpeggioReach,
     arrangement: arrangement,
     imported: imported,
     drumLevels: drumLevels,
@@ -305,7 +385,16 @@ class RenderedBacking {
 /// swinging at all: this is only how far.
 double swingForPass(BackingRequest request, int firstChorus) =>
     request.swing ??
-    request.tune.style.drums.swingBy(tempoForChorus(request, firstChorus));
+    // A compound bar is already in threes: the beat divides that way
+    // before anybody leans it, so the off-beats sit on the triplet
+    // whatever the tempo would otherwise have said. It is why a band in
+    // 12/8 and a band swinging in 4/4 are playing nearly the same thing.
+    (request.tune.meter.compound
+        ? tripletSwing
+        : request.tune.style
+              .inMeter(request.tune.meter)
+              .drums
+              .swingBy(tempoForChorus(request, firstChorus)));
 
 /// The tempo on a given pass through the form: the tempo asked for, plus
 /// whatever a tempo ramp has added to it by then.
@@ -512,6 +601,10 @@ _Parts _renderParts(
   BandState state = const BandState(),
 }) {
   final tune = request.tune;
+  // What the band can actually play in this bar: a groove whose figure
+  // takes four beats hands over to one that fits, and the whole band
+  // goes with it. See [BandStyle.inMeter].
+  final style = tune.style.inMeter(tune.meter);
   final loop = request.loop;
   final bank = request.samples;
   // Who is actually playing the bass. An imported one has its own key map
@@ -595,14 +688,23 @@ _Parts _renderParts(
 
   // ── Count-in ───────────────────────────────────────────────────────────
   if (withCountIn) {
+    // A compound bar is counted on its pulses, two of them in six
+    // eight, and two clicks is not a count of a bar of six: it says
+    // nothing about what is coming and gives you nothing to come in on.
+    // So the eighths are counted, all six of them, with the pulses
+    // louder: "one and a, two and a", which is the bar.
+    final subdivisions = tune.meter.compound ? 3 : 1;
     for (var beat = 0; beat < request.countInBars * beatsPerBar; beat++) {
-      clicks.tone(
-        beat * samplesPerBeat,
-        beat % beatsPerBar == 0 ? 1760 : 1320,
-        0.06,
-        0.35,
-        decay: 0.02,
-      );
+      for (var part = 0; part < subdivisions; part++) {
+        final onTheBeat = part == 0;
+        clicks.tone(
+          ((beat + part / subdivisions) * samplesPerBeat).round(),
+          beat % beatsPerBar == 0 && onTheBeat ? 1760 : 1320,
+          0.06,
+          onTheBeat ? 0.35 : 0.16,
+          decay: 0.02,
+        );
+      }
     }
   }
 
@@ -628,7 +730,7 @@ _Parts _renderParts(
     return arrangement.plays(part, firstChorus + chorus, bar);
   }
 
-  final walk = switch (tune.style.bass) {
+  final walk = switch (style.bass) {
     BassStyle.walking => walkingBassLine,
     BassStyle.twoFeel => twoFeelBassLine,
     BassStyle.bossa => bossaBassLine,
@@ -638,7 +740,7 @@ _Parts _renderParts(
   // In two on the head, walking for the solos, but only where the bassist
   // would be walking to begin with.
   bool inTwo(int chorus) =>
-      tune.style.bass == BassStyle.walking &&
+      style.bass == BassStyle.walking &&
       arrangement.planFor(firstChorus + chorus).twoFeel;
 
   final List<BassNote> bassLine;
@@ -730,10 +832,10 @@ _Parts _renderParts(
       target.addRecording(
         start,
         sound.forVelocity(layers, velocity),
-        0.52 * velocity * level,
+        _pianoLevel * velocity * level,
         rate: math.pow(2, shift / 12).toDouble(),
         holdSamples: (beatSeconds * lengthBeats * sampleRate).round(),
-        releaseSamples: (0.18 * sampleRate).round(),
+        releaseSamples: (_pianoRelease * sampleRate).round(),
       );
     } else {
       final duration = (beatSeconds * lengthBeats * 100).round();
@@ -745,9 +847,24 @@ _Parts _renderParts(
     }
   }
 
-  final comper = Comper(math.Random(seed + 4))
-    ..previousVoicing = state.pianoVoicing;
+  // A modal tune is voiced in fourths. It is the one kind of tune where
+  // what holds a chorus up is the colour of the stack rather than the
+  // changes, because there are hardly any changes, and it is why So What
+  // is the name of a chord as well as of a tune.
+  final comper = Comper(
+    math.Random(seed + 4),
+    quartal: tune.tags.contains(Genre.modal),
+    slide: tune.quartalSlide,
+  )..previousVoicing = state.pianoVoicing;
   final compSlots = loop.slotsIn(tune);
+
+  /// Whether [bar] begins a section, counting round the form: the bar
+  /// after the last one is the first one, so the end of a chorus leads
+  /// back to the top the way the end of any other section leads into the
+  /// next.
+  bool startsSectionAt(int bar) =>
+      tune.sections.containsKey(bar % tune.barCount);
+
   final guitarist = GuitarComper(math.Random(seed + 6))
     ..previousVoicing = state.guitarVoicing;
 
@@ -796,7 +913,7 @@ _Parts _renderParts(
   // shapes a hand makes on a neck, and putting an organ through them
   // would be a strange thing to hear.
   final chordSound = bank?.playing(request.comping);
-  final arpeggioSound = bank?.playing(request.arpeggioSound);
+  final arpeggioSound = bank?.playingArpeggio(request.arpeggioSound);
 
   final loopBars =
       (loop.endBeat - 1) ~/ beatsPerBar - loop.startBeat ~/ beatsPerBar + 1;
@@ -815,11 +932,11 @@ _Parts _renderParts(
         for (final hit in guitarist.comp(
           slot.chord,
           beats,
-          style: tune.style.piano,
-          groove: tune.style.drums,
+          style: style.piano,
+          groove: style.drums,
           next: compSlots[(index + 1) % compSlots.length].chord,
           tempo: tempoForChorus(request, firstChorus + chorus),
-          figure: tune.style.figure,
+          figure: style.figure,
           beatsPerBar: beatsPerBar,
           swing: swing,
           beatInBar: (tuneBeat % beatsPerBar).toDouble(),
@@ -829,6 +946,10 @@ _Parts _renderParts(
               tuneBeat ~/ beatsPerBar -
               loop.startBeat ~/ beatsPerBar +
               chorus * loopBars,
+          startsSection: tune.sections.containsKey(
+            slot.startBeat ~/ beatsPerBar,
+          ),
+          intoSection: startsSectionAt(slot.endBeat ~/ beatsPerBar),
         )) {
           if (!sounds(LayOut.chords, chorusBeat + slotStart + hit.beat)) {
             continue;
@@ -838,21 +959,18 @@ _Parts _renderParts(
           final order = hit.strum == Strum.up
               ? hit.notes.reversed.toList()
               : hit.notes;
-          final gap = switch (hit.strum) {
-            Strum.down => 0.007,
-            Strum.up => 0.007,
-            Strum.together => 0.002,
-          };
+          final feel = strokeFeel(style.piano, hit.strum);
+          final gap = feel.gap;
           // One stroke's worth of humanising, shared by every string in
           // it: the hand is early or late, and hard or soft, for the whole
           // chord rather than string by string.
           final push =
               ((human.nextDouble() + human.nextDouble()) / 2 * 2 - 1) *
-              guitarTimingSpread;
+              feel.timing;
           final strength =
               1 +
               ((human.nextDouble() + human.nextDouble()) / 2 * 2 - 1) *
-                  guitarVelocitySpread;
+                  feel.velocity;
           final nudge = (push * sampleRate).round();
           for (var v = 0; v < order.length; v++) {
             final offset =
@@ -893,15 +1011,21 @@ _Parts _renderParts(
         for (final hit in comper.comp(
           slot.chord,
           beats,
-          tune.style.piano.feel,
+          style.piano.feel,
           next: next,
-          held: tune.style.piano == PianoStyle.held,
-          calypso: tune.style.piano == PianoStyle.calypso,
-          figure: tune.style.figure,
+          held: style.piano == PianoStyle.held,
+          calypso: style.piano == PianoStyle.calypso,
+          pompe: style.piano == PianoStyle.laPompe,
+          figure: style.figure,
           beatsPerBar: beatsPerBar,
           swing: swing,
           beatInBar: (math.max(slot.startBeat, loop.startBeat) % beatsPerBar)
               .toDouble(),
+          startsSection: tune.sections.containsKey(
+            slot.startBeat ~/ beatsPerBar,
+          ),
+          intoSection: startsSectionAt(slot.endBeat ~/ beatsPerBar),
+          bar: slot.startBeat ~/ beatsPerBar,
         )) {
           if (!sounds(LayOut.chords, chorusBeat + slotStart + hit.beat)) {
             continue;
@@ -932,12 +1056,12 @@ _Parts _renderParts(
       chords,
       choruses: choruses,
       // Flatter than the band: a stream of eighths is not played as a
-      // stream of dotted quavers, whatever the ride is doing.
-      // Flatter than the band: a stream of eighths is not played as a
       // stream of dotted quavers, whatever the ride is doing. Straight
       // in a feel that leans its sixteenths rather than its eighths.
-      swing: tune.style.drums.swingsSixteenths ? straight : lineSwing(swing),
+      swing: style.drums.swingsSixteenths ? straight : lineSwing(swing),
       from: request.arpeggioStart,
+      rate: request.arpeggioRate,
+      reach: request.arpeggioReach,
       startNote: state.arpeggioRoot,
     );
     arpeggioRoot = line.lastStart;
@@ -1057,12 +1181,37 @@ _Parts _renderParts(
     return takes[take];
   }
 
-  /// Which recordings to hit for [drum]: the band's own, or an imported
-  /// kit's where somebody chose one and it has that drum.
+  /// Which recordings to hit for [drum]: the band's own, or the brush or
+  /// imported kit's where somebody chose one and it has that drum.
+  // Whether the brushes are actually out, rather than only chosen: a
+  // groove that moves the time onto the snare head and circles underneath
+  // needs the recordings that make those sounds. Without the bank there
+  // is a synthesised kit standing in, and it has no brushes.
+  final playingBrushes =
+      request.drumSound == DrumSound.brushes &&
+      bank?.brushes.isNotEmpty == true;
+
+  /// Which recordings to hit for [drum]: the band's own, or the brush or
+  /// imported kit's where somebody chose one and it has that drum.
+  ///
+  /// The snare is the exception, and the groove decides it. The kit's
+  /// snare is an overhead's snare, which is the drum in its room, and
+  /// that is a jazz backbeat. A funk backbeat is the drum without the
+  /// room, so funk gets the close microphone instead. A chosen kit still
+  /// wins over both: somebody who imported a snare wants to hear it, and
+  /// somebody playing a funk tune with brushes has asked for brushes.
   DrumSamples? recordedDrum(Drum drum) {
-    final ours = bank == null ? null : drumIn(bank, drum);
-    if (ours == null) return null;
-    return bank!.playingDrum(drum, request.drumSound, ours);
+    if (bank == null) return null;
+    // Funk takes the close microphones: the drum rather than the room
+    // for the snare, and a kick that is the floor of the groove rather
+    // than one heard across it.
+    final funk = style.drums == Feel.funk;
+    final ours = switch (drum) {
+      Drum.snare when funk => bank.snareTight,
+      Drum.kick when funk => bank.kickClose,
+      _ => drumIn(bank, drum),
+    };
+    return bank.playingDrum(drum, request.drumSound, ours);
   }
 
   Float32List? synthesisedDrum(Drum drum) => switch (drum) {
@@ -1073,6 +1222,8 @@ _Parts _renderParts(
     // The synthesised kit has no snare; its cross-stick stands in.
     Drum.snare || Drum.crossStick || Drum.cowbell => kit?.crossStick,
     Drum.tomHigh || Drum.tomLow => kit?.kick,
+    // Nothing in the synthesised kit sounds remotely like a brush.
+    Drum.swirl => null,
   };
 
   // The tune bars the loop covers (a loop can start mid-bar).
@@ -1090,7 +1241,7 @@ _Parts _renderParts(
       final theirs = arrangement.drummerHas(firstChorus + chorus, i);
       final hits = theirs
           ? drumSoloBar(
-              feel: tune.style.drums,
+              feel: style.drums,
               bar: i % trading.bars,
               of: trading.bars,
               beatsPerBar: beatsPerBar,
@@ -1098,11 +1249,13 @@ _Parts _renderParts(
               swing: swing,
             )
           : drumBar(
-              feel: tune.style.drums,
+              compound: tune.meter.compound,
+              feel: style.drums,
               bar: chorus * bars.length + i,
               beatsPerBar: beatsPerBar,
               random: drumRandom,
               swing: swing,
+              brushes: playingBrushes,
             );
       for (final hit in hits) {
         final beatInTune = bars[i] * beatsPerBar + hit.beat;
@@ -1114,19 +1267,50 @@ _Parts _renderParts(
           // changes its tone; how loud it comes out is the part's velocity.
           // Deciding the level by which layer was picked is what made the
           // odd beat jump 12 dB out of the groove.
-          final layer = (hit.hard ? samples.length - 1 : 0);
+          //
+          // Taken from the velocity rather than from a flag. A kit's tone
+          // changes all the way up, and reading only the flag put every
+          // ordinary stroke on the quietest recording there is: the ride
+          // on the beat and the lighter one after it came out of the same
+          // microphone at the same stick weight, which is the sound of a
+          // drum machine rather than a drummer.
+          // The swirl is the exception: its layers are circle lengths and
+          // not stroke weights, so the tempo picks one and the recording
+          // is stretched the rest of the way onto the beat. A circle that
+          // does not land on the beat is a drummer who is not playing
+          // with the band.
+          final circle = hit.drum == Drum.swirl
+              ? _swirlFor(samples, samplesPerBeatOf[chorusOf(beat)], hit.beats)
+              : null;
+          final layer =
+              circle?.layer ??
+              (hit.hard
+                  ? samples.length - 1
+                  : (hit.velocity * samples.length).floor().clamp(
+                      0,
+                      samples.length - 1,
+                    ));
           final take = pickTake(samples.layers[layer]);
           final asRecorded =
-              _drumLevel * hit.velocity * samples.levelling[layer];
+              _drumLevel *
+              hit.velocity *
+              samples.levelling[layer] *
+              (playingBrushes ? _brushTrim : 1);
           drums.addRecording(
             at(beat),
             take,
             asRecorded * request.drumLevels.of(hit.drum),
+            rate: circle?.rate ?? 1,
           );
           // The same hit where it was, for the gain. The take is picked
           // once and used for both, so the second copy is the same drum
           // and not another one out of the same bag.
-          drumsAsRecorded?.addRecording(at(beat), take, asRecorded);
+          drumsAsRecorded?.addRecording(
+            at(beat),
+            take,
+            asRecorded,
+            rate: circle?.rate ?? 1,
+          );
         } else {
           final sound = synthesisedDrum(hit.drum);
           if (sound != null) {
@@ -1169,14 +1353,14 @@ _Parts _renderParts(
         ? 0.35
         : request.comping == Comping.guitar
         ? guitarRoom
-        : 0.12,
+        : _pianoRoom,
   );
   if (mixes[Instrument.arpeggio] case final arpeggioMix?) {
     addRoomReverb(
       arpeggioMix.buffer,
       0,
       sampleRate,
-      wet: request.arpeggioSound == Comping.guitar ? guitarRoom : 0.12,
+      wet: request.arpeggioSound == Comping.guitar ? guitarRoom : _pianoRoom,
     );
   }
   if (mixes[Instrument.imported] case final importedMix?) {
@@ -1184,12 +1368,39 @@ _Parts _renderParts(
       importedMix.buffer,
       0,
       sampleRate,
-      wet: request.imported?.voice == PartVoice.guitar ? guitarRoom : 0.12,
+      wet: request.imported?.voice == PartVoice.guitar
+          ? guitarRoom
+          : _pianoRoom,
     );
   }
   if (bank == null) {
     addRoomReverb(drums.buffer, 0, sampleRate, wet: 0.25);
     addRoomReverb(bass.buffer, 0, sampleRate, wet: 0.08);
+  } else {
+    // The recorded kit used to be the one thing in the band with no room
+    // around it: the piano and the guitar were put in one and the drums
+    // were left where they were, which is close-miked and dead. A kit is
+    // the part of a band you mostly hear through the room, so a dry one
+    // reads as a drum machine however good the samples are. The same room
+    // as everything else, so the band is in one place, and a small amount
+    // of it because the recordings carry their own.
+    //
+    // It also gives the kit a tail: with nothing after the last stroke the
+    // drums stopped dead at the end of a chorus. The mix has a second of
+    // room past the batch and the tail is carried into the next one, so
+    // the ring crosses the loop rather than being cut at it.
+    addRoomReverb(drums.buffer, 0, sampleRate, wet: roomFor(style.drums));
+    // The reference the whole band's gain is worked out from has to be the
+    // same sound, or the peak it reports is of a kit that is not the one
+    // being played.
+    if (drumsAsRecorded != null) {
+      addRoomReverb(
+        drumsAsRecorded.buffer,
+        0,
+        sampleRate,
+        wet: roomFor(style.drums),
+      );
+    }
   }
 
   return _Parts(
@@ -1208,10 +1419,135 @@ _Parts _renderParts(
   );
 }
 
+/// How much the brush kit comes down by against the stick kit.
+///
+/// The brush recordings were normalised drum for drum to the *peak* of
+/// the stick kit's matching drum, so that choosing brushes would change
+/// the tone and not the arrangement. Matching peaks turned out to be
+/// matching the wrong thing: a brush on a drum is a wash where a stick is
+/// a tick, so the same peak carries far more energy, and every brush drum
+/// came out 3 to 4 dB over the one it stood in for. Measured against the
+/// band, the kit was 2.1 dB up on a swing tune and 5.1 on a bossa.
+///
+/// A trim on the kit rather than a gain on each recording, because how
+/// loud one kit sits against another is a decision about the mix and not
+/// a property of either recording, which is where [_drumLevel] lives too.
+///
+/// What it does not fix is the balance inside the kit, which is still off
+/// by a couple of dB either way: the cross-stick and the hi-hat pedal
+/// come out a little over and the kick a little under. Putting that right
+/// means normalising the brush samples by energy rather than by peak,
+/// which is a rebuild of all 87 of them and a job of its own.
+const _brushTrim = 0.78;
+
 /// How loud the recorded drums sit against the bass and piano (cymbals
 /// measure quiet on average but cut through, so this was set by level
 /// matching the stems to a typical trio balance).
-const _drumLevel = 1.7;
+/// How hard the piano is struck, against the rest of the band.
+///
+/// Up 1.6 dB from 0.513, because the piano was too far back. Measured
+/// over a chorus it sat 13 dB under the bass, and while most of that gap
+/// is the bass's bottom end carrying energy a piano has no business
+/// carrying, the comping is the part you play along to and it was behind
+/// the band rather than in it.
+///
+/// What this is traded against is the bass staying audible on a phone,
+/// which barely reproduces anything below 300 Hz: see the test that
+/// compares the two over 300 Hz to 3 kHz, where the bass has only its
+/// harmonics. Any lift here comes out of that margin, so the number is
+/// chosen to leave the bass level with the chords in that band rather
+/// than above them, and no further.
+const _pianoLevel = 0.62;
+
+/// How much room is heard around the piano. It arrives with a hall
+/// already on it, so this is a little more of the same hall rather than
+/// a second one: enough to join it to the kit, which now has one too.
+const _pianoRoom = 0.16;
+
+/// How long the piano takes to let a chord go.
+///
+/// It was 0.18 of a second, which is a damper falling on a key that has
+/// been released: correct for a player with no pedal, and nobody comps
+/// with no pedal. A chord was damped the instant its written length ran
+/// out, so one never rang into the next and the part came out as a row of
+/// separate chords rather than a piano being played.
+///
+/// Long enough to be a pedal lifted on the change, and no longer: a chord
+/// that hangs about through the one after it is not lush, it is a mess.
+///
+/// Which is what 0.3 of a second turned out to be. At 140 beats a minute
+/// it is seven tenths of a beat, and comping chords land one to two beats
+/// apart, so every chord was still sounding when the next one arrived and
+/// the part came out as a blur. Worse once the piano was brought forward,
+/// because the blur came forward with it.
+///
+/// 0.2 is a damper falling rather than a pedal held through the change.
+/// None of the piano's richness is in this number: that is in the length
+/// of the recordings, which is what the chord rings *for*, and those are
+/// untouched.
+const _pianoRelease = 0.2;
+
+/// How far a swirl recording runs past its own circle, so one circle
+/// overlaps the next and the join between them is a crossfade rather than
+/// an edge. Baked into the files by `tool/process_samples.py`, and needed
+/// here to work out how long the circle inside a recording is.
+const _swirlOverlap = 1.2;
+
+/// Which circle to use for a swirl, and how far to stretch it.
+///
+/// The layers are circle lengths rather than stroke weights. The nearest
+/// one is taken and the recording is resampled the rest of the way, which
+/// keeps the stretch small enough that a swirl still sounds like wire on a
+/// drumhead and not like a tape running slow.
+({int layer, double rate}) _swirlFor(
+  DrumSamples swirl,
+  int samplesPerBeat,
+  double beats,
+) {
+  final wanted = beats * samplesPerBeat * _swirlOverlap;
+  var best = 0;
+  var bestOff = double.infinity;
+  for (var layer = 0; layer < swirl.length; layer++) {
+    final off = (math.log(swirl.layers[layer].first.samples.length / wanted))
+        .abs();
+    if (off < bestOff) {
+      bestOff = off;
+      best = layer;
+    }
+  }
+  return (layer: best, rate: swirl.layers[best].first.samples.length / wanted);
+}
+
+/// How much of the room is heard around the recorded kit. Small: the
+/// samples already have their own, and a drum's transient makes added
+/// reverb obvious long before a sustained instrument's does.
+const _drumRoom = 0.09;
+
+/// How much room the kit gets for [feel].
+///
+/// A funk kit is close-miked and dry, and that is not a mixing fashion,
+/// it is what the music is: the groove is in the spaces between the kick
+/// and the snare, and a room fills them in. The same amount that joins a
+/// jazz kit to the band turns a funk backbeat into a thud.
+double roomFor(Feel feel) => switch (feel) {
+  Feel.funk => 0,
+  // The rest are played in a room and recorded in one.
+  _ => _drumRoom,
+};
+
+/// Lowered 1 dB from 1.7, to put the comping further forward.
+///
+/// The piano was a touch quiet by default and the direct fix, lifting it,
+/// was not available: that comes out of the bass's margin over 300 Hz to
+/// 3 kHz, which is all a phone speaker plays, and there was 0.46 dB of it
+/// left. Bringing the kit down instead leaves that margin exactly where
+/// it was, the shared gain lifting bass and chords together so their
+/// ratio does not move.
+///
+/// What it does change is the kit against the band: on a swing tune the
+/// drums were 2.25 dB under the chords and are now 3.25, and on a funk
+/// tune 4.20 dB over and now 3.20.
+const _drumLevel = 1.515;
 
 /// A drum in a short example: [at] seconds in, how loud, and whether it
 /// is a hard stroke, which changes the tone rather than the level, as it
@@ -1224,7 +1560,12 @@ const _drumLevel = 1.7;
 typedef SnippetDrum = ({double at, Drum drum, double velocity, bool hard});
 
 /// The recordings of [drum] in [bank].
-DrumSamples drumIn(SampleBank bank, Drum drum) => switch (drum) {
+/// The band's own recording of [drum], or null for one it has not got.
+///
+/// Only the swirl, which the stick kit cannot make: a brush circling the
+/// head is not a stroke played softly. A groove only asks for it when the
+/// brushes are out, so the null is a guard rather than a path.
+DrumSamples? drumIn(SampleBank bank, Drum drum) => switch (drum) {
   Drum.ride => bank.ride,
   Drum.hiHatPedal => bank.hiHatPedal,
   Drum.hiHatClosed => bank.hiHatClosed,
@@ -1235,6 +1576,7 @@ DrumSamples drumIn(SampleBank bank, Drum drum) => switch (drum) {
   Drum.cowbell => bank.cowbell,
   Drum.tomHigh => bank.tomHigh,
   Drum.tomLow => bank.tomLow,
+  Drum.swirl => null,
 };
 
 /// One note of a short example: [pitch] (MIDI) from [start] for [length],
@@ -1333,6 +1675,8 @@ Uint8List renderSnippet(
   // The drums last, so they sit on top of whatever else is going on.
   for (final hit in drums) {
     final samples = drumIn(bank, hit.drum);
+    // An example is played on the band's own kit, which has no swirl.
+    if (samples == null) continue;
     final layer = hit.hard ? samples.length - 1 : 0;
     mix.addRecording(
       (hit.at * sampleRate).round(),
@@ -1560,7 +1904,7 @@ class _Mix {
   /// to repeat. A one-shot, which is every built-in recording, simply runs
   /// out, and the loop costs it nothing.
   void addRecording(
-    int start,
+    int at,
     SampledNote note,
     double gain, {
     double rate = 1,
@@ -1569,6 +1913,11 @@ class _Mix {
   }) {
     final sample = note.samples;
     final speed = rate * note.rate;
+    // [at] is where the note is heard, not where the file begins. The
+    // quiet front of the recording is played before it, so the attack
+    // lands on the beat; at the very top of a take there is nowhere for
+    // it to go, and it starts where it can.
+    final start = math.max(0, at - (note.lead / speed).round());
     final scale = gain / 32768;
     final loop = note.loop;
     // Where the readhead may not go: one short of the end, because reading

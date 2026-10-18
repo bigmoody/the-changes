@@ -273,6 +273,55 @@ String _normalise(String text) => text
     .replaceAll('♯', '#')
     .replaceAll('−', '-');
 
+/// How a minor chord is written on the chart: Dm7 or D-7.
+///
+/// Both are in print everywhere. A fake book letters an "m"; iReal Pro
+/// and plenty of copyists draw a minus sign instead. Which one a player
+/// reads without thinking is theirs, not the app's, so it is a setting,
+/// the way iReal Pro's "Use m for minor" switch is.
+enum MinorSign {
+  /// Dm7, the way most printed fake books write it.
+  m('m', 'Dm7'),
+
+  /// D-7, the way iReal Pro writes it.
+  minus('-', 'D-7');
+
+  const MinorSign(this.mark, this.label);
+
+  /// What a minor chord carries after its root.
+  final String mark;
+
+  /// The chip on the View sheet: the sign shown doing its own job.
+  final String label;
+}
+
+/// The sign minor chords are written with now. Read [minorSign] rather
+/// than assuming an "m".
+MinorSign get minorSign => _minorSign;
+MinorSign _minorSign = MinorSign.m;
+
+/// Writes every minor chord with [sign], from here on.
+///
+/// Kept here, beside the chord symbols themselves, rather than passed
+/// down: [Chord.display] is read by the chart, the exports and a hundred
+/// smaller places, and threading one word through all of them would be a
+/// change everywhere for a setting that is the same everywhere.
+/// `AppSettings` owns the choice and calls this when it changes; the app
+/// above it rebuilds, and the next frame is written the new way.
+void writeMinorAs(MinorSign sign) => _minorSign = sign;
+
+/// The mark a minor chord symbol starts with, in any of its spellings:
+/// m7, -7 and min7 are one chord written by three different copyists.
+/// The negative lookahead keeps "maj7" out of it, which starts with an m
+/// and is the opposite chord.
+final _minorMark = RegExp(r'^(?:min|m(?!aj)|-)');
+
+/// [symbol] with its minor mark written the way the player asked for, so
+/// a tune typed as "Cmin7" and one typed as "C-7" read alike on the same
+/// chart. Anything that isn't a minor chord comes back untouched.
+String withMinorSign(String symbol, MinorSign sign) =>
+    symbol.replaceFirstMapped(_minorMark, (_) => sign.mark);
+
 /// The display form of a quality symbol, e.g. "^7" → "Δ7", "7b9" → "7♭9".
 String prettyQuality(String symbol) => symbol
     .replaceAll('^', 'Δ')
@@ -397,12 +446,17 @@ class Chord {
   String get rootName =>
       _letters[rootLetter] + _accidentalGlyph(rootAccidental);
 
-  /// How the chord is shown on the chart, e.g. "B♭Δ7" or "C7/G".
+  /// How the chord is shown on the chart, e.g. "B♭Δ7", "C7/G" or, where
+  /// the player has asked for a minus sign, "D-7".
   String get display {
     final slash = bassLetter == null
         ? ''
         : '/${_letters[bassLetter!]}${_accidentalGlyph(bassAccidental)}';
-    return '$rootName${prettyQuality(qualitySymbol)}$slash';
+    // Only a chord with a minor 3rd in it carries a minor mark to write.
+    final symbol = quality.intervals.contains(3)
+        ? withMinorSign(qualitySymbol, _minorSign)
+        : qualitySymbol;
+    return '$rootName${prettyQuality(symbol)}$slash';
   }
 
   /// This chord moved to a new key, e.g. Cm7 up a whole step → Dm7.
@@ -437,10 +491,28 @@ class Chord {
     (letter: 3, accidental: -1) => (letter: 2, accidental: 0), // F♭ → E
     (letter: 2, accidental: 1) => (letter: 3, accidental: 0), // E♯ → F
     (letter: 6, accidental: 1) => (letter: 0, accidental: 0), // B♯ → C
+    // D♯ → E♭ and A♯ → B♭. Nobody writes a chord on D♯ or A♯, whatever
+    // the quality: the roots the drill deals out are E♭ and B♭ for major,
+    // dominant and minor alike, and D♯ is the spelling its own comment
+    // says stops a player dead. Transposing a letter at a time will
+    // otherwise land on them, which is how an E♭ part of The Girl from
+    // Ipanema came to read E♭Δ7 in bar 17 and D♯m7 in bar 21: the same
+    // note, because the concert chart writes G♭Δ7 there and F♯m7 here,
+    // and the two spellings move to different letters.
+    //
+    // Only these two. C♯, F♯ and G♯ are all real chord roots and which
+    // way they are written depends on where the chord is going, which is
+    // a judgement this cannot make from one chord at a time.
+    (letter: 1, accidental: 1) => (letter: 2, accidental: -1), // D♯ → E♭
+    (letter: 5, accidental: 1) => (letter: 6, accidental: -1), // A♯ → B♭
     _ => note,
   };
 
   /// The same chord written with a different quality symbol, e.g. "Cmaj7".
+  ///
+  /// Every spelling exactly as written: this is what the chord reference
+  /// lists the alternatives with, where normalising them all to the one
+  /// minor sign would leave the same chord printed three times.
   String displayWith(String symbol) => '$rootName${prettyQuality(symbol)}';
 
   /// Pitch classes of every chord tone, in formula order.

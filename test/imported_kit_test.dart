@@ -9,7 +9,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
-import 'package:play_along/audio/drum_patterns.dart' show Drum;
+import 'package:play_along/audio/drum_patterns.dart' show Drum, importableDrums;
 import 'package:play_along/audio/imported_kit.dart';
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/audio/soundfont.dart';
@@ -38,10 +38,13 @@ Map<int, List<SampledNote>> kitOn(List<int> notes) {
 
 void main() {
   test('the usual notes land on the usual drums', () {
+    // The swirl is not among them: it is the brush kit's, and General
+    // MIDI has no note for a brush circling a drumhead.
     final kit = kitFromGeneralMidi(
       kitOn([36, 38, 42, 44, 46, 51, 37, 56, 50, 45]),
     );
-    expect(kit.keys, containsAll(Drum.values));
+    expect(kit.keys, containsAll(importableDrums));
+    expect(kit.containsKey(Drum.swirl), isFalse);
   });
 
   test('a kit with only the four essentials leaves the rest alone', () {
@@ -131,7 +134,9 @@ void main() {
             hiHatClosed: emptyDrum,
             hiHatOpen: emptyDrum,
             kick: emptyDrum,
+            kickClose: emptyDrum,
             snare: emptyDrum,
+            snareTight: emptyDrum,
             crossStick: emptyDrum,
             cowbell: emptyDrum,
             tomHigh: emptyDrum,

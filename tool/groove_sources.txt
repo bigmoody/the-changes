@@ -1,0 +1,348 @@
+Where the grooves come from.
+
+Every pattern in lib/audio/drum_patterns.dart is a claim about how a
+groove is played, and a claim that nobody can check is worth nothing. So
+each one is written down here with what it rests on, the way every sample
+has its source in sample_sources.txt. Anything added to that file should
+be added here too.
+
+A line is: the groove, then what the source says, then where it says it.
+Where two sources disagree, both are here and the code says which one it
+followed and why.
+
+
+JAZZ WALTZ (_jazzWaltzBar)
+
+Ride figure, "one, two, and-of-two, three": a skip note after the second
+beat and beat three left plain.
+  "The basic jazz waltz or 3/4 swing pattern consists of 'one, two,
+  and-of-two, three' on the ride cymbal, with the hi-hat on 'two'."
+  freedrumlessons.com, basic jazz pattern lesson.
+
+Hi-hat under 2 and 3: a listed variation of the same figure, the other
+common way being under beat 2 alone. The app follows 2 and 3, which is
+also what its own _backbeats rule gives a three-beat bar, so the waltz
+and every other groove close the hat in the same places.
+  Same source, which lists "the hi-hat on 'two' and 'three', or on all
+  three beats" among the variations.
+
+Snare answers on the "and" of 2 or on 3, now and then rather than every
+bar.
+  Same source: "adding the snare on the 'and-of-two' or on the
+  'and-of-one' and on 'three'."
+  soundbrenner.com, rhythm library: jazz waltz, on the drummer playing
+  sparsely and implying the pulse rather than hitting every beat.
+
+The bass walks three to the bar.
+  soundbrenner.com, same article: the bass may "walk in three", play "a
+  more spacious one-feel", or alternate strong downbeats with moving
+  quarter notes. The app walks, and the two-feel is reachable by
+  changing the bass on its own in the editor.
+
+Other syncopations (the skip reaching past the bar into the next one)
+are a quarter of bars rather than every bar.
+  Same article: other patterns "lift the 'and' of 2, or beats 2 and 3,
+  or different syncopations depending on the tune", given as options and
+  not as a fixed pattern.
+
+Feathered kick: soft enough to be felt and not heard, never struck hard.
+  The general rule for the swing kick, carried over: the bass drum is
+  played "only loud enough to be felt, but not heard".
+
+
+BALLAD, WITH BRUSHES (_balladBrushBar)
+
+The left hand circles the head without stopping, half a circle to a
+beat, and the change of direction marks the pulse.
+  "THE LEFT HAND stirs in a clockwise circle. There should be a slight
+  change in sound as the brush changes directions at the top and bottom
+  of the circle, this helps mark the quarter note pulse."
+  Nebraska Music Education Association all-state jazz drum set packet.
+  percussion.byu.edu, brushes page: start the left hand at nine o'clock
+  and swap hands with the right on beats 2 and 4; for ballads, stir the
+  hands in opposite directions towards the inside of the drum.
+
+The right hand does not keep time: it touches the head on 2 and 4, where
+the hands cross.
+  percussion.byu.edu, same page, on switching places on beats 2 and 4.
+  The Nebraska packet's medium-swing brush pattern taps the "2 a" and
+  "4 a" instead; that is the quicker tempo's version of the same hand,
+  and at a ballad the app plays it on the beat.
+
+Direction is the player's own choice, so nothing here depends on it.
+  Steve Fidyk, Modern Drummer brush workshop: "Some people naturally
+  move counterclockwise, and some people are more comfortable moving
+  clockwise."
+
+Nobody comments: no bombs, no fills, no snare answers. This one is the
+app's own decision rather than a quotation, and it is in the tests so
+that it stays deliberate.
+
+
+BALLAD, WITH STICKS (_balladBar)
+
+Quarters on the ride with one skip note at the end of the bar, the
+hi-hat under 2 and 4, and the same feathered kick. The brush kit is what
+a ballad is normally played with; this is the same part for a player who
+has chosen sticks, thinned out to match.
+
+
+Sources in full:
+  https://freedrumlessons.com/drum-lessons/basic-jazz-pattern.php
+  https://www.soundbrenner.com/blogs/articles/rhythm-library-jazz-waltz
+  https://www.nmeanebraska.org/assets/docs/All-State/Jazz-Band/Jazz-Scales/Set-D/NMEA%20All-State%20Jazz%20drum%20set%20D.pdf
+  https://percussion.byu.edu/brushes
+  https://www.moderndrummer.com (Steve Fidyk, brush basics workshop)
+
+
+SECOND LINE (_secondLineBar)
+
+The accent skeleton: "1, the a of 1, the and of 2, 3, the a of 3, the
+and of 4".
+  soundbrenner.com, rhythm library: second line. Given as a practice
+  pattern for the whole groove rather than for one drum.
+
+Bass drum on the downbeats and the off-beat pickups: 1, the "and" of 2,
+3, the "and" of 4.
+  The same article: low sounds on 1 and 3, then one moved to the "and"
+  of 4 as "an offbeat pickup into the next bar".
+  A second source describes the street beat as the downbeat plus the
+  syncopated "and" of 2 and "and" of 4, which is the same figure read
+  the other way round. The app plays both halves: downbeats on 1 and 3,
+  pickups after each backbeat.
+
+Snare: the backbeat on 2 and 4 with ghost notes around it, and
+"syncopation, rolls, buzzes, and street-beat vocabulary" besides. The
+app plays the backbeat and the ghosts, and an extra crack off the beat
+now and then; it has no press roll to play.
+
+No cymbal at all. A brass band is a bass drum and a snare, and that is
+what the kit part stands in for. This is the app's own reading of the
+sources rather than a quotation: none of them puts a ride in it.
+
+Swung, but not squarely: "often between swung eighths and loose
+sixteenths", less triplet-based than a shuffle and less smooth than
+swing. The app swings it on the same curve as everything else, which
+the Swing slider then moves.
+
+Tempo: "slower processional feels" up to "bright, fast street tempos".
+
+Bass: the tuba or bass "outlines bass motion and reinforces the walking
+feel", so it walks.
+
+
+GYPSY JAZZ, LA POMPE (PianoStyle.laPompe)
+
+Four staccato downstrokes a bar, with the accent on 2 and 4.
+  premierguitar.com, "Rhythm Rules: Gypsy Jazz Primer": the most basic
+  pattern is four staccato downstrokes per measure with a slight
+  emphasis on beats two and four. The same source notes beginners
+  mistake it for a two-beat because of that accent.
+
+The accent comes from the arm, not from a harder pick: for beat 2 "the
+hand lifts high and drops", using gravity rather than muscle.
+
+The left hand mutes immediately after the stroke, which is where the
+drum-like sound comes from, and why the app's strokes are so short.
+
+The quick upstroke before 1 and 3 is a grace note: "its time value is
+not relative to the overall tempo of the song. It is played very
+quickly no matter what the tempo is." So the app writes it twenty-five
+milliseconds before the stroke it leads into, worked back into beats at
+whatever tempo the tune is going at, and each bar carries the lift into
+the next, which is where it sounds. Written as a fixed fraction of a
+beat instead, it dragged further off the beat the slower the tune got.
+  Disputed, and recorded as disputed: players on the DjangoBooks forum
+  differ over whether the upstrokes are part of the pattern at all, one
+  calling it "an effect that you can do, but don't have to". What is
+  agreed is that the main beats are always downstrokes, which is what
+  the app plays; the upstrokes are quiet enough to be the grace notes
+  the primer describes.
+
+Tight, and on small grips. The chop is three or four strings, not six:
+there is a bassist for the bottom, and a stroke that has to be in and
+out inside a fraction of a beat cannot be six strings wide without the
+low ones arriving late. The app's comping hand wanders a little on
+purpose, which is what stops a guitar part sounding like a sampler;
+this one does not, because in a band with no drummer it is the time.
+That is the app's own reading, and it is what [strokeFeel] says.
+
+No drummer. The Quintette du Hot Club de France had none, and "the
+guitars and bass had to provide both the harmony and the rhythmic
+drive"; the rhythm guitar's "short, percussive attack" does what a kit
+otherwise would.
+  en.wikipedia.org, Gypsy jazz.
+  allaboutjazz.com, Clément Réboul interview, on the bass as "the base
+  of the groove" locked to la pompe.
+
+Bass: both a two-feel and walking four are standard, and players mix
+them. The app walks and leaves the two-feel a dropdown away.
+  Soundslice's gypsy jazz bass course teaches both on the same tunes.
+
+Sources in full:
+  https://www.soundbrenner.com/blogs/articles/second-line
+  https://www.premierguitar.com/rhythm-rules-gypsy-jazz-primer
+  https://www.jazzguitar.be/blog/gypsy-jazz-chords/
+  https://djangobooks.com/forum/discussion/3897
+  https://en.wikipedia.org/wiki/Gypsy_jazz
+  https://www.allaboutjazz.com/clement-reboul-how-to-appreciate-and-learn-gypsy-jazz
+  https://www.soundslice.com/lessons/gypsy-jazz-bass/
+
+
+AFRO 6/8 (_afroSixBar)
+
+The name first. The groove jazz bands play is an approximation of Cuban
+folkloric music, and a drummer who teaches it says plainly that Bembé
+"is religious ceremonial music, and is highly specific in every aspect;
+it's not really appropriate to refer to the groove/style used by US
+jazz musicians by that name. So I say Afro 6, or Afro-Cuban 6/8."
+  cruiseshipdrummer.com. The app says Afro 6/8.
+
+The bell: seven strokes across twelve eighths, on the first, third,
+fifth, sixth, eighth, tenth and twelfth.
+  Jeff Lindqvist / Language Log's clock model of the standard pattern
+  places the strikes at twelve, two, four, five, seven, nine and eleven
+  on a twelve-hour face, which is the same seven positions.
+  cruiseshipdrummer.com, on the same pattern: it is "the familiar 12/8
+  or 6/8 bell", written the same way in 3/4, 6/8 or 12/8 with nothing
+  changed but the bar lines. That is why the app keeps it as a cycle of
+  eighths and lays it over whatever bar it meets: in 12/8 one bar, in
+  6/8 two, on a tune in four the same seven strokes over triplets.
+
+The bell can be played on a cowbell, a ride, or the rim of a floor tom;
+the app plays it on the cowbell it has.
+  Nebraska Music Education Association all-state drum set packet, which
+  gives an Afro-Cuban 6/8 feel with the bell, a hi-hat with the foot
+  and an optional cross-stick on the snare. The app plays the
+  cross-stick now and then rather than every time round.
+
+The bass drum: "the bass drum note on 2 corresponds to the 'bombo' in
+Cuban music", so it is on the second beat of the four-pulse cycle and
+nowhere else.
+  cruiseshipdrummer.com.
+
+The hi-hat is the one thing the sources would not settle. The same
+writer warns that "the waltzy hihat part is not" Cuban practice, while
+the Nebraska packet has a foot part without spelling it out. So the app
+keeps the foot to the two halves of the cycle, out of the way of the
+bell, and that choice is the app's own.
+
+The shaker: every one of the twelve pulses, the bell's own strokes
+among them struck harder. In the ensemble this is the axatse, the
+gourd rattle, and it is what fills the groove in: its down strokes
+"sound the standard pattern" by striking the gourd against the knee
+and its up strokes "sound pulses in between the bell strokes". One
+description calls it "the eighth note version of what the gankogui
+plays".
+  en.wikipedia.org, Ewe music. The hi-hat is standing in for a gourd,
+  which is the app's own substitution and is why it is quiet.
+
+The same article gives the bell's positions in another notation, as a
+check on the ones above: 1, 1a, 2& 2a, 3&, 4, 4a of a twelve-pulse
+bar, which is the same seven eighths.
+
+The feet: a steady pulse rather than every other one. "Both feet hold
+down the groove by playing a steady dotted quarter note pattern", with
+splashing the hi-hat every other dotted quarter given as a variation
+rather than the base.
+  rhythmnotes.net, Afro-Cuban rhythms for drum set.
+
+The second kick: the bombo on the second beat of the cycle, and the
+one on the fourth most times round rather than every time, because the
+same source calls the kick "on beat three" optional, "especially if
+the groove is too heavy for the song".
+
+The congas, from a four-drum bembé written in block notation against
+the twelve pulses, "1 & a 2 & a | 3 & a 4 & a":
+
+  Qui:  | O S - O S - | O S - O S - |
+  Seg:  | - - - - O O | - - - - O O |
+  Tum:  | - - S - - - | - - O - - - |
+  SupT: | O - - - - - | - - - - - - |
+
+  mrcrowder.us, hand drumming block notation, "Bembe on 4 drums".
+  O is an open tone and S a slap.
+
+On a kit those voices go where the drum-set sources put them: "the
+toms on the drum set can imitate some of the basic conga parts", with
+the cross-stick as the slap and the toms as the open tones.
+  rhythmnotes.net, Afro-Cuban rhythms for drum set.
+
+So the segundo's two pairs of open tones are the high tom, the tumba's
+slap is the cross-stick and its open tone the low tom, and the super
+tumba's single note is the low tom on the top of the cycle. The second
+of each segundo pair leans into the beat after it and is the louder of
+the two, which is the app's own reading and not in the notation.
+
+The quinto is the one voice deliberately left out. It plays an open
+tone and a slap on every pulse, and under a bell and a shaker that
+already sound every pulse it is a third part saying the same thing:
+on a kit there are two hands, and the segundo's answer is the one
+worth having.
+
+The bass plays roots and fifths on the pulse. A 6/8 tumbao is a line of
+its own and is not written yet; this is the plain thing rather than a
+guess at one.
+
+
+GROOVES THAT ARE A FIGURE, IN A BAR THEY DO NOT FIT
+
+Not a source, a rule, written down because it is a musical claim: some
+grooves here are written beat by beat and fit any bar (swing, a ballad,
+a waltz, and the bell, which is a cycle), while others *are* a
+bar-length figure: the bossa clave, the calypso 3-3-2, the samba's two
+bars, the funk riff, the second line's street beat. Cut to a bar of
+another length those are not themselves but a fragment of themselves.
+A calypso counted in six eight came out as half a 3-3-2 with its
+off-beats dragged onto triplets, which is nobody's music.
+
+So a groove whose figure takes a bar of four hands over, in any other
+bar, to one that fits: the bell in compound time, swing everywhere
+else. The whole band goes with it, because a bossa bass under a bell is
+two grooves at once, and the mixer says which groove is playing and
+why.
+
+Sources in full:
+  https://cruiseshipdrummer.com/2013/03/11/african-bell-pattern-and-its-inversions/
+  https://cruiseshipdrummer.com/bembe
+  https://languagelog.ldc.upenn.edu/nll/?p=1420
+  https://www.nmeanebraska.org/assets/docs/All-State/Jazz-Band/Jazz-Scales/Set-A/All-State%20Jazz%20Drum%20Set%20A.pdf
+  https://en.wikipedia.org/wiki/Ewe_music
+  https://rhythmnotes.net/afro-cuban-rhythms-for-drum-set/
+  https://mrcrowder.us/music/hand-drumming-music-block-form-notation/
+
+
+SWING IN COMPOUND TIME (_swingBar, _balladBar, compound: true)
+
+A swung bar of six eight or twelve eight takes the skip note on every
+beat rather than on the backbeats alone: the first and third of each
+triplet, "DA-da, DA-da", long-short all the way through.
+
+  The shuffle ride "often lands on 1 and let, then 2 and let", which
+  reads as "DA - da, DA - da" with the accent on the first of each
+  triplet, and the feel described as long-short across the beat.
+  soundbrenner.com, slow blues shuffle.
+
+  The notation is 12/8, "or equivalently 4/4 with eighth-note
+  triplets": one lesson writes its exercises as eighth-note triplets in
+  4/4 and says this is basically exactly equivalent to 12/8.
+
+  thedrumninja.com calls the basic blues beat "a triplet based pattern
+  in 12/8", with the twelve eighths "usually played on the hi-hat or
+  ride cymbal", which is the fuller version: all twelve rather than the
+  first and third of each group. bluesharmonica.com separates the two,
+  saying that in shuffles and swings "you commonly only hear the first
+  and third part of the triplet", while a slow blues often has all of
+  them. The app plays the sparse one, which is the jazz reading and
+  the one its own swing feel already has in four; the full twelve is a
+  slow-blues sound it does not claim to be.
+
+Why it matters here: without it a bar of six eight is the swing bar of
+four with its beats renamed, three strokes to a bar and nothing between
+them, and it sounds like four four at half speed. That is what it
+sounded like.
+
+Sources in full:
+  https://www.soundbrenner.com/blogs/articles/slow-blues-shuffle
+  https://thedrumninja.com/learn-how-to-play-blues-drums/
+  https://bluesharmonica.com/time_signature_my_blues

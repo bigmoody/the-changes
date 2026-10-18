@@ -113,22 +113,47 @@ const sharpSteps = [
   'B',
 ];
 
+/// Keys written with sharps, where a chord takes a sharp name.
+///
+/// G♭ is left out: at six accidentals either way it is a wash, and the
+/// key is called G♭ here, so its chords are spelled to match.
+const sharpKeys = {'G', 'D', 'A', 'E', 'B'};
+
 /// [changes] written out in [key].
 ///
-/// A chord a semitone above the one before it is spelled sharp, because
-/// that is how it is written and read: a passing chord climbing from C
-/// to Dm7 is C♯°7, never D♭°7. Anything else takes the flat spelling
-/// charts mostly use. Worked out from the shape rather than stored with
-/// each move, so it stays right in every key.
+/// Spelled the way the key is: sharps in a sharp key, flats elsewhere,
+/// as charts mostly are. A fixed table cannot do it, because the same
+/// chord is written both ways depending on where it turns up. The ii of
+/// D♭ is E♭m7 and never D♯m7, and the ii of E is F♯m7 and never G♭m7.
+///
+/// One exception, and it is the whole point of the screen: a *passing*
+/// diminished chord climbing a semitone is spelled sharp whatever the
+/// key, because that is how it is written and read. Climbing from C to
+/// Dm7 the chord between them is C♯°7, never D♭°7.
+///
+/// The exception is for the passing chord and not for what it climbs
+/// into. Getting that wrong is what had the ii of D♭ written D♯m7, on
+/// the grounds that it sits a semitone above the D°7 before it.
+///
+/// Worked out from the shape rather than stored with each move, so it
+/// stays right in every key.
 List<Chord> chordsIn(List<(int, String)> changes, String key) {
   final root = steps.indexOf(key);
+  final inKey = sharpKeys.contains(key) ? sharpSteps : steps;
   final chords = <Chord>[];
   int? previous;
   for (final (step, quality) in changes) {
     final at = (root + step) % 12;
-    final climbing = previous != null && (at - previous + 12) % 12 == 1;
-    final names = climbing ? sharpSteps : steps;
-    chords.add(Chord.parse('${names[at]}$quality'));
+    final passing =
+        quality.startsWith('o') &&
+        previous != null &&
+        (at - previous + 12) % 12 == 1;
+    var name = (passing ? sharpSteps : inKey)[at];
+    // D♯ and A♯ are not chord roots in any key: the ♭iii of G is B♭m7,
+    // never A♯m7. Only the passing diminished keeps its sharp, which is
+    // the one place D♯°7 is the right spelling.
+    if (!passing && (name == 'D♯' || name == 'A♯')) name = steps[at];
+    chords.add(Chord.parse('$name$quality'));
     previous = at;
   }
   return chords;

@@ -4,6 +4,7 @@
 //  • Bass: Sneakybass by Karoryfer Samples (CC0), a 1958 upright bass.
 //  • Piano: Salamander Grand Piano V3 by Alexander Holm (CC-BY 3.0).
 //  • Drums: Virtuosity Drums by Versilian Studios & Karoryfer (CC0).
+//  • Drums, brushes: Swirly Drums by Karoryfer Samples (CC0).
 //
 // The files were trimmed and converted to mono 16-bit WAV by
 // tool/process_samples.py. Samples are kept as 16-bit integers (half the
@@ -74,7 +75,9 @@ class DrumSamples {
 /// plus a region to go round while the key is held. Without the loop an
 /// organ stops dead a third of a second in.
 class SampledNote {
-  const SampledNote(this.samples, {this.rate = 1, this.loop});
+  // Not const: [lead] is measured from the samples the first time it is
+  // asked for, and a const object cannot hold a field worked out later.
+  SampledNote(this.samples, {this.rate = 1, this.loop});
 
   final Int16List samples;
 
@@ -88,7 +91,60 @@ class SampledNote {
   final (int, int)? loop;
 
   int get length => samples.length;
+
+  /// How many samples pass before the recording is heard.
+  ///
+  /// A file starts when the engineer pressed record; the note starts when
+  /// the player's hand did, and the note is *heard* later still. Between
+  /// the three sit a little silence and the climb of the attack, and how
+  /// long that climb takes depends on the instrument: a kick or a ride is
+  /// at full strength within a millisecond, while a plucked upright at
+  /// the bottom of its range takes the best part of fifty to get there,
+  /// because the ear needs several cycles of a low string before it can
+  /// hear that there is a note at all.
+  ///
+  /// So a bass played from the front of its file lands behind the kit on
+  /// every note, by twenty-six milliseconds on average here and by a
+  /// different amount on each take, which is a bass that drags and
+  /// wanders without anybody having asked it to. Starting it where the
+  /// sound first appears is not enough either: that only lines up the
+  /// moment the string is touched, and the kit is already loud by the
+  /// time the bass is audible.
+  ///
+  /// What the band lines up instead is the half-way point of each
+  /// attack, which is about where a listener puts a note. Measured
+  /// against the recording's own peak, so a soft take is not judged by a
+  /// loud one, and capped at [_mostLead]: a sound still climbing after
+  /// that is one that swells rather than one that is late.
+  late final int lead = _leadIn();
+
+  /// Where the sound is heard: half way up to the peak of its own
+  /// attack.
+  int _leadIn() {
+    final look = math.min(samples.length, _attackWindow);
+    var peak = 0;
+    for (var i = 0; i < look; i++) {
+      final level = samples[i].abs();
+      if (level > peak) peak = level;
+    }
+    if (peak == 0) return 0;
+    final threshold = peak ~/ 2;
+    for (var i = 0; i < math.min(look, _mostLead); i++) {
+      if (samples[i].abs() >= threshold) return i;
+    }
+    return 0;
+  }
 }
+
+/// How far into a recording to look for its peak: a quarter of a second,
+/// which is past the attack of anything struck or plucked.
+const _attackWindow = 11025;
+
+/// The furthest a recording is ever moved: sixty milliseconds, which is
+/// past the slowest attack in the bank (a low upright string, at fifty
+/// three) and well short of anything that would drag a swelling sound
+/// out of its place.
+const _mostLead = 2646;
 
 /// How an instrument's recordings of one note differ from each other.
 enum Takes {
@@ -203,7 +259,11 @@ class SampleBank {
     required this.tomHigh,
     required this.tomLow,
     this.importedChords,
+    this.importedArpeggio,
     this.importedBass,
+    required this.snareTight,
+    required this.kickClose,
+    this.brushes = const {},
     this.importedDrums = const {},
   });
 
@@ -233,6 +293,16 @@ class SampleBank {
   final SampledInstrument? importedChords;
   final SampledInstrument? importedBass;
 
+  /// A third, for the arpeggios, so they can be something other than
+  /// whatever is comping. Null means they follow the chords, which is
+  /// what they did when there was only one font to go round.
+  final SampledInstrument? importedArpeggio;
+
+  /// The brush kit, drum by drum. A whole second set of recordings rather
+  /// than the stick kit played quietly, because a brush is not a softer
+  /// stick: it answers with a wash where a stick answers with a crack.
+  final Map<Drum, DrumSamples> brushes;
+
   /// An imported kit, drum by drum. Only the drums the kit actually had:
   /// anything missing keeps the band's own, so a font without a cowbell
   /// costs a cowbell and not a calypso.
@@ -246,6 +316,7 @@ class SampleBank {
   SampleBank withImported({
     SampledInstrument? chords,
     SampledInstrument? bass,
+    SampledInstrument? arpeggio,
     Map<Drum, DrumSamples> drums = const {},
   }) => SampleBank(
     // this.bass, because the named argument above is the imported one.
@@ -262,8 +333,12 @@ class SampleBank {
     cowbell: cowbell,
     tomHigh: tomHigh,
     tomLow: tomLow,
+    snareTight: snareTight,
+    kickClose: kickClose,
+    brushes: brushes,
     importedChords: chords,
     importedBass: bass,
+    importedArpeggio: arpeggio,
     importedDrums: drums,
   );
 
@@ -274,6 +349,18 @@ class SampleBank {
     Comping.imported => importedChords ?? piano,
   };
 
+  /// Who plays the arpeggios, given what somebody chose.
+  ///
+  /// Their own imported font if there is one, and otherwise the chords'
+  /// font: before there was a font of their own, choosing the imported
+  /// sound for the arpeggios meant the one the chords were using, and
+  /// anybody who set it up that way should keep hearing it.
+  SampledInstrument playingArpeggio(Comping comping) => switch (comping) {
+    Comping.piano => piano,
+    Comping.guitar => guitar,
+    Comping.imported => importedArpeggio ?? importedChords ?? piano,
+  };
+
   /// Who plays the bass, given what somebody chose.
   SampledInstrument playingBass(BassSound sound) => switch (sound) {
     BassSound.upright => bass,
@@ -281,8 +368,16 @@ class SampleBank {
   };
 
   /// Which recordings to hit for [drum], given what somebody chose.
-  DrumSamples playingDrum(Drum drum, DrumSound sound, DrumSamples ours) =>
-      sound == DrumSound.imported ? importedDrums[drum] ?? ours : ours;
+  ///
+  /// Both the brush kit and an imported one fall back to the band's own
+  /// drum when they have not got that drum, so a kit missing a cowbell
+  /// costs a cowbell and not a calypso.
+  DrumSamples? playingDrum(Drum drum, DrumSound sound, DrumSamples? ours) =>
+      switch (sound) {
+        DrumSound.kit => ours,
+        DrumSound.brushes => brushes[drum] ?? ours,
+        DrumSound.imported => importedDrums[drum] ?? ours,
+      };
 
   /// Whether an imported kit has anything in it at all.
   bool get hasImportedDrums => importedDrums.isNotEmpty;
@@ -297,9 +392,25 @@ class SampleBank {
   /// Snare hits: [quiet (jazz comping), loud (funk backbeat)].
   final DrumSamples snare;
 
-  /// Cross-stick (rim click) hits. The library records this from a tick to
-  /// a crack, 14 dB apart; the bossa clave wants the quiet end, so only two
-  /// neighbouring layers are kept and played round-robin.
+  /// The same kick through the microphone inside the drum: present
+  /// rather than across the room. The overheads' kick is 22 dB under the
+  /// snare, which is what a kick sounds like from out there and is the
+  /// floor of a funk groove rather than a thing feathered under it.
+  final DrumSamples kickClose;
+
+  /// The same snare through the close microphone: shorter, drier, more
+  /// crack and less room. What a funk backbeat is, and the overhead's
+  /// snare is what a jazz one is, so the groove picks.
+  final DrumSamples snareTight;
+
+  /// Cross-stick hits: [click, crack].
+  ///
+  /// The library records this from a tick to a crack across sixteen
+  /// layers, 14 dB apart end to end. Two of them are kept at each end of
+  /// the useful range rather than one pair in the middle, because the
+  /// same drum is the bossa clave, the calypso and the samba, and those
+  /// are not the same stroke. A clave laid on the rim is a click; a samba
+  /// asks for `hard` and now has something to be given.
   final DrumSamples crossStick;
 
   /// Calypso percussion: [soft, hard] layers each.
@@ -329,6 +440,19 @@ class SampleBank {
             await wav('drums/${name}_${layer}_$take.wav'),
         ],
     ]);
+
+    // The brush kit: three velocity layers a drum rather than two, and
+    // three takes rather than four. The layer is chosen by how hard the
+    // stroke is, and this library records up to 22 of them, so a third
+    // layer buys more than a fourth take of the same one does.
+    Future<DrumSamples> brush(String name, {int layers = 3}) async =>
+        DrumSamples.plain([
+          for (var layer = 1; layer <= layers; layer++)
+            [
+              for (final take in [1, 2, 3])
+                await wav('drums_brushes/${name}_${layer}_$take.wav'),
+            ],
+        ]);
 
     Future<DrumSamples> toms(String name) async => DrumSamples.plain([
       for (final layer in [1, 2])
@@ -391,14 +515,53 @@ class SampleBank {
         ])
           [for (final level in layers) await wav('drums/snare_$level.wav')],
       ]),
+      kickClose: await kit('kick_close'),
+      snareTight: DrumSamples.plain([
+        for (final layers in [
+          [6, 8, 10],
+          [24, 26, 28],
+        ])
+          [
+            for (final level in layers)
+              await wav('drums/snare_tight_$level.wav'),
+          ],
+      ]),
+      // Two layers, because the clave is a click and a samba's is a
+      // crack, and with one of them there was nothing to choose between.
       crossStick: DrumSamples.plain([
-        [
-          for (final layer in [6, 7]) await wav('drums/cross_stick_$layer.wav'),
-        ],
+        for (final layers in [
+          [1, 2],
+          [6, 7],
+        ])
+          [
+            for (final level in layers)
+              await wav('drums/cross_stick_$level.wav'),
+          ],
       ]),
       cowbell: await kit('cowbell'),
       tomHigh: await toms('tom_high'),
       tomLow: await toms('tom_low'),
+      brushes: {
+        Drum.ride: await brush('ride'),
+        Drum.hiHatPedal: await brush('hihat_pedal'),
+        Drum.hiHatClosed: await brush('hihat_closed'),
+        Drum.hiHatOpen: await brush('hihat_open'),
+        Drum.kick: await brush('kick'),
+        Drum.snare: await brush('snare'),
+        // Brushes have no cross-stick: the handle would be turned round to
+        // play one, and a drummer with brushes in their hands plays the
+        // clave on the edge of the snare instead. Two layers, because the
+        // library's edge hits run from a tick to a slap and the top of
+        // that range is a different gesture.
+        Drum.crossStick: await brush('cross_stick', layers: 2),
+        Drum.cowbell: await brush('cowbell'),
+        Drum.tomHigh: await brush('tom_high'),
+        Drum.tomLow: await brush('tom_low'),
+        // Two circle lengths rather than two velocities: the band stretches
+        // whichever is nearer to fit the beat, and having two keeps that
+        // stretch close to 1 from a ballad up to a burner.
+        Drum.swirl: await brush('swirl', layers: 2),
+      },
     );
   }
 }
@@ -424,9 +587,14 @@ Int16List decodeWav(Uint8List bytes) {
 }
 
 /// Wraps 16-bit mono [samples] in a WAV header, for writing out as a file.
-Uint8List wavOf(Int16List samples, int sampleRate) {
+/// A WAV file of [samples] at [sampleRate].
+///
+/// With [channels] above one the samples are already interleaved, a frame
+/// at a time: left, right, left, right.
+Uint8List wavOf(Int16List samples, int sampleRate, {int channels = 1}) {
   const headerSize = 44;
   final dataSize = samples.length * 2;
+  final bytesPerFrame = channels * 2;
   final bytes = ByteData(headerSize + dataSize);
   void ascii(int offset, String text) {
     for (var i = 0; i < text.length; i++) {
@@ -440,10 +608,10 @@ Uint8List wavOf(Int16List samples, int sampleRate) {
   ascii(12, 'fmt ');
   bytes.setUint32(16, 16, Endian.little);
   bytes.setUint16(20, 1, Endian.little); // PCM
-  bytes.setUint16(22, 1, Endian.little); // mono
+  bytes.setUint16(22, channels, Endian.little);
   bytes.setUint32(24, sampleRate, Endian.little);
-  bytes.setUint32(28, sampleRate * 2, Endian.little);
-  bytes.setUint16(32, 2, Endian.little);
+  bytes.setUint32(28, sampleRate * bytesPerFrame, Endian.little);
+  bytes.setUint16(32, bytesPerFrame, Endian.little);
   bytes.setUint16(34, 16, Endian.little);
   ascii(36, 'data');
   bytes.setUint32(40, dataSize, Endian.little);

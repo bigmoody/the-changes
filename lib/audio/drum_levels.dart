@@ -81,6 +81,7 @@ const drumsByEar = <Drum>[
   Drum.hiHatOpen,
   Drum.hiHatPedal,
   Drum.snare,
+  Drum.swirl,
   Drum.crossStick,
   Drum.kick,
   Drum.tomHigh,

@@ -34,6 +34,15 @@ void main() {
 
     await tester.tap(find.byTooltip('Mixer'));
     await tester.pumpAndSettle();
+    // The mixer is longer than the screen, so the row has to be
+    // scrolled to before it can be tapped.
+    await tester.ensureVisible(
+      find.descendant(
+        of: find.byKey(const ValueKey('comping')),
+        matching: find.text('Guitar'),
+      ),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(
         of: find.byKey(const ValueKey('comping')),

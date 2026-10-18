@@ -1,4 +1,7 @@
 import 'dart:async';
+
+import '../music/meter.dart';
+
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:math' as math;
@@ -63,14 +66,21 @@ class PracticeController extends ChangeNotifier {
        originalTune = tune,
        _ref = ref,
        _style = ref == null ? null : library?.styleFor(ref),
-       _tune = tune.withStyle(
-         (ref == null ? null : library?.styleFor(ref)) ?? tune.style,
-       ),
-       _chart = tune.transposed(settings.instrument.semitones),
-       _loop = LoopRange.wholeTune(tune),
+       _meter = ref == null ? null : library?.meterFor(ref),
+       _tune = _asChosen(tune, ref, library),
+       _chart = _asChosen(
+         tune,
+         ref,
+         library,
+       ).transposed(settings.instrument.semitones),
+       // The tune as the player keeps it, which is the one with the
+       // beats in it: a tune they count in six eight has half as many
+       // of them in a bar as the one written in four.
+       _loop = LoopRange.wholeTune(_asChosen(tune, ref, library)),
        // Where you left off, if you have been here before. The written
        // tempo is what the tune is played at; this is what *you* play it
        // at, which after a week of work is rarely the same number.
+       //
        _tempo =
            (ref == null
                ? null
@@ -98,9 +108,51 @@ class PracticeController extends ChangeNotifier {
   /// for a chart that is not in the library at all.
   TuneRef? get ref => _ref;
 
+  /// The tune as the player keeps it: in the meter they count it in and
+  /// played the way they have chosen, before any transposition.
+  static Tune _asChosen(Tune tune, TuneRef? ref, LibraryStore? library) {
+    if (ref == null || library == null) return tune;
+    return tune
+        .inMeter(library.meterFor(ref) ?? tune.meter)
+        .withStyle(library.styleFor(ref) ?? tune.style);
+  }
+
   /// The way the player has chosen to have it played, over the way it was
   /// written. Null means as written.
   BandStyle? _style;
+
+  /// The meter the player counts it in, over the one it was written in.
+  /// Null means as written.
+  Meter? _meter;
+
+  /// What it is counted in now: the player's choice, or the tune's own.
+  Meter get meter => _meter ?? originalTune.meter;
+
+  /// Whether that is something the player chose rather than what the
+  /// tune was written in.
+  bool get meterIsChosen => _meter != null;
+
+  /// The tune before any transposition, counted the way the player
+  /// counts it. Everything that rebuilds the chart or the band starts
+  /// here, so the meter is never left behind by a key change.
+  Tune get _source => originalTune.inMeter(meter);
+
+  /// Counts it in [meter] from now on, and remembers it for next time. A
+  /// null [meter] puts it back to the one the tune was written in.
+  ///
+  /// The loop goes back to the whole tune: loops are counted in beats,
+  /// and a bar is not the same number of beats as it was.
+  void setMeter(Meter? meter) {
+    if (meter == _meter) return;
+    _meter = meter;
+    final ref = _ref;
+    if (ref != null) library?.setMeter(ref, meter);
+    _tune = _source.transposed(_semitones).withStyle(style);
+    _loop = LoopRange.wholeTune(_tune);
+    _updateChart();
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
 
   /// How the band is playing it: the player's choice, or the tune's own.
   BandStyle get style => _style ?? originalTune.style;
@@ -116,7 +168,7 @@ class PracticeController extends ChangeNotifier {
     _style = style;
     final ref = _ref;
     if (ref != null) library?.setStyle(ref, style);
-    _tune = originalTune.transposed(_semitones).withStyle(this.style);
+    _tune = _source.transposed(_semitones).withStyle(this.style);
     // A groove carries its tempo with it: a samba at 90 is not a slow
     // samba. The tempo only moves when it has to, so a medium swing that
     // becomes a shuffle stays where it was.
@@ -139,7 +191,7 @@ class PracticeController extends ChangeNotifier {
     _style = next;
     final ref = _ref;
     if (ref != null) library?.setStyle(ref, next);
-    _tune = originalTune.transposed(_semitones).withStyle(next);
+    _tune = _source.transposed(_semitones).withStyle(next);
     notifyListeners();
     _restartIfPlaying(delay: const Duration(milliseconds: 400));
   }
@@ -186,7 +238,7 @@ class PracticeController extends ChangeNotifier {
 
   LoopRange _loop;
   int _tempo;
-  bool _countIn = true;
+  int _countInBars = 1;
   bool _isPlaying = false;
   bool _isPaused = false;
   bool _isPreparing = false;
@@ -220,7 +272,16 @@ class PracticeController extends ChangeNotifier {
   /// The loop shown on screen: the one being dragged out, if any.
   LoopRange get loop => _dragLoop ?? _loop;
   int get tempo => _tempo;
-  bool get countIn => _countIn;
+
+  /// How many bars of clicks before the band comes in, nought for none.
+  int get countInBars => _countInBars;
+
+  /// Whether there is one at all.
+  bool get countIn => _countInBars > 0;
+
+  /// What a count-in can be: none, a bar, or the two-bar count-off, which
+  /// in four is the eight beats somebody counts a band in with.
+  static const countInChoices = [0, 1, 2];
 
   /// True from Play until Stop, including while paused.
   bool get isPlaying => _isPlaying;
@@ -394,16 +455,14 @@ class PracticeController extends ChangeNotifier {
     final normalised = semitones % 12;
     if (normalised == _semitones) return;
     _semitones = normalised;
-    _tune = originalTune.transposed(normalised).withStyle(style);
+    _tune = _source.transposed(normalised).withStyle(style);
     _updateChart();
     _restartIfPlaying(delay: Duration.zero);
   }
 
   /// Rewrites the displayed chart after a key or instrument change.
   void _updateChart() {
-    _chart = originalTune.transposed(
-      _semitones + settings.instrument.semitones,
-    );
+    _chart = _source.transposed(_semitones + settings.instrument.semitones);
     // Turning the beat on or off changes how often the clock is read, and
     // somebody who turns it on while the band is going should feel it on
     // the next beat rather than the next tune.
@@ -433,6 +492,18 @@ class PracticeController extends ChangeNotifier {
 
   // ── Tempo ──────────────────────────────────────────────────────────────
 
+  /// What the tune is written at, which is not always where it opens: a
+  /// tune you have been working on opens at the tempo you last got it up
+  /// to, which is the useful thing and also the thing you sometimes want
+  /// to get out of.
+  int get writtenTempo => originalTune.defaultTempo;
+
+  /// Whether the tempo has been moved off the written one.
+  bool get tempoIsChosen => _tempo != writtenTempo;
+
+  /// Back to the written tempo.
+  void resetTempo() => setTempo(writtenTempo);
+
   void setTempo(int bpm) {
     final clamped = bpm.clamp(minTempo, maxTempo);
     if (clamped == _tempo) return;
@@ -458,14 +529,22 @@ class PracticeController extends ChangeNotifier {
 
   // ── Options ────────────────────────────────────────────────────────────
 
-  void setCountIn(bool value) {
-    _countIn = value;
+  void setCountInBars(int bars) {
+    if (bars == _countInBars) return;
+    _countInBars = bars;
     notifyListeners();
   }
 
   /// What a part is called on screen: the chords are "Piano" or "Guitar".
-  String partName(Instrument part) =>
-      part == Instrument.chords ? settings.comping.label : part.label;
+  ///
+  /// Piano or Guitar for the chords, which say who is playing them. An
+  /// imported sound is "Chords": "Imported Sound" says where it came
+  /// from rather than what it plays, and does not fit beside a fader.
+  String partName(Instrument part) => part == Instrument.chords
+      ? (settings.comping == Comping.imported
+            ? part.label
+            : settings.comping.label)
+      : part.label;
 
   /// The parts with a mixer channel: the band, plus the arpeggios when
   /// they're on and an imported part when there is one.
@@ -519,6 +598,20 @@ class PracticeController extends ChangeNotifier {
   }
 
   /// Which chord tone the arpeggios start from.
+  Future<void> setArpeggioReach(ArpeggioReach value) async {
+    if (value == settings.arpeggioReach) return;
+    await settings.setArpeggioReach(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  Future<void> setArpeggioRate(ArpeggioRate value) async {
+    if (value == settings.arpeggioRate) return;
+    await settings.setArpeggioRate(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
   Future<void> setArpeggioStart(ArpeggioStart value) async {
     if (value == settings.arpeggioStart) return;
     await settings.setArpeggioStart(value);
@@ -544,6 +637,20 @@ class PracticeController extends ChangeNotifier {
   /// the row out when there is not.
   bool get hasImportedDrums => player.samples?.hasImportedDrums ?? false;
 
+  /// The kits worth offering: both of the band's own, and an imported one
+  /// only once there is one. A segment for a kit nobody has imported is a
+  /// button that can only disappoint.
+  ///
+  /// A sound already chosen is always offered, so somebody whose imported
+  /// kit has not finished loading is not silently moved off it.
+  List<DrumSound> get kitChoices => [
+    for (final sound in DrumSound.values)
+      if (sound != DrumSound.imported ||
+          hasImportedDrums ||
+          settings.drumSound == sound)
+        sound,
+  ];
+
   Future<void> setDrumSound(DrumSound value) async {
     if (value == settings.drumSound) return;
     await settings.setDrumSound(value);
@@ -554,6 +661,14 @@ class PracticeController extends ChangeNotifier {
   Future<void> setBassSound(BassSound value) async {
     if (value == settings.bassSound) return;
     await settings.setBassSound(value);
+    notifyListeners();
+    _restartIfPlaying(delay: Duration.zero);
+  }
+
+  /// A different sound on a part that was already imported: the setting
+  /// is the same, so nothing above notices, and the band has to be told
+  /// to play it.
+  void soundsChanged() {
     notifyListeners();
     _restartIfPlaying(delay: Duration.zero);
   }
@@ -644,6 +759,27 @@ class PracticeController extends ChangeNotifier {
     _muted.clear();
     _soloed.clear();
     _applyMix();
+  }
+
+  /// Everything the mixer sheet changes about *this tune*, put back.
+  ///
+  /// The levels, the mutes and the solos, which is what Reset used to
+  /// do on its own, and now also the band: the groove, the bass, the
+  /// comping, the figure and the swing all go back to the way the tune
+  /// is written, the count-in to a bar, the arpeggios off. The sheet
+  /// grew from a mixer into the whole band, and a button at the top of
+  /// it saying Reset that only moved the faders was answering a
+  /// question nobody asked.
+  ///
+  /// What it leaves alone is what is not this tune's: which kit and
+  /// which instrument plays the chords are settings that follow the
+  /// player from tune to tune, and a reset here is not a reason to
+  /// forget them.
+  void resetSheet() {
+    setStyle(null);
+    setCountInBars(1);
+    setArpeggios(false);
+    resetMix();
   }
 
   /// Sends the effective volume of every instrument to the audio engine.
@@ -1002,7 +1138,7 @@ class PracticeController extends ChangeNotifier {
         tune: originalTune.transposed(take.semitones),
         loop: LoopRange(startBeat: take.loopStart, lengthBeats: take.loopBeats),
         tempo: take.tempo,
-        countInBars: _countIn ? 1 : 0,
+        countInBars: _countInBars,
         seed: take.seed,
         samples: player.samples,
         comping: settings.comping,
@@ -1011,6 +1147,8 @@ class PracticeController extends ChangeNotifier {
         arpeggios: _arpeggios,
         arpeggioSound: settings.arpeggioSound,
         arpeggioStart: settings.arpeggioStart,
+        arpeggioRate: settings.arpeggioRate,
+        arpeggioReach: settings.arpeggioReach,
         arrangement: arrangement ?? take.arrangement,
         imported: _imported?.transposedBy(take.semitones),
         drumLevels: settings.drumLevels,
@@ -1021,7 +1159,7 @@ class PracticeController extends ChangeNotifier {
     tune: tune,
     loop: _loop,
     tempo: _tempo,
-    countInBars: _countIn ? 1 : 0,
+    countInBars: _countInBars,
     seed: _lastSeed == 0 ? 1 : _lastSeed,
     samples: player.samples,
     comping: settings.comping,
@@ -1030,6 +1168,8 @@ class PracticeController extends ChangeNotifier {
     arpeggios: _arpeggios,
     arpeggioSound: settings.arpeggioSound,
     arpeggioStart: settings.arpeggioStart,
+    arpeggioRate: settings.arpeggioRate,
+    arpeggioReach: settings.arpeggioReach,
     arrangement: arrangement ?? _arrangement,
     imported: _imported?.transposedBy(_semitones),
     drumLevels: settings.drumLevels,
@@ -1202,7 +1342,7 @@ class PracticeController extends ChangeNotifier {
           tune: tune,
           loop: _loop,
           tempo: _tempo,
-          countInBars: withCountIn && _countIn ? 1 : 0,
+          countInBars: withCountIn ? _countInBars : 0,
           seed: _lastSeed,
           comping: settings.comping,
           bassSound: settings.bassSound,
@@ -1210,6 +1350,8 @@ class PracticeController extends ChangeNotifier {
           arpeggios: _arpeggios,
           arpeggioSound: settings.arpeggioSound,
           arpeggioStart: settings.arpeggioStart,
+          arpeggioRate: settings.arpeggioRate,
+          arpeggioReach: settings.arpeggioReach,
           arrangement: _arrangement,
           imported: _imported?.transposedBy(_semitones),
           drumLevels: settings.drumLevels,

@@ -40,6 +40,40 @@ void main() {
     expect(find.text('176 BPM'), findsOneWidget);
   });
 
+  testWidgets('there is a way back to the tempo the tune is written at', (
+    tester,
+  ) async {
+    // Everything else a player can move says what the tune says and
+    // offers a way back to it. The tempo did not, which is how this was
+    // asked for: you nudge it ten at a time to try something and then
+    // have to remember where it started.
+    final written = standards.first.defaultTempo;
+    await openTheTune(tester);
+    expect(
+      find.byKey(const ValueKey('tempo-as-written')),
+      findsNothing,
+      reason: 'nothing to go back to yet',
+    );
+
+    await tester.enterText(find.byType(TextField), '176');
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('BPM').first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Reset'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tempo-as-written')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('tempo-as-written')),
+      findsNothing,
+      reason: 'and it is gone once you are back',
+    );
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.text('$written BPM'), findsOneWidget);
+  });
+
   testWidgets('closes when tapped outside', (tester) async {
     await openTheTune(tester);
     // The barrier is the area outside the dialog.

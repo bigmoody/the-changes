@@ -72,6 +72,20 @@ Future<void> _choose(WidgetTester tester, String label, String option) async {
   await tester.pumpAndSettle();
 }
 
+/// Sets the time signature to [meter], e.g. "3/4".
+Future<void> _chooseMeter(WidgetTester tester, String meter) async {
+  // The editor is a list built as it scrolls, so the dropdown is only in
+  // the tree while the top of the list is.
+  await tester.dragUntilVisible(
+    find.byKey(const ValueKey('meter')),
+    find.byType(ListView).first,
+    const Offset(0, 120),
+  );
+  await _tap(tester, find.byKey(const ValueKey('meter')));
+  await tester.tap(find.text(meter).last);
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('write a progression, save it, find it, edit it, delete it', (
     tester,
@@ -122,6 +136,8 @@ void main() {
     final saved = store.all.single;
     expect(saved.title, 'My turnaround');
     expect(saved.bars, ['Em7 A7', 'Dm7 G7', 'C^7']);
+    // Written here, so it is one of Mine.
+    expect(saved.written, isTrue);
     expect(
       saved.style,
       const BandStyle(
@@ -681,5 +697,54 @@ void main() {
     // On the chart: the endings labelled as on a lead sheet.
     expect(find.text('1.'), findsOneWidget);
     expect(find.text('2.'), findsOneWidget);
+  });
+
+  testWidgets('changing the time says which bars no longer fit', (
+    tester,
+  ) async {
+    await _openHome(tester);
+    await _tap(tester, find.text('New Progression'));
+    await tester.enterText(find.byType(TextField).first, 'Four in a bar');
+    await _addBar(tester, 'Dm7 G7 C6 A7');
+    await _addBar(tester, 'Dm7 G7');
+    await _addBar(tester, 'Dm7 G7 C6 A7');
+
+    const note = ValueKey('crowded-bars');
+    // Four chords fit a bar of 4/4, so there is nothing to say.
+    expect(find.byKey(note), findsNothing);
+
+    await _chooseMeter(tester, '3/4');
+    expect(find.byKey(note), findsOneWidget);
+    expect(
+      find.text('Bars 1 and 3 have too many chords for 3/4'),
+      findsOneWidget,
+    );
+    // One line, never wrapped: this sits above the band, and a block that
+    // grows moves everything below it.
+    final text = tester.widget<Text>(find.byKey(note));
+    expect(text.maxLines, 1);
+    expect(text.overflow, TextOverflow.ellipsis);
+
+    // The bar sheet holds the editor to the new meter, in its own wording.
+    await _tap(tester, find.byKey(const ValueKey('bar-0')));
+    expect(find.text('At most 3 chords in a bar of 3/4'), findsOneWidget);
+    await tester.enterText(find.byKey(const ValueKey('bar-chords')), 'Dm7 G7');
+    await tester.pumpAndSettle();
+    expect(find.text('At most 3 chords in a bar of 3/4'), findsNothing);
+    // The sheet's own count follows the meter too.
+    expect(find.textContaining('Up to three'), findsOneWidget);
+    await _tap(tester, find.text('Done'));
+
+    // Bar 1 fits now; bar 3 is still named, on its own.
+    await tester.dragUntilVisible(
+      find.byKey(note),
+      find.byType(ListView).first,
+      const Offset(0, 120),
+    );
+    expect(find.text('Bar 3 has too many chords for 3/4'), findsOneWidget);
+
+    // Back to 4/4 and both fit again.
+    await _chooseMeter(tester, '4/4');
+    expect(find.byKey(note), findsNothing);
   });
 }

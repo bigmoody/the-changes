@@ -9,7 +9,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:play_along/audio/drum_patterns.dart' show Drum;
+import 'package:play_along/audio/drum_patterns.dart' show Drum, importableDrums;
 import 'package:play_along/music/tune.dart' show DrumSound;
 import 'package:play_along/practice/soundfont_store.dart';
 import 'package:play_along/screens/imported_sounds_screen.dart';
@@ -81,10 +81,13 @@ void main() {
     tester,
   ) async {
     await openWith(tester, store: SoundFontStore.inMemory());
-    for (final drum in Drum.values) {
+    // The swirl is not here: it is the brush kit's, and no SoundFont
+    // has a brush circling a drumhead to put in its place.
+    for (final drum in importableDrums) {
       expect(find.byKey(ValueKey('playing-${drum.name}')), findsOneWidget);
     }
-    expect(find.text("The band's own"), findsNWidgets(Drum.values.length));
+    expect(find.byKey(const ValueKey('playing-swirl')), findsNothing);
+    expect(find.text("The band's own"), findsNWidgets(importableDrums.length));
   });
 
   testWidgets('tapping a drum takes that one and no other', (tester) async {
@@ -106,7 +109,7 @@ void main() {
     await openWith(tester, store: store, file: aKit);
     await tester.tap(find.byKey(const ValueKey('playing-ride')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('kit-0')), findsNothing);
+    expect(find.byKey(const ValueKey('shelf-0-0')), findsNothing);
     expect(store.hasDrum(Drum.ride), isTrue);
   });
 
@@ -118,10 +121,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('playing-kick')));
     await tester.pumpAndSettle();
     expect(find.textContaining('kick'), findsWidgets);
-    expect(find.byKey(const ValueKey('kit-0')), findsOneWidget);
-    expect(find.byKey(const ValueKey('kit-1')), findsOneWidget);
+    // Listed off the shelf, which the file is on now.
+    expect(find.byKey(const ValueKey('shelf-0-0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('shelf-0-1')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('kit-1')));
+    await tester.tap(find.byKey(const ValueKey('shelf-0-1')));
     await tester.pumpAndSettle();
     expect(store.hasDrum(Drum.kick), isTrue);
   });

@@ -198,9 +198,12 @@ class SetlistScreen extends StatelessWidget {
               tooltip: 'Share',
               onPressed: found.isEmpty
                   ? null
-                  : () => shareCharts(context, [
-                      for (final entry in found) ?entry.found?.tune,
-                    ], heading: setlist.displayName),
+                  : () => shareCharts(
+                      context,
+                      [for (final entry in found) ?entry.found?.tune],
+                      heading: setlist.displayName,
+                      instrument: deps.settings.instrument,
+                    ),
             ),
             PopupMenuButton<String>(
               key: const ValueKey('setlist-menu'),

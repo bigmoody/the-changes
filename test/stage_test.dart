@@ -21,6 +21,7 @@ Future<PracticeController> _openStage(
   Size size = const Size(393, 852),
   String title = 'Cherokee',
   ChordAid aid = ChordAid.off,
+  bool follow = false,
 }) async {
   tester.view
     ..physicalSize = size * 3
@@ -37,7 +38,7 @@ Future<PracticeController> _openStage(
   await tester.pumpWidget(
     MaterialApp(
       theme: appTheme(Brightness.light),
-      home: StageScreen(controller: controller),
+      home: StageScreen(controller: controller, follow: follow),
     ),
   );
   await tester.pumpAndSettle();
@@ -79,6 +80,43 @@ void main() {
       await tester.tap(find.text('Stage View'));
       await tester.pumpAndSettle();
       expect(find.byType(StageScreen), findsOneWidget);
+    });
+  });
+
+  group('the scrolling one', () {
+    testWidgets('is offered beside the other, which stays', (tester) async {
+      await _openPractice(tester);
+      await tester.tap(find.byKey(const ValueKey('tune-menu')));
+      await tester.pumpAndSettle();
+      expect(find.text('Stage View'), findsOneWidget);
+      await tester.tap(find.text('Scrolling Stage View'));
+      await tester.pumpAndSettle();
+      final stage = tester.widget<StageScreen>(find.byType(StageScreen));
+      expect(stage.follow, isTrue);
+    });
+
+    // The chart's own scroll view, which the whole-chart stage has none of.
+    Finder chartScroll() => find.descendant(
+      of: find.byType(ChordChart),
+      matching: find.byType(SingleChildScrollView),
+    );
+
+    testWidgets('a long tune scrolls, in rows big enough to read', (
+      tester,
+    ) async {
+      await _openStage(tester, follow: true);
+      expect(chartScroll(), findsOneWidget);
+      Finder firstBar() => find
+          .descendant(
+            of: find.byType(ChordChart),
+            matching: find.byType(Material),
+          )
+          .first;
+      final bar = tester.getRect(firstBar());
+      await _openStage(tester);
+      expect(chartScroll(), findsNothing, reason: 'Stage View is unchanged');
+      final fitted = tester.getRect(firstBar());
+      expect(bar.height, greaterThan(fitted.height * 1.5));
     });
   });
 

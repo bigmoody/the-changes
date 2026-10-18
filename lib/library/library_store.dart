@@ -14,6 +14,8 @@
 
 import 'dart:convert';
 
+import '../music/meter.dart';
+
 import 'package:flutter/foundation.dart';
 
 import '../music/comping.dart';
@@ -95,6 +97,7 @@ class LibraryStore extends ChangeNotifier {
     this._played,
     this._setlists,
     this._styles,
+    this._meters,
     this._runs,
   );
 
@@ -104,12 +107,14 @@ class LibraryStore extends ChangeNotifier {
     List<Played>? played,
     List<Setlist>? setlists,
     Map<TuneRef, BandStyle>? styles,
+    Map<TuneRef, Meter>? meters,
     Map<TuneRef, List<Run>>? runs,
   }) : _storage = MemoryStorage(),
        _favourites = {...?favourites},
        _played = [...?played],
        _setlists = [...?setlists],
        _styles = {...?styles},
+       _meters = {...?meters},
        _runs = {...?runs};
 
   /// How far back the recently-played list goes. Long enough to find last
@@ -124,6 +129,7 @@ class LibraryStore extends ChangeNotifier {
     final played = <Played>[];
     final setlists = <Setlist>[];
     final styles = <TuneRef, BandStyle>{};
+    final meters = <TuneRef, Meter>{};
     final runs = <TuneRef, List<Run>>{};
     try {
       final text = await store.read();
@@ -133,12 +139,21 @@ class LibraryStore extends ChangeNotifier {
         played.addAll(readPlayed(json));
         setlists.addAll(readSetlists(json));
         styles.addAll(readStyles(json));
+        meters.addAll(readMeters(json));
         runs.addAll(readRuns(json));
       }
     } catch (e) {
       debugPrint('Could not read the saved library: $e');
     }
-    return LibraryStore._(store, favourites, played, setlists, styles, runs);
+    return LibraryStore._(
+      store,
+      favourites,
+      played,
+      setlists,
+      styles,
+      meters,
+      runs,
+    );
   }
 
   // Reading what was saved is shared with restoring from a backup file.
@@ -146,6 +161,17 @@ class LibraryStore extends ChangeNotifier {
   /// How the player has chosen to have each tune played, where that isn't
   /// the way it was written. Anything unreadable is dropped rather than
   /// losing the rest of the library with it.
+  /// The meters the player has put tunes in. Anything unreadable is
+  /// dropped rather than losing the rest of the library with it.
+  static Map<TuneRef, Meter> readMeters(Map<String, dynamic> json) {
+    final meters = <TuneRef, Meter>{};
+    for (final entry in (json['meters'] as Map? ?? const {}).entries) {
+      final meter = Meter.parse('${entry.value}');
+      if (meter != null) meters[TuneRef(entry.key as String)] = meter;
+    }
+    return meters;
+  }
+
   static Map<TuneRef, BandStyle> readStyles(Map<String, dynamic> json) {
     final styles = <TuneRef, BandStyle>{};
     for (final entry in (json['styles'] as Map? ?? const {}).entries) {
@@ -223,6 +249,10 @@ class LibraryStore extends ChangeNotifier {
 
   /// Tunes the player has chosen to have played another way, by [TuneRef].
   final Map<TuneRef, BandStyle> _styles;
+
+  /// The meter the player counts each tune in, where that is not the one
+  /// it was written in.
+  final Map<TuneRef, Meter> _meters;
 
   /// Every run at each tune, newest first: the practice record.
   final Map<TuneRef, List<Run>> _runs;
@@ -367,6 +397,26 @@ class LibraryStore extends ChangeNotifier {
   }
 
   /// Everything, as it's saved; also what goes into a backup file.
+  /// The meter [ref] is counted in, or null to count it as written.
+  Meter? meterFor(TuneRef ref) => _meters[ref];
+
+  /// Counts [ref] in [meter] from now on. A null [meter] puts it back to
+  /// the one the tune was written in.
+  ///
+  /// It is the player's own practice, not a claim about the tune: a
+  /// standard written in four is still written in four, and the chart
+  /// says so wherever it is shown in another meter.
+  void setMeter(TuneRef ref, Meter? meter) {
+    if (meter == null) {
+      if (_meters.remove(ref) == null) return;
+    } else {
+      if (_meters[ref] == meter) return;
+      _meters[ref] = meter;
+    }
+    _write();
+    notifyListeners();
+  }
+
   /// How [ref] should be played, or null to play it as it was written.
   BandStyle? styleFor(TuneRef ref) => _styles[ref];
 
@@ -397,6 +447,9 @@ class LibraryStore extends ChangeNotifier {
             [run.at.millisecondsSinceEpoch, run.tempo, run.asked, run.hits],
         ],
     },
+    'meters': {
+      for (final entry in _meters.entries) entry.key.value: entry.value.label,
+    },
     'styles': {
       for (final entry in _styles.entries)
         entry.key.value: [
@@ -423,6 +476,9 @@ class LibraryStore extends ChangeNotifier {
     _styles
       ..clear()
       ..addAll(readStyles(json));
+    _meters
+      ..clear()
+      ..addAll(readMeters(json));
     notifyListeners();
     await _write();
   }

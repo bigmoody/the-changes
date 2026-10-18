@@ -15,7 +15,15 @@ import 'package:play_along/audio/soundfont.dart';
 
 /// One zone of a font being built: which keys, which velocities, and the
 /// sample it plays.
-typedef Zone = ({int sample, int keyLow, int keyHigh, int velLow, int velHigh});
+typedef Zone = ({
+  int sample,
+  int keyLow,
+  int keyHigh,
+  int velLow,
+  int velHigh,
+  int? scaleTuning,
+  int? keynum,
+});
 
 Zone zone(
   int sample, {
@@ -23,12 +31,16 @@ Zone zone(
   int keyHigh = 127,
   int velLow = 0,
   int velHigh = 127,
+  int? scaleTuning,
+  int? keynum,
 }) => (
   sample: sample,
   keyLow: keyLow,
   keyHigh: keyHigh,
   velLow: velLow,
   velHigh: velHigh,
+  scaleTuning: scaleTuning,
+  keynum: keynum,
 );
 
 /// One recording in a font being built.
@@ -187,11 +199,25 @@ Uint8List buildFont({
       ..add(u16(44))
       ..add(u16(z.velLow | (z.velHigh << 8)))
       ..add(u16(54))
-      ..add(u16(samples[z.sample].loops ? 1 : 0))
+      ..add(u16(samples[z.sample].loops ? 1 : 0));
+    gen += 3;
+    if (z.scaleTuning case final cents?) {
+      igen
+        ..add(u16(56))
+        ..add(u16(cents));
+      gen += 1;
+    }
+    if (z.keynum case final key?) {
+      igen
+        ..add(u16(46))
+        ..add(u16(key));
+      gen += 1;
+    }
+    igen
       // sampleID last, as the spec requires.
       ..add(u16(53))
       ..add(u16(z.sample));
-    gen += 4;
+    gen += 1;
   }
   ibag
     ..add(u16(gen))
@@ -346,6 +372,59 @@ void main() {
       expect(instrument.notes[60]!.single.rate, closeTo(1, 0.0001));
       expect(instrument.notes[62]!.single.rate, closeTo(1.1225, 0.0005));
       expect(instrument.notes[48]!.single.rate, closeTo(0.5, 0.0005));
+    });
+
+    test('a font that says how far apart its keys are is believed', () {
+      // Scale tuning: a hundred cents to the key unless the font says
+      // otherwise. Read as a hundred whatever it says, a font that
+      // means something else plays out of key, and some of them do.
+      final font = SoundFont.read(
+        buildFont(
+          samples: [sample(root: 60)],
+          zones: [zone(0, keyLow: 48, keyHigh: 72, scaleTuning: 50)],
+        ),
+      );
+      final instrument = font.instrumentFor(font.presets.single);
+      expect(instrument.notes[60]!.single.rate, closeTo(1, 0.0001));
+      // Half a semitone to the key, so two keys up is one semitone up.
+      expect(instrument.notes[62]!.single.rate, closeTo(1.0595, 0.0005));
+      expect(instrument.notes[72]!.single.rate, closeTo(1.4142, 0.0005));
+    });
+
+    test('and a fixed-pitch zone is not transposed at all', () {
+      // Scale tuning of nought, or a keynum: either way the font is
+      // saying every key sounds the same note. A gong, a sound effect,
+      // a sample somebody mapped across the keyboard on purpose.
+      final flat = SoundFont.read(
+        buildFont(
+          samples: [sample(root: 60)],
+          zones: [zone(0, keyLow: 48, keyHigh: 72, scaleTuning: 0)],
+        ),
+      );
+      final instrument = flat.instrumentFor(flat.presets.single);
+      for (final pitch in [48, 60, 72]) {
+        expect(
+          instrument.notes[pitch]!.single.rate,
+          closeTo(1, 0.0001),
+          reason: 'key $pitch',
+        );
+      }
+
+      // A keynum says which note it sounds as, whatever is played.
+      final fixed = SoundFont.read(
+        buildFont(
+          samples: [sample(root: 60)],
+          zones: [zone(0, keyLow: 48, keyHigh: 72, keynum: 72)],
+        ),
+      );
+      final sounds = fixed.instrumentFor(fixed.presets.single);
+      for (final pitch in [48, 60, 72]) {
+        expect(
+          sounds.notes[pitch]!.single.rate,
+          closeTo(2, 0.001),
+          reason: 'an octave above the root, from any key',
+        );
+      }
     });
 
     test('one recording is shared by every key that plays it', () {
@@ -536,7 +615,9 @@ void main() {
           hiHatClosed: emptyDrum,
           hiHatOpen: emptyDrum,
           kick: emptyDrum,
+          kickClose: emptyDrum,
           snare: emptyDrum,
+          snareTight: emptyDrum,
           crossStick: emptyDrum,
           cowbell: emptyDrum,
           tomHigh: emptyDrum,

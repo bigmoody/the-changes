@@ -105,12 +105,21 @@ Uint8List exportTrack(
   final perBeat = samplesPerBeatFor(request, 0);
   final countIn = withCountIn ? request.countInBars : 0;
 
-  final track = <double>[];
-  void put(int at, double value) {
-    while (track.length <= at) {
-      track.add(0);
+  // Two tracks, because the band is in stereo. The parts are placed the
+  // way the player places them, with the same law the engine uses:
+  // SoLoud's own pan is cos and sin of the angle, so a centred part is
+  // 0.707 in each channel and the two agree note for note. An export that
+  // was a mono sum of a stereo band would not be the thing anybody heard.
+  final left = <double>[];
+  final right = <double>[];
+  void put(int at, double value, {double pan = 0}) {
+    while (left.length <= at) {
+      left.add(0);
+      right.add(0);
     }
-    track[at] += value;
+    final gains = panGains(pan);
+    left[at] += value * gains.left;
+    right[at] += value * gains.right;
   }
 
   final first = renderBacking(
@@ -135,11 +144,11 @@ Uint8List exportTrack(
   var at = 0;
   void addBatch(BackingBatch batch) {
     var longest = 0;
-    for (final pcm in batch.pcm.values) {
-      final samples = Int16List.sublistView(pcm);
+    for (final entry in batch.pcm.entries) {
+      final samples = Int16List.sublistView(entry.value);
       longest = math.max(longest, samples.length);
       for (var i = 0; i < samples.length; i++) {
-        put(at + i, samples[i] / 32768);
+        put(at + i, samples[i] / 32768, pan: entry.key.pan);
       }
     }
     if (withCountIn) {
@@ -169,9 +178,10 @@ Uint8List exportTrack(
   }
 
   // Let the last chord ring rather than stopping on it.
-  for (final tail in tails.values) {
+  for (final entry in tails.entries) {
+    final tail = entry.value;
     for (var i = 0; i < tail.length; i++) {
-      put(at + i, tail[i] * first.gain);
+      put(at + i, tail[i] * first.gain, pan: entry.key.pan);
     }
   }
 
@@ -190,27 +200,35 @@ Uint8List exportTrack(
   if (endBeat != null) {
     final end = samplesAtBeat(request, endBeat, withCountIn: withCountIn);
     final fade = (0.4 * rate).round();
-    if (end + fade < track.length) track.removeRange(end + fade, track.length);
-    for (var i = 0; i < fade && end + i < track.length; i++) {
-      track[end + i] *= 1 - i / fade;
+    for (final channel in [left, right]) {
+      if (end + fade < channel.length) {
+        channel.removeRange(end + fade, channel.length);
+      }
+      for (var i = 0; i < fade && end + i < channel.length; i++) {
+        channel[end + i] *= 1 - i / fade;
+      }
     }
   }
 
   // Nothing is allowed to clip: if the sum went over, the whole thing comes
   // down together rather than the peaks being squared off.
+  // Across both channels together, so the balance between them is not
+  // changed by one of them being the louder.
   var peak = 0.0;
-  for (final sample in track) {
-    peak = math.max(peak, sample.abs());
+  for (final channel in [left, right]) {
+    for (final sample in channel) {
+      peak = math.max(peak, sample.abs());
+    }
   }
   final scale = peak > 0.99 ? 0.99 / peak : 1.0;
 
-  return wavOf(
-    Int16List.fromList([
-      for (final sample in track)
-        (sample * scale * 32767).round().clamp(-32768, 32767),
-    ]),
-    rate,
-  );
+  // Interleaved, a frame at a time.
+  final frames = Int16List(left.length * 2);
+  for (var i = 0; i < left.length; i++) {
+    frames[i * 2] = (left[i] * scale * 32767).round().clamp(-32768, 32767);
+    frames[i * 2 + 1] = (right[i] * scale * 32767).round().clamp(-32768, 32767);
+  }
+  return wavOf(frames, rate, channels: 2);
 }
 
 /// How long [request]'s arrangement would run for, near enough to warn

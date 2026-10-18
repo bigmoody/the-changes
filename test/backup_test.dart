@@ -99,7 +99,7 @@ void main() {
       expect(copy.key, 'E♭ minor');
       expect(copy.tempo, 176);
       expect(copy.beatsPerBar, 3);
-      expect(copy.meter, '3/4');
+      expect(copy.meter.label, '3/4');
       expect(copy.sections, {0: 'A', 4: 'B'});
       expect(copy.repeats, {0: 2});
       expect(copy.endings, {6: 1, 7: 2});

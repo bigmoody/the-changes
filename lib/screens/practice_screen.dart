@@ -25,6 +25,7 @@ import 'loop_bar.dart';
 import 'now_playing.dart';
 import 'play_shortcuts.dart';
 import 'practice_sheets.dart';
+import 'chart_exercises_screen.dart';
 import 'progression_editor_screen.dart';
 import 'setlists_screen.dart' show showAddToSetlist;
 import 'share_chart.dart';
@@ -273,15 +274,32 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   context,
                   _controller.originalTune,
                   semitones: _controller.semitones,
+                  // What goes out is the chart on the stand: the key it
+                  // has been put in, written for the instrument reading
+                  // it.
+                  instrument: _controller.settings.instrument,
                 ),
                 // The same controller goes with it, so the band carries on
                 // playing as you walk on and off.
-                onStage: () => Navigator.of(context).push(
+                onStage: (follow) => Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => StageScreen(controller: _controller),
+                    builder: (_) =>
+                        StageScreen(controller: _controller, follow: follow),
                   ),
                 ),
                 onRecord: () => showPracticeRecord(context, _controller),
+                // The chart as the player reads it, so the exercise is in
+                // their own key, and by title so a tune they wrote or
+                // imported keeps its own level like any other.
+                onExercises: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ChartExercisesScreen(
+                      tune: _controller.chart,
+                      player: _controller.player,
+                      settings: _controller.settings,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -533,6 +551,7 @@ class _MoreMenu extends StatelessWidget {
     required this.onShare,
     required this.onStage,
     required this.onRecord,
+    required this.onExercises,
   });
 
   final LibraryStore? library;
@@ -540,11 +559,15 @@ class _MoreMenu extends StatelessWidget {
   final String title;
   final VoidCallback onShare;
 
-  /// Opens the stage: the chart and nothing else.
-  final VoidCallback onStage;
+  /// Opens the stage: the chart and nothing else, all of it at once or
+  /// scrolling with the band.
+  final void Function(bool follow) onStage;
 
   /// Opens the practice record for this tune.
   final VoidCallback onRecord;
+
+  /// Opens the exercises generated from this tune's changes.
+  final VoidCallback onExercises;
 
   @override
   Widget build(BuildContext context) {
@@ -571,19 +594,39 @@ class _MoreMenu extends StatelessWidget {
               showAddToSetlist(context, library!, tune, title);
             case 'record':
               onRecord();
+            case 'exercises':
+              onExercises();
             case 'share':
               onShare();
             case 'stage':
-              onStage();
+              onStage(false);
+            case 'stage-scrolling':
+              onStage(true);
           }
         },
         itemBuilder: (context) => [
+          const PopupMenuItem(
+            value: 'exercises',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.school_outlined),
+              title: Text('Exercises'),
+            ),
+          ),
           const PopupMenuItem(
             value: 'stage',
             child: ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(Icons.fullscreen),
               title: Text('Stage View'),
+            ),
+          ),
+          const PopupMenuItem(
+            value: 'stage-scrolling',
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.swap_vert),
+              title: Text('Scrolling Stage View'),
             ),
           ),
           if (library != null) ...[

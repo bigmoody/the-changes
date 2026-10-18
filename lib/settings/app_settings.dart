@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import '../music/chart_exercises.dart' show ChartExercise;
 import 'chord_colours.dart';
 import 'key_colours.dart';
 
@@ -17,6 +18,7 @@ import '../audio/backing_synth.dart';
 import '../audio/drum_levels.dart';
 import '../audio/drum_patterns.dart';
 import '../audio/felt_beat.dart';
+import '../theme.dart' show ChartFont, letterChartsIn;
 
 /// Which instrument the charts are written for.
 ///
@@ -204,7 +206,17 @@ class AppSettings extends ChangeNotifier {
     this._feelTheBeat,
     this._markTheBar,
     this._drumLevels,
-  );
+    this._exerciseLevels,
+    this._arpeggioRate,
+    this._arpeggioReach,
+    this._chartFont,
+    this._minorSign,
+  ) {
+    // The lettering lives in the theme, where every chart reaches it.
+    letterChartsIn(_chartFont);
+    // The minor sign lives beside the chord symbols, for the same reason.
+    writeMinorAs(_minorSign);
+  }
 
   /// Settings that aren't saved anywhere, for tests.
   AppSettings.inMemory([
@@ -226,7 +238,12 @@ class AppSettings extends ChangeNotifier {
     this._feelTheBeat = FeelTheBeat.off,
     this._markTheBar = MarkTheBar.filled,
     this._drumLevels = const DrumLevels(),
-  ]) : _storage = null,
+  ]) : _chartFont = ChartFont.hand,
+       _minorSign = MinorSign.m,
+       _exerciseLevels = const {},
+       _arpeggioRate = ArpeggioRate.eighths,
+       _arpeggioReach = ArpeggioReach.plain,
+       _storage = null,
        _chordAid = ChordAid.off,
        _mixWithOthers = true,
        _metronomeTempo = 120,
@@ -235,12 +252,20 @@ class AppSettings extends ChangeNotifier {
        _metronomeClickOn = ClickOn.everyBeat,
        _metronomeDropout = Dropout.none,
        _fadeChart = FadeChart.never,
-       _takesWithBand = true;
+       _takesWithBand = true {
+    letterChartsIn(_chartFont);
+    writeMinorAs(_minorSign);
+  }
 
+  static const _arpeggioRateKey = 'arpeggioRate';
+  static const _arpeggioReachKey = 'arpeggioReach';
+  static const _exerciseLevelsKey = 'exerciseLevels';
   static const _instrumentKey = 'chartInstrument';
   static const _mixKey = 'mixWithOthers';
   static const _takesBandKey = 'takesWithBand';
   static const _diagramKey = 'chordDiagram';
+  static const _chartFontKey = 'chartFont';
+  static const _minorSignKey = 'minorSign';
   static const _aimKey = 'aimFor';
   static const _compingKey = 'comping';
   static const _bassSoundKey = 'bassSound';
@@ -272,10 +297,14 @@ class AppSettings extends ChangeNotifier {
     var mixWithOthers = true;
     var takesWithBand = true;
     var diagram = ChordDiagram.none;
+    var chartFont = ChartFont.hand;
+    var minorSign = MinorSign.m;
     DrillTarget? aimFor;
     var comping = Comping.piano;
     var bassSound = BassSound.upright;
     var drumSound = DrumSound.kit;
+    var arpeggioRate = ArpeggioRate.eighths;
+    var arpeggioReach = ArpeggioReach.plain;
     var chordColours = const ChordColours();
     var colourChords = true;
     var splitEnharmonics = false;
@@ -294,6 +323,7 @@ class AppSettings extends ChangeNotifier {
     var feelTheBeat = FeelTheBeat.off;
     var markTheBar = MarkTheBar.filled;
     var drumLevels = const DrumLevels();
+    var exerciseLevels = const <String, ChartExercise>{};
     var fadeChart = FadeChart.never;
     try {
       final savedAid = await storage.getString(_chordAidKey);
@@ -311,6 +341,29 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == savedMark,
         orElse: () => MarkTheBar.filled,
       );
+      final savedRate = await storage.getString(_arpeggioRateKey);
+      arpeggioRate = ArpeggioRate.values.firstWhere(
+        (value) => value.name == savedRate,
+        orElse: () => ArpeggioRate.eighths,
+      );
+      final savedReach = await storage.getString(_arpeggioReachKey);
+      arpeggioReach = ArpeggioReach.values.firstWhere(
+        (value) => value.name == savedReach,
+        orElse: () => ArpeggioReach.plain,
+      );
+      final savedExercises = await storage.getString(_exerciseLevelsKey);
+      if (savedExercises != null) {
+        final read = jsonDecode(savedExercises) as Map<String, Object?>;
+        exerciseLevels = {
+          for (final entry in read.entries)
+            // Stored by position, so a level saved by a version that had
+            // more exercises than this one does is ignored rather than
+            // crashing somebody's settings.
+            if (entry.value case final int level)
+              if (level >= 0 && level < ChartExercise.values.length)
+                entry.key: ChartExercise.values[level],
+        };
+      }
       final savedLevels = await storage.getString(_drumLevelsKey);
       if (savedLevels != null) {
         drumLevels = DrumLevels.fromJson(
@@ -389,6 +442,16 @@ class AppSettings extends ChangeNotifier {
         (value) => value.name == saved,
         orElse: () => ChartInstrument.concert,
       );
+      final savedFont = await storage.getString(_chartFontKey);
+      chartFont = ChartFont.values.firstWhere(
+        (value) => value.name == savedFont,
+        orElse: () => ChartFont.hand,
+      );
+      final savedMinor = await storage.getString(_minorSignKey);
+      minorSign = MinorSign.values.firstWhere(
+        (value) => value.name == savedMinor,
+        orElse: () => MinorSign.m,
+      );
       final savedDiagram = await storage.getString(_diagramKey);
       diagram = ChordDiagram.values.firstWhere(
         (value) => value.name == savedDiagram,
@@ -430,6 +493,11 @@ class AppSettings extends ChangeNotifier {
       feelTheBeat,
       markTheBar,
       drumLevels,
+      exerciseLevels,
+      arpeggioRate,
+      arpeggioReach,
+      chartFont,
+      minorSign,
     );
   }
 
@@ -479,6 +547,39 @@ class AppSettings extends ChangeNotifier {
     notifyListeners();
     try {
       await _storage?.setString(_diagramKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// The face every chart is lettered in.
+  ChartFont get chartFont => _chartFont;
+  ChartFont _chartFont;
+
+  Future<void> setChartFont(ChartFont value) async {
+    if (value == _chartFont) return;
+    _chartFont = value;
+    letterChartsIn(value);
+    notifyListeners();
+    try {
+      await _storage?.setString(_chartFontKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// Whether a minor chord is written Dm7 or D-7, on the chart and in
+  /// everything the chart is sent out as.
+  MinorSign get minorSign => _minorSign;
+  MinorSign _minorSign;
+
+  Future<void> setMinorSign(MinorSign value) async {
+    if (value == _minorSign) return;
+    _minorSign = value;
+    writeMinorAs(value);
+    notifyListeners();
+    try {
+      await _storage?.setString(_minorSignKey, value.name);
     } catch (e) {
       debugPrint('Could not save settings: $e');
     }
@@ -869,6 +970,67 @@ class AppSettings extends ChangeNotifier {
   /// cymbals at the level the kit was recorded at.
   DrumLevels get drumLevels => _drumLevels;
   DrumLevels _drumLevels;
+
+  /// How far through the exercises somebody has got, by tune.
+  ///
+  /// Kept by title because that is what a tune has whoever made it: one
+  /// out of the book, one written in the app, one imported this morning.
+  /// A tune nobody has started is not in here at all, which is how the
+  /// screen knows to open on the first one.
+  /// How fast the arpeggio part goes by.
+  ArpeggioRate get arpeggioRate => _arpeggioRate;
+  ArpeggioRate _arpeggioRate;
+
+  Future<void> setArpeggioRate(ArpeggioRate value) async {
+    if (value == _arpeggioRate) return;
+    _arpeggioRate = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_arpeggioRateKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  /// How far up the chord the arpeggio goes.
+  ArpeggioReach get arpeggioReach => _arpeggioReach;
+  ArpeggioReach _arpeggioReach;
+
+  Future<void> setArpeggioReach(ArpeggioReach value) async {
+    if (value == _arpeggioReach) return;
+    _arpeggioReach = value;
+    notifyListeners();
+    try {
+      await _storage?.setString(_arpeggioReachKey, value.name);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
+
+  Map<String, ChartExercise> _exerciseLevels;
+  Map<String, ChartExercise> get exerciseLevels => _exerciseLevels;
+
+  /// The exercise [tune] is on, or the first one if it has not been
+  /// started.
+  ChartExercise exerciseFor(String tune) =>
+      _exerciseLevels[tune] ?? ChartExercise.values.first;
+
+  Future<void> setExerciseFor(String tune, ChartExercise which) async {
+    if (_exerciseLevels[tune] == which) return;
+    _exerciseLevels = {..._exerciseLevels, tune: which};
+    notifyListeners();
+    try {
+      await _storage?.setString(
+        _exerciseLevelsKey,
+        jsonEncode({
+          for (final entry in _exerciseLevels.entries)
+            entry.key: entry.value.index,
+        }),
+      );
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
 
   Future<void> setDrumLevel(Drum drum, double level) async {
     _drumLevels = _drumLevels.set(drum, level);

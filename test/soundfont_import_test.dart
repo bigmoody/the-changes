@@ -9,7 +9,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/backing_synth.dart';
-import 'package:play_along/audio/drum_patterns.dart' show Drum;
+import 'package:play_along/audio/drum_patterns.dart' show Drum, importableDrums;
 import 'package:play_along/audio/instrument_file.dart';
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/audio/soundfont.dart';
@@ -55,7 +55,9 @@ SampleBank bankOf(
   hiHatClosed: emptyDrum,
   hiHatOpen: emptyDrum,
   kick: emptyDrum,
+  kickClose: emptyDrum,
   snare: emptyDrum,
+  snareTight: emptyDrum,
   crossStick: emptyDrum,
   cowbell: emptyDrum,
   tomHigh: emptyDrum,
@@ -763,7 +765,10 @@ void main() {
       expect(find.byKey(const ValueKey('playing-kick')), findsOneWidget);
       expect(find.byKey(const ValueKey('playing-ride')), findsOneWidget);
       expect(find.text("The band's upright"), findsOneWidget);
-      expect(find.text("The band's own"), findsNWidgets(Drum.values.length));
+      expect(
+        find.text("The band's own"),
+        findsNWidgets(importableDrums.length),
+      );
       // Only the imported one can be let go.
       expect(find.byKey(const ValueKey('forget-bass')), findsNothing);
       await tester.tap(find.byKey(const ValueKey('forget-chords')));

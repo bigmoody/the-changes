@@ -292,6 +292,10 @@ class PracticePlayer {
         paused: true,
         // Silent, not skipped: see where the streams are built.
         volume: playing == null ? _volumes[entry.key]! : 0,
+        // Each part in its own place. The stems are already separate
+        // voices, so this is the whole of the stereo: nothing in the
+        // renderer has to know, and the mono buffers stay mono.
+        pan: entry.key.pan,
       );
     }
     for (final entry in recordingStreams.entries) {
@@ -299,6 +303,9 @@ class PracticePlayer {
         entry.value,
         paused: true,
         volume: _volumes[instrumentFor(entry.key)]!,
+        // The same place the live band's part sits, so playing a take
+        // back does not rearrange the room.
+        pan: instrumentFor(entry.key).pan,
       );
       _recordingHandles[entry.key] = handle;
       _applyShift(entry.value, handle, playing!.shift);
@@ -578,8 +585,10 @@ class PracticePlayer {
   /// scrubbed.
   SoundHandle? _snippetHandle;
 
-  /// Plays a short WAV once, over anything else: the drills' "hear it".
-  /// Each new one replaces the last, so tapping twice doesn't pile them up.
+  /// Plays a short WAV once: the drills' "hear it".
+  /// Each new one replaces the last, so tapping twice doesn't pile them up,
+  /// and the band stops: a drill played over the changes was two things
+  /// sounding at once, usually in two different keys.
   ///
   /// With a [shift] it is moved in pitch, in tempo, or both, by the same
   /// two knobs the recorded band is moved with: the speed resamples,
@@ -595,10 +604,13 @@ class PracticePlayer {
     TakeShift? shift,
     Duration from = Duration.zero,
   }) async {
-    final previous = _snippet;
-    _snippet = null;
-    _snippetHandle = null;
-    if (previous != null) await _soloud.disposeSource(previous);
+    // The band stops first. Two things playing at once is two things
+    // nobody asked for: pressing Hear It on a drill while the changes
+    // were going left them both sounding, over each other, in different
+    // keys as often as not. The generation moves so a batch already on
+    // its way does not arrive after this.
+    _generation++;
+    await _stopCurrent();
     final source = await _soloud.loadMem('snippet.wav', wav);
     _snippet = source;
     // Paused first in every case now, not only for a shift: a seek has
@@ -763,10 +775,23 @@ class PracticePlayer {
     if (Platform.isAndroid && !_mixWithOthers) await _session?.setActive(false);
   }
 
+  /// Stops everything this player is sounding: the band, a take, and the
+  /// snippet the drills play.
+  ///
+  /// The snippet is in here rather than left to the screens because the
+  /// band starting and a snippet starting both come through here, so one
+  /// place covers every direction: pressing Hear It stops the band,
+  /// pressing play on the band stops a snippet, and stopping stops both.
+  /// It used to stop only the band, which left the two overlapping either
+  /// way round and left a snippet running after stop() had been called.
   Future<void> _stopCurrent() async {
     _streamTimer?.cancel();
     _streamTimer = null;
     _stream = null;
+    final snippet = _snippet;
+    final snippetHandle = _snippetHandle;
+    _snippet = null;
+    _snippetHandle = null;
     final handles = [
       ?_countInHandle,
       ?_takeHandle,
@@ -783,6 +808,20 @@ class PracticePlayer {
     _sources.clear();
     _clock = null;
     _paused = false;
+    if (snippetHandle != null) {
+      try {
+        await _soloud.stop(snippetHandle);
+      } catch (e) {
+        debugPrint('Could not stop the snippet: $e');
+      }
+    }
+    if (snippet != null) {
+      try {
+        await _soloud.disposeSource(snippet);
+      } catch (e) {
+        debugPrint('Could not let the snippet go: $e');
+      }
+    }
     for (final handle in handles) {
       await _soloud.stop(handle);
     }

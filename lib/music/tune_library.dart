@@ -214,6 +214,11 @@ final _firstStandards = <Tune>[
     tags: {Genre.modal},
     defaultTempo: 240,
     chart: _dorianAABA,
+    // The same figure as So What's, the other way up: the chord lifts to
+    // the shape above and is left there rather than the shape above
+    // falling onto the chord. Same two voicings, opposite gesture, and it
+    // is most of why two tunes on one form do not sound like one tune.
+    quartalSlide: QuartalSlide.up,
   ),
   Tune.fromChart(
     title: "Now's the Time",
@@ -408,6 +413,9 @@ final _firstStandards = <Tune>[
     tags: {Genre.modal},
     defaultTempo: 140,
     chart: _dorianAABA,
+    // The shape above falls onto the chord: the figure the tune, and the
+    // chord, are named after.
+    quartalSlide: QuartalSlide.down,
   ),
   Tune.fromChart(
     title: 'Solar',

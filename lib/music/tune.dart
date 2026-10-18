@@ -1,4 +1,5 @@
 import 'chord.dart';
+import 'meter.dart';
 import 'swing.dart';
 import 'comping.dart';
 
@@ -48,7 +49,57 @@ enum Feel {
 
   /// Brazilian, and quicker than a bossa: the surdo answering on 2 and 4,
   /// a tamborim figure across the bar, sixteenths running underneath.
-  samba('Samba');
+  samba('Samba'),
+
+  /// Swing in three. The ride plays the figure a waltz is taught in,
+  /// "one, two, and-of-two, three", so the lift is after 2 and beat 3
+  /// is left plain, the hi-hat closes under 2 and 3, and the bass walks
+  /// three to the bar.
+  ///
+  /// Swing in a three-beat bar is already close to this, and that is the
+  /// point of giving the waltz its own name rather than leaving it to the
+  /// time signature: the skip note after every beat is what a swing
+  /// pattern does in four, and a waltz that keeps it sounds hurried.
+  jazzWaltz('Jazz Waltz'),
+
+  /// A slow swing played with the brushes: the left hand circling the
+  /// head, the right hand touching the time in on 2 and 4, the bass in
+  /// two and the chords held rather than comped.
+  ///
+  /// A ballad is not only a swing tune at a slow tempo. What changes is
+  /// who plays what: the time moves off the cymbal and onto the head,
+  /// the bass stops walking, and the piano stops answering.
+  ballad('Ballad'),
+
+  /// The New Orleans street beat: the kick carrying a syncopated figure
+  /// against a backbeat with ghost notes around it, and the whole thing
+  /// somewhere between swung eighths and loose sixteenths rather than
+  /// squarely either.
+  ///
+  /// Nothing on the cymbal. A parade has no ride, and on a kit what
+  /// stands in for the two drummers of a brass band is the kick and the
+  /// snare, which is why this is the one swung groove here with no
+  /// cymbal time in it at all.
+  secondLine('Second Line'),
+
+  /// Afro 6/8: the standard bell over a compound bar, with the bombo on
+  /// the second beat of its four-pulse cycle.
+  ///
+  /// Called Afro 6/8 rather than bembé on purpose. Bembé is religious
+  /// ceremonial music, specific in every aspect, and the groove jazz
+  /// bands play is an approximation of it; drummers who know the
+  /// difference say Afro 6 or Afro-Cuban 6/8, so that is what it is
+  /// called here.
+  afroSix('Afro 6/8'),
+
+  /// Gypsy jazz, after Django Reinhardt's Quintette: la pompe on the
+  /// guitar, "the pump", four short downstrokes a bar with 2 and 4
+  /// carrying the accent.
+  ///
+  /// There is no drum part, because there was no drummer. The guitar's
+  /// chop is the time, and it is percussive on purpose: that is what
+  /// drives the music where a kit otherwise would.
+  gypsy('Gypsy Jazz');
 
   const Feel(this.label);
   final String label;
@@ -58,7 +109,16 @@ enum Feel {
   double get andOfBeat => swings ? 2 / 3 : 0.5;
 
   /// Whether this feel's eighths are long-short.
-  bool get swings => this == swing || this == shuffle;
+  bool get swings =>
+      this == swing ||
+      this == shuffle ||
+      this == jazzWaltz ||
+      this == ballad ||
+      this == secondLine ||
+      this == gypsy ||
+      // Its bell is written in thirds of a beat, which is where a swung
+      // off-beat lands anyway: a compound bar swings by being compound.
+      this == afroSix;
 
   /// Where the off-beats sit before anybody touches the slider: the
   /// tempo's own swing for the feels that swing, even for the rest.
@@ -87,7 +147,59 @@ enum Feel {
     samba => (slowest: 150, fastest: 260),
     funk => (slowest: 60, fastest: 140),
     calypso => (slowest: 100, fastest: 200),
+    // A waltz is played from a slow three up to a bright one; Someday My
+    // Prince Will Come and Bluesette sit near the middle of that.
+    jazzWaltz => (slowest: 80, fastest: 260),
+    // Faster than this and the brushes and the two-feel stop making
+    // sense: it is a medium swing tune by then, whatever it is called.
+    ballad => (slowest: 40, fastest: 85),
+    // A parade walks, and then it does not: slow enough for a dirge
+    // coming back from the cemetery, bright enough for the street.
+    secondLine => (slowest: 70, fastest: 220),
+    // Minor Swing was cut at better than two hundred, and the repertoire
+    // runs faster still.
+    gypsy => (slowest: 90, fastest: 300),
+    // The pulse, which in six eight is the dotted quarter: slow enough
+    // for a vamp, quick enough for the bright end of one.
+    afroSix => (slowest: 50, fastest: 160),
   };
+
+  /// Whether this groove has a figure for a bar of [meter].
+  ///
+  /// Some grooves are written beat by beat and fit any bar: swing, a
+  /// ballad, a waltz, and the bell, which is a cycle laid over whatever
+  /// bar it meets. Others *are* a bar-length figure: a clave, a 3-3-2, a
+  /// street beat, a samba's two bars. Cut to a bar of another length
+  /// they are not themselves but a fragment of themselves, which is how
+  /// a calypso counted in six eight came out as half a 3-3-2 with its
+  /// off-beats dragged onto triplets.
+  bool suits(Meter meter) =>
+      !_isAFigure || (meter.pulses == 4 && !meter.compound);
+
+  /// Whether what makes this groove itself is a figure that takes a bar
+  /// of four to play.
+  bool get _isAFigure =>
+      this == bossa ||
+      this == samba ||
+      this == funk ||
+      this == calypso ||
+      this == secondLine;
+
+  /// What the band plays instead where this groove has no figure for the
+  /// bar: the bell in compound time, and swing everywhere else, which is
+  /// written beat by beat and fits any bar there is.
+  ///
+  /// A stand-in and not a silent swap: wherever it happens the mixer
+  /// says which groove is playing and why.
+  Feel standIn(Meter meter) =>
+      suits(meter) ? this : (meter.compound ? afroSix : swing);
+
+  /// Whether there is a drummer at all.
+  ///
+  /// Gypsy jazz is the one groove here played without one: the
+  /// Quintette's rhythm was two guitars and a bass, and the chop does
+  /// what a kit would. Silence is the part, not a part missing.
+  bool get hasDrums => this != gypsy;
 
   /// [tempo] brought into the range this feel is played at, staying as
   /// close to it as the feel allows.
@@ -119,6 +231,10 @@ enum Genre {
     Feel.bossa || Feel.samba => latin,
     Feel.calypso => calypso,
     Feel.funk => funk,
+    Feel.jazzWaltz => swing,
+    Feel.ballad => ballad,
+    Feel.secondLine || Feel.gypsy => swing,
+    Feel.afroSix => latin,
   };
 
   /// The genres that come from what a tune is rather than how it's played:
@@ -160,13 +276,17 @@ enum PianoStyle {
 
   /// Short chords in the calypso strum: 1, 2, the "and" of 2, the "and"
   /// of 3, 4, the "and" of 4; or a lighter version of it.
-  calypso('Calypso strum');
+  calypso('Calypso strum'),
+
+  /// La pompe, gypsy jazz's own: four short downstrokes a bar, 2 and 4
+  /// the ones that carry, and a quick upstroke lifting into 1 and 3.
+  laPompe('La Pompe');
 
   const PianoStyle(this.label);
   final String label;
 
   /// Whether the piano's eighths swing.
-  Feel get feel => this == swing ? Feel.swing : Feel.bossa;
+  Feel get feel => this == swing || this == laPompe ? Feel.swing : Feel.bossa;
 }
 
 /// Who plays the chords: the pianist, or a guitarist in their place.
@@ -178,7 +298,7 @@ enum PianoStyle {
 /// and nowhere else: in the Latin styles it plays the bossa guitar's own
 /// two-bar figures instead, which are a different thing entirely.
 bool figuresApply(PianoStyle style, Comping who) => switch (style) {
-  PianoStyle.held || PianoStyle.calypso => false,
+  PianoStyle.held || PianoStyle.calypso || PianoStyle.laPompe => false,
   PianoStyle.swing => true,
   PianoStyle.straight => who == Comping.piano,
 };
@@ -214,7 +334,14 @@ enum BassSound {
 
 /// Who plays the drums.
 enum DrumSound {
-  kit('The Band'),
+  /// The band's own kit, played with sticks.
+  kit('Sticks'),
+
+  /// The same grooves played with brushes, on a kit recorded that way
+  /// rather than the stick kit quietened. Brushes are not a softer stick:
+  /// the snare answers with a wash instead of a crack, and the ride loses
+  /// most of its ping.
+  brushes('Brushes'),
 
   /// A drum kit out of an imported SoundFont. Each drum falls back to the
   /// band's own when the kit does not have it, so a font with no cowbell
@@ -242,21 +369,54 @@ class BandStyle {
     bass: switch (feel) {
       // A shuffle's bass walks like any other blues; the bounce is in the
       // drums and the comping, not in the notes it chooses.
-      Feel.swing || Feel.shuffle => BassStyle.walking,
+      // A waltz walks too, three to the bar rather than four.
+      // Second line walks too: the tuba or the bass holds the pulse the
+      // kick is playing against. So does a gypsy bass, which can play
+      // two instead, and the Bass dropdown is where that lives.
+      Feel.swing ||
+      Feel.shuffle ||
+      Feel.jazzWaltz ||
+      Feel.secondLine ||
+      Feel.gypsy => BassStyle.walking,
+      // A ballad is held up by two notes a bar, not four: roots and
+      // fifths, with the space left in.
+      // Roots and fifths on the pulse under the bell. A 6/8 tumbao is
+      // its own line and is not written yet; this is the plain thing
+      // rather than a guess at one.
+      Feel.ballad || Feel.afroSix => BassStyle.twoFeel,
       Feel.bossa || Feel.samba => BassStyle.bossa,
       Feel.funk => BassStyle.funk,
       Feel.calypso => BassStyle.calypso,
     },
     piano: switch (feel) {
-      Feel.swing || Feel.shuffle => PianoStyle.swing,
+      Feel.swing ||
+      Feel.shuffle ||
+      Feel.jazzWaltz ||
+      Feel.secondLine => PianoStyle.swing,
+      Feel.gypsy => PianoStyle.laPompe,
+      // Long chords, one to a change. A comper answering every phrase is
+      // what a ballad does not want.
+      Feel.ballad => PianoStyle.held,
       Feel.calypso => PianoStyle.calypso,
-      Feel.bossa || Feel.funk || Feel.samba => PianoStyle.straight,
+      Feel.bossa ||
+      Feel.funk ||
+      Feel.samba ||
+      Feel.afroSix => PianoStyle.straight,
     },
   );
 
   final Feel drums;
   final BassStyle bass;
   final PianoStyle piano;
+
+  /// The band as it can actually be played in [meter].
+  ///
+  /// A groove whose figure needs a bar of four hands over to one that
+  /// does not, and the whole band goes with it: a bossa bass under a
+  /// bell is two different grooves at once.
+  BandStyle inMeter(Meter meter) => drums.suits(meter)
+      ? this
+      : BandStyle.of(drums.standIn(meter)).withFigure(figure).withSwing(swing);
 
   /// The one comping figure to play in every bar, or null to let the
   /// comper choose bar by bar as it always has.
@@ -335,6 +495,63 @@ typedef KeyOf = ({int pitchClass, bool minor});
 KeyOf readKeyLabel(String key) =>
     (pitchClass: pitchClassOf(keyTonicOf(key)), minor: isMinorKeyLabel(key));
 
+/// Which way the quartal figure moves on a modal tune.
+///
+/// The shape is the same either way: a stack of fourths, slid a whole
+/// step. What differs is which end of the move the chord is on, and that
+/// is the difference between the two tunes everybody knows the sound of.
+enum QuartalSlide {
+  /// No figure: the fourths are voiced and left to be comped like any
+  /// other chord.
+  ///
+  /// The default, and it has to be. The slide is one tune's lick and not
+  /// a modal device: played on every tune tagged modal it made six of
+  /// them sound like So What, which is what happens when the thing a
+  /// tune is known for is treated as a property of its genre.
+  none,
+
+  /// Down onto the chord, as So What does. The shape above leans and
+  /// falls, and the figure resolves.
+  down,
+
+  /// Up off the chord, as Impressions does. The chord lifts to the shape
+  /// above and is left there, so the figure opens instead of closing.
+  up,
+}
+
+/// One bar's chords, given the beats of the bar to share between them.
+///
+/// They split it evenly and any leftover beat goes to the first chord,
+/// so three chords in 4/4 last 2 + 1 + 1. A bar holds only as many
+/// chords as it has beats for: the ones past that have nowhere to
+/// sound, so they are left off rather than written in with no beats.
+/// Nothing downstream, the band least of all, has any use for a chord
+/// that lasts no time.
+List<ChordSlot> _shareOut(
+  List<Chord> chords, {
+  required int barIndex,
+  required int pulses,
+}) {
+  final kept = chords.length > pulses ? chords.sublist(0, pulses) : chords;
+  final baseBeats = pulses ~/ kept.length;
+  final leftover = pulses % kept.length;
+  var beat = barIndex * pulses;
+  final slots = <ChordSlot>[];
+  for (var i = 0; i < kept.length; i++) {
+    final beats = baseBeats + (i < leftover ? 1 : 0);
+    slots.add(
+      ChordSlot(
+        chord: kept[i],
+        barIndex: barIndex,
+        startBeat: beat,
+        beats: beats,
+      ),
+    );
+    beat += beats;
+  }
+  return slots;
+}
+
 class Tune {
   const Tune._({
     required this.title,
@@ -345,10 +562,11 @@ class Tune {
     required this.feel,
     required this.style,
     required this.defaultTempo,
-    required this.beatsPerBar,
+    required this.meter,
     required this.bars,
     required this.sections,
     required this.tags,
+    required this.quartalSlide,
   });
 
   /// Builds a tune from a simple text chart such as
@@ -357,6 +575,11 @@ class Tune {
   /// `[A]` at the start of a bar marks where a section of the form begins.
   /// Chords sharing a bar split its beats evenly; any leftover beat goes to
   /// the first chord (so three chords in 4/4 last 2 + 1 + 1 beats).
+  ///
+  /// A bar holds only as many chords as it has beats for: the chords past
+  /// that have nowhere to sound, so they are left off rather than written
+  /// in with no beats. Nothing downstream, the band least of all, has any
+  /// use for a chord that lasts no time.
   factory Tune.fromChart({
     required String title,
     required String key,
@@ -369,7 +592,14 @@ class Tune {
     BandStyle? style,
     Set<Genre> tags = const {},
     int beatsPerBar = 4,
+    Meter? meter,
+    QuartalSlide quartalSlide = QuartalSlide.none,
   }) {
+    // A tune says either what it counts (beatsPerBar, which is how every
+    // standard here is written) or what is on the chart (meter, which is
+    // the only way to say 6/8). They are the same thing in simple time.
+    final written = meter ?? Meter.ofPulses(beatsPerBar);
+    final pulses = written.pulses;
     final barTexts = chart
         .split('|')
         .map((bar) => bar.trim())
@@ -386,24 +616,16 @@ class Tune {
         text = text.substring(section.end);
       }
 
-      final symbols = text.split(RegExp(r'\s+'));
-      final baseBeats = beatsPerBar ~/ symbols.length;
-      final leftover = beatsPerBar % symbols.length;
-      var beat = barIndex * beatsPerBar;
-      final slots = <ChordSlot>[];
-      for (var i = 0; i < symbols.length; i++) {
-        final beats = baseBeats + (i < leftover ? 1 : 0);
-        slots.add(
-          ChordSlot(
-            chord: Chord.parse(symbols[i]),
-            barIndex: barIndex,
-            startBeat: beat,
-            beats: beats,
-          ),
-        );
-        beat += beats;
-      }
-      bars.add(slots);
+      bars.add(
+        _shareOut(
+          [
+            for (final symbol in text.split(RegExp(r'\s+')))
+              Chord.parse(symbol),
+          ],
+          barIndex: barIndex,
+          pulses: pulses,
+        ),
+      );
     }
 
     return Tune._(
@@ -415,10 +637,11 @@ class Tune {
       feel: feel,
       style: style ?? BandStyle.of(feel),
       defaultTempo: defaultTempo,
-      beatsPerBar: beatsPerBar,
+      meter: written,
       bars: bars,
       sections: sections,
       tags: tags,
+      quartalSlide: quartalSlide,
     );
   }
 
@@ -437,11 +660,22 @@ class Tune {
   /// the chart says otherwise.
   final BandStyle style;
   final int defaultTempo;
-  final int beatsPerBar;
+
+  /// The time signature on the chart.
+  final Meter meter;
+
+  /// What the band counts in a bar: the same as the written beats except
+  /// in compound time, where a bar of 6/8 is counted in two.
+  int get beatsPerBar => meter.pulses;
+
   final List<List<ChordSlot>> bars;
 
   /// Section letters by the bar they start on, e.g. {0: 'A', 8: 'A', 16: 'B'}.
   final Map<int, String> sections;
+
+  /// Which way the quartal figure moves, for a tune voiced in fourths.
+  /// Ignored by any tune that is not modal, which has no such figure.
+  final QuartalSlide quartalSlide;
 
   /// Genres tagged by hand: blues, bebop …
   final Set<Genre> tags;
@@ -520,10 +754,45 @@ class Tune {
           feel: style.drums,
           style: style,
           defaultTempo: defaultTempo,
-          beatsPerBar: beatsPerBar,
+          meter: meter,
           sections: sections,
           tags: tags,
+          quartalSlide: quartalSlide,
           bars: bars,
+        );
+
+  /// The same tune, counted in [meter].
+  ///
+  /// The bars keep their chords and the form keeps its letters. What
+  /// changes is how the beats inside each bar are shared out, which is
+  /// the whole of what a time signature decides here: Autumn Leaves in
+  /// three is its changes, two beats to the first chord of a bar and one
+  /// to the second. A bar with more chords than the new meter has beats
+  /// loses the ones there is no room for, exactly as a chart written
+  /// that way would.
+  Tune inMeter(Meter meter) => meter == this.meter
+      ? this
+      : Tune._(
+          title: title,
+          composer: composer,
+          year: year,
+          key: key,
+          description: description,
+          feel: feel,
+          style: style,
+          defaultTempo: defaultTempo,
+          meter: meter,
+          sections: sections,
+          tags: tags,
+          quartalSlide: quartalSlide,
+          bars: [
+            for (var i = 0; i < bars.length; i++)
+              _shareOut(
+                [for (final slot in bars[i]) slot.chord],
+                barIndex: i,
+                pulses: meter.pulses,
+              ),
+          ],
         );
 
   Tune transposed(int semitones) {
@@ -538,9 +807,10 @@ class Tune {
       feel: feel,
       style: style,
       defaultTempo: defaultTempo,
-      beatsPerBar: beatsPerBar,
+      meter: meter,
       sections: sections,
       tags: tags,
+      quartalSlide: quartalSlide,
       bars: [
         for (final bar in bars)
           [

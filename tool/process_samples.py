@@ -85,12 +85,32 @@ process("bass", bass, seconds=2.2, fade=0.35)
 # Piano: Salamander names use C4 = MIDI 60. Velocity layers 5, 9, 13 → 1, 2, 3.
 PIANO_NAMES = {"C":0, "D#":3, "F#":6, "A":9}
 layers = {"5": 1, "9": 2, "13": 3}
+
+# How long to keep, by register. The recordings run 13 to 16 seconds and
+# were all cut at 3, which is a rule about the clock rather than about the
+# piano: a low C is still only 27 dB down at 3 seconds and audibly going,
+# while an A above middle C is at 37 and finished. Cutting them all at the
+# same moment took most of the bass register's tail away and nothing from
+# the treble's.
+#
+# These lengths instead land every note around 36 dB down before the fade
+# starts, so each one is let go at the point it has actually died rather
+# than at the point the shortest of them had. The fade is a fifth of the
+# length in each case.
+#
+# What this buys is the thing a 3-second cut could not give at any tempo
+# under about 110: a chord held for a whole bar of a ballad used to run
+# out halfway through and fade while it was still being held.
+PIANO_SECONDS = {48: 8.0, 51: 8.0, 54: 6.5, 57: 6.5, 60: 5.0, 63: 5.0,
+                 66: 3.5, 69: 3.5, 72: 3.5}
 piano = []
 for name in sorted(os.listdir(f"{RAW}/piano") if want("piano") else []):
     m = re.match(r"([A-G]#?)(\d)v(\d+)\.flac", name)
     midi = (int(m[2]) + 1) * 12 + PIANO_NAMES[m[1]]
-    piano.append((f"{RAW}/piano/{name}", f"{OUT}/piano/piano_{midi}_v{layers[m[3]]}.wav"))
-process("piano", piano, seconds=3.0, fade=0.6)
+    secs = PIANO_SECONDS[midi]
+    piano.append((f"{RAW}/piano/{name}", f"{OUT}/piano/piano_{midi}_v{layers[m[3]]}.wav",
+                  secs, secs / 5))
+process("piano", piano)
 
 def drums(prefix, pattern, seconds, fade):
     jobs = []
@@ -180,3 +200,186 @@ if guitar:
     for out, samples in guitar:
         write(out, samples, 0.89 / peak)
     print(f"guitar: {len(guitar)} files, group peak {peak:.3f}")
+
+# Brushes: a second kit, from Karoryfer's Swirly Drums, where nothing is
+# played with sticks. Three velocity layers a drum rather than the stick
+# kit's two, because the layer is now chosen by how hard the stroke is and
+# this library records up to 22 of them; three takes rather than four, to
+# keep a whole second kit inside a few megabytes.
+#
+# Each drum is brought to the peak of the stick kit's matching drum rather
+# than the group being normalised together. The patterns' velocities were
+# written against the stick kit's balance, which is an overhead's balance:
+# the snare cracks and the kick, heard across the room, is the quietest
+# thing in the kit. Normalising the brushes as a group instead would put
+# their own balance under those velocities and the kick would swamp the
+# ride. This way the kit changes tone and not the arrangement.
+BRUSH_PEAKS = {
+    "snare": 1.0, "hihat_open": 0.9603, "ride": 0.6707, "hihat_closed": 0.4969,
+    "cross_stick": 0.3289, "hihat_pedal": 0.3264, "tom_high": 0.3000,
+    "cowbell": 0.2500, "tom_low": 0.1469, "kick": 0.0774,
+}
+# Trimmed to the same lengths as the stick kit's matching drum, except the
+# snare.
+#
+# This drum is not damped, and a brush stroke on an undamped head leaves the
+# snare wires buzzing: measured against its own peak, the ring is still only
+# 17 to 19 dB down at 0.2s on the library's worst takes, where the stick
+# kit's snare is 25 dB down. At the stick snare's length the fade starts at
+# 0.5s and never reaches it, so the ring played at full level and the kit
+# sounded resonant rather than brushed. Shorter, with a fade long enough to
+# cover 0.2s onwards: 3 dB off the ring at 0.2s and 13 dB at 0.3s, against
+# 0.8 dB at 0.15s, which is still the stroke itself.
+BRUSH_TRIM = {
+    "ride": (1.8, 0.5), "hihat_pedal": (0.5, 0.15), "hihat_closed": (0.4, 0.12),
+    "hihat_open": (0.6, 0.2), "kick": (0.7, 0.2), "cross_stick": (0.4, 0.12),
+    "snare": (0.35, 0.22), "tom_high": (0.9, 0.3), "tom_low": (0.9, 0.3),
+    "cowbell": (0.5, 0.15),
+}
+if want("brushes"):
+    by_drum = {}
+    for name in sorted(os.listdir(f"{RAW}/brushes")):
+        m = re.match(r"(.+)_(\d)_(\d)\.wav", name)
+        secs, fd = BRUSH_TRIM[m[1]]
+        by_drum.setdefault(m[1], []).append(
+            (f"{OUT}/drums_brushes/{name}", trim(decode(f"{RAW}/brushes/{name}"), secs, fd)))
+    for drum, files in sorted(by_drum.items()):
+        peak = max(max(abs(x) for x in s) for _, s in files)
+        scale = BRUSH_PEAKS[drum] / peak
+        for out, samples in files:
+            write(out, samples, scale)
+        print(f"brushes {drum}: {len(files)} files, peak {peak:.4f}, gain {scale:.2f}")
+
+# The brush swirl: the left hand's circle on the snare head, which is what
+# makes a brush groove sound played rather than tapped.
+#
+# The library records stirring as long continuous takes, 6 to 13 seconds,
+# meant for a sampler to loop at whatever speed the circle wants. Checked
+# for a circle period and there is none worth speaking of: autocorrelation
+# over the envelope decays from the shortest lag out, so the recordings are
+# even washes. That means slices can be cut from them and shaped here
+# rather than fighting dynamics already in the take.
+#
+# Each slice is one full circle, which is two beats, and it is shaped the
+# way the circle is played: the backward half long and quiet, the forward
+# half building into the downbeat. It runs 20 per cent past its circle and
+# decays, so consecutive circles overlap and the join is a crossfade and
+# not an edge. The band stretches the whole thing to the tempo, so two
+# lengths are enough to keep that stretch near 1.
+SWIRL_PEAK = 0.25
+SWIRL_OVERLAP = 1.2
+if want("swirl"):
+    srcs = ["stir_2_1", "stir_3_1", "stir_3_2"]
+    swirl = []
+    for layer, unit in enumerate([0.75, 1.5], 1):   # two beats at 160 and 80
+        for take, src in enumerate(srcs, 1):
+            a = decode(f"{RAW}/brushes_stir/{src}.wav")
+            n = int(unit * SWIRL_OVERLAP * SR)
+            # Taken from a different place in each recording, so three takes
+            # of one circle are not three copies of one. Kept clear of both
+            # ends: the recordings are 6 to 13 seconds and a slice that
+            # runs off the end is a circle that stops half way round.
+            start = min(int(SR * (1.0 + take * 1.7 + layer * 0.9)), len(a) - n)
+            s = array.array("f", a[start:start + n])
+            assert len(s) == n, f"{src} is too short for a {unit}s circle"
+            circle = int(unit * SR)
+            for i in range(len(s)):
+                if i < circle:
+                    s[i] *= 0.45 + 0.55 * (i / circle) ** 1.6
+                else:
+                    x = (i - circle) / (len(s) - circle)
+                    s[i] *= 0.5 * (1 + math.cos(math.pi * x))
+            fade = int(0.008 * SR)
+            for i in range(fade):
+                s[i] *= i / fade
+            swirl.append((f"{OUT}/drums_brushes/swirl_{layer}_{take}.wav", s))
+    peak = max(max(abs(x) for x in s) for _, s in swirl)
+    for out, s in swirl:
+        write(out, s, SWIRL_PEAK / peak)
+    print(f"swirl: {len(swirl)} files, peak {peak:.4f}, gain {SWIRL_PEAK / peak:.2f}")
+
+# A tighter snare, for funk: the same drum through the close microphone
+# instead of the overheads.
+#
+# The overhead snare is the kit's snare because the kit is an overhead's
+# kit, and on a jazz backbeat that is right: what you want there is the
+# drum in its room. Funk wants the drum and not the room. The close mic is
+# 10 dB down by 0.1 of a second and 46 by 0.3, where the overhead is still
+# ringing at 0.7, so it is trimmed much shorter and there is nothing to cut
+# off.
+#
+# Normalised to the same peak as the overhead snare it replaces, so the
+# pattern's velocity means what it meant: the tone changes and the level
+# does not.
+if want("snaretight"):
+    tight = []
+    for level in (6, 8, 10, 24, 26, 28):
+        tight.append((
+            f"{RAW}/drums/snaremic_snare_center_vl{level}.flac",
+            f"{OUT}/drums/snare_tight_{level}.wav", 0.35, 0.12))
+    decoded = [(out, trim(decode(src), secs, fd)) for src, out, secs, fd in tight]
+    peak = max(max(abs(x) for x in s) for _, s in decoded)
+    for out, s in decoded:
+        write(out, s, 1.0 / peak)
+    print(f"snare tight: {len(decoded)} files, peak {peak:.4f}, gain {1.0 / peak:.2f}")
+
+# A close kick, for funk: the same drum through the microphone inside it.
+#
+# The kit's kick is the overheads' kick, which is a kick heard across a
+# room, and that is right for jazz where it is feathered under everything.
+# In funk it is the floor of the groove, and the overhead kick cannot be
+# that at any level: its peak is 0.077 against the snare's 1.0, so at full
+# velocity it is still 22 dB under the backbeat. Velocity cannot fix a
+# recording that quiet.
+#
+# So funk gets the close microphone, normalised to a peak that sits with
+# the funk snare rather than to the overheads' balance. Trimmed to 0.4 s,
+# where the overhead kick is 0.7: the close mic is 27 dB down by 0.3 and
+# a funk kick is a punch rather than a boom.
+if want("kickclose"):
+    close = []
+    for layer, vl in ((1, 2), (2, 4)):
+        for take in (1, 2, 3, 4):
+            close.append((
+                f"{RAW}/drums/kickmic_kick_snoff_vl{vl}_rr{take}.flac",
+                f"{OUT}/drums/kick_close_{layer}_{take}.wav", 0.4, 0.14))
+    decoded = [(out, trim(decode(src), secs, fd)) for src, out, secs, fd in close]
+    peak = max(max(abs(x) for x in s) for _, s in decoded)
+    for out, s in decoded:
+        write(out, s, 0.55 / peak)
+    print(f"kick close: {len(decoded)} files, peak {peak:.4f}, gain {0.55 / peak:.2f}")
+
+# A quieter cross-stick, so the clave can be a click.
+#
+# There was one cross-stick sound in the kit, from layers 6 and 7 of the
+# library's sixteen, and it was doing four jobs: the bossa clave, the
+# brush bossa's, the calypso and the samba. A bossa clave is a cross-stick
+# and that part was right, but at that stroke weight it is a crack rather
+# than a click, and with one layer there was nothing softer to ask for.
+# The samba asks for `hard` and could not have it either.
+#
+# Layers 1 and 2, which are 19 dB under 6 and 7: a stick laid on the rim
+# rather than knocked against it. At the kit's own gain, so they sit where
+# the rest of the kit sits; the levelling in DrumSamples brings the layer
+# up to the loud one's peak afterwards, so what changes between the two is
+# the tone and not the level.
+#
+# Measured before choosing, because the two things wanted pull against
+# each other. The takes inside a layer are played round-robin, so they
+# have to be within a couple of dB of each other or a steady click jumps
+# about; the layers have to be far apart or there is no point having two.
+# Peaks across the quiet end, in dBFS:
+#
+#   vl1 −45.0   vl2 −43.7   vl3 −38.6   vl4 −32.4   vl5 −30.4   vl6 −25.9
+#
+# so vl1+vl2 are 1.3 dB apart and 19 under the loud pair, vl4+vl5 are 2 dB
+# apart but only 5 under it, and vl3+vl4 are 6 dB apart from each other,
+# which is the version of this that went in first and made a click that
+# alternated between two levels. vl1 and vl2 still have 31 dB over their
+# own noise floor, which survives being brought up.
+if want("crossstick"):
+    process("cross stick", [
+        (f"{RAW}/drums/oh_snare_crossstick_vl{level}.flac",
+         f"{OUT}/drums/cross_stick_{level}.wav", 0.4, 0.12)
+        for level in (1, 2)
+    ], gain=DRUM_GAIN)

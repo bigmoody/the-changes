@@ -11,21 +11,25 @@ import 'package:flutter/material.dart';
 import '../audio/arpeggios.dart';
 import '../audio/backing_synth.dart';
 import '../music/arrangement.dart';
+import '../music/chord.dart' show MinorSign;
 import '../music/chord_drill.dart';
 import '../music/comping.dart';
 import '../music/swing.dart';
 import 'swing_screen.dart' show ridePattern;
+import '../music/meter.dart';
 import '../music/tune.dart';
 import '../music/tuning.dart';
 import '../practice/hiding_the_chart.dart';
 import '../practice/practice_controller.dart';
 import '../practice/practice_record.dart';
+import '../practice/soundfont_store.dart' show SoundFontRole;
 import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
 import 'bring_in_sheet.dart';
 import 'import_recording_sheet.dart';
+import 'sound_shelf.dart';
 
 /// The practice screen's sheets, all opened the same way.
 ///
@@ -36,8 +40,9 @@ import 'import_recording_sheet.dart';
 /// underneath that can't be scrolled away.
 Future<void> practiceSheet(
   BuildContext context,
-  Widget Function(BuildContext context) content,
-) => showModalBottomSheet<void>(
+  Widget Function(BuildContext context) content, {
+  bool scrollbar = false,
+}) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
@@ -52,10 +57,12 @@ Future<void> practiceSheet(
         mainAxisSize: MainAxisSize.min,
         children: [
           Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: content(context),
-            ),
+            child: scrollbar
+                ? _ScrollingWithBar(content: content)
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: content(context),
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
@@ -73,6 +80,46 @@ Future<void> practiceSheet(
     ),
   ),
 );
+
+/// A sheet's content with a scrollbar that is always showing, for a sheet
+/// long enough that what is below the fold looks like it is not there.
+///
+/// The mixer is: with the Done button pinned under it, the sheet looked
+/// as if it ended at the chords, and everything after them, the faders
+/// included, looked as if it had been taken out.
+class _ScrollingWithBar extends StatefulWidget {
+  const _ScrollingWithBar({required this.content});
+
+  final Widget Function(BuildContext context) content;
+
+  @override
+  State<_ScrollingWithBar> createState() => _ScrollingWithBarState();
+}
+
+class _ScrollingWithBarState extends State<_ScrollingWithBar> {
+  // The bar and the list have to share one, or the bar has nothing to
+  // follow and cannot be shown before the first scroll.
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scrollbar(
+    key: const ValueKey('sheet-scrollbar'),
+    controller: _scroll,
+    thumbVisibility: true,
+    child: SingleChildScrollView(
+      controller: _scroll,
+      // Room on the right so the bar does not sit on the controls.
+      padding: const EdgeInsets.fromLTRB(16, 0, 20, 8),
+      child: widget.content(context),
+    ),
+  );
+}
 
 /// What the chart shows, chosen while practising: the key it's written in,
 /// a fingering diagram and a chord tone to aim for. Everything else lives in
@@ -111,6 +158,74 @@ Future<void> showViewOptions(
                     label: Text(diagram.label),
                     selected: settings.diagram == diagram,
                     onSelected: (_) => settings.setDiagram(diagram),
+                  ),
+              ],
+            ),
+            heading('Counted In'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final meter in <Meter?>[null, ...Meter.choices])
+                  ChoiceChip(
+                    key: ValueKey('meter-${meter?.label ?? 'written'}'),
+                    label: Text(meter?.label ?? 'As Written'),
+                    selected: meter == null
+                        ? !controller.meterIsChosen
+                        : controller.meterIsChosen && controller.meter == meter,
+                    onSelected: (_) => controller.setMeter(meter),
+                  ),
+              ],
+            ),
+            if (controller.meterIsChosen)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '${controller.originalTune.title} is written in '
+                  '${controller.originalTune.meter.label}. Counting it '
+                  'another way is your exercise, not the tune: the bars '
+                  'keep their chords and the beats inside them are shared '
+                  'out again, and a bar with more chords than the new one '
+                  'has beats plays the ones that fit.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            heading('Chart Font'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final face in ChartFont.values)
+                  ChoiceChip(
+                    key: ValueKey('font-${face.name}'),
+                    // Each chip in the hand it is offering, so the choice
+                    // is made by reading rather than by guessing.
+                    label: Text(
+                      face.label,
+                      // Size only: the colour is the chip's, which turns
+                      // to paper when it is the one chosen.
+                      style: letteredIn(face, const TextStyle(fontSize: 15)),
+                    ),
+                    selected: settings.chartFont == face,
+                    onSelected: (_) => settings.setChartFont(face),
+                  ),
+              ],
+            ),
+            heading('Minor Chords'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final sign in MinorSign.values)
+                  ChoiceChip(
+                    key: ValueKey('minor-${sign.name}'),
+                    // The chip is the chord itself, written that way, so
+                    // the choice is read rather than described.
+                    label: Text(sign.label),
+                    selected: settings.minorSign == sign,
+                    onSelected: (_) => settings.setMinorSign(sign),
                   ),
               ],
             ),
@@ -285,6 +400,75 @@ String _listenLine(PracticeController controller) {
   };
 }
 
+/// Which of the imported sounds a part plays, chosen without leaving the
+/// tune.
+///
+/// The segments above say piano, guitar or imported; this says which
+/// imported, and opens every sound on the shelf to change it, or the file
+/// picker when there is nothing on the shelf yet.
+class _FromTheShelf extends StatelessWidget {
+  const _FromTheShelf({required this.controller, required this.role});
+
+  final PracticeController controller;
+  final SoundFontRole role;
+
+  bool get _isOn => switch (role) {
+    SoundFontRole.chords => controller.settings.comping == Comping.imported,
+    SoundFontRole.bass => controller.settings.bassSound == BassSound.imported,
+    SoundFontRole.arpeggio =>
+      controller.settings.arpeggioSound == Comping.imported,
+    SoundFontRole.drums => controller.settings.drumSound == DrumSound.imported,
+  };
+
+  Future<void> _putOn() async {
+    // Already on: the setting does not change, so the band is told.
+    if (_isOn) return controller.soundsChanged();
+    switch (role) {
+      case SoundFontRole.chords:
+        await controller.setComping(Comping.imported);
+      case SoundFontRole.bass:
+        await controller.setBassSound(BassSound.imported);
+      case SoundFontRole.arpeggio:
+        await controller.setArpeggioSound(Comping.imported);
+      case SoundFontRole.drums:
+        await controller.setDrumSound(DrumSound.imported);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = SoundFonts.maybeOf(context);
+    if (store == null) return const SizedBox.shrink();
+    final drums = role == SoundFontRole.drums;
+    // Always there, even with nothing brought in yet: each device keeps
+    // its own SoundFonts, and a button that only appears once you have
+    // found the other screen and added one there is a button nobody on a
+    // new device ever sees. With nothing on the shelf it asks for a file.
+    final name = drums ? store.drumsFrom : store.nameFor(role);
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: TextButton.icon(
+        key: ValueKey('shelf-${role.name}'),
+        icon: const Icon(Icons.graphic_eq, size: 18),
+        label: Text(
+          name == null ? 'Choose an Imported Sound' : 'Imported: $name',
+          overflow: TextOverflow.ellipsis,
+        ),
+        onPressed: () async {
+          final done = drums
+              ? await chooseKit(context, store)
+              : await chooseInstrument(context, store, role, offerOurs: false);
+          if (done.outcome == ShelfOutcome.chosen) await _putOn();
+          if (done.problem case final problem? when context.mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(problem)));
+          }
+        },
+      ),
+    );
+  }
+}
+
 /// A bottom sheet with a volume slider, mute and solo for each instrument.
 void showMixer(BuildContext context, PracticeController controller) {
   // As tall as it needs (the arpeggios add a channel), scrolling if the
@@ -295,6 +479,7 @@ void showMixer(BuildContext context, PracticeController controller) {
       listenable: controller,
       builder: (context, _) {
         final theme = Theme.of(context);
+        final shelf = SoundFonts.maybeOf(context);
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,13 +493,16 @@ void showMixer(BuildContext context, PracticeController controller) {
                   child: Text('Mixer', style: theme.textTheme.titleLarge),
                 ),
                 TextButton(
-                  onPressed: controller.resetMix,
+                  key: const ValueKey('mixer-reset'),
+                  onPressed: controller.resetSheet,
                   child: const Text('Reset'),
                 ),
               ],
             ),
             Text(
-              'Mute your own part, or solo one to hear it alone.',
+              'Mute your own part, or solo one to hear it alone. Reset '
+              'puts the band, the levels and the count-in back; the kit '
+              'and who plays the chords are yours and stay.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -345,11 +533,13 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ),
               ],
             ),
+            _FromTheShelf(controller: controller, role: SoundFontRole.chords),
             const SizedBox(height: 8),
             // And who plays the bass, which is only a choice once somebody
             // has imported something for it.
             if (controller.settings.bassSound == BassSound.imported ||
-                controller.hasImportedBass)
+                controller.hasImportedBass ||
+                shelf != null)
               Row(
                 children: [
                   Text('Bass', style: theme.textTheme.titleSmall),
@@ -369,42 +559,76 @@ void showMixer(BuildContext context, PracticeController controller) {
                   ),
                 ],
               ),
+            _FromTheShelf(controller: controller, role: SoundFontRole.bass),
             const SizedBox(height: 8),
-            if (controller.settings.drumSound == DrumSound.imported ||
-                controller.hasImportedDrums)
-              Row(
-                children: [
-                  // "Kit" and not "Drums": there is already a Drums row
-                  // above, and it means the groove rather than the sound.
-                  Text('Kit', style: theme.textTheme.titleSmall),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: SegmentedButton<DrumSound>(
-                      key: const ValueKey('drum-sound'),
-                      showSelectedIcon: false,
-                      segments: [
-                        for (final sound in DrumSound.values)
-                          ButtonSegment(value: sound, label: Text(sound.label)),
-                      ],
-                      selected: {controller.settings.drumSound},
-                      onSelectionChanged: (value) =>
-                          controller.setDrumSound(value.first),
-                    ),
+            // Always shown now there are two kits in the app. It used to
+            // appear only once something had been imported, which was
+            // right when the only other choice was a kit you had to go
+            // and find yourself.
+            Row(
+              children: [
+                // "Kit" and not "Drums": there is already a Drums row
+                // above, and it means the groove rather than the sound.
+                Text('Kit', style: theme.textTheme.titleSmall),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SegmentedButton<DrumSound>(
+                    key: const ValueKey('drum-sound'),
+                    showSelectedIcon: false,
+                    segments: [
+                      for (final sound in controller.kitChoices)
+                        ButtonSegment(value: sound, label: Text(sound.label)),
+                    ],
+                    selected: {controller.settings.drumSound},
+                    onSelectionChanged: (value) =>
+                        controller.setDrumSound(value.first),
                   ),
-                ],
+                ),
+              ],
+            ),
+            _FromTheShelf(controller: controller, role: SoundFontRole.drums),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text('Count-In', style: theme.textTheme.titleSmall),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SegmentedButton<int>(
+                    key: const ValueKey('count-in'),
+                    showSelectedIcon: false,
+                    segments: [
+                      for (final bars in PracticeController.countInChoices)
+                        ButtonSegment(
+                          value: bars,
+                          label: Text(switch (bars) {
+                            0 => 'Off',
+                            1 => '1 Bar',
+                            _ => '2 Bars',
+                          }),
+                        ),
+                    ],
+                    selected: {controller.countInBars},
+                    onSelectionChanged: (value) =>
+                        controller.setCountInBars(value.first),
+                  ),
+                ),
+              ],
+            ),
+            // Two bars is what somebody counting a band in actually
+            // does: "one, two, one two three four". It is eight beats
+            // in four, six in a waltz, and twelve eighths in six eight.
+            Padding(
+              padding: const EdgeInsets.only(top: 4, bottom: 4),
+              child: Text(
+                controller.countInBars == 2
+                    ? 'Two bars of clicks: the count-off.'
+                    : controller.countInBars == 1
+                    ? 'One bar of clicks first.'
+                    : 'The band starts where you do.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
-            SwitchListTile(
-              key: const ValueKey('count-in'),
-              contentPadding: EdgeInsets.zero,
-              secondary: Icon(
-                controller.countIn
-                    ? Icons.timer_outlined
-                    : Icons.timer_off_outlined,
-              ),
-              title: const Text('Count-In'),
-              subtitle: const Text('One bar of clicks first'),
-              value: controller.countIn,
-              onChanged: controller.setCountIn,
             ),
             SwitchListTile(
               key: const ValueKey('arpeggios'),
@@ -441,6 +665,11 @@ void showMixer(BuildContext context, PracticeController controller) {
                 ),
               ),
             if (controller.arpeggios)
+              _FromTheShelf(
+                controller: controller,
+                role: SoundFontRole.arpeggio,
+              ),
+            if (controller.arpeggios)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
@@ -461,6 +690,55 @@ void showMixer(BuildContext context, PracticeController controller) {
                         selected: {controller.settings.arpeggioStart},
                         onSelectionChanged: (value) =>
                             controller.setArpeggioStart(value.first),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (controller.arpeggios)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text('Rate', style: theme.textTheme.titleSmall),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SegmentedButton<ArpeggioRate>(
+                        key: const ValueKey('arpeggio-rate'),
+                        showSelectedIcon: false,
+                        segments: [
+                          for (final rate in ArpeggioRate.values)
+                            ButtonSegment(value: rate, label: Text(rate.label)),
+                        ],
+                        selected: {controller.settings.arpeggioRate},
+                        onSelectionChanged: (value) =>
+                            controller.setArpeggioRate(value.first),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (controller.arpeggios)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Text('Up To', style: theme.textTheme.titleSmall),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SegmentedButton<ArpeggioReach>(
+                        key: const ValueKey('arpeggio-reach'),
+                        showSelectedIcon: false,
+                        segments: [
+                          for (final reach in ArpeggioReach.values)
+                            ButtonSegment(
+                              value: reach,
+                              label: Text(reach.label),
+                            ),
+                        ],
+                        selected: {controller.settings.arpeggioReach},
+                        onSelectionChanged: (value) =>
+                            controller.setArpeggioReach(value.first),
                       ),
                     ),
                   ],
@@ -510,6 +788,7 @@ void showMixer(BuildContext context, PracticeController controller) {
         );
       },
     ),
+    scrollbar: true,
   );
 }
 
@@ -707,6 +986,10 @@ class _TheBand extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
+        // A block that wraps, not a row that scrolls sideways: this is
+        // where a player chooses the groove, and a groove they cannot
+        // see is one they will not find. The sheet itself scrolls, so
+        // the cost of another line here is paid there.
         Wrap(
           spacing: 6,
           runSpacing: 6,
@@ -750,6 +1033,36 @@ class _TheBand extends StatelessWidget {
             ),
           ),
         ),
+        // A groove whose figure takes a bar of four, in a bar that is
+        // not four: the band hands over to one that fits, and says so.
+        // Hearing a calypso chopped into six eight with no explanation
+        // is how this was found in the first place.
+        if (!style.drums.suits(controller.meter))
+          Padding(
+            key: const ValueKey('stands-in'),
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
+            child: Text(
+              '${style.drums.label} is a figure for a bar of four. In '
+              '${controller.meter.label} the band plays '
+              '${style.drums.standIn(controller.meter).label}.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        // A kit that plays nothing looks like one that is broken, so it
+        // says why. Picking any other groove brings the drummer back.
+        if (!style.drums.hasDrums)
+          Padding(
+            key: const ValueKey('no-drummer'),
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
+            child: Text(
+              'No drummer: the guitar\'s chop is the time.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         _BandPart<BassStyle>(
           label: 'Bass',
           value: style.bass,

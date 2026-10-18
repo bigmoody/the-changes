@@ -15,6 +15,11 @@ import UIKit
   /// buttons come back on.
   private var nowPlaying: NowPlayingBridge?
 
+  #if DEBUG
+  /// Hearing other apps, in builds being worked on.
+  private var broadcast: BroadcastBridge?
+  #endif
+
   /// The channel a tapped chart is handed over on.
   private var shared: FlutterMethodChannel?
 
@@ -32,6 +37,11 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NowPlaying") {
       nowPlaying = NowPlayingBridge(messenger: registrar.messenger())
     }
+    #if DEBUG
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "Broadcast") {
+      broadcast = BroadcastBridge(messenger: registrar.messenger())
+    }
+    #endif
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SharedCharts") {
       let shared = FlutterMethodChannel(
         name: "the_changes/shared",

@@ -99,6 +99,7 @@ final standardsBatch8 = <Tune>[
     year: 1937,
     key: 'B♭',
     description: 'Jazz waltz',
+    feel: Feel.jazzWaltz,
     beatsPerBar: 3,
     defaultTempo: 160,
     chart:
@@ -112,6 +113,7 @@ final standardsBatch8 = <Tune>[
     key: 'E minor',
     description: "Coltrane's modal vamp: E minor, then E major",
     tags: {Genre.modal},
+    feel: Feel.jazzWaltz,
     beatsPerBar: 3,
     defaultTempo: 176,
     chart:
@@ -123,6 +125,7 @@ final standardsBatch8 = <Tune>[
     composer: 'Traditional',
     key: 'E minor',
     description: 'Played as a jazz waltz',
+    feel: Feel.jazzWaltz,
     beatsPerBar: 3,
     defaultTempo: 180,
     chart:

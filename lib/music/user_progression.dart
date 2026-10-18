@@ -5,6 +5,7 @@
 // becomes a [Tune] only when it's played.
 
 import 'chord.dart';
+import 'meter.dart';
 import 'tune.dart';
 
 class UserProgression {
@@ -16,15 +17,26 @@ class UserProgression {
     required this.bars,
     required this.style,
     this.composer,
-    this.beatsPerBar = 4,
+    this.written = false,
+    this.meter = Meter.four,
+    int? beatsPerBar,
     Set<Genre>? tags,
     Map<int, String>? sections,
     Map<int, int>? repeats,
     Map<int, int>? endings,
-  }) : tags = tags ?? {},
+  }) : assert(
+         beatsPerBar == null || meter == Meter.four,
+         'say the meter or the beats, not both',
+       ),
+       tags = tags ?? {},
        sections = sections ?? {},
        repeats = repeats ?? {},
-       endings = endings ?? {};
+       endings = endings ?? {} {
+    // A caller can say how many beats a bar has rather than what is
+    // written at the front of the chart, which is how every chart in
+    // quarter notes reads most naturally: beatsPerBar: 3 is a waltz.
+    if (beatsPerBar != null) meter = Meter.ofPulses(beatsPerBar);
+  }
 
   /// A fresh progression: no bars yet, a swing band at 120.
   factory UserProgression.starter({required String id}) => UserProgression(
@@ -51,7 +63,7 @@ class UserProgression {
         composer: tune.composer,
         key: tune.key,
         tempo: tune.defaultTempo,
-        beatsPerBar: tune.beatsPerBar,
+        meter: tune.meter,
         style: tune.style,
         tags: {...tune.tags},
         sections: {...tune.sections},
@@ -69,7 +81,12 @@ class UserProgression {
         tempo: json['tempo'] as int,
         bars: [for (final bar in json['bars'] as List) bar as String],
         composer: json['composer'] as String?,
-        beatsPerBar: json['beats'] as int? ?? 4,
+        written: json['written'] as bool? ?? false,
+        // Saved before meters were written down: every one of them was
+        // counted in quarter notes.
+        meter:
+            Meter.parse(json['meter'] as String? ?? '') ??
+            Meter.ofPulses(json['beats'] as int? ?? 4),
         style: BandStyle(
           drums: Feel.values.byName(json['drums'] as String),
           bass: BassStyle.values.byName(json['bass'] as String),
@@ -104,11 +121,27 @@ class UserProgression {
   /// Who wrote it, if anyone's named: an imported tune's composer.
   String? composer;
 
-  /// Beats in a bar: 4 for 4/4, 3 for a waltz.
-  int beatsPerBar;
+  /// Whether it was written here, with New Progression, rather than
+  /// imported from iReal Pro, copied out of the book or made for a lick.
+  /// It is what My Changes calls Mine.
+  ///
+  /// Only known from when it started being written down: anything saved
+  /// before then reads as not written here, because there is no telling.
+  bool written;
 
-  /// The time signatures to choose from, as beats in a bar.
-  static const meters = [4, 3, 5];
+  /// The time signature on the chart: 4/4, a waltz, six eight.
+  Meter meter;
+
+  /// What the band counts in a bar, which is the written beats except in
+  /// compound time: a bar of 6/8 is counted in two.
+  ///
+  /// Setting it says the chart is in quarter notes, which is the only
+  /// meter it can say: six eight has to be set as a meter.
+  int get beatsPerBar => meter.pulses;
+  set beatsPerBar(int beats) => meter = Meter.ofPulses(beats);
+
+  /// The time signatures to choose from.
+  static const meters = Meter.choices;
 
   /// e.g. "B♭" or "C minor": decides how chords are spelled when the key is
   /// changed, and what B♭ and E♭ players see.
@@ -240,17 +273,26 @@ class UserProgression {
     };
   }
 
-  /// Up to four chords can share a bar (one a beat).
+  /// Up to four chords can share a bar of 4/4 (one a beat). A bar of
+  /// another meter holds its own number of beats: see [problemWith].
   static const maxChordsPerBar = 4;
 
-  /// "4/4", "3/4" …
-  String get meter => '$beatsPerBar/4';
+  /// The bars with more chords than this meter has beats, by bar number
+  /// (1 for the first), so the editor can say which bars no longer fit
+  /// before the extra chords are dropped from the chart.
+  List<int> get crowdedBars => [
+    for (var i = 0; i < bars.length; i++)
+      if (symbolsIn(bars[i]).length > beatsPerBar) i + 1,
+  ];
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
     if (composer != null) 'composer': composer,
-    if (beatsPerBar != 4) 'beats': beatsPerBar,
+    if (written) 'written': true,
+    // Both, so a chart saved here still opens in a version that only
+    // knew how many beats a bar had: 'beats' is what the band counts.
+    if (meter != Meter.four) ...{'beats': beatsPerBar, 'meter': meter.label},
     'key': key,
     'tempo': tempo,
     'bars': bars,
@@ -282,11 +324,17 @@ class UserProgression {
       .toList();
 
   /// What's wrong with a bar's chords, or null if they're fine.
-  static String? problemWith(String bar) {
+  ///
+  /// A bar holds one chord a beat at the most, so the limit is the meter's:
+  /// four in 4/4, three in a waltz. A fifth chord in 4/4 has no beat to
+  /// sound on, and the band is never given a chord that lasts no time.
+  static String? problemWith(String bar, {Meter meter = Meter.four}) {
     final symbols = symbolsIn(bar);
     if (symbols.isEmpty) return 'A bar needs at least one chord';
-    if (symbols.length > maxChordsPerBar) {
-      return 'At most $maxChordsPerBar chords in a bar';
+    // One chord a beat, and in compound time the beat is the pulse: a
+    // bar of 6/8 is two, not six, because that is what it is counted in.
+    if (symbols.length > meter.pulses) {
+      return 'At most ${meter.pulses} chords in a bar of ${meter.label}';
     }
     for (final symbol in symbols) {
       try {
@@ -301,7 +349,8 @@ class UserProgression {
   /// Ready to play: a title (or a stand-in), at least one bar, every bar
   /// valid.
   bool get isPlayable =>
-      bars.isNotEmpty && bars.every((bar) => problemWith(bar) == null);
+      bars.isNotEmpty &&
+      bars.every((bar) => problemWith(bar, meter: meter) == null);
 
   String get displayTitle => title.trim().isEmpty ? 'Untitled' : title.trim();
 
@@ -318,7 +367,7 @@ class UserProgression {
     feel: style.drums,
     style: style,
     tags: tags,
-    beatsPerBar: beatsPerBar,
+    meter: meter,
     chart: '| ${_playedBars().join(' | ')} |',
   );
 

@@ -17,6 +17,10 @@
 // a repeated section as ×2, and 1st and 2nd endings as endings, so it opens
 // in the editor looking like the chart it came from.
 
+import 'dart:convert';
+
+import 'meter.dart';
+
 import 'chord.dart';
 import 'tune.dart';
 import 'user_progression.dart';
@@ -47,14 +51,49 @@ List<ImportedSong> parseIrealPro(String text) => [
     ..._parseLink(match[0]!),
 ];
 
+/// [text] with its percent escapes decoded, leaving a stray `%` alone.
+///
+/// [Uri.decodeComponent] is all or nothing: one `%` that is not an
+/// escape and it throws, and the whole link was then read exactly as it
+/// arrived. A link whose separators are already literal still parses
+/// that way, so the songs came through with their titles untouched:
+/// "Blues%20One, 100%%20proof" and a style of "Medium%20Swing". A per
+/// cent sign in one song's name was enough to do it to every song in
+/// the playlist.
+///
+/// Decoded a byte at a time so that one bad escape costs only itself,
+/// and through UTF-8 so an accented title survives, its letters
+/// arriving as two escapes apiece.
+String decodeEscapes(String text) {
+  final out = StringBuffer();
+  final bytes = <int>[];
+  void flush() {
+    if (bytes.isEmpty) return;
+    out.write(utf8.decode(bytes, allowMalformed: true));
+    bytes.clear();
+  }
+
+  for (var i = 0; i < text.length;) {
+    if (text[i] == '%' &&
+        i + 2 < text.length &&
+        _hex.hasMatch(text.substring(i + 1, i + 3))) {
+      bytes.add(int.parse(text.substring(i + 1, i + 3), radix: 16));
+      i += 3;
+      continue;
+    }
+    flush();
+    out.write(text[i]);
+    i++;
+  }
+  flush();
+  return out.toString();
+}
+
+final _hex = RegExp(r'^[0-9a-fA-F]{2}$');
+
 List<ImportedSong> _parseLink(String link) {
   final scrambled = link.startsWith('irealb://');
-  var body = link.substring(link.indexOf('://') + 3);
-  try {
-    body = Uri.decodeComponent(body);
-  } on ArgumentError {
-    // Already decoded, or a stray %: read it as it is.
-  }
+  final body = decodeEscapes(link.substring(link.indexOf('://') + 3));
   final songs = <ImportedSong>[];
   for (final part in body.split('===')) {
     final song = _parseSong(part, scrambled: scrambled);
@@ -106,18 +145,12 @@ ImportedSong? _parseSong(String text, {required bool scrambled}) {
 
   final notes = <String>[...chart.notes];
   final feel = _feelOf(style);
-  // 3/4, 5/4 and the like play as they're written; the compound ones
-  // (6/8, 12/8) have no groove of their own yet.
-  final beats = switch (chart.timeSignature) {
-    '3/4' => 3,
-    '2/4' => 2,
-    '5/4' => 5,
-    '6/4' => 6,
-    '7/4' => 7,
-    _ => 4,
-  };
+  // Whatever the chart says, where the app can count it. 6/8 and 12/8
+  // come over as themselves now, felt in two and in four; what is left
+  // over (9/8, and anything stranger) plays in 4/4 and says so.
+  final meter = Meter.parse(chart.timeSignature) ?? Meter.four;
   final progression = chart.toProgression()
-    ..beatsPerBar = beats
+    ..meter = meter
     ..title = title
     ..composer = composer
     ..tempo = tempo ?? _tempoOf(style)
@@ -125,7 +158,7 @@ ImportedSong? _parseSong(String text, {required bool scrambled}) {
     ..tags = _tagsOf(style);
   progression.key =
       _keyOf(keyField.trim()) ?? UserProgression.guessKey(progression.bars);
-  if (chart.timeSignature != '4/4' && beats == 4) {
+  if (chart.timeSignature != '4/4' && meter == Meter.four) {
     notes.add('In ${chart.timeSignature}: plays in 4/4 for now');
   }
   return ImportedSong(progression: progression, style: style, notes: notes);
@@ -533,6 +566,15 @@ Feel _feelOf(String style) {
   final s = style.toLowerCase();
   bool any(List<String> words) => words.any(s.contains);
   if (any(['calypso', 'soca', 'reggae', 'ska'])) return Feel.calypso;
+  // Before the rest of the Latin names: iReal Pro's own style for this
+  // is "Afro 12/8", and an afro anything else is a bossa to us.
+  if (any(['afro 12', 'afro 6', '12/8', '6/8'])) return Feel.afroSix;
+  // Before the Latin names, so an Afro waltz is still played in three.
+  if (any(['waltz', '3/4'])) return Feel.jazzWaltz;
+  if (any(['second line', 'new orleans', 'dixieland', 'trad'])) {
+    return Feel.secondLine;
+  }
+  if (any(['gypsy', 'manouche', 'django'])) return Feel.gypsy;
   if (any([
     'bossa', 'latin', 'samba', 'afro', 'cuban', 'mambo', 'cha', 'rhumba', //
     'rumba', 'bolero', 'salsa', 'montuno', 'songo', 'tango', 'baiao',
@@ -545,6 +587,9 @@ Feel _feelOf(String style) {
   ])) {
     return Feel.funk;
   }
+  // Last, so that a Latin or even-eighths ballad keeps its own groove
+  // and only a swung one comes here.
+  if (any(['ballad', 'slow swing'])) return Feel.ballad;
   return Feel.swing;
 }
 

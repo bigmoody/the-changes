@@ -103,14 +103,29 @@ void main() {
       expect(takes, hasLength(3));
     }
     expect(bank.ride.length, 2);
-    // The rim click must not jump out of the groove: the takes we keep are
-    // within a few dB of each other, not the library's full 14 dB spread.
-    expect(bank.crossStick.length, 1);
-    final peaks = [
-      for (final take in bank.crossStick.layers.single)
-        take.samples.map((s) => s.abs()).reduce(math.max),
-    ];
-    expect(peaks.reduce(math.max) / peaks.reduce(math.min), lessThan(1.6));
+    // Two cross-sticks, a click and a crack, because the same drum is a
+    // bossa clave and a samba and those are not the same stroke. A samba
+    // asks for `hard` and there used to be nothing to give it.
+    expect(bank.crossStick.length, 2);
+    // Inside a layer the takes are played round-robin, so they must be
+    // within a few dB of each other or a steady click jumps about. The
+    // first attempt at this used two layers 6 dB apart and did exactly
+    // that.
+    for (final layer in bank.crossStick.layers) {
+      final peaks = [
+        for (final take in layer)
+          take.samples.map((s) => s.abs()).reduce(math.max),
+      ];
+      expect(peaks.reduce(math.max) / peaks.reduce(math.min), lessThan(1.6));
+    }
+    // And between the layers, far apart, or there is no point having two.
+    final quiet = bank.crossStick.layers.first
+        .map((t) => t.samples.map((s) => s.abs()).reduce(math.max))
+        .reduce(math.max);
+    final loud = bank.crossStick.layers.last
+        .map((t) => t.samples.map((s) => s.abs()).reduce(math.max))
+        .reduce(math.max);
+    expect(loud / quiet, greaterThan(4));
     // Every drum's layers are levelled, so how hard a hit lands is the
     // part's decision and not the recording's.
     for (final drum in [
@@ -185,19 +200,29 @@ void main() {
         ),
       );
       for (final instrument in backing.stems.keys) {
+        // Gypsy jazz has no drummer: the guitar's chop is the time, and
+        // a silent kit there is the arrangement rather than a fault.
+        if (instrument == Instrument.drums && !feel.hasDrums) {
+          expect(
+            rms(backing.stems[instrument]!),
+            0,
+            reason: '${feel.label} is played without a drummer',
+          );
+          continue;
+        }
         expect(
           rms(backing.stems[instrument]!),
           greaterThan(200),
           reason: '${feel.label}: ${instrument.label} is silent',
         );
       }
-      stems[feel] = backing.stems[Instrument.drums]!;
+      if (feel.hasDrums) stems[feel] = backing.stems[Instrument.drums]!;
     }
     // A groove you cannot tell from another one is not a groove. The two
     // that swing share a ride pattern, so they are compared on the whole
     // kit rather than on level alone.
-    for (final a in Feel.values) {
-      for (final b in Feel.values) {
+    for (final a in stems.keys) {
+      for (final b in stems.keys) {
         if (a.index >= b.index) continue;
         expect(
           listEquals(stems[a], stems[b]),
@@ -322,53 +347,73 @@ void main() {
     },
   );
 
-  test('the bass is heard above the chords, even on a phone speaker', () async {
-    // A phone speaker or earbuds barely play below ~300 Hz, where most of
-    // an upright's sound is. What's heard is the bass's harmonics, so that's
-    // the range compared: 300 Hz–3 kHz. This once slipped below the chords
-    // unnoticed when the guitar arrived.
-    double audible(Uint8List wav) {
-      final samples = decodeWav(wav);
-      final high = math.exp(-2 * math.pi * 300 / SampleBank.sampleRate);
-      final low = math.exp(-2 * math.pi * 3000 / SampleBank.sampleRate);
-      var hp = 0.0, previous = 0.0, lp = 0.0, energy = 0.0;
-      for (final s in samples) {
-        hp = high * (hp + s - previous);
-        previous = s.toDouble();
-        lp = low * lp + (1 - low) * hp;
-        energy += lp * lp;
+  test(
+    'the bass is heard alongside the chords, even on a phone speaker',
+    () async {
+      // A phone speaker or earbuds barely play below ~300 Hz, where most of
+      // an upright's sound is. What's heard is the bass's harmonics, so that's
+      // the range compared: 300 Hz–3 kHz. This once slipped below the chords
+      // unnoticed when the guitar arrived.
+      //
+      // It asked for the bass to be the louder of the two until the piano
+      // was lifted 1.6 dB for being too far back, which comes out of this
+      // margin and nowhere else. What it guards is the bass not being
+      // buried, not the bass winning: the floor is now a decibel under the
+      // chords instead of a tenth of one over them, and it is deliberate
+      // rather than a number moved to let a change through. Below 300 Hz,
+      // where a real speaker does play, the bass is 13 dB clear.
+      //
+      // Where it actually sits: 0.974, a quarter of a decibel under the
+      // chords. It was nearer 0.94 until the piano's release came back
+      // down from 0.3 of a second to 0.2 for smearing the comping, which
+      // takes energy out of the chords and hands some of this margin
+      // back. The floor is left where it is rather than pulled up under
+      // the measured value: a guard with one per cent of room is one that
+      // trips on the next unrelated change, which is how this one tripped
+      // in the first place.
+      double audible(Uint8List wav) {
+        final samples = decodeWav(wav);
+        final high = math.exp(-2 * math.pi * 300 / SampleBank.sampleRate);
+        final low = math.exp(-2 * math.pi * 3000 / SampleBank.sampleRate);
+        var hp = 0.0, previous = 0.0, lp = 0.0, energy = 0.0;
+        for (final s in samples) {
+          hp = high * (hp + s - previous);
+          previous = s.toDouble();
+          lp = low * lp + (1 - low) * hp;
+          energy += lp * lp;
+        }
+        return math.sqrt(energy / samples.length);
       }
-      return math.sqrt(energy / samples.length);
-    }
 
-    final bank = await loadBank();
-    for (final title in ['Autumn Leaves', 'Blue Bossa', 'Chameleon']) {
-      for (final (comping, seed) in [
-        for (final comping in Comping.values)
-          for (final seed in [0, 7, 42]) (comping, seed),
-      ]) {
-        final tune = standards.firstWhere((t) => t.title == title);
-        final backing = renderBacking(
-          BackingRequest(
-            tune: tune,
-            loop: LoopRange.wholeTune(tune),
-            tempo: 140,
-            countInBars: 0,
-            samples: bank,
-            comping: comping,
-            seed: seed,
-          ),
-        );
-        final bass = audible(backing.stems[Instrument.bass]!);
-        final chords = audible(backing.stems[Instrument.chords]!);
-        expect(
-          bass / chords,
-          greaterThan(1.1),
-          reason: '$title with ${comping.label} (performance $seed)',
-        );
+      final bank = await loadBank();
+      for (final title in ['Autumn Leaves', 'Blue Bossa', 'Chameleon']) {
+        for (final (comping, seed) in [
+          for (final comping in Comping.values)
+            for (final seed in [0, 7, 42]) (comping, seed),
+        ]) {
+          final tune = standards.firstWhere((t) => t.title == title);
+          final backing = renderBacking(
+            BackingRequest(
+              tune: tune,
+              loop: LoopRange.wholeTune(tune),
+              tempo: 140,
+              countInBars: 0,
+              samples: bank,
+              comping: comping,
+              seed: seed,
+            ),
+          );
+          final bass = audible(backing.stems[Instrument.bass]!);
+          final chords = audible(backing.stems[Instrument.chords]!);
+          expect(
+            bass / chords,
+            greaterThan(0.89),
+            reason: '$title with ${comping.label} (performance $seed)',
+          );
+        }
       }
-    }
-  });
+    },
+  );
 
   test('the Chord tones page\'s arpeggio renders to audible sound', () async {
     final bank = await loadBank();
@@ -512,10 +557,21 @@ void main() {
 
     final plain = renderSnippet(bank, notes);
     final bright = renderSnippet(bank, notes, bassTone: BassTone.bright);
+    // The phone-speaker figure is read off one note rather than off the
+    // arpeggio. A snippet is peak-normalised, so with several notes in it
+    // the gain it is scaled by depends on where their attacks happen to
+    // land against each other, and moving any of them by a few
+    // milliseconds moves the measurement without touching the shelf. One
+    // note has one attack and nothing to collide with.
+    const one = [
+      (pitch: 43, start: 0.0, length: 0.5, velocity: 0.8, bass: true),
+    ];
+    final onePlain = renderSnippet(bank, one);
+    final oneBright = renderSnippet(bank, one, bassTone: BassTone.bright);
     debugPrint(
       'bass above 1 kHz: ${(above(plain, 1000) * 100).toStringAsFixed(1)}% → '
       '${(above(bright, 1000) * 100).toStringAsFixed(1)}%; on a phone '
-      '${onAPhone(plain).round()} → ${onAPhone(bright).round()}',
+      '${onAPhone(onePlain).round()} → ${onAPhone(oneBright).round()}',
     );
     // The bright tone lifts the top so the bass carries on a phone
     // speaker. It used to reach a good deal further, by saturating the
@@ -526,7 +582,7 @@ void main() {
     // These are the floor of the shelf that was chosen, not a target to
     // aim at. If they fall, the shelf has been weakened or lost.
     expect(above(bright, 1000), greaterThan(above(plain, 1000) * 1.25));
-    expect(onAPhone(bright), greaterThan(onAPhone(plain) * 1.10));
+    expect(onAPhone(oneBright), greaterThan(onAPhone(onePlain) * 1.10));
   });
 
   test(

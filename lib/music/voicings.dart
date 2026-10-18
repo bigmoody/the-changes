@@ -85,6 +85,89 @@ List<List<int>> voicingsFor(Chord chord, {Chord? resolvingTo}) {
   ];
 }
 
+/// The quartal voicings of [chord], low to high, or null for a chord they
+/// do not suit.
+///
+/// Stacked fourths rather than a rootless shell: on a modal tune the
+/// rootless voicings are not wrong, they are just not the sound. Sixteen
+/// bars of one chord is not held up by saying which chord it is, which is
+/// what a 3rd and a 7th are for. It is held up by the colour of the
+/// stack, and that is why the record everybody knows this tune from is
+/// built on fourths.
+///
+/// The two are not alternatives, they are the two ends of one move, and
+/// the order is the order it is played in.
+///
+/// The first is the "So What" chord itself, as Bill Evans plays it in the
+/// answering figure to the head: on D minor, E A D G B, three perfect
+/// fourths with a major third on top. In the comping range it lands where
+/// he plays it, E3 up to B4. The second is the same shape slid down a
+/// whole step, D G C F A.
+///
+/// What makes it work is that the shape never changes. Over an E bass
+/// those first five notes read as Em11; over a D bass the second five
+/// read as Dm11, D the root, F the ♭3, A the 5th, C the ♭7 and G the
+/// 11th. The stack has no 3rd and no 7th of its own to argue with either
+/// reading, which is why one shape can be slid about and still belong.
+/// See [slideFor] for playing it as the move rather than as a choice.
+///
+/// Only for minor sevenths, which is what a dorian vamp is made of. A
+/// fourth stack over a dominant or a major seventh is a different idea
+/// and not this one, so those keep the voicings they had.
+List<List<int>>? quartalVoicingsFor(Chord chord) {
+  final intervals = chord.quality.intervals;
+  final isMinorSeventh =
+      intervals.contains(3) &&
+      intervals.contains(10) &&
+      !intervals.contains(6); // a half-diminished is not a dorian chord
+  if (!isMinorSeventh) return null;
+  // In four keys of the twelve the first form comes out with its bottom
+  // note a semitone or two under [compLowest]. That is [_stack] keeping
+  // the top note inside the range and letting the bottom give, and it is
+  // the right way round: the alternative is the whole shape an octave up,
+  // where comping turns shrill. The range was drawn for the four-note
+  // rootless voicings, and a five-note stack of fourths is 19 semitones
+  // wide where those are 10 or 11, so it does not always have an octave
+  // to sit in. Two semitones below C3 is still well clear of the bass.
+  return [
+    // 9th, 5th, octave, 11th, 13th.
+    _stack(chord.root, const [2, 7, 12, 17, 21]),
+    // Root, 11th, ♭7th, ♭3rd, 5th: the same shape, started on the root.
+    _stack(chord.root, const [0, 5, 10, 15, 19]),
+  ];
+}
+
+/// The quartal shape that sits *on* [chord]: where the hand rests, and
+/// where a slide lands. Null for a chord with no quartal voicing.
+///
+/// The one above it is not an alternative to this and must never be left
+/// sounding on its own. On So What the piano rode the upper shape for
+/// bars at a time and only sometimes came back, because the voicing
+/// picker was handed both and chose whichever was nearer the hand. The
+/// figure is a fall, so the top of it is somewhere you are on the way
+/// through and this is the only place to stop.
+List<int>? quartalHomeFor(Chord chord) => quartalVoicingsFor(chord)?[1];
+
+/// The quartal slide: the shape a whole step above [chord], falling to the
+/// shape on it. Null for a chord that has no quartal voicing.
+///
+/// This is the figure So What is made of, and it is a gesture rather than
+/// a pair of voicings to pick from. Evans answers the melody with it in
+/// the gaps: the shape a tone up, then the same shape dropped a tone onto
+/// the chord. Side-slipping, or planing. Played as two separate choices
+/// it is neither, just two voicings of one chord that happen to be a tone
+/// apart, which is what this app did before.
+({List<int> from, List<int> to})? slideFor(Chord chord) {
+  final forms = quartalVoicingsFor(chord);
+  if (forms == null) return null;
+  // The upper shape has to be above the one it falls to, or it is not a
+  // fall. In the keys where the stacking drops the first form an octave
+  // to keep its top note in range, it comes out below the second, and
+  // there the move is not available.
+  if (forms[0].first <= forms[1].first) return null;
+  return (from: forms[0], to: forms[1]);
+}
+
 /// Stacks [degrees] (semitones above [root]) upwards into a close voicing
 /// sitting in the comping range.
 List<int> _stack(int root, List<int> degrees) {

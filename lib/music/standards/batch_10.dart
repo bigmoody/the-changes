@@ -67,6 +67,7 @@ final standardsBatch10 = <Tune>[
     composer: 'Traditional',
     key: 'D minor',
     description: 'Gypsy jazz, 16 bars',
+    feel: Feel.gypsy,
     defaultTempo: 200,
     chart:
         '| Dm | Dm | A7 | A7 | A7 | A7 | Dm | Dm '
@@ -100,6 +101,7 @@ final standardsBatch10 = <Tune>[
     composer: 'Traditional',
     key: 'F',
     description: 'New Orleans, 16 bars',
+    feel: Feel.secondLine,
     defaultTempo: 92,
     chart:
         '| F6 | F6 | F6 | F6 | C7 | C7 | C7 | C7 '
@@ -124,6 +126,7 @@ final standardsBatch10 = <Tune>[
     year: 1937,
     key: 'A minor',
     description: 'Gypsy jazz, 16 bars',
+    feel: Feel.gypsy,
     defaultTempo: 210,
     chart:
         '| $_minorSwingA '
@@ -235,6 +238,7 @@ final standardsBatch10 = <Tune>[
     composer: 'Traditional',
     key: 'F',
     description: 'New Orleans, 16 bars',
+    feel: Feel.secondLine,
     defaultTempo: 190,
     chart:
         '| F6 | F6 | F6 | F6 | C7 | C7 | C7 | C7 '

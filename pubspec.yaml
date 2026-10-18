@@ -73,6 +73,7 @@ flutter:
     - assets/sounds/bass/
     - assets/sounds/piano/
     - assets/sounds/drums/
+    - assets/sounds/drums_brushes/
     - assets/sounds/guitar/
 
   # Petaluma Script, Steinberg's hand-lettered jazz font, for chord symbols

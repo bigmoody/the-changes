@@ -142,6 +142,8 @@ class GuitarComper {
     int tempo = 120,
     CompFigure? figure,
     int beatsPerBar = 4,
+    bool startsSection = false,
+    bool intoSection = false,
     required double swing,
   }) {
     if (style == PianoStyle.swing) {
@@ -155,6 +157,8 @@ class GuitarComper {
           figure: figure,
           beatInBar: beatInBar,
           beatsPerBar: beatsPerBar,
+          startsSection: startsSection,
+          intoSection: intoSection,
           swing: swing,
         ))
           (
@@ -173,9 +177,18 @@ class GuitarComper {
     }
     final voicing = _comper.voice(chord, next);
     if (voicing.isEmpty) return const [];
-    final notes = groove == Feel.funk && style == PianoStyle.straight
-        ? voicing.sublist(voicing.length - 3) // small, high shapes
-        : voicing;
+    final notes = switch (style) {
+      PianoStyle.straight when groove == Feel.funk => voicing.sublist(
+        voicing.length - 3,
+      ), // small, high shapes
+      // La pompe is played on small grips, three or four strings of it.
+      // There is a bassist for the bottom, and a chop that has to be in
+      // and out inside a fraction of a beat cannot be six strings wide:
+      // the low ones arrive late and the chord blurs where it should
+      // crack.
+      PianoStyle.laPompe => voicing.sublist(math.max(0, voicing.length - 4)),
+      _ => voicing,
+    };
 
     if (style == PianoStyle.held) {
       return [
@@ -235,6 +248,33 @@ class GuitarComper {
                 (2.5, 0.4, 0.75, Strum.up),
                 (3.5, 0.45, 0.8, Strum.up),
               ];
+      case PianoStyle.laPompe:
+        // "The pump": four downstrokes a bar, all of them short, with 2
+        // and 4 the ones that carry. The accent comes from the arm
+        // dropping rather than from a harder pick, and the left hand
+        // mutes straight after the stroke, which is where the drum-like
+        // sound comes from and why the lengths here are so short.
+        //
+        // The quick upstroke that lifts into 1 and 3 is a grace note,
+        // and a grace note is a length of time rather than a fraction of
+        // a beat: it is "played very quickly no matter what the tempo
+        // is". So it is twenty-five milliseconds before the stroke it
+        // leads to, worked back into beats at this tempo. Written as a
+        // fixed fraction of a beat it dragged further and further off
+        // the beat as the tempo came down, which is the sound of a
+        // player who is not quite with it.
+        //
+        // The lift into beat 1 belongs to the bar before, which is where
+        // it sounds, so each bar carries the one into the next.
+        final grace = 0.025 * tempo / 60;
+        return [
+          (0, 0.22, 0.62, Strum.down),
+          (1, 0.3, 0.85, Strum.down),
+          (2 - grace, 0.08, 0.28, Strum.up),
+          (2, 0.22, 0.62, Strum.down),
+          (3, 0.3, 0.85, Strum.down),
+          (4 - grace, 0.08, 0.28, Strum.up),
+        ];
       case PianoStyle.held || PianoStyle.swing:
         return const [];
       case PianoStyle.straight when groove == Feel.funk && tempo < 95:

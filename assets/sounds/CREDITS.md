@@ -11,10 +11,40 @@ The files were trimmed and converted to mono 16-bit WAV with
 | Piano | [Salamander Grand Piano V3](https://github.com/sfzinstruments/SalamanderGrandPiano) | Alexander Holm | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) – **attribution required** (shown in the app's About screen) |
 | Guitar | [Emilyguitar](https://github.com/sfzinstruments/karoryfer.emilyguitar) (flatwound strings, direct) | Karoryfer Samples (played by D. Smolken) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
 | Drums | [Virtuosity Drums](https://github.com/sfzinstruments/virtuosity_drums) | Versilian Studios & Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
+| Drums, brushes | [Swirly Drums](https://github.com/sfzinstruments/karoryfer.swirly-drums) | Karoryfer Samples | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) – no attribution required |
+
+The funk kick is the same Virtuosity drum through the microphone inside
+it, trimmed to 0.4 s where the overhead kick is 0.7 s, and normalised to a
+peak of 0.55 rather than to the overheads' balance: the overhead kick
+peaks at 0.077 against the snare's 1.0, which is correct for a kick heard
+across a room and 22 dB under what a funk groove needs.
+
+The funk snare is the same Virtuosity drum through its close microphone
+rather than the overheads, trimmed to 0.35 s where the overhead snare is
+0.7 s, and normalised to the overhead snare's peak so that only the tone
+differs.
+
+The brush swirl is cut from the library's long stirring takes, which run
+6 to 13 seconds and are meant for a sampler to loop. Each slice is one
+circle, two beats, shaped the way the circle is played: the backward half
+long and quiet, the forward half building into the downbeat. It runs 20
+per cent past its circle and decays so that consecutive circles overlap
+rather than butt against each other, and the band stretches it to the
+tempo.
+
+The brush kit is normalised drum by drum to the peak of the stick kit's
+matching drum rather than as one group. The grooves' velocities were
+written against the stick kit's balance, which is what an overhead
+microphone hears: the snare cracks and the kick, across the room, is the
+quietest thing there. Matching it means changing kit changes the tone and
+not the arrangement.
 
 Changes made to the Salamander samples (as CC BY asks us to note): trimmed
-to 3 seconds with a fade-out, mixed to mono, resampled to 44.1 kHz and
-converted to 16-bit.
+to between 3.5 and 8 seconds depending on the register, with a fade-out of a
+fifth of that, mixed to mono, resampled to 44.1 kHz and converted to 16-bit.
+The recordings run 13 to 16 seconds; the lengths kept put every note about
+36 dB down before its fade begins, so a low C keeps the tail it still has
+at 3 seconds and an A above middle C is not padded with silence.
 
 ## Lettering and notation
 
