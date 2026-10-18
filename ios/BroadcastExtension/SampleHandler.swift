@@ -40,9 +40,18 @@ class SampleHandler: RPBroadcastSampleHandler {
   /// ends without saying so still leaves most of it behind.
   private static let keepEvery = 5.0
 
-  private let folder = FileManager.default.containerURL(
-    forSecurityApplicationGroupIdentifier: theGroup
-  )
+  /// The group's Library rather than its top: Xcode's tools can copy
+  /// files off a phone from there, and not from the top.
+  private let folder: URL? = {
+    guard
+      let group = FileManager.default.containerURL(
+        forSecurityApplicationGroupIdentifier: theGroup
+      )
+    else { return nil }
+    let library = group.appendingPathComponent("Library", isDirectory: true)
+    try? FileManager.default.createDirectory(at: library, withIntermediateDirectories: true)
+    return library
+  }()
 
   /// One at a time, off the thread the sound arrives on.
   private let writer = DispatchQueue(label: "the_changes.broadcast.writer")

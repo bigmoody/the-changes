@@ -15,9 +15,10 @@ final class BroadcastBridge {
   /// pressed for the person when they press the app's.
   private var picker: RPSystemBroadcastPickerView?
 
+  /// Where the extension writes: the group's Library.
   private let folder = FileManager.default.containerURL(
     forSecurityApplicationGroupIdentifier: "group.com.yaseminbridges.playAlong"
-  )
+  )?.appendingPathComponent("Library", isDirectory: true)
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
