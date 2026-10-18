@@ -39,11 +39,7 @@ final class BeatTracker {
   /// The beats and barlines in [sound], at 22050 Hz, in seconds from its
   /// start. Shorter sound is heard as silence before it.
   func track(_ sound: [Float]) throws -> (beats: [Double], downbeats: [Double]) {
-    var window = sound.suffix(BeatTracker.samples).map { $0 }
-    if window.count < BeatTracker.samples {
-      window = [Float](repeating: 0, count: BeatTracker.samples - window.count) + window
-    }
-    let spectrogram = mel(window)
+    let spectrogram = mel(BeatTracker.window(sound))
     let length = BeatTracker.frames + 2 * BeatTracker.border
     let input = try MLMultiArray(
       shape: [1, NSNumber(value: length), NSNumber(value: LogMel.bands)],
@@ -68,6 +64,16 @@ final class BeatTracker {
     }
     downbeats = Array(Set(downbeats)).sorted()
     return (beats, downbeats)
+  }
+
+  /// The window the model hears of [sound]: its last [samples], with
+  /// silence before it if it is shorter. Times it finds are from its start.
+  static func window(_ sound: [Float]) -> [Float] {
+    var window = sound.suffix(samples).map { $0 }
+    if window.count < samples {
+      window = [Float](repeating: 0, count: samples - window.count) + window
+    }
+    return window
   }
 
   /// [sound] at [rate] made into 22050 Hz, the rate the model hears at.

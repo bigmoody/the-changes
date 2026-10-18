@@ -46,6 +46,7 @@ import 'package:flutter/services.dart';
 import '../audio/other_apps.dart';
 import '../audio/room_listener.dart';
 import '../practice/chart_follower.dart';
+import '../practice/form_finder.dart';
 import '../practice/practice_controller.dart';
 import '../practice/tap_follower.dart';
 import '../theme.dart';
@@ -91,6 +92,12 @@ class _StageScreenState extends State<StageScreen> {
   /// Following by taps, once it has been turned on.
   TapFollower? _taps;
   var _tapping = false;
+
+  /// Where in the tune the band is, by ear, while following another app.
+  FormFinder? _form;
+
+  /// Whether the ear has moved the count to the bar it heard.
+  var _placedByEar = false;
 
   /// The ear says whether it is listening, so the screen and the
   /// microphone cannot disagree about it.
@@ -164,9 +171,14 @@ class _StageScreenState extends State<StageScreen> {
     if (_hearingOthers) {
       others
         ..stopReading()
-        ..onBarline = null;
+        ..onBarline = null
+        ..onBar = null;
       unawaited(others.stopFollowing());
-      setState(() => _hearingOthers = false);
+      _form?.clear();
+      setState(() {
+        _hearingOthers = false;
+        _placedByEar = false;
+      });
       _keepTapsWithOthers();
       return;
     }
@@ -175,11 +187,26 @@ class _StageScreenState extends State<StageScreen> {
       // Only while following by taps: turned off, the count stays off.
       ..onBarline = (ago) {
         if (_tapping) _taps?.heardBarline(ago);
-      };
+      }
+      ..onBar = _heardBar;
     setState(() => _hearingOthers = true);
     if (!_tapping) await _toggleTapping();
     _keepTapsWithOthers();
     await others.follow();
+  }
+
+  /// A bar heard whole: put with the others, and the count moved to the
+  /// bar of the tune they say the band is in, unless a bar was tapped.
+  void _heardBar(Duration ago, List<double> pitches) {
+    final taps = _taps;
+    if (!_tapping || taps == null) return;
+    final form = _form ??= FormFinder(tune: controller.tune);
+    form.heard(taps.now - ago, pitches);
+    if (taps.placedByHand || !taps.counting) return;
+    final move = form.shift(taps.barAt);
+    if (move == null) return;
+    taps.moveBars(move);
+    setState(() => _placedByEar = true);
   }
 
   /// Taps made while hearing another app are kept with what it heard,
@@ -338,6 +365,8 @@ class _StageScreenState extends State<StageScreen> {
                   if (_hearingOthers)
                     _OtherApps(
                       sound: _otherApps!,
+                      placedByEar:
+                          _placedByEar && !(_taps?.placedByHand ?? false),
                       onStart: _otherApps!.pick,
                       onSave: _saveWhatOthersPlayed,
                     ),
@@ -563,9 +592,13 @@ class _OtherApps extends StatelessWidget {
     required this.sound,
     required this.onStart,
     required this.onSave,
+    this.placedByEar = false,
   });
 
   final OtherAppsSound sound;
+
+  /// Whether the bar of the tune was found by ear, not tapped.
+  final bool placedByEar;
   final VoidCallback onStart;
   final VoidCallback onSave;
 
@@ -596,7 +629,8 @@ class _OtherApps extends StatelessWidget {
                         'The count starts once it hears them steadily, or tap '
                         'the bar it is on.'
                   : 'Beat This! has heard ${sound.barlinesHeard} barlines'
-                        '${took == null ? '' : ', ${(took * 1000).round()} ms a look'}.');
+                        '${took == null ? '' : ', ${(took * 1000).round()} ms a look'}'
+                        '${placedByEar ? ', and found the bar by ear' : ''}.');
     // Loudness on a decibel scale, 60 dB below full scale to full scale,
     // so a quiet record still moves it.
     final level = arriving && report != null && report.level > 0

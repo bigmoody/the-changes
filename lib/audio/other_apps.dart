@@ -215,6 +215,16 @@ class OtherAppsSound extends ChangeNotifier {
   /// Told of each new barline Beat This! hears, as how long ago it was.
   void Function(Duration ago)? onBarline;
 
+  /// Told of each new bar heard whole: how long ago its middle was, and
+  /// what sounded in it (see form_finder.dart).
+  void Function(Duration ago, List<double> pitches)? onBar;
+
+  /// The start of the last bar handed on, by the phone's clock.
+  double? _lastBar;
+
+  /// Each bar handed on, for the log: when it started and what sounded.
+  final _barsHeard = <({double heard, double start, List<double> pitches})>[];
+
   /// Whether Beat This! has been asked to follow.
   bool get following => _following;
   var _following = false;
@@ -246,6 +256,7 @@ class OtherAppsSound extends ChangeNotifier {
     _following = true;
     _barlinesHeard = 0;
     _lastBarline = null;
+    _lastBar = null;
     try {
       _problem = await channel.invokeMethod<String>('follow');
     } catch (e) {
@@ -288,6 +299,33 @@ class OtherAppsSound extends ChangeNotifier {
         _barlines.add((heard: now, at: d));
         if (_barlines.length > 2000) _barlines.removeAt(0);
         onBarline?.call(Duration(microseconds: ((now - d) * 1e6).round()));
+      }
+      final bars = [
+        for (final b in heard['bars'] as List? ?? const [])
+          Map<String, dynamic>.from(b as Map),
+      ];
+      for (var i = 0; i < bars.length; i++) {
+        final start = (bars[i]['start'] as num).toDouble();
+        final last = _lastBar;
+        if (last != null && start <= last + 0.2) continue;
+        // Its end is where the next bar starts, or the last barline heard.
+        final end = i + 1 < bars.length
+            ? (bars[i + 1]['start'] as num).toDouble()
+            : downbeats.isEmpty
+            ? null
+            : downbeats.last;
+        if (end == null || end <= start) continue;
+        final pitches = [
+          for (final p in bars[i]['pitches'] as List) (p as num).toDouble(),
+        ];
+        _lastBar = start;
+        _barsHeard.add((heard: now, start: start, pitches: pitches));
+        if (_barsHeard.length > 200) _barsHeard.removeAt(0);
+        final middle = (start + end) / 2;
+        onBar?.call(
+          Duration(microseconds: ((now - middle) * 1e6).round()),
+          pitches,
+        );
       }
     }
     notifyListeners();
@@ -366,6 +404,14 @@ class OtherAppsSound extends ChangeNotifier {
         for (final b in _barlines)
           if (b.heard >= start && b.heard <= end)
             (b.heard, 'HEARD BARLINE ${(b.at - start).toStringAsFixed(3)}'),
+        // When it was heard, then when it started and what sounded.
+        for (final b in _barsHeard)
+          if (b.heard >= start && b.heard <= end)
+            (
+              b.heard,
+              'HEARD BAR ${(b.start - start).toStringAsFixed(3)} '
+                  '${b.pitches.map((p) => p.toStringAsFixed(4)).join(' ')}',
+            ),
       ]..sort((a, b) => a.$1.compareTo(b.$1));
       for (final (at, event) in lines) {
         log.writeln('${(at - start).toStringAsFixed(3)}  $event');

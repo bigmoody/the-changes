@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B0AD0000000000000000A105 /* BarPitches.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F105 /* BarPitches.swift */; };
 		B0AD0000000000000000A101 /* LogMel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F101 /* LogMel.swift */; };
 		B0AD0000000000000000A102 /* BeatTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F102 /* BeatTracker.swift */; };
 		B0AD0000000000000000A103 /* SoundRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F103 /* SoundRing.swift */; };
@@ -76,6 +77,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B0AD0000000000000000F105 /* BarPitches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarPitches.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F101 /* LogMel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMel.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F102 /* BeatTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatTracker.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F103 /* SoundRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundRing.swift; sourceTree = "<group>"; };
@@ -232,6 +234,7 @@
 				B0AD0000000000000000F005 /* BroadcastBridge.swift */,
 				B0AD0000000000000000F101 /* LogMel.swift */,
 				B0AD0000000000000000F102 /* BeatTracker.swift */,
+				B0AD0000000000000000F105 /* BarPitches.swift */,
 				B0AD0000000000000000F006 /* Runner-Debug.entitlements */,
 			);
 			path = Runner;
@@ -509,6 +512,7 @@
 				B0AD0000000000000000A003 /* BroadcastBridge.swift in Sources */,
 				B0AD0000000000000000A101 /* LogMel.swift in Sources */,
 				B0AD0000000000000000A102 /* BeatTracker.swift in Sources */,
+				B0AD0000000000000000A105 /* BarPitches.swift in Sources */,
 				B0AD0000000000000000A103 /* SoundRing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

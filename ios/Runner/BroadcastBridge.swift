@@ -138,6 +138,7 @@ final class BeatListener {
   private let queue = DispatchQueue(label: "the_changes.beat_this", qos: .userInitiated)
   private var timer: DispatchSourceTimer?
   private var tracker: BeatTracker?
+  private let pitches = BarPitches()
 
   init(ring: URL, model: URL, log: URL, heard: @escaping ([String: Any]) -> Void) {
     self.ring = ring
@@ -194,6 +195,7 @@ final class BeatListener {
       let started = CACurrentMediaTime()
       let sound = BeatTracker.resample(latest.sound, from: shared.sampleRate)
       let found = try tracker!.track(sound)
+      let bars = pitches(BeatTracker.window(sound), downbeats: found.downbeats)
       // The window's last sample was played at the ring's end.
       let windowStarts = latest.end - Double(BeatTracker.samples) / LogMel.sampleRate
       looks += 1
@@ -208,6 +210,11 @@ final class BeatListener {
       tell([
         "beats": found.beats.map { windowStarts + $0 },
         "downbeats": found.downbeats.map { windowStarts + $0 },
+        // What sounded in each bar between them, for placing the bars in
+        // the tune.
+        "bars": zip(found.downbeats, bars).map { start, heard in
+          ["start": windowStarts + start, "pitches": heard.map(Double.init)] as [String: Any]
+        },
         "end": latest.end,
         "took": CACurrentMediaTime() - started,
       ])

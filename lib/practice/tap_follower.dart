@@ -78,6 +78,39 @@ class TapFollower extends ChangeNotifier {
   int get nudges => _nudges;
   var _nudges = 0;
 
+  /// Whether a bar has been tapped since counting started: somebody who
+  /// knows where the band is has said so, and the ear does not argue.
+  bool get placedByHand => _placedByHand;
+  var _placedByHand = false;
+
+  /// What time it is by the count's clock.
+  Duration get now => _clock();
+
+  /// The bar of the tune the count had at [at], or null when it is not
+  /// counting.
+  int? barAt(Duration at) {
+    final anchor = _anchor;
+    final length = _beatLength;
+    if (anchor == null || length == null) return null;
+    final beats = ((at - anchor.at).inMicroseconds / length.inMicroseconds)
+        .floor();
+    // Rounded down, not toward nought: a bar before the anchor is a
+    // whole bar back even when its beat comes out below nought.
+    return ((anchor.beat + beats) / tune.beatsPerBar).floor() % tune.barCount;
+  }
+
+  /// The count moved on by whole bars, its time left as it is: the place
+  /// in the tune heard by ear (see form_finder.dart).
+  void moveBars(int bars) {
+    final anchor = _anchor;
+    if (anchor == null) return;
+    _anchor = (
+      at: anchor.at,
+      beat: (anchor.beat + bars * tune.beatsPerBar) % tune.totalBeats,
+    );
+    notifyListeners();
+  }
+
   /// Told of every tap as it comes: null for a beat, the bar for a bar.
   /// For keeping the taps beside a recording of what was tapped along to.
   void Function(int? bar)? onTapped;
@@ -170,6 +203,7 @@ class TapFollower extends ChangeNotifier {
   /// The band is at [bar] now, its first beat.
   void placeAtBar(int bar) {
     onTapped?.call(bar);
+    _placedByHand = true;
     _anchor = (at: _clock(), beat: bar * tune.beatsPerBar);
     _countingIn = false;
     _taps.clear();
@@ -269,6 +303,7 @@ class TapFollower extends ChangeNotifier {
   /// Stops counting.
   void stop() {
     _anchor = null;
+    _placedByHand = false;
     _taps.clear();
     _heard.clear();
     _ticker?.cancel();

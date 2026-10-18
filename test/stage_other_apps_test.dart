@@ -272,6 +272,10 @@ void main() {
         MethodCall('heard', {
           'downbeats': [for (var i = 4; i >= 0; i--) now - 1.16 * i],
           'beats': <double>[],
+          // The bar between the last two barlines, and what sounded in it.
+          'bars': [
+            {'start': now - 1.16, 'pitches': List<double>.filled(48, 0.5)},
+          ],
           'end': now,
           'took': 0.05,
         }),
@@ -291,6 +295,7 @@ void main() {
     await tester.pump();
     expect(_leftTaps, contains('5.000  HEARD BARLINE 5.000'));
     expect(_leftTaps, contains('5.000  HEARD BARLINE 0.360'));
+    expect(_leftTaps, contains('5.000  HEARD BAR 3.840 0.5000'));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
     expect(asked, contains('stopFollowing'));
