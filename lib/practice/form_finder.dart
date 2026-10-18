@@ -10,11 +10,18 @@
 //
 // Tried offline on four broadcasts of St. Thomas, with the bar numbers
 // somebody listening tapped as the answer: eight bars heard put it in the
-// right bar 141 times in 143, twelve or more every time. It moves the
-// count only when the best fit beats the next by a tenth of a match a bar,
-// which in those takes no wrong answer did once eight bars were heard;
-// that margin was read off the same takes, so another record may need
-// another. A tune whose sections repeat exactly cannot be told apart
+// right bar 141 times in 143, twelve or more every time.
+//
+// The fit is added up over everything heard, not judged on the last few
+// bars: on Miles Davis's Four, which a band plays with its own voicings
+// over a form that repeats, the right place fitted best from the sixth
+// bar on but never by much, so a small lead held for a long time is as
+// good as a big one held briefly. The count is moved once the best fit's
+// lead over the next, added up, is 0.8 (a tenth of a match a bar over
+// eight bars). In the St. Thomas takes no wrong answer led by more than
+// half that; on the Four take the right one passed it after about twenty
+// bars. The figure was read off those same takes, so other records may
+// want another. A tune whose sections repeat exactly cannot be told apart
 // inside the repeats, only by the section that differs.
 
 import 'dart:math';
@@ -29,11 +36,12 @@ class FormFinder {
   /// Fewer bars than this are not enough to go on.
   static const fewest = 8;
 
-  /// The most kept: a 16-bar tune's whole form, or half a 32-bar one's.
-  static const most = 16;
+  /// The most kept: two choruses of a 32-bar tune.
+  static const most = 64;
 
-  /// How much better than the runner-up the best fit must be, a bar.
-  static const margin = 0.1;
+  /// How much better than the runner-up the best fit must be, added up
+  /// over the bars heard.
+  static const lead = 0.8;
 
   /// The bass counts for half as much as the harmony.
   static const _bassWeight = 0.5;
@@ -75,8 +83,7 @@ class FormFinder {
       ..sort((a, b) => scores[b].compareTo(scores[a]));
     if (order.length < 2) return null;
     final best = order[0];
-    final lead = (scores[best] - scores[order[1]]) / placed.length;
-    if (lead < margin || best == 0) return null;
+    if (scores[best] - scores[order[1]] < lead || best == 0) return null;
     return best;
   }
 
