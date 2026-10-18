@@ -29,14 +29,20 @@
 // Listening for itself is here too, in builds being worked on only
 // (see chart_follower.dart). It follows iReal Pro's backing and not a
 // real record, so nobody else is shown it until it does.
+//
+// So is hearing another app on an iPhone (see other_apps.dart): only the
+// proof that a record playing in YouTube or Spotify reaches the app, with
+// a meter and the format it arrives in.
 
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../audio/other_apps.dart';
 import '../audio/room_listener.dart';
 import '../practice/chart_follower.dart';
 import '../practice/practice_controller.dart';
@@ -52,6 +58,7 @@ class StageScreen extends StatefulWidget {
     this.follow = false,
     this.listener,
     this.taps,
+    this.otherApps,
   });
 
   final PracticeController controller;
@@ -66,6 +73,10 @@ class StageScreen extends StatefulWidget {
 
   /// The count, for a test to hand in one on its own clock.
   final TapFollower? taps;
+
+  /// What another app is playing, for a test to hand in one that answers
+  /// as the phone. Made here otherwise, when it is first asked for.
+  final OtherAppsSound? otherApps;
 
   @override
   State<StageScreen> createState() => _StageScreenState();
@@ -84,6 +95,17 @@ class _StageScreenState extends State<StageScreen> {
   /// microphone cannot disagree about it.
   bool get _listening => _ear?.listening ?? false;
 
+  /// Hearing other apps, once it has been asked for.
+  OtherAppsSound? _otherApps;
+  var _hearingOthers = false;
+
+  /// Only an iPhone or iPad can, and only a build being worked on has
+  /// the extension that does it.
+  bool get _canHearOthers =>
+      widget.follow &&
+      kDebugMode &&
+      (widget.otherApps != null || defaultTargetPlatform == TargetPlatform.iOS);
+
   /// Below this the follower is guessing, and a guess marked on the chart
   /// looks exactly like knowing. Nothing is marked until it is surer.
   static const _sureEnough = 0.25;
@@ -92,6 +114,11 @@ class _StageScreenState extends State<StageScreen> {
   void dispose() {
     _ear?.dispose();
     if (widget.taps == null) _taps?.dispose();
+    if (widget.otherApps == null) {
+      _otherApps?.dispose();
+    } else {
+      _otherApps?.stopReading();
+    }
     super.dispose();
   }
 
@@ -128,6 +155,38 @@ class _StageScreenState extends State<StageScreen> {
     }
   }
 
+  void _toggleHearingOthers() {
+    final others = _otherApps ??= widget.otherApps ?? OtherAppsSound();
+    if (_hearingOthers) {
+      others.stopReading();
+    } else {
+      others.startReading();
+    }
+    setState(() => _hearingOthers = !_hearingOthers);
+  }
+
+  /// Saves the last twenty seconds the broadcast heard, for running
+  /// through a beat tracker on a computer. Debug builds only.
+  Future<void> _saveWhatOthersPlayed() async {
+    final wav = await _otherApps?.kept();
+    if (wav == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nothing has been heard to save yet.')),
+      );
+      return;
+    }
+    try {
+      await FilePicker.platform.saveFile(
+        dialogTitle: 'Save What the Broadcast Heard',
+        fileName: 'broadcast.wav',
+        bytes: wav,
+      );
+    } catch (e) {
+      debugPrint('Could not save what the broadcast heard: $e');
+    }
+  }
+
   /// Saves what the ear heard and what it made of it, for working out
   /// why it did not follow something. Debug builds only.
   Future<void> _saveWhatItHeard() async {
@@ -160,7 +219,7 @@ class _StageScreenState extends State<StageScreen> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: Listenable.merge([controller, ?_ear, ?_taps]),
+    listenable: Listenable.merge([controller, ?_ear, ?_taps, ?_otherApps]),
     // The spacebar as well as the whole chart. On a stand a metre away a
     // keyboard may be the only thing within reach.
     builder: (context, _) {
@@ -229,6 +288,12 @@ class _StageScreenState extends State<StageScreen> {
                       roomTempo: _ear!.roomTempo,
                       onTap: _ear!.tap,
                     ),
+                  if (_hearingOthers)
+                    _OtherApps(
+                      sound: _otherApps!,
+                      onStart: _otherApps!.pick,
+                      onSave: _saveWhatOthersPlayed,
+                    ),
                   const Divider(height: 1),
                   _StageBar(
                     controller: controller,
@@ -245,6 +310,8 @@ class _StageScreenState extends State<StageScreen> {
                         kDebugMode && !_listening && (_ear?.hasKept ?? false)
                         ? _saveWhatItHeard
                         : null,
+                    hearingOthers: _hearingOthers,
+                    onHearOthers: _canHearOthers ? _toggleHearingOthers : null,
                     chord: following
                         ? (followed == null
                               ? null
@@ -437,6 +504,94 @@ class _Hearing extends StatelessWidget {
   }
 }
 
+/// Hearing another app: how loud it is arriving, in what format, and how
+/// steadily. Only the proof that it arrives; nothing follows it yet.
+class _OtherApps extends StatelessWidget {
+  const _OtherApps({
+    required this.sound,
+    required this.onStart,
+    required this.onSave,
+  });
+
+  final OtherAppsSound sound;
+  final VoidCallback onStart;
+  final VoidCallback onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final report = sound.report;
+    final arriving = sound.arriving;
+    final text = report == null
+        ? 'Start Broadcast, choose The Changes and start it, then play '
+              'something in another app.'
+        : !arriving
+        ? 'Nothing is arriving. Start Broadcast again if it has stopped.'
+        : report.buffers == 0
+        ? 'Broadcasting. Play something in another app.'
+        : report.peak == 0
+        ? 'Sound is arriving, but it is silent. Protected music, like '
+              'Apple Music, is silenced in a broadcast.'
+        : 'Hearing the other app.';
+    // Loudness on a decibel scale, 60 dB below full scale to full scale,
+    // so a quiet record still moves it.
+    final level = arriving && report != null && report.level > 0
+        ? ((20 * log(report.level) / ln10 + 60) / 60).clamp(0.0, 1.0)
+        : 0.0;
+    final small = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    final rate = report?.arrivingRate;
+    return Padding(
+      key: const ValueKey('stage-other-apps'),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(text, style: small),
+          Row(
+            children: [
+              Expanded(
+                child: LinearProgressIndicator(
+                  key: const ValueKey('stage-other-apps-level'),
+                  value: level,
+                  minHeight: 8,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                key: const ValueKey('stage-start-broadcast'),
+                onPressed: onStart,
+                child: const Text('Start Broadcast'),
+              ),
+              IconButton(
+                key: const ValueKey('stage-save-broadcast'),
+                icon: const Icon(Icons.save_alt),
+                tooltip: 'Save the Last 20 Seconds',
+                onPressed: onSave,
+              ),
+            ],
+          ),
+          if (report != null && report.buffers > 0) ...[
+            Text(report.format, style: small),
+            Text(
+              '${report.framesPerBuffer} frames a buffer. '
+              '${report.buffers} buffers in '
+              '${report.seconds.toStringAsFixed(1)} s, '
+              '${report.silentBuffers} silent. '
+              '${rate == null ? '' : '${rate.round()} frames a second. '}'
+              'Longest gap ${(report.longestGap * 1000).round()} ms, '
+              '${report.jumps} jumps.',
+              style: small,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// The one strip of controls: what's playing, whether it's playing, and the
 /// way out.
 class _StageBar extends StatelessWidget {
@@ -450,7 +605,13 @@ class _StageBar extends StatelessWidget {
     required this.chord,
     required this.tempo,
     this.onSave,
+    this.hearingOthers = false,
+    this.onHearOthers,
   });
+
+  /// Hearing another app, in a build being worked on on an iPhone.
+  final bool hearingOthers;
+  final VoidCallback? onHearOthers;
 
   /// Saving what the ear heard, in a build being worked on.
   final VoidCallback? onSave;
@@ -517,6 +678,18 @@ class _StageBar extends StatelessWidget {
                 onPressed: onListen,
               ),
             ],
+            if (onHearOthers != null)
+              IconButton(
+                key: const ValueKey('stage-hear-others'),
+                iconSize: 28,
+                isSelected: hearingOthers,
+                icon: const Icon(Icons.cast_outlined),
+                selectedIcon: const Icon(Icons.cast_connected),
+                tooltip: hearingOthers
+                    ? 'Stop Hearing Other Apps'
+                    : 'Hear Other Apps',
+                onPressed: onHearOthers,
+              ),
             if (onSave != null)
               IconButton(
                 key: const ValueKey('stage-save-heard'),
