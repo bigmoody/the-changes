@@ -11,7 +11,7 @@
 // It only says what arrives: the format, how loud each buffer is, and
 // how steadily they come. The app reads that from the App Group they
 // share, a small file written a few times a second. It also keeps the
-// last twenty seconds as a WAV beside it, so what it heard can be taken
+// last minute as a WAV beside it, so what it heard can be taken
 // off the phone and run through a beat tracker on a computer. Beside it
 // goes when its last sample was played, by the phone's clock, which the
 // app's own clock is: so the taps made in the app while it played can be
@@ -22,7 +22,9 @@
 //
 // An extension like this is reported to be stopped by the system at
 // about 50 MB, so nothing is kept but the one ring of sound and a few
-// numbers. The video frames are passed over without being looked at.
+// numbers. A minute of it at 48 kHz is under 6 MB, and twice that while
+// it is being written out. The video frames are passed over without
+// being looked at.
 
 import AudioToolbox
 import CoreMedia
@@ -34,7 +36,7 @@ let theGroup = "group.com.yaseminbridges.playAlong"
 
 class SampleHandler: RPBroadcastSampleHandler {
   /// How much sound is kept for taking off the phone.
-  private static let keptSeconds = 20.0
+  private static let keptSeconds = 60.0
 
   /// How often the numbers are written for the app to read.
   private static let reportEvery = 0.1

@@ -183,7 +183,7 @@ class _StageScreenState extends State<StageScreen> {
     _ear?.placeAt(bar);
   }
 
-  /// Saves the last twenty seconds the broadcast heard, and the taps made
+  /// Saves the last minute the broadcast heard, and the taps made
   /// along with it, for running through a beat tracker on a computer.
   /// Debug builds only.
   Future<void> _saveWhatOthersPlayed() async {
@@ -605,7 +605,7 @@ class _OtherApps extends StatelessWidget {
               IconButton(
                 key: const ValueKey('stage-save-broadcast'),
                 icon: const Icon(Icons.save_alt),
-                tooltip: 'Save the Last 20 Seconds and the Taps',
+                tooltip: 'Save the Last Minute and the Taps',
                 onPressed: onSave,
               ),
             ],

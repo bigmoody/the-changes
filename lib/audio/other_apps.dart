@@ -12,7 +12,7 @@
 //
 // Taps made along with it are kept too, on the phone's clock, which the
 // extension's timestamps are on. Saved, they become a log beside the
-// last twenty seconds it kept, in the ear's format (see
+// last minute it kept, in the ear's format (see
 // room_listener.dart), so a tracker's barlines can be checked against
 // where somebody listening put them.
 
@@ -183,7 +183,7 @@ class OtherAppsSound extends ChangeNotifier {
     final offset = _offset;
     if (offset == null) return;
     _taps.add((at: _clock().inMicroseconds / 1e6 + offset, bar: bar));
-    // Far more than twenty seconds' worth.
+    // Far more than a minute's worth.
     if (_taps.length > 2000) _taps.removeAt(0);
   }
 
@@ -215,7 +215,7 @@ class OtherAppsSound extends ChangeNotifier {
     }
   }
 
-  /// The last twenty seconds it heard, as a WAV, if any were kept.
+  /// The last minute it heard, as a WAV, if any were kept.
   Future<Uint8List?> kept() async {
     try {
       return await channel.invokeMethod<Uint8List>('kept');
@@ -225,7 +225,7 @@ class OtherAppsSound extends ChangeNotifier {
     }
   }
 
-  /// The last twenty seconds kept, and a log of the taps made in them,
+  /// The last minute kept, and a log of the taps made in them,
   /// headed by [header]. The log is also left beside the sound, so both
   /// can be copied off the phone. Null if nothing was kept.
   Future<({Uint8List wav, String log})?> keep({required String header}) async {
