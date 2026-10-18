@@ -243,8 +243,8 @@ class OtherAppsSound extends ChangeNotifier {
   double? get took => _took;
   double? _took;
 
-  /// The last barline handed on, by the phone's clock.
-  double? _lastBarline;
+  /// Barlines are handed on once two looks agree on them.
+  var _confirm = BarlineFilter();
 
   /// Each barline handed on and when it was, by the phone's clock, kept
   /// for the log beside what the broadcast kept: with the taps, enough to
@@ -255,7 +255,7 @@ class OtherAppsSound extends ChangeNotifier {
   Future<void> follow() async {
     _following = true;
     _barlinesHeard = 0;
-    _lastBarline = null;
+    _confirm = BarlineFilter();
     _lastBar = null;
     try {
       _problem = await channel.invokeMethod<String>('follow');
@@ -289,12 +289,7 @@ class OtherAppsSound extends ChangeNotifier {
     final offset = _offset;
     if (offset != null && _following) {
       final now = _clock().inMicroseconds / 1e6 + offset;
-      for (final d in downbeats) {
-        // Only what is new: the same barline is in the next look too, a
-        // frame or two either way.
-        final last = _lastBarline;
-        if (last != null && d <= last + 0.2) continue;
-        _lastBarline = d;
+      for (final d in _confirm.take(downbeats)) {
         _barlinesHeard++;
         _barlines.add((heard: now, at: d));
         if (_barlines.length > 2000) _barlines.removeAt(0);
@@ -429,5 +424,44 @@ class OtherAppsSound extends ChangeNotifier {
   void dispose() {
     stopReading();
     super.dispose();
+  }
+}
+
+/// Barlines Beat This! has said twice.
+///
+/// It looks at the last twenty seconds once a second, so each barline is
+/// in about twenty looks, and what it says of a barline near the newest
+/// edge of a look, with little after it to go on, is its least sure: on a
+/// Miles Davis record about one barline in ten was a beat early, a half
+/// bar, or two a quarter of a second apart, and, handed on the first time
+/// it was heard, each one dragged the count. A barline is handed on here
+/// only when two looks in a row put it in the same place, within [within]
+/// seconds, which costs a second.
+class BarlineFilter {
+  BarlineFilter({this.within = 0.04});
+
+  final double within;
+
+  var _previous = const <double>[];
+  double? _last;
+
+  /// The barlines in this look, sorted, that the one before agreed on and
+  /// that have not been handed on already.
+  List<double> take(List<double> downbeats) {
+    final out = <double>[];
+    for (final d in downbeats) {
+      double? agreed;
+      for (final p in _previous) {
+        if ((p - d).abs() <= within) agreed = (p + d) / 2;
+      }
+      if (agreed == null) continue;
+      final last = _last;
+      // The same barline again, a frame or two either way.
+      if (last != null && agreed <= last + 0.2) continue;
+      _last = agreed;
+      out.add(agreed);
+    }
+    _previous = downbeats;
+    return out;
   }
 }

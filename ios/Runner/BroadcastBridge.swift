@@ -207,6 +207,12 @@ final class BeatListener {
           found.downbeats.last.map { windowStarts + $0 } ?? 0
         )
       )
+      // Every barline it said, so a look on the phone can be replayed
+      // exactly on a computer.
+      note(
+        "  barlines "
+          + found.downbeats.map { String(format: "%.3f", windowStarts + $0) }.joined(separator: " ")
+      )
       tell([
         "beats": found.beats.map { windowStarts + $0 },
         "downbeats": found.downbeats.map { windowStarts + $0 },

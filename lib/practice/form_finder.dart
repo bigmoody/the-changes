@@ -46,14 +46,14 @@ class FormFinder {
   /// The bass counts for half as much as the harmony.
   static const _bassWeight = 0.5;
 
-  final _bars = <({Duration at, List<double> pitches})>[];
+  final _bars = <_Heard>[];
 
   /// What sounded in a bar that started at [at]: 48 numbers, the harmony
   /// and bass of its first half then of its second, twelve pitch classes
   /// each from C.
   void heard(Duration at, List<double> pitches) {
     if (pitches.length != 48) return;
-    _bars.add((at: at, pitches: pitches));
+    _bars.add(_Heard(at, pitches));
     if (_bars.length > most) _bars.removeAt(0);
   }
 
@@ -63,12 +63,21 @@ class FormFinder {
 
   /// How many bars the count should move by to put the band where the
   /// chart fits what was heard, given the bar the count has at a time.
-  /// Null while it cannot tell, or when the count is already there.
+  /// Null while it cannot tell, or when the count is already there; the
+  /// count is taken to be moved by it when it is not.
+  ///
+  /// Each bar heard is given its bar of the count the first time it can
+  /// be, a second or two after it was played, and keeps it. Asked again a
+  /// minute on, the count would work it out from the tempo it has now,
+  /// and a tempo a hundredth different puts a bar heard 64 bars ago in
+  /// the bar next to it.
   int? shift(int? Function(Duration at) barAt) {
-    if (_bars.length < fewest) return null;
+    for (final bar in _bars) {
+      bar.counted ??= barAt(bar.at);
+    }
     final placed = [
       for (final bar in _bars)
-        if (barAt(bar.at) case final counted?) (counted: counted, bar: bar),
+        if (bar.counted case final counted?) (counted: counted, bar: bar),
     ];
     if (placed.length < fewest) return null;
     final scores = [
@@ -84,6 +93,11 @@ class FormFinder {
     if (order.length < 2) return null;
     final best = order[0];
     if (scores[best] - scores[order[1]] < lead || best == 0) return null;
+    for (final bar in _bars) {
+      if (bar.counted case final counted?) {
+        bar.counted = (counted + best) % tune.barCount;
+      }
+    }
     return best;
   }
 
@@ -123,4 +137,13 @@ class FormFinder {
     }
     return dot / (la * lb);
   }
+}
+
+/// A bar heard: when, what sounded in it, and the bar of the count it was.
+class _Heard {
+  _Heard(this.at, this.pitches);
+
+  final Duration at;
+  final List<double> pitches;
+  int? counted;
 }

@@ -266,22 +266,25 @@ void main() {
     // Five barlines 1.16 s apart, the last just now, by the phone's clock.
     _elapsed = const Duration(seconds: 15);
     final now = _phoneAhead + 15;
-    await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
-      otherAppsChannel.name,
-      otherAppsChannel.codec.encodeMethodCall(
-        MethodCall('heard', {
-          'downbeats': [for (var i = 4; i >= 0; i--) now - 1.16 * i],
-          'beats': <double>[],
-          // The bar between the last two barlines, and what sounded in it.
-          'bars': [
-            {'start': now - 1.16, 'pitches': List<double>.filled(48, 0.5)},
-          ],
-          'end': now,
-          'took': 0.05,
-        }),
-      ),
-      (_) {},
-    );
+    // The same look twice: a barline is handed on once two agree on it.
+    for (var look = 0; look < 2; look++) {
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        otherAppsChannel.name,
+        otherAppsChannel.codec.encodeMethodCall(
+          MethodCall('heard', {
+            'downbeats': [for (var i = 4; i >= 0; i--) now - 1.16 * i],
+            'beats': <double>[],
+            // The bar between the last two barlines, and what sounded in it.
+            'bars': [
+              {'start': now - 1.16, 'pitches': List<double>.filled(48, 0.5)},
+            ],
+            'end': now,
+            'took': 0.05,
+          }),
+        ),
+        (_) {},
+      );
+    }
     await tester.pump();
     expect(taps.counting, isTrue);
     expect(taps.tempo, closeTo(240 / 1.16, 0.5));
