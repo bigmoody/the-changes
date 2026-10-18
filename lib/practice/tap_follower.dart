@@ -51,6 +51,10 @@ class TapFollower extends ChangeNotifier {
 
   final _taps = <Duration>[];
 
+  /// Told of every tap as it comes: null for a beat, the bar for a bar.
+  /// For keeping the taps beside a recording of what was tapped along to.
+  void Function(int? bar)? onTapped;
+
   /// Whether the last taps were a count-in, still going.
   var _countingIn = false;
 
@@ -83,6 +87,7 @@ class TapFollower extends ChangeNotifier {
   /// Tap the Beat.
   void tapBeat() {
     final now = _clock();
+    onTapped?.call(null);
     // A pause of more than a couple of seconds starts a new set of taps.
     if (_taps.isNotEmpty && now - _taps.last > const Duration(seconds: 2)) {
       _taps.clear();
@@ -136,6 +141,7 @@ class TapFollower extends ChangeNotifier {
 
   /// The band is at [bar] now, its first beat.
   void placeAtBar(int bar) {
+    onTapped?.call(bar);
     _anchor = (at: _clock(), beat: bar * tune.beatsPerBar);
     _countingIn = false;
     _taps.clear();

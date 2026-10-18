@@ -4,6 +4,7 @@
 
 #if DEBUG
 import Flutter
+import QuartzCore
 import ReplayKit
 import UIKit
 
@@ -37,6 +38,13 @@ final class BroadcastBridge {
         result(self.read("broadcast.json").map { String(decoding: $0, as: UTF8.self) })
       case "kept":
         result(self.read("broadcast.wav").map { FlutterStandardTypedData(bytes: $0) })
+      case "keptPlaced":
+        result(self.read("broadcast-wav.json").map { String(decoding: $0, as: UTF8.self) })
+      case "now":
+        // The phone's clock, which the extension's timestamps are on.
+        result(CACurrentMediaTime())
+      case "keepTaps":
+        result(self.write(call.arguments as? String ?? "", to: "broadcast-taps.txt"))
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -65,6 +73,19 @@ final class BroadcastBridge {
     else { return false }
     button.sendActions(for: .touchUpInside)
     return true
+  }
+
+  /// Written beside what the extension kept, so all three come off the
+  /// phone together.
+  private func write(_ text: String, to name: String) -> Bool {
+    guard let folder else { return false }
+    do {
+      try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+      try Data(text.utf8).write(to: folder.appendingPathComponent(name), options: .atomic)
+      return true
+    } catch {
+      return false
+    }
   }
 
   private func read(_ name: String) -> Data? {

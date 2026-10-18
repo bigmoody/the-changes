@@ -12,7 +12,10 @@
 // how steadily they come. The app reads that from the App Group they
 // share, a small file written a few times a second. It also keeps the
 // last twenty seconds as a WAV beside it, so what it heard can be taken
-// off the phone and run through a beat tracker on a computer.
+// off the phone and run through a beat tracker on a computer. Beside it
+// goes when its last sample was played, by the phone's clock, which the
+// app's own clock is: so the taps made in the app while it played can be
+// put where they belong in it.
 //
 // Apple Music plays nothing here, and neither does anything else whose
 // sound is protected: a screen recording is given silence for it.
@@ -307,6 +310,17 @@ class SampleHandler: RPBroadcastSampleHandler {
     guard let folder, !ring.isEmpty, ringFull || ringAt > 0 else { return }
     let samples = ringFull ? Array(ring[ringAt...] + ring[..<ringAt]) : Array(ring[..<ringAt])
     let rate = UInt32(sampleRate)
+    // When the last sample was played. A buffer's timestamp is when its
+    // sound was, by the phone's clock; when it arrived is later, and by
+    // as much as the system kept it back, so it is written too, to see.
+    var placed: [String: Any] = [
+      "seconds": Double(samples.count) / sampleRate,
+      "sampleRate": sampleRate,
+    ]
+    if let expectedTime, expectedTime.isValid {
+      placed["endByTimestamp"] = CMTimeGetSeconds(expectedTime)
+    }
+    if let lastArrival { placed["endByArrival"] = lastArrival }
     writer.async {
       var wav = Data()
       func add<T: FixedWidthInteger>(_ value: T) {
@@ -327,6 +341,12 @@ class SampleHandler: RPBroadcastSampleHandler {
       add(bytes)
       samples.withUnsafeBytes { wav.append(contentsOf: $0) }
       try? wav.write(to: folder.appendingPathComponent("broadcast.wav"), options: .atomic)
+      if let data = try? JSONSerialization.data(withJSONObject: placed) {
+        try? data.write(
+          to: folder.appendingPathComponent("broadcast-wav.json"),
+          options: .atomic
+        )
+      }
     }
   }
 }

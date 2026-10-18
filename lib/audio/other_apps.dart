@@ -9,6 +9,12 @@
 //
 // Protected sound, Apple Music's among it, is silenced in a broadcast,
 // the same as in a screen recording.
+//
+// Taps made along with it are kept too, on the phone's clock, which the
+// extension's timestamps are on. Saved, they become a log beside the
+// last twenty seconds it kept, in the ear's format (see
+// room_listener.dart), so a tracker's barlines can be checked against
+// where somebody listening put them.
 
 import 'dart:async';
 import 'dart:convert';
@@ -101,12 +107,27 @@ class OtherAppsReport {
 
 /// The extension's numbers, read while something wants them.
 class OtherAppsSound extends ChangeNotifier {
-  OtherAppsSound({this.channel = otherAppsChannel, DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+  OtherAppsSound({
+    this.channel = otherAppsChannel,
+    DateTime Function()? now,
+    Duration Function()? clock,
+  }) : _now = now ?? DateTime.now,
+       _clock = clock ?? _stopwatch;
 
   /// Taken rather than reached for, so a test can answer as the phone.
   final MethodChannel channel;
   final DateTime Function() _now;
+
+  /// What time it is here, for timing taps; a test's own clock in a test.
+  final Duration Function() _clock;
+  static final _watch = Stopwatch()..start();
+  static Duration _stopwatch() => _watch.elapsed;
+
+  /// The phone's clock less this one's, in seconds, once asked.
+  double? _offset;
+
+  /// Taps, on the phone's clock: null for a beat, or the bar tapped.
+  final _taps = <({double at, int? bar})>[];
 
   Timer? _reading;
   OtherAppsReport? _report;
@@ -130,6 +151,40 @@ class OtherAppsSound extends ChangeNotifier {
       (_) => read(),
     );
     read();
+    if (_offset == null) _setClock();
+  }
+
+  /// Finds the phone's clock from here. Asked a few times and the
+  /// quickest answer kept: the one that waited least on the way.
+  Future<void> _setClock() async {
+    double? best;
+    double? bestTrip;
+    for (var i = 0; i < 5; i++) {
+      try {
+        final before = _clock().inMicroseconds / 1e6;
+        final phone = await channel.invokeMethod<double>('now');
+        final after = _clock().inMicroseconds / 1e6;
+        if (phone == null) return;
+        final trip = after - before;
+        if (bestTrip == null || trip < bestTrip) {
+          bestTrip = trip;
+          best = phone - (before + after) / 2;
+        }
+      } catch (e) {
+        debugPrint('Could not read the phone\'s clock: $e');
+        return;
+      }
+    }
+    _offset = best;
+  }
+
+  /// A tap along with the other app: null for a beat, or the bar.
+  void tapped(int? bar) {
+    final offset = _offset;
+    if (offset == null) return;
+    _taps.add((at: _clock().inMicroseconds / 1e6 + offset, bar: bar));
+    // Far more than twenty seconds' worth.
+    if (_taps.length > 2000) _taps.removeAt(0);
   }
 
   void stopReading() {
@@ -168,6 +223,65 @@ class OtherAppsSound extends ChangeNotifier {
       debugPrint('Could not read what the broadcast kept: $e');
       return null;
     }
+  }
+
+  /// The last twenty seconds kept, and a log of the taps made in them,
+  /// headed by [header]. The log is also left beside the sound, so both
+  /// can be copied off the phone. Null if nothing was kept.
+  Future<({Uint8List wav, String log})?> keep({required String header}) async {
+    final wav = await kept();
+    if (wav == null) return null;
+    String? text;
+    try {
+      text = await channel.invokeMethod<String>('keptPlaced');
+    } catch (e) {
+      debugPrint('Could not read when the broadcast was kept: $e');
+    }
+    final placed = text == null
+        ? const <String, dynamic>{}
+        : jsonDecode(text) as Map<String, dynamic>;
+    final seconds = (placed['seconds'] as num?)?.toDouble();
+    final byTimestamp = (placed['endByTimestamp'] as num?)?.toDouble();
+    final byArrival = (placed['endByArrival'] as num?)?.toDouble();
+    // The buffers' own timestamps say when the sound was played, so they
+    // are taken when they look like the phone's clock: within a second of
+    // when the last buffer arrived.
+    final useTimestamp =
+        byTimestamp != null &&
+        (byArrival == null || (byArrival - byTimestamp).abs() < 1);
+    final end = useTimestamp ? byTimestamp : byArrival;
+    final placedBy = end == null
+        ? 'nothing, so no taps'
+        : useTimestamp
+        ? 'timestamp'
+        : 'arrival';
+    final held = byTimestamp != null && byArrival != null
+        ? '${(byArrival - byTimestamp).toStringAsFixed(3)} s'
+        : 'unknown';
+    final log = StringBuffer()
+      ..writeln(header)
+      ..writeln(
+        '# broadcast: end placed by $placedBy, arrival minus timestamp $held',
+      )
+      ..writeln('# seconds  event');
+    if (end != null && seconds != null) {
+      final start = end - seconds;
+      for (final tap in _taps) {
+        if (tap.at < start || tap.at > end) continue;
+        final at = (tap.at - start).toStringAsFixed(3);
+        log.writeln(
+          tap.bar == null
+              ? '$at  TAP THE BEAT'
+              : '$at  TAPPED BAR ${tap.bar! + 1}',
+        );
+      }
+    }
+    try {
+      await channel.invokeMethod<bool>('keepTaps', log.toString());
+    } catch (e) {
+      debugPrint('Could not leave the taps beside the broadcast: $e');
+    }
+    return (wav: wav, log: log.toString());
   }
 
   @override

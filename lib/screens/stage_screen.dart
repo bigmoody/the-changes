@@ -133,6 +133,7 @@ class _StageScreenState extends State<StageScreen> {
     if (controller.isPlaying) await controller.stop();
     await _ear?.stop();
     _taps ??= widget.taps ?? TapFollower(tune: controller.tune);
+    _keepTapsWithOthers();
     setState(() => _tapping = true);
   }
 
@@ -163,13 +164,25 @@ class _StageScreenState extends State<StageScreen> {
       others.startReading();
     }
     setState(() => _hearingOthers = !_hearingOthers);
+    _keepTapsWithOthers();
   }
 
-  /// Saves the last twenty seconds the broadcast heard, for running
-  /// through a beat tracker on a computer. Debug builds only.
+  /// Taps made while hearing another app are kept with what it heard.
+  void _keepTapsWithOthers() {
+    _taps?.onTapped = _hearingOthers ? _otherApps?.tapped : null;
+  }
+
+  /// Saves the last twenty seconds the broadcast heard, and the taps made
+  /// along with it, for running through a beat tracker on a computer.
+  /// Debug builds only.
   Future<void> _saveWhatOthersPlayed() async {
-    final wav = await _otherApps?.kept();
-    if (wav == null) {
+    final tune = controller.tune;
+    final kept = await _otherApps?.keep(
+      header:
+          '# ${tune.title}, ${tune.key}, tempo heard not told, '
+          '${tune.meter.label}, ${tune.barCount} bars',
+    );
+    if (kept == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nothing has been heard to save yet.')),
@@ -177,10 +190,18 @@ class _StageScreenState extends State<StageScreen> {
       return;
     }
     try {
-      await FilePicker.platform.saveFile(
+      final name =
+          'broadcast-${tune.title.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')}';
+      final wav = await FilePicker.platform.saveFile(
         dialogTitle: 'Save What the Broadcast Heard',
-        fileName: 'broadcast.wav',
-        bytes: wav,
+        fileName: '$name.wav',
+        bytes: kept.wav,
+      );
+      if (wav == null) return;
+      await FilePicker.platform.saveFile(
+        dialogTitle: 'Save the Taps Made Along With It',
+        fileName: '$name.txt',
+        bytes: Uint8List.fromList(utf8.encode(kept.log)),
       );
     } catch (e) {
       debugPrint('Could not save what the broadcast heard: $e');
@@ -568,7 +589,7 @@ class _OtherApps extends StatelessWidget {
               IconButton(
                 key: const ValueKey('stage-save-broadcast'),
                 icon: const Icon(Icons.save_alt),
-                tooltip: 'Save the Last 20 Seconds',
+                tooltip: 'Save the Last 20 Seconds and the Taps',
                 onPressed: onSave,
               ),
             ],

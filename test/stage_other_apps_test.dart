@@ -5,6 +5,7 @@
 // the extension writes, answered here as the phone would.
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,11 +13,35 @@ import 'package:play_along/audio/other_apps.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
+import 'package:play_along/practice/tap_follower.dart';
 import 'package:play_along/screens/stage_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/theme.dart';
 
 final _now = DateTime(2026, 10, 18, 20);
+
+/// The test's clock, moved on by hand.
+var _elapsed = Duration.zero;
+
+/// The phone's clock is this far ahead of the app's.
+const _phoneAhead = 500.0;
+
+/// Where the extension says the kept twenty seconds ended, by the
+/// phone's clock: 30 s after the app's clock started.
+final _keptPlaced = {
+  'seconds': 20.0,
+  'sampleRate': 44100.0,
+  'endByTimestamp': _phoneAhead + 30,
+  'endByArrival': _phoneAhead + 30.05,
+};
+
+/// The log the app left beside the kept sound, last time it did.
+String? _leftTaps;
+
+bool _keepTaps(String log) {
+  _leftTaps = log;
+  return true;
+}
 
 /// What the extension writes while YouTube is playing.
 Map<String, Object> _playing({double peak = 0.4, double level = 0.1}) => {
@@ -42,7 +67,10 @@ Future<List<String>> _openStage(
   WidgetTester tester, {
   Map<String, Object>? report,
   bool otherApps = true,
+  TapFollower? taps,
 }) async {
+  _elapsed = Duration.zero;
+  _leftTaps = null;
   tester.view
     ..physicalSize = const Size(393, 852) * 3
     ..devicePixelRatio = 3;
@@ -55,6 +83,10 @@ Future<List<String>> _openStage(
       return switch (call.method) {
         'read' => report == null ? null : jsonEncode(report),
         'pick' => true,
+        'now' => _phoneAhead + _elapsed.inMicroseconds / 1e6,
+        'kept' => Uint8List(4),
+        'keptPlaced' => jsonEncode(_keptPlaced),
+        'keepTaps' => _keepTaps(call.arguments as String),
         _ => null,
       };
     },
@@ -71,7 +103,7 @@ Future<List<String>> _openStage(
     settings: AppSettings.inMemory(),
   );
   addTearDown(controller.dispose);
-  final sound = OtherAppsSound(now: () => _now);
+  final sound = OtherAppsSound(now: () => _now, clock: () => _elapsed);
   addTearDown(sound.dispose);
   await tester.pumpWidget(
     MaterialApp(
@@ -80,6 +112,7 @@ Future<List<String>> _openStage(
         controller: controller,
         follow: true,
         otherApps: otherApps ? sound : null,
+        taps: taps,
       ),
     ),
   );
@@ -127,6 +160,41 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump(const Duration(milliseconds: 250));
     expect(find.textContaining('it is silent'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+  });
+
+  testWidgets('keeps the taps made along with it, where they fell', (
+    tester,
+  ) async {
+    final taps = TapFollower(
+      tune: standards.firstWhere((tune) => tune.title == 'Cherokee'),
+      clock: () => _elapsed,
+    );
+    addTearDown(taps.dispose);
+    await _openStage(tester, taps: taps);
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
+    await tester.pump();
+    // Before the kept twenty seconds, then in them: 10 s to 30 s.
+    _elapsed = const Duration(seconds: 5);
+    taps.tapBeat();
+    _elapsed = const Duration(milliseconds: 12500);
+    taps.tapBeat();
+    _elapsed = const Duration(seconds: 14);
+    taps.placeAtBar(2);
+    await tester.tap(find.byKey(const ValueKey('stage-save-broadcast')));
+    await tester.pump();
+    final log = _leftTaps!;
+    expect(log, startsWith('# Cherokee'));
+    expect(log, contains('bars'));
+    expect(log, contains('end placed by timestamp'));
+    expect(log, contains('arrival minus timestamp 0.050 s'));
+    expect(log, contains('2.500  TAP THE BEAT'));
+    expect(log, contains('4.000  TAPPED BAR 3'));
+    expect('TAP THE BEAT'.allMatches(log).length, 1);
+    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
   });
