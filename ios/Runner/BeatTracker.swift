@@ -28,7 +28,11 @@ final class BeatTracker {
 
   init(model url: URL) throws {
     let configuration = MLModelConfiguration()
-    configuration.computeUnits = .all
+    // Not the Neural Engine: on an iPad Pro (2021) getting this model
+    // ready for it the first time had not finished after a minute, with
+    // nothing to say why. The graphics chip and processor need no such
+    // wait.
+    configuration.computeUnits = .cpuAndGPU
     model = try MLModel(contentsOf: url, configuration: configuration)
   }
 
