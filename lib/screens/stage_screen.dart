@@ -591,8 +591,10 @@ class _OtherApps extends StatelessWidget {
         : sound.problem ??
               sound.waiting ??
               (sound.barlinesHeard == 0
-                  ? 'Beat This! is listening for the bars. The count starts '
-                        'once it hears them steadily, or tap the bar it is on.'
+                  ? 'Beat This! is listening for the bars'
+                        '${took == null ? '' : ', ${(took * 1000).round()} ms a look'}. '
+                        'The count starts once it hears them steadily, or tap '
+                        'the bar it is on.'
                   : 'Beat This! has heard ${sound.barlinesHeard} barlines'
                         '${took == null ? '' : ', ${(took * 1000).round()} ms a look'}.');
     // Loudness on a decibel scale, 60 dB below full scale to full scale,
