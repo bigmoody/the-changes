@@ -167,9 +167,20 @@ class _StageScreenState extends State<StageScreen> {
     _keepTapsWithOthers();
   }
 
-  /// Taps made while hearing another app are kept with what it heard.
+  /// Taps made while hearing another app are kept with what it heard,
+  /// whichever is being tapped: the count or the ear.
   void _keepTapsWithOthers() {
     _taps?.onTapped = _hearingOthers ? _otherApps?.tapped : null;
+  }
+
+  void _tapTheEar() {
+    if (_hearingOthers) _otherApps?.tapped(null);
+    _ear?.tap();
+  }
+
+  void _placeTheEar(int bar) {
+    if (_hearingOthers) _otherApps?.tapped(bar);
+    _ear?.placeAt(bar);
   }
 
   /// Saves the last twenty seconds the broadcast heard, and the taps made
@@ -291,7 +302,7 @@ class _StageScreenState extends State<StageScreen> {
                             onBarTapped: taps != null
                                 ? taps.placeAtBar
                                 : _listening
-                                ? _ear!.placeAt
+                                ? _placeTheEar
                                 : null,
                           ),
                           if (controller.countInBeat != null)
@@ -307,7 +318,7 @@ class _StageScreenState extends State<StageScreen> {
                       heard: heard,
                       sure: sure,
                       roomTempo: _ear!.roomTempo,
-                      onTap: _ear!.tap,
+                      onTap: _tapTheEar,
                     ),
                   if (_hearingOthers)
                     _OtherApps(
