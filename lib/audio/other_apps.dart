@@ -236,6 +236,11 @@ class OtherAppsSound extends ChangeNotifier {
   /// The last barline handed on, by the phone's clock.
   double? _lastBarline;
 
+  /// Each barline handed on and when it was, by the phone's clock, kept
+  /// for the log beside what the broadcast kept: with the taps, enough to
+  /// play the count through again on a computer.
+  final _barlines = <({double heard, double at})>[];
+
   /// Starts Beat This! on what the broadcast hears.
   Future<void> follow() async {
     _following = true;
@@ -280,6 +285,8 @@ class OtherAppsSound extends ChangeNotifier {
         if (last != null && d <= last + 0.2) continue;
         _lastBarline = d;
         _barlinesHeard++;
+        _barlines.add((heard: now, at: d));
+        if (_barlines.length > 2000) _barlines.removeAt(0);
         onBarline?.call(Duration(microseconds: ((now - d) * 1e6).round()));
       }
     }
@@ -348,14 +355,20 @@ class OtherAppsSound extends ChangeNotifier {
       ..writeln('# seconds  event');
     if (end != null && seconds != null) {
       final start = end - seconds;
-      for (final tap in _taps) {
-        if (tap.at < start || tap.at > end) continue;
-        final at = (tap.at - start).toStringAsFixed(3);
-        log.writeln(
-          tap.bar == null
-              ? '$at  TAP THE BEAT'
-              : '$at  TAPPED BAR ${tap.bar! + 1}',
-        );
+      final lines = <(double, String)>[
+        for (final tap in _taps)
+          if (tap.at >= start && tap.at <= end)
+            (
+              tap.at,
+              tap.bar == null ? 'TAP THE BEAT' : 'TAPPED BAR ${tap.bar! + 1}',
+            ),
+        // When Beat This! heard it, then when it was.
+        for (final b in _barlines)
+          if (b.heard >= start && b.heard <= end)
+            (b.heard, 'HEARD BARLINE ${(b.at - start).toStringAsFixed(3)}'),
+      ]..sort((a, b) => a.$1.compareTo(b.$1));
+      for (final (at, event) in lines) {
+        log.writeln('${(at - start).toStringAsFixed(3)}  $event');
       }
     }
     try {

@@ -271,5 +271,28 @@ void main() {
       expect(taps.tempo, closeTo(120, 0.5));
       taps.stop();
     });
+
+    test('a bar tapped is still put right by the barline heard after', () {
+      final taps = follower();
+      tapFour(taps); // 120: bar 1 at 2 s
+      // Bar 3 tapped 60 ms late, at 6.06 s; Beat This! hears its barline,
+      // at 6 s, a second after.
+      now = beat * 12 + const Duration(milliseconds: 60);
+      taps.placeAtBar(2);
+      now = beat * 12 + const Duration(seconds: 1);
+      taps.heardBarline(const Duration(seconds: 1));
+      expect(taps.nudges, 1);
+      expect(
+        taps.tempo,
+        closeTo(120, 0.5),
+        reason: 'the place, not the length',
+      );
+      // Half way back: bar 3 counted from 6.03 s.
+      now = beat * 12 + const Duration(milliseconds: 25);
+      expect(taps.beat, 7);
+      now = beat * 12 + const Duration(milliseconds: 35);
+      expect(taps.beat, 8);
+      taps.stop();
+    });
   });
 }

@@ -264,8 +264,8 @@ void main() {
     expect(asked, contains('follow'));
     expect(find.textContaining('listening for the bars'), findsOneWidget);
     // Five barlines 1.16 s apart, the last just now, by the phone's clock.
-    _elapsed = const Duration(seconds: 10);
-    final now = _phoneAhead + 10;
+    _elapsed = const Duration(seconds: 15);
+    final now = _phoneAhead + 15;
     await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
       otherAppsChannel.name,
       otherAppsChannel.codec.encodeMethodCall(
@@ -285,6 +285,12 @@ void main() {
       find.textContaining('heard 5 barlines, 50 ms a look'),
       findsOneWidget,
     );
+    // Kept with the taps, for playing the count through again: the kept
+    // stretch starts at 10 s.
+    await tester.tap(find.byKey(const ValueKey('stage-save-broadcast')));
+    await tester.pump();
+    expect(_leftTaps, contains('5.000  HEARD BARLINE 5.000'));
+    expect(_leftTaps, contains('5.000  HEARD BARLINE 0.360'));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
     expect(asked, contains('stopFollowing'));

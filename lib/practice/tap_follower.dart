@@ -36,7 +36,6 @@
 // the recordings and checked on the other half.
 
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
@@ -222,31 +221,46 @@ class TapFollower extends ChangeNotifier {
   }
 
   /// The count moved toward a barline heard at [at].
+  ///
+  /// Barlines are heard a second or so after they were played, so one may
+  /// come from before the bar last tapped: it still says where the bars
+  /// fall, counted back from the tap. A few bars back at most.
   void _nudge(Duration at) {
     final anchor = _anchor!;
     final length = _beatLength!.inMicroseconds;
     final perBar = tune.beatsPerBar;
     final since = (at - anchor.at).inMicroseconds;
-    // Heard before the count was last put right: what it was told since
-    // knows better.
-    if (since <= 0) return;
     final barline = ((anchor.beat + since / length) / perBar).round() * perBar;
     final beats = barline - anchor.beat;
-    if (beats < 1) return;
+    if (beats < -4 * perBar) return;
     final expected = anchor.at.inMicroseconds + beats * length;
     final error = at.inMicroseconds - expected;
     final bar = length * perBar;
     if (error.abs() > _nearEnough * bar) return;
-    final bars = max(1, (beats / perBar).round());
+    // Bars from the count's anchor to the barline. Behind it, a barline
+    // late by [error] means the bars are shorter, not longer.
+    // The bar the count was last put on, heard: its place, not its length.
+    final bars = beats / perBar;
+    final across = bars.abs() < 1 ? bars.sign : bars;
     final started = (_startLength ?? _beatLength!).inMicroseconds * perBar;
-    final nudged = (bar + _nudgeLength * error / bars).clamp(
+    final lengthened = across == 0 ? 0 : _nudgeLength * error / across;
+    final nudged = (bar + lengthened).clamp(
       started * (1 - _furthest),
       started * (1 + _furthest),
     );
-    _anchor = (
-      at: Duration(microseconds: (expected + _nudgePlace * error).round()),
-      beat: barline % tune.totalBeats,
-    );
+    _anchor = beats > 0
+        ? (
+            at: Duration(
+              microseconds: (expected + _nudgePlace * error).round(),
+            ),
+            beat: barline % tune.totalBeats,
+          )
+        : (
+            at:
+                anchor.at +
+                Duration(microseconds: (_nudgePlace * error).round()),
+            beat: anchor.beat,
+          );
     _beatLength = Duration(microseconds: (nudged / perBar).round());
     _nudges++;
     notifyListeners();
