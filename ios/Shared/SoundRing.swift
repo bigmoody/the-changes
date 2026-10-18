@@ -12,6 +12,7 @@
 // in time.
 
 #if DEBUG
+import Accelerate
 import Foundation
 
 final class SoundRing {
@@ -122,25 +123,54 @@ final class SoundRing {
   }
 
   /// The last [seconds] heard, from -1 to 1, and when its last sample was
-  /// played. Nil while nothing has been written, or while the extension
-  /// is midway through writing.
+  /// played. Nil while nothing has been written.
+  ///
+  /// The extension writes a buffer every few hundredths of a second, far
+  /// more often than twenty seconds can be copied out in a build being
+  /// worked on, so the copy is not made to wait for a quiet moment. Only
+  /// the count and the time beside it are read together, which is quick;
+  /// the sound is taken from behind where the extension writes, and is
+  /// good as long as it has not come round to it again, which it would
+  /// only do if the copy took as long as the ring has to spare.
   func latest(_ seconds: Double) -> (sound: [Float], end: Double)? {
-    let first = sequence
-    guard first % 2 == 0 else { return nil }
-    OSMemoryBarrier()
-    let total = Int(min(written, UInt64(capacity)))
-    let wanted = min(total, Int(seconds * sampleRate))
-    let finished = end
+    var count: UInt64 = 0
+    var finished = 0.0
+    var settled = false
+    for _ in 0..<100 {
+      let first = sequence
+      guard first % 2 == 0 else { continue }
+      OSMemoryBarrier()
+      count = written
+      finished = end
+      OSMemoryBarrier()
+      if sequence == first {
+        settled = true
+        break
+      }
+    }
+    guard settled else { return nil }
+    let wanted = min(Int(min(count, UInt64(capacity))), Int(seconds * sampleRate))
     guard wanted > 0 else { return nil }
-    var out = [Float](repeating: 0, count: wanted)
-    var at = (Int(written % UInt64(capacity)) - wanted + capacity) % capacity
-    for i in 0..<wanted {
-      out[i] = Float(samples[at]) / 32768
-      at = (at + 1) % capacity
+    let stop = Int(count % UInt64(capacity))
+    let start = (stop - wanted + capacity) % capacity
+    var copied = [Int16](repeating: 0, count: wanted)
+    copied.withUnsafeMutableBufferPointer { out in
+      if start < stop {
+        out.baseAddress!.update(from: samples + start, count: wanted)
+      } else {
+        let tail = capacity - start
+        out.baseAddress!.update(from: samples + start, count: tail)
+        (out.baseAddress! + tail).update(from: samples, count: stop)
+      }
     }
     OSMemoryBarrier()
-    guard sequence == first else { return nil }
-    return (out, finished)
+    // Come round to what was copied: start again next time.
+    guard written - count < UInt64(capacity - wanted) else { return nil }
+    var sound = [Float](repeating: 0, count: wanted)
+    vDSP_vflt16(copied, 1, &sound, 1, vDSP_Length(wanted))
+    var scale = Float(1.0 / 32768)
+    vDSP_vsmul(sound, 1, &scale, &sound, 1, vDSP_Length(wanted))
+    return (sound, finished)
   }
 }
 #endif

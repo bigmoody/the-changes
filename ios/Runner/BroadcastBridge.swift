@@ -169,8 +169,12 @@ final class BeatListener {
         note("loading the model")
         tell(["waiting": "Loading Beat This!..."])
         tracker = try BeatTracker(model: model)
+        // Its first run is far slower than the rest (on an iPad Pro, 14 s
+        // against a third of a second), so it is had on silence now, not
+        // on the first twenty seconds of music.
+        _ = try tracker!.track([])
         let took = CACurrentMediaTime() - started
-        note(String(format: "loaded in %.1f s", took))
+        note(String(format: "loaded and warmed up in %.1f s", took))
         tell(["loaded": took])
       }
       // Opened afresh each time: a new broadcast makes a new ring.
