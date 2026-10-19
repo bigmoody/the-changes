@@ -48,7 +48,15 @@
 //
 // Barlines heard steadily on another beat of the count's bar, four in a
 // row and none where the count has them, move the bar to start on that
-// beat, unless a bar was tapped. That is how the count finds beat 1 after
+// beat, unless a bar was tapped.
+//
+// Without drums Beat This! cannot hear the beat, and the barlines it says
+// are scattered. The chords can (ChordFollower.swift): every few seconds
+// they say the tempo, where a bar started and which bar of the tune it
+// was. Two of those in a row that agree start the count when nothing has,
+// or take it over when the barlines heard have stopped falling on its
+// bars; from then on each two that agree put it right. Not one alone: on
+// Blue Monk the chords' best answer was seldom far ahead of the next. That is how the count finds beat 1 after
 // Half Time (Beat This! heard every half bar as a bar, as it did on Blue
 // Monk through a microphone, and nothing heard tells that from a quick
 // tune heard right) or after the beat is tapped while it listens.
@@ -123,10 +131,69 @@ class TapFollower extends ChangeNotifier {
   /// that was followed, three in ten or more always were, and six on
   /// every broadcast; on Blue Monk played without drums, none were, and
   /// every bar shown was wrong.
-  bool get losesTheBars =>
+  bool get losesTheBars => !_byChords && _barlinesLost;
+
+  bool get _barlinesLost =>
       !_placedByHand &&
       _fell.length >= 6 &&
       _fell.where((fell) => fell).length * 10 < 3 * _fell.length;
+
+  /// Whether the count is the chords', not the barlines' or the taps'.
+  bool get byChords => _byChords;
+  var _byChords = false;
+
+  /// What the chords said last: when the bar they said started was, which
+  /// bar of the tune, and how long a beat is.
+  ({Duration at, int bar, Duration beat})? _chords;
+
+  /// Told when the chords set the count.
+  VoidCallback? onChords;
+
+  /// The beat Beat This! hears, steady or not: the middle gap between
+  /// its beats lately.
+  Duration? _lookBeat;
+
+  /// What the chords say (see the top): a bar that started [ago], [bar]
+  /// of the tune, at [tempo]. Taken when the last thing they said agrees:
+  /// the tempo within 4%, and this bar where that one puts it, to within
+  /// four tenths of a bar.
+  void heardChords(Duration ago, int bar, double tempo) {
+    final at = _clock() - ago;
+    final beat = Duration(microseconds: (60e6 / tempo).round());
+    final last = _chords;
+    _chords = (at: at, bar: bar, beat: beat);
+    if (last == null || _placedByHand) return;
+    final length = beat.inMicroseconds.toDouble();
+    // A tune quicker than the chords look (ChordFollower.swift) is heard by
+    // them at half its tempo, and Beat This! hears a beat twice as quick:
+    // on Four at 210 the chords said 105. Beat This! keeps that one.
+    final heard = _lookBeat;
+    if (heard != null) {
+      final ratio = length / heard.inMicroseconds;
+      if (ratio > 1.8 && ratio < 2.2) return;
+    }
+    if ((length - last.beat.inMicroseconds).abs() > 0.04 * length) return;
+    final perBar = tune.beatsPerBar;
+    final bars =
+        (at - last.at).inMicroseconds / (last.beat.inMicroseconds * perBar);
+    final said = last.bar + bars;
+    final apart =
+        ((said - bar) % tune.barCount + tune.barCount) % tune.barCount;
+    if (min(apart, tune.barCount - apart) > 0.4) return;
+    if (counting && !_byChords && !_barlinesLost) return;
+    _beatLength = beat;
+    _startLength = beat;
+    _anchor = (at: at, beat: bar * perBar);
+    _byChords = true;
+    _byBarlines = false;
+    _startedByEar = false;
+    _countingIn = false;
+    _taken.clear();
+    _offBeat = (beat: 0, count: 0);
+    _run();
+    onChords?.call();
+    notifyListeners();
+  }
 
   /// How many heard barlines have moved the count.
   int get nudges => _nudges;
@@ -243,6 +310,7 @@ class TapFollower extends ChangeNotifier {
         _beatLength = length;
         _startLength = length;
         _byBarlines = false;
+        _byChords = false;
         if (current == null && placed != null && !countingIn) {
           // A bar was tapped before the tempo was: the band has gone on
           // from it since, by as many beats as there have been.
@@ -279,7 +347,21 @@ class TapFollower extends ChangeNotifier {
   /// This! hears, for telling a count at twice the tempo (see the top).
   void heardBeats(List<Duration> beats) {
     final now = _clock();
-    _pulse = _steady([for (final ago in beats) now - ago]..sort(), now);
+    final at = [for (final ago in beats) now - ago]..sort();
+    _pulse = _steady(at, now);
+    final recent = [
+      for (final b in at)
+        if (b <= now - const Duration(seconds: 1) &&
+            b >= now - const Duration(seconds: 12))
+          b,
+    ];
+    final gaps = [
+      for (var i = 1; i < recent.length; i++)
+        (recent[i] - recent[i - 1]).inMicroseconds,
+    ]..sort();
+    _lookBeat = recent.length < 8
+        ? null
+        : Duration(microseconds: gaps[gaps.length ~/ 2]);
     _halveIfDouble();
   }
 
@@ -387,6 +469,7 @@ class TapFollower extends ChangeNotifier {
   void placeAtBar(int bar) {
     onTapped?.call(bar);
     _placedByHand = true;
+    _byChords = false;
     _startedByEar = false;
     _anchor = (at: _clock(), beat: bar * tune.beatsPerBar);
     _countingIn = false;
@@ -461,6 +544,7 @@ class TapFollower extends ChangeNotifier {
     _anchor = (at: last.last, beat: startsOn);
     _startedByEar = placed == null;
     _byBarlines = true;
+    _byChords = false;
     _fell.clear();
     _taken.clear();
     _countingIn = false;
@@ -524,7 +608,7 @@ class TapFollower extends ChangeNotifier {
   /// A barline heard [beats] from the count's nearest, too far to nudge
   /// it: on another beat of the bar, four in a row put the bar there.
   void _offBeatHeard(double beats) {
-    if (_placedByHand) return;
+    if (_placedByHand || _byChords) return;
     final whole = beats.round();
     if (whole == 0 || (beats - whole).abs() > 0.25) {
       _offBeat = (beat: 0, count: 0);
@@ -549,6 +633,9 @@ class TapFollower extends ChangeNotifier {
     _heard.clear();
     _offBeat = (beat: 0, count: 0);
     _byBarlines = false;
+    _byChords = false;
+    _chords = null;
+    _lookBeat = null;
     _taken.clear();
     _pulse = null;
     _fell.clear();

@@ -64,8 +64,9 @@ struct BarPitches {
     }
   }
 
-  /// Each step's harmony and bass, 24 numbers: frames centred on each step.
-  private func spectra(_ sound: [Float]) -> [[Float]] {
+  /// Each step's harmony and bass, 24 numbers: frames centred on each
+  /// step, the first on the sound's first sample.
+  func spectra(_ sound: [Float]) -> [[Float]] {
     let n = BarPitches.fftSize
     let half = n / 2
     let count = sound.count / BarPitches.hop + 1

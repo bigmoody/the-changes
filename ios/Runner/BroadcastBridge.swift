@@ -57,8 +57,14 @@ final class BroadcastBridge {
       case "keepTaps":
         result(self.write(call.arguments as? String ?? "", to: "broadcast-taps.txt"))
       case "follow":
-        let source = (call.arguments as? [String: Any])?["source"] as? String
-        result(self.follow(microphone: source == "microphone"))
+        let arguments = call.arguments as? [String: Any]
+        let source = arguments?["source"] as? String
+        result(
+          self.follow(
+            microphone: source == "microphone",
+            chords: ChordFollower.from(arguments?["chart"], beatsPerBar: arguments?["beatsPerBar"])
+          )
+        )
       case "stopFollowing":
         self.listener?.stop()
         self.listener = nil
@@ -77,7 +83,7 @@ final class BroadcastBridge {
 
   /// Starts Beat This! on what the broadcast hears, or on the room
   /// through the microphone. Nil when started, or what is missing.
-  private func follow(microphone: Bool) -> String? {
+  private func follow(microphone: Bool, chords: ChordFollower?) -> String? {
     if listener != nil { return nil }
     guard let folder else { return "There is no App Group to read the broadcast from." }
     guard let model = Bundle.main.url(forResource: "BeatThis", withExtension: "mlmodelc") else {
@@ -111,6 +117,7 @@ final class BroadcastBridge {
       model: model,
       log: folder.appendingPathComponent("beat-this-log.txt"),
       record: record,
+      chords: chords,
       source: microphone ? "the microphone" : "the broadcast"
     ) { [weak self] heard in
       self?.channel.invokeMethod("heard", arguments: heard)
@@ -257,14 +264,19 @@ final class BeatListener {
   /// Where everything it hears is kept.
   private let record: ListeningRecord
 
+  /// The chords, for where the band is when Beat This! cannot hear it,
+  /// every third look.
+  private let chords: ChordFollower?
+
   init(
-    ring: URL, model: URL, log: URL, record: ListeningRecord, source: String,
-    heard: @escaping ([String: Any]) -> Void
+    ring: URL, model: URL, log: URL, record: ListeningRecord, chords: ChordFollower?,
+    source: String, heard: @escaping ([String: Any]) -> Void
   ) {
     self.ring = ring
     self.model = model
     self.log = log
     self.record = record
+    self.chords = chords
     self.source = source
     self.heard = heard
   }
@@ -336,7 +348,27 @@ final class BeatListener {
         "  barlines "
           + found.downbeats.map { String(format: "%.3f", windowStarts + $0) }.joined(separator: " ")
       )
-      tell([
+      var heardChords: [String: Any]?
+      // Twenty seconds at least: on less, two answers a bar out agreed.
+      if let chords, looks % 3 == 0,
+        let long = shared.latest(30.1), Double(long.sound.count) / shared.sampleRate >= 20
+      {
+        let sound = BeatTracker.resample(long.sound, from: shared.sampleRate)
+        let startsAt = long.end - Double(sound.count) / LogMel.sampleRate
+        if let chord = chords(sound) {
+          heardChords = [
+            "tempo": chord.tempo, "barStart": startsAt + chord.barStart,
+            "bar": chord.bar, "lead": chord.lead,
+          ]
+          note(
+            String(
+              format: "  chords: %.1f BPM, bar %d at %.3f, lead %.3f",
+              chord.tempo, chord.bar + 1, startsAt + chord.barStart, chord.lead
+            )
+          )
+        }
+      }
+      var told: [String: Any] = [
         "beats": found.beats.map { windowStarts + $0 },
         "downbeats": found.downbeats.map { windowStarts + $0 },
         // What sounded in each bar between them, for placing the bars in
@@ -346,7 +378,9 @@ final class BeatListener {
         },
         "end": latest.end,
         "took": CACurrentMediaTime() - started,
-      ])
+      ]
+      if let heardChords { told["chords"] = heardChords }
+      tell(told)
     } catch {
       note("failed: \(error)")
       tell(["problem": "Beat This! could not run: \(error.localizedDescription)"])

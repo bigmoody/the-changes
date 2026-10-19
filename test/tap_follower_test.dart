@@ -360,6 +360,45 @@ void main() {
       taps.stop();
     });
 
+    test('the chords start the count when two in a row agree', () {
+      final taps = follower();
+      // A bar 3 that started 1 s ago, at 120.
+      now = const Duration(seconds: 10);
+      taps.heardChords(const Duration(seconds: 1), 2, 120);
+      expect(taps.counting, isFalse, reason: 'one alone is not enough');
+      // Three seconds on: bar 4 started 2 s ago, as the first puts it.
+      now = const Duration(seconds: 13);
+      taps.heardChords(const Duration(seconds: 2), 3, 121);
+      expect(taps.counting, isTrue);
+      expect(taps.byChords, isTrue);
+      expect(taps.placeKnown, isTrue);
+      expect(taps.tempo, closeTo(121, 0.5));
+      expect(taps.barAt(const Duration(seconds: 12)), 3);
+      taps.stop();
+    });
+
+    test('the chords are not taken when two disagree', () {
+      final taps = follower();
+      now = const Duration(seconds: 10);
+      taps.heardChords(const Duration(seconds: 1), 2, 120);
+      now = const Duration(seconds: 13);
+      taps.heardChords(const Duration(seconds: 2), 6, 120);
+      expect(taps.counting, isFalse);
+      taps.stop();
+    });
+
+    test('the chords leave a count the barlines keep to alone', () {
+      final taps = follower();
+      hear(taps, 5); // counting at 120 by the barlines
+      final at = now;
+      taps.heardChords(Duration.zero, 6, 100);
+      now = at + const Duration(milliseconds: 2400);
+      taps.heardChords(Duration.zero, 7, 100);
+      expect(taps.byChords, isFalse);
+      expect(taps.tempo, closeTo(120, 0.5));
+      taps.stop();
+    });
+
     test('Half Time: bars twice as long, from the barline it has', () {
       final taps = follower();
       hear(taps, 5, every: bar ~/ 2); // half bars, at 240

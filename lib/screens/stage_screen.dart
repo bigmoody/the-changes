@@ -173,10 +173,12 @@ class _StageScreenState extends State<StageScreen> {
         ..stopReading()
         ..onBarline = null
         ..onBeats = null
+        ..onChords = null
         ..onBar = null;
       _taps
         ?..onRecounted = null
-        ..onHalved = null;
+        ..onHalved = null
+        ..onChords = null;
       unawaited(others.stopFollowing());
       _form?.clear();
       setState(() {
@@ -204,12 +206,25 @@ class _StageScreenState extends State<StageScreen> {
       ..onBeats = (beats) {
         if (_tapping) _taps?.heardBeats(beats);
       }
+      ..onChords = (ago, bar, tempo) {
+        if (_tapping) _taps?.heardChords(ago, bar, tempo);
+      }
+      ..tune = controller.tune
       ..onBar = _heardBar;
     setState(() => _hearingOthers = true);
     if (!_tapping) await _toggleTapping();
     _taps
       ?..onRecounted = _recounted
-      ..onHalved = () => others.noted('COUNT HALVED ITSELF');
+      ..onHalved = (() => others.noted('COUNT HALVED ITSELF'))
+      ..onChords = () {
+        final taps = _taps!;
+        others.noted(
+          'CHORDS: ${taps.tempo!.round()} BPM, '
+          'BAR ${taps.barAt(taps.now)! + 1}',
+        );
+        _form?.clear();
+        setState(() => _placedByEar = true);
+      };
     _keepTapsWithOthers();
     await others.follow();
   }
@@ -222,7 +237,12 @@ class _StageScreenState extends State<StageScreen> {
     final form = _form ??= FormFinder(tune: controller.tune);
     form.heard(taps.now - ago, pitches);
     _noteShown(taps);
-    if (taps.placedByHand || !taps.counting || taps.losesTheBars) return;
+    if (taps.placedByHand ||
+        !taps.counting ||
+        taps.losesTheBars ||
+        taps.byChords) {
+      return;
+    }
     final move = form.shift(taps.barAt);
     if (move == null) return;
     if (move == 0) {

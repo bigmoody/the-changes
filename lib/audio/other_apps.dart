@@ -27,6 +27,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../music/tune.dart';
+
 /// The channel the native side answers on.
 const otherAppsChannel = MethodChannel('the_changes/broadcast');
 
@@ -229,6 +231,28 @@ class OtherAppsSound extends ChangeNotifier {
   /// Told of every look's beats, each as how long ago it was.
   void Function(List<Duration> beats)? onBeats;
 
+  /// Told of what the chords say every few seconds (ChordFollower.swift):
+  /// a bar that started [ago], which bar of the chart it was, and the
+  /// tempo.
+  void Function(Duration ago, int bar, double tempo)? onChords;
+
+  /// The tune's chords, half a bar at a time, for following by them.
+  Tune? tune;
+
+  /// [tune]'s chart as the phone wants it: each half bar's notes and bass.
+  static List<Map<String, Object>> chartOf(Tune tune) {
+    final perBar = tune.beatsPerBar;
+    return [
+      for (var half = 0; half < tune.barCount * 2; half++)
+        () {
+          final chord = tune
+              .slotAtBeat((half ~/ 2) * perBar + (half % 2) * (perBar ~/ 2))
+              .chord;
+          return {'pcs': chord.pitchClasses, 'bass': chord.bass};
+        }(),
+    ];
+  }
+
   /// Told of each new bar heard whole: how long ago its middle was, and
   /// what sounded in it (see form_finder.dart).
   void Function(Duration ago, List<double> pitches)? onBar;
@@ -290,8 +314,11 @@ class OtherAppsSound extends ChangeNotifier {
     _confirm = BarlineFilter();
     _lastBar = null;
     try {
+      final tune = this.tune;
       _problem = await channel.invokeMethod<String>('follow', {
         'source': _microphone ? 'microphone' : 'broadcast',
+        if (tune != null) 'chart': chartOf(tune),
+        if (tune != null) 'beatsPerBar': tune.beatsPerBar,
       });
     } catch (e) {
       _problem = 'Beat This! could not start: $e';
@@ -323,6 +350,16 @@ class OtherAppsSound extends ChangeNotifier {
     final offset = _offset;
     if (offset != null && _following) {
       final now = _clock().inMicroseconds / 1e6 + offset;
+      if (heard['chords'] case final Map chords) {
+        onChords?.call(
+          Duration(
+            microseconds: ((now - (chords['barStart'] as num).toDouble()) * 1e6)
+                .round(),
+          ),
+          (chords['bar'] as num).toInt(),
+          (chords['tempo'] as num).toDouble(),
+        );
+      }
       onBeats?.call([
         for (final b in heard['beats'] as List? ?? const [])
           Duration(microseconds: ((now - (b as num).toDouble()) * 1e6).round()),
