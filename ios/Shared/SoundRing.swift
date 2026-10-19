@@ -149,7 +149,10 @@ final class SoundRing {
       }
     }
     guard settled else { return nil }
-    let wanted = min(Int(min(count, UInt64(capacity))), Int(seconds * sampleRate))
+    // Never the whole ring: half a second is left for the extension to
+    // write into while the rest is copied.
+    let room = capacity - Int(sampleRate / 2)
+    let wanted = min(Int(min(count, UInt64(room))), Int(seconds * sampleRate))
     guard wanted > 0 else { return nil }
     let stop = Int(count % UInt64(capacity))
     let start = (stop - wanted + capacity) % capacity

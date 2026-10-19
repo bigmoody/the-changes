@@ -5,7 +5,10 @@ code and weights: https://github.com/CPJKU/beat_this. This takes its
 "final0" checkpoint, downloaded by the beat_this package on first use, and
 writes it as a Core ML model for exactly the window the app runs it on
 (BeatTracker.swift): 1000 spectrogram frames, padded by 6 on each side.
-Weights in 16-bit floats, about 39 MB, to ios/Models/, which git ignores.
+Weights in 32-bit floats, about 78 MB, to ios/Models/, which git ignores.
+In 16-bit floats (half the size) it was not safe: on a Mac's processor it
+gave the same answer for every frame, and on an iPad's graphics chip it
+heard three times the barlines a Mac did in the same twenty seconds.
 Debug builds compile it into the app if it is there.
 
 Needs Python 3.11 with beat_this, torch 2.2, soundfile, soxr and
@@ -67,7 +70,7 @@ converted = ct.convert(
     inputs=[ct.TensorType(name="spect", shape=example.shape)],
     outputs=[ct.TensorType(name="beat"), ct.TensorType(name="downbeat")],
     convert_to="mlprogram",
-    compute_precision=ct.precision.FLOAT16,
+    compute_precision=ct.precision.FLOAT32,
     minimum_deployment_target=ct.target.iOS15,
 )
 converted.short_description = "Beat This! final0 (MIT, CPJKU/beat_this): beats and downbeats, 50 frames a second."

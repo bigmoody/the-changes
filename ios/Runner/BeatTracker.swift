@@ -28,11 +28,16 @@ final class BeatTracker {
 
   init(model url: URL) throws {
     let configuration = MLModelConfiguration()
-    // Not the Neural Engine: on an iPad Pro (2021) getting this model
-    // ready for it the first time had not finished after a minute, with
-    // nothing to say why. The graphics chip and processor need no such
-    // wait.
-    configuration.computeUnits = .cpuAndGPU
+    // The processor alone. Not the Neural Engine: on an iPad Pro (2021)
+    // getting this model ready for it the first time had not finished
+    // after a minute. Not the graphics chip either: there it ran in 16-bit
+    // arithmetic, and on the same twenty seconds of a room through the
+    // microphone it heard 49 barlines where a Mac heard 15, and on
+    // broadcasts nearly half its gaps between barlines were too short
+    // against one in ten on a Mac. It needs the model in 32-bit floats
+    // (tool/beat_this/convert.py): with 16-bit ones the processor gave the
+    // same answer for every frame. A look takes about a tenth of a second.
+    configuration.computeUnits = .cpuOnly
     model = try MLModel(contentsOf: url, configuration: configuration)
   }
 
