@@ -16,7 +16,7 @@ import Accelerate
 import Foundation
 
 final class SoundRing {
-  /// How much is kept.
+  /// How much is kept, unless asked for more.
   static let seconds = 30.0
 
   private static let headerSize = 64
@@ -50,9 +50,9 @@ final class SoundRing {
   }
 
   /// A new ring for the extension to write, replacing any before it.
-  init?(writingTo url: URL, sampleRate: Double) {
+  init?(writingTo url: URL, sampleRate: Double, seconds: Double = SoundRing.seconds) {
     self.sampleRate = sampleRate
-    capacity = Int(sampleRate * SoundRing.seconds)
+    capacity = Int(sampleRate * seconds)
     size = SoundRing.headerSize + capacity * 2
     try? FileManager.default.removeItem(at: url)
     file = open(url.path, O_RDWR | O_CREAT, 0o644)

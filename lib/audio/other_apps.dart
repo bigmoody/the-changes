@@ -252,13 +252,33 @@ class OtherAppsSound extends ChangeNotifier {
   final _barlines = <({double heard, double at})>[];
 
   /// Starts Beat This! on what the broadcast hears.
+  /// Whether it follows the room through the microphone rather than a
+  /// broadcast: the same Beat This!, the same count, the sound from the
+  /// phone's own microphone (see MicRecorder.swift).
+  bool get microphone => _microphone;
+  var _microphone = false;
+
+  /// Follows through the microphone, or the broadcast, from now on.
+  Future<void> useMicrophone(bool on) async {
+    if (on == _microphone) return;
+    final wasFollowing = _following;
+    if (wasFollowing) await stopFollowing();
+    _microphone = on;
+    _waiting = null;
+    _problem = null;
+    if (wasFollowing) await follow();
+    notifyListeners();
+  }
+
   Future<void> follow() async {
     _following = true;
     _barlinesHeard = 0;
     _confirm = BarlineFilter();
     _lastBar = null;
     try {
-      _problem = await channel.invokeMethod<String>('follow');
+      _problem = await channel.invokeMethod<String>('follow', {
+        'source': _microphone ? 'microphone' : 'broadcast',
+      });
     } catch (e) {
       _problem = 'Beat This! could not start: $e';
     }
@@ -351,17 +371,28 @@ class OtherAppsSound extends ChangeNotifier {
   /// headed by [header]. The log is also left beside the sound, so both
   /// can be copied off the phone. Null if nothing was kept.
   Future<({Uint8List wav, String log})?> keep({required String header}) async {
-    final wav = await kept();
-    if (wav == null) return null;
-    String? text;
-    try {
-      text = await channel.invokeMethod<String>('keptPlaced');
-    } catch (e) {
-      debugPrint('Could not read when the broadcast was kept: $e');
+    Uint8List? wav;
+    var placed = const <String, dynamic>{};
+    if (_microphone) {
+      // The microphone's minute, kept by the app itself.
+      try {
+        final kept = await channel.invokeMethod<Map>('keptMicrophone');
+        wav = kept?['wav'] as Uint8List?;
+        placed = Map<String, dynamic>.from(kept?['placed'] as Map? ?? const {});
+      } catch (e) {
+        debugPrint('Could not read what the microphone kept: $e');
+      }
+    } else {
+      wav = await kept();
+      String? text;
+      try {
+        text = await channel.invokeMethod<String>('keptPlaced');
+      } catch (e) {
+        debugPrint('Could not read when the broadcast was kept: $e');
+      }
+      if (text != null) placed = jsonDecode(text) as Map<String, dynamic>;
     }
-    final placed = text == null
-        ? const <String, dynamic>{}
-        : jsonDecode(text) as Map<String, dynamic>;
+    if (wav == null) return null;
     final seconds = (placed['seconds'] as num?)?.toDouble();
     final byTimestamp = (placed['endByTimestamp'] as num?)?.toDouble();
     final byArrival = (placed['endByArrival'] as num?)?.toDouble();
@@ -383,7 +414,8 @@ class OtherAppsSound extends ChangeNotifier {
     final log = StringBuffer()
       ..writeln(header)
       ..writeln(
-        '# broadcast: end placed by $placedBy, arrival minus timestamp $held',
+        '# ${_microphone ? 'microphone' : 'broadcast'}: end placed by '
+        '$placedBy, arrival minus timestamp $held',
       )
       ..writeln('# seconds  event');
     if (end != null && seconds != null) {

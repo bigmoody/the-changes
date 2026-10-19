@@ -3,6 +3,7 @@
 // the App Group, and none of this is compiled into it.
 
 #if DEBUG
+import AVFoundation
 import Flutter
 import QuartzCore
 import ReplayKit
@@ -23,6 +24,9 @@ final class BroadcastBridge {
 
   /// Beat This!, listening to what the broadcast hears, while asked to.
   private var listener: BeatListener?
+
+  /// The room, when following through the microphone.
+  private var mic: MicRecorder?
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
@@ -49,29 +53,56 @@ final class BroadcastBridge {
       case "keepTaps":
         result(self.write(call.arguments as? String ?? "", to: "broadcast-taps.txt"))
       case "follow":
-        result(self.follow())
+        let source = (call.arguments as? [String: Any])?["source"] as? String
+        result(self.follow(microphone: source == "microphone"))
       case "stopFollowing":
         self.listener?.stop()
         self.listener = nil
+        self.mic?.stop()
+        self.mic = nil
         result(nil)
+      case "keptMicrophone":
+        result(self.keptMicrophone())
       default:
         result(FlutterMethodNotImplemented)
       }
     }
   }
 
-  /// Starts Beat This! on what the broadcast hears. Nil when started, or
-  /// what is missing.
-  private func follow() -> String? {
+  /// Starts Beat This! on what the broadcast hears, or on the room
+  /// through the microphone. Nil when started, or what is missing.
+  private func follow(microphone: Bool) -> String? {
     if listener != nil { return nil }
     guard let folder else { return "There is no App Group to read the broadcast from." }
     guard let model = Bundle.main.url(forResource: "BeatThis", withExtension: "mlmodelc") else {
       return "This build has no Beat This! model. Run tool/beat_this/convert.py and build again."
     }
+    var ring = folder.appendingPathComponent("broadcast-ring.raw")
+    if microphone {
+      switch AVAudioSession.sharedInstance().recordPermission {
+      case .denied:
+        return "The microphone is not allowed. Allow it in Settings, The Changes."
+      case .undetermined:
+        // Asked once; following starts when it is next asked for.
+        AVAudioSession.sharedInstance().requestRecordPermission { _ in }
+        return "Allow the microphone, then choose it again."
+      default:
+        break
+      }
+      ring = folder.appendingPathComponent("microphone-ring.raw")
+      let mic = MicRecorder(ring: ring)
+      do {
+        try mic.start()
+      } catch {
+        return "The microphone could not start: \(error.localizedDescription)"
+      }
+      self.mic = mic
+    }
     let listener = BeatListener(
-      ring: folder.appendingPathComponent("broadcast-ring.raw"),
+      ring: ring,
       model: model,
-      log: folder.appendingPathComponent("beat-this-log.txt")
+      log: folder.appendingPathComponent("beat-this-log.txt"),
+      source: microphone ? "the microphone" : "the broadcast"
     ) { [weak self] heard in
       self?.channel.invokeMethod("heard", arguments: heard)
     }
@@ -117,6 +148,44 @@ final class BroadcastBridge {
     }
   }
 
+  /// The microphone's last minute as a WAV, and when its last sample was
+  /// heard, as the extension leaves them for the broadcast.
+  private func keptMicrophone() -> [String: Any]? {
+    guard let folder,
+      let ring = SoundRing(readingFrom: folder.appendingPathComponent("microphone-ring.raw")),
+      let latest = ring.latest(MicRecorder.keptSeconds)
+    else { return nil }
+    let rate = UInt32(ring.sampleRate)
+    var wav = Data()
+    func add<T: FixedWidthInteger>(_ value: T) {
+      withUnsafeBytes(of: value.littleEndian) { wav.append(contentsOf: $0) }
+    }
+    let bytes = UInt32(latest.sound.count * 2)
+    wav.append(contentsOf: Array("RIFF".utf8))
+    add(36 + bytes)
+    wav.append(contentsOf: Array("WAVEfmt ".utf8))
+    add(UInt32(16))
+    add(UInt16(1))
+    add(UInt16(1))
+    add(rate)
+    add(rate * 2)
+    add(UInt16(2))
+    add(UInt16(16))
+    wav.append(contentsOf: Array("data".utf8))
+    add(bytes)
+    for value in latest.sound {
+      add(Int16(max(-1, min(1, value)) * 32767))
+    }
+    return [
+      "wav": FlutterStandardTypedData(bytes: wav),
+      "placed": [
+        "seconds": Double(latest.sound.count) / ring.sampleRate,
+        "sampleRate": ring.sampleRate,
+        "endByTimestamp": latest.end,
+      ],
+    ]
+  }
+
   private func read(_ name: String) -> Data? {
     guard let folder else { return nil }
     return try? Data(contentsOf: folder.appendingPathComponent(name))
@@ -140,10 +209,17 @@ final class BeatListener {
   private var tracker: BeatTracker?
   private let pitches = BarPitches()
 
-  init(ring: URL, model: URL, log: URL, heard: @escaping ([String: Any]) -> Void) {
+  /// What it is listening to, in words: "the broadcast".
+  private let source: String
+
+  init(
+    ring: URL, model: URL, log: URL, source: String,
+    heard: @escaping ([String: Any]) -> Void
+  ) {
     self.ring = ring
     self.model = model
     self.log = log
+    self.source = source
     self.heard = heard
   }
 
@@ -183,14 +259,14 @@ final class BeatListener {
         let latest = shared.latest(Double(BeatTracker.samples) / LogMel.sampleRate + 0.1)
       else {
         note("no ring to read")
-        return tell(["waiting": "Nothing from the broadcast yet."])
+        return tell(["waiting": "Nothing from \(source) yet."])
       }
       // Nothing new for a while: the broadcast has stopped, or the
       // other app has.
       let now = CACurrentMediaTime()
       guard now - latest.end < 1.5 else {
         note(String(format: "ring %.1f s old", now - latest.end))
-        return tell(["waiting": "Nothing has arrived from the broadcast for a while."])
+        return tell(["waiting": "Nothing has arrived from \(source) for a while."])
       }
       let started = CACurrentMediaTime()
       let sound = BeatTracker.resample(latest.sound, from: shared.sampleRate)

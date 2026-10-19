@@ -41,6 +41,9 @@ final _keptPlaced = {
 /// The log the app left beside the kept sound, last time it did.
 String? _leftTaps;
 
+/// What following was last started on.
+String? _followed;
+
 bool _keepTaps(String log) {
   _leftTaps = log;
   return true;
@@ -84,6 +87,9 @@ Future<List<String>> _openStage(
     otherAppsChannel,
     (call) async {
       asked.add(call.method);
+      if (call.method == 'follow') {
+        _followed = (call.arguments as Map?)?['source'] as String?;
+      }
       return switch (call.method) {
         'read' => report == null ? null : jsonEncode(report),
         'pick' => true,
@@ -305,6 +311,23 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
     expect(asked, contains('stopFollowing'));
+    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
+    await tester.pump();
+  });
+
+  testWidgets('follows through the microphone when chosen', (tester) async {
+    final asked = await _openStage(tester, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(_followed, 'broadcast');
+    await tester.tap(find.text('Microphone'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(asked.where((m) => m == 'stopFollowing'), hasLength(1));
+    expect(_followed, 'microphone');
+    expect(find.textContaining('through the microphone'), findsOneWidget);
+    expect(find.byKey(const ValueKey('stage-start-broadcast')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
     await tester.pump();
   });

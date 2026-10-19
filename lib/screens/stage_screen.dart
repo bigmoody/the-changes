@@ -614,9 +614,13 @@ class _OtherApps extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final report = sound.report;
+    final microphone = sound.microphone;
+    final report = microphone ? null : sound.report;
     final arriving = sound.arriving;
-    final text = report == null
+    final text = microphone
+        ? 'Listening to the room through the microphone. Play the record '
+              'out loud, or play along with a band.'
+        : report == null
         ? 'Start Broadcast, choose The Changes and start it, then play '
               'something in another app.'
         : !arriving
@@ -655,23 +659,39 @@ class _OtherApps extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SegmentedButton<bool>(
+              key: const ValueKey('stage-other-apps-source'),
+              segments: const [
+                ButtonSegment(value: false, label: Text('Broadcast')),
+                ButtonSegment(value: true, label: Text('Microphone')),
+              ],
+              selected: {microphone},
+              onSelectionChanged: (chosen) => sound.useMicrophone(chosen.first),
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(text, style: small),
           Row(
             children: [
               Expanded(
-                child: LinearProgressIndicator(
-                  key: const ValueKey('stage-other-apps-level'),
-                  value: level,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                child: microphone
+                    ? const SizedBox()
+                    : LinearProgressIndicator(
+                        key: const ValueKey('stage-other-apps-level'),
+                        value: level,
+                        minHeight: 8,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
-                key: const ValueKey('stage-start-broadcast'),
-                onPressed: onStart,
-                child: const Text('Start Broadcast'),
-              ),
+              if (!microphone)
+                OutlinedButton(
+                  key: const ValueKey('stage-start-broadcast'),
+                  onPressed: onStart,
+                  child: const Text('Start Broadcast'),
+                ),
               IconButton(
                 key: const ValueKey('stage-save-broadcast'),
                 icon: const Icon(Icons.save_alt),
