@@ -222,7 +222,7 @@ class _StageScreenState extends State<StageScreen> {
     final form = _form ??= FormFinder(tune: controller.tune);
     form.heard(taps.now - ago, pitches);
     _noteShown(taps);
-    if (taps.placedByHand || !taps.counting) return;
+    if (taps.placedByHand || !taps.counting || taps.losesTheBars) return;
     final move = form.shift(taps.barAt);
     if (move == null) return;
     if (move == 0) {
@@ -243,7 +243,11 @@ class _StageScreenState extends State<StageScreen> {
     final bar = taps.barAt(taps.now);
     _otherApps?.noted(
       'SHOWING ${taps.tempo!.round()} BPM, '
-      '${taps.placeKnown && bar != null ? 'BAR ${bar + 1}' : 'NO BAR'}',
+      '${taps.losesTheBars
+          ? 'NOT HEARING THE BARS'
+          : taps.placeKnown && bar != null
+          ? 'BAR ${bar + 1}'
+          : 'NO BAR'}',
     );
   }
 
@@ -353,8 +357,13 @@ class _StageScreenState extends State<StageScreen> {
       // band's own, which the chart reads for itself.
       // A count that does not yet know the bar of the tune marks none:
       // a bar 1 it guessed looks exactly like knowing.
+      // Nor one while the barlines heard do not agree with the count:
+      // without drums Beat This! cannot hear them, and every bar shown
+      // would be wrong.
       final followed = taps != null
-          ? (taps.placeKnown ? tapped : null)
+          ? (taps.placeKnown && (!_hearingOthers || !taps.losesTheBars)
+                ? tapped
+                : null)
           : sure
           ? heard.beat
           : null;
@@ -402,7 +411,7 @@ class _StageScreenState extends State<StageScreen> {
                       ),
                     ),
                   ),
-                  if (taps != null) _Tapping(taps: taps),
+                  if (taps != null) _Tapping(taps: taps, byEar: _hearingOthers),
                   if (_listening)
                     _Hearing(
                       level: _ear!.level,
@@ -508,15 +517,21 @@ class _Pedals extends StatelessWidget {
 
 /// Following by taps: what to do next, and the two things it can be told.
 class _Tapping extends StatelessWidget {
-  const _Tapping({required this.taps});
+  const _Tapping({required this.taps, this.byEar = false});
 
   final TapFollower taps;
+
+  /// Whether Beat This! is following too, by broadcast or microphone.
+  final bool byEar;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tempo = taps.tempo;
-    final text = taps.counting && tempo != null && !taps.placeKnown
+    final text = byEar && taps.counting && taps.losesTheBars
+        ? "Can't hear a steady beat. Tap the beat, or the bar the band is "
+              'on.'
+        : taps.counting && tempo != null && !taps.placeKnown
         ? 'Counting at ${tempo.round()} BPM, and listening for which bar '
               'of the tune it is. Tap the bar the band is on if you know it.'
         : taps.counting && tempo != null

@@ -112,6 +112,22 @@ class TapFollower extends ChangeNotifier {
   /// How long the beat Beat This! hears steadily is, when it does.
   Duration? _pulse;
 
+  /// Whether each of the last ten barlines heard while counting fell on
+  /// one of the count's bars.
+  final _fell = <bool>[];
+
+  /// Whether the barlines heard have stopped agreeing with the count: six
+  /// or more heard since it started or its bars last moved, and fewer
+  /// than three in ten of them on its bars. Then it cannot hear where the
+  /// bars are, and no bar is shown, unless one was tapped. On every take
+  /// that was followed, three in ten or more always were, and six on
+  /// every broadcast; on Blue Monk played without drums, none were, and
+  /// every bar shown was wrong.
+  bool get losesTheBars =>
+      !_placedByHand &&
+      _fell.length >= 6 &&
+      _fell.where((fell) => fell).length * 10 < 3 * _fell.length;
+
   /// How many heard barlines have moved the count.
   int get nudges => _nudges;
   var _nudges = 0;
@@ -359,6 +375,7 @@ class TapFollower extends ChangeNotifier {
   /// tapped, and the barlines start looking for beat 1 afresh.
   void _recount() {
     _offBeat = (beat: 0, count: 0);
+    _fell.clear();
     if (!_placedByHand) _startedByEar = true;
     onRecounted?.call();
   }
@@ -389,7 +406,10 @@ class TapFollower extends ChangeNotifier {
       ..sort();
     if (_heard.length > 8) _heard.removeAt(0);
     if (counting) {
+      final before = _nudges;
       _nudge(at);
+      _fell.add(_nudges > before);
+      if (_fell.length > 10) _fell.removeAt(0);
     } else {
       _startFromHeard();
     }
@@ -441,6 +461,7 @@ class TapFollower extends ChangeNotifier {
     _anchor = (at: last.last, beat: startsOn);
     _startedByEar = placed == null;
     _byBarlines = true;
+    _fell.clear();
     _taken.clear();
     _countingIn = false;
     _taps.clear();
@@ -530,6 +551,7 @@ class TapFollower extends ChangeNotifier {
     _byBarlines = false;
     _taken.clear();
     _pulse = null;
+    _fell.clear();
     _ticker?.cancel();
     _ticker = null;
     _lastBeat = null;

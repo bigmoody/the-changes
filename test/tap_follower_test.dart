@@ -347,6 +347,19 @@ void main() {
       taps.stop();
     });
 
+    test('says it cannot hear the bars when they stop falling on its own', () {
+      final taps = follower();
+      hear(taps, 5); // counting at 120, bars every 2 s
+      expect(taps.losesTheBars, isFalse);
+      // Then barlines a third of a bar out, none on the count's.
+      hear(taps, 6, from: bar * 5 + bar ~/ 3);
+      expect(taps.losesTheBars, isTrue);
+      // A bar tapped: somebody knows.
+      taps.placeAtBar(0);
+      expect(taps.losesTheBars, isFalse);
+      taps.stop();
+    });
+
     test('Half Time: bars twice as long, from the barline it has', () {
       final taps = follower();
       hear(taps, 5, every: bar ~/ 2); // half bars, at 240
