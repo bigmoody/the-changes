@@ -29,7 +29,7 @@ import 'dart:math';
 import '../music/tune.dart';
 
 class FormFinder {
-  FormFinder({required this.tune});
+  FormFinder({required this.tune, this.lead = defaultLead});
 
   final Tune tune;
 
@@ -41,7 +41,8 @@ class FormFinder {
 
   /// How much better than the runner-up the best fit must be, added up
   /// over the bars heard.
-  static const lead = 0.8;
+  final double lead;
+  static const defaultLead = 0.8;
 
   /// The bass counts for half as much as the harmony.
   static const _bassWeight = 0.5;
