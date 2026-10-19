@@ -190,7 +190,13 @@ class _StageScreenState extends State<StageScreen> {
       ..startReading()
       // Only while following by taps: turned off, the count stays off.
       ..onBarline = (ago) {
-        if (_tapping) _taps?.heardBarline(ago);
+        final taps = _tapping ? _taps : null;
+        if (taps == null) return;
+        final was = taps.counting;
+        taps.heardBarline(ago);
+        if (!was && taps.counting) {
+          others.noted('COUNT STARTED AT ${taps.tempo!.round()} BPM');
+        }
       }
       ..onBar = _heardBar;
     setState(() => _hearingOthers = true);
@@ -207,6 +213,7 @@ class _StageScreenState extends State<StageScreen> {
     if (!_tapping || taps == null) return;
     final form = _form ??= FormFinder(tune: controller.tune);
     form.heard(taps.now - ago, pitches);
+    _noteShown(taps);
     if (taps.placedByHand || !taps.counting) return;
     final move = form.shift(taps.barAt);
     if (move == null) return;
@@ -215,13 +222,28 @@ class _StageScreenState extends State<StageScreen> {
     } else {
       taps.moveBars(move);
     }
+    _otherApps?.noted(
+      move == 0 ? 'EAR SURE OF THE BAR' : 'EAR MOVED THE COUNT $move BARS',
+    );
     setState(() => _placedByEar = true);
+  }
+
+  /// For the log, what the count shows now, once a bar heard: the tempo,
+  /// and the bar of the tune, or that it does not know it.
+  void _noteShown(TapFollower taps) {
+    if (!taps.counting) return;
+    final bar = taps.barAt(taps.now);
+    _otherApps?.noted(
+      'SHOWING ${taps.tempo!.round()} BPM, '
+      '${taps.placeKnown && bar != null ? 'BAR ${bar + 1}' : 'NO BAR'}',
+    );
   }
 
   /// The count's bars moved (Half Time, a new tempo tapped, or beat 1
   /// heard elsewhere): the bars heard so far were put in the old ones, and
   /// are put in the new.
   void _recounted() {
+    _otherApps?.noted('COUNT MOVED ITS BARS, NOW ${_taps?.tempo?.round()} BPM');
     _form?.recount();
     setState(() => _placedByEar = false);
   }
@@ -389,7 +411,10 @@ class _StageScreenState extends State<StageScreen> {
                       onStart: _otherApps!.pick,
                       onSave: _saveWhatOthersPlayed,
                       onHalfTime: (_taps?.counting ?? false)
-                          ? _taps!.halfTime
+                          ? () {
+                              _otherApps?.noted('HALF TIME PRESSED');
+                              _taps!.halfTime();
+                            }
                           : null,
                     ),
                   const Divider(height: 1),

@@ -190,9 +190,20 @@ class OtherAppsSound extends ChangeNotifier {
     final offset = _offset;
     if (offset == null) return;
     _taps.add((at: _clock().inMicroseconds / 1e6 + offset, bar: bar));
-    // Far more than a minute's worth.
-    if (_taps.length > 2000) _taps.removeAt(0);
+    // Far more than twenty minutes' worth.
+    if (_taps.length > 5000) _taps.removeAt(0);
   }
+
+  /// What the count and the ear did, said in a line for the log: what
+  /// was on the screen, beside what was heard.
+  void noted(String event) {
+    final offset = _offset;
+    if (offset == null) return;
+    _notes.add((at: _clock().inMicroseconds / 1e6 + offset, event: event));
+    if (_notes.length > 5000) _notes.removeAt(0);
+  }
+
+  final _notes = <({double at, String event})>[];
 
   void stopReading() {
     _reading?.cancel();
@@ -312,7 +323,7 @@ class OtherAppsSound extends ChangeNotifier {
       for (final d in _confirm.take(downbeats)) {
         _barlinesHeard++;
         _barlines.add((heard: now, at: d));
-        if (_barlines.length > 2000) _barlines.removeAt(0);
+        if (_barlines.length > 10000) _barlines.removeAt(0);
         onBarline?.call(Duration(microseconds: ((now - d) * 1e6).round()));
       }
       final bars = [
@@ -335,7 +346,7 @@ class OtherAppsSound extends ChangeNotifier {
         ];
         _lastBar = start;
         _barsHeard.add((heard: now, start: start, pitches: pitches));
-        if (_barsHeard.length > 200) _barsHeard.removeAt(0);
+        if (_barsHeard.length > 5000) _barsHeard.removeAt(0);
         final middle = (start + end) / 2;
         onBar?.call(
           Duration(microseconds: ((now - middle) * 1e6).round()),
@@ -373,7 +384,18 @@ class OtherAppsSound extends ChangeNotifier {
   Future<({Uint8List wav, String log})?> keep({required String header}) async {
     Uint8List? wav;
     var placed = const <String, dynamic>{};
-    if (_microphone) {
+    // Everything heard since it started following, by broadcast or
+    // microphone, when it has followed; otherwise the last minute.
+    try {
+      final kept = await channel.invokeMethod<Map>('keptListening');
+      wav = kept?['wav'] as Uint8List?;
+      placed = Map<String, dynamic>.from(kept?['placed'] as Map? ?? const {});
+    } catch (e) {
+      debugPrint('Could not read what was heard while following: $e');
+    }
+    if (wav != null) {
+      // Kept by the app as it was heard.
+    } else if (_microphone) {
       // The microphone's minute, kept by the app itself.
       try {
         final kept = await channel.invokeMethod<Map>('keptMicrophone');
@@ -427,6 +449,8 @@ class OtherAppsSound extends ChangeNotifier {
               tap.at,
               tap.bar == null ? 'TAP THE BEAT' : 'TAPPED BAR ${tap.bar! + 1}',
             ),
+        for (final note in _notes)
+          if (note.at >= start && note.at <= end) (note.at, note.event),
         // When Beat This! heard it, then when it was.
         for (final b in _barlines)
           if (b.heard >= start && b.heard <= end)

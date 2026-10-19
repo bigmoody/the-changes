@@ -286,6 +286,9 @@ void main() {
     expect(_leftTaps, contains('5.000  HEARD BARLINE 5.000'));
     expect(_leftTaps, contains('5.000  HEARD BARLINE 0.360'));
     expect(_leftTaps, contains('5.000  HEARD BAR 3.840 0.5000'));
+    // And what the count did, as it was shown.
+    expect(_leftTaps, contains('COUNT STARTED AT 207 BPM'));
+    expect(_leftTaps, contains('HALF TIME PRESSED'));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
     expect(asked, contains('stopFollowing'));

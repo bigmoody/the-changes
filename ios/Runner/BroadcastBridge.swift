@@ -28,6 +28,10 @@ final class BroadcastBridge {
   /// The room, when following through the microphone.
   private var mic: MicRecorder?
 
+  /// Everything Beat This! has heard since it was last asked to follow,
+  /// kept after it stops, for saving.
+  private var record: ListeningRecord?
+
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
       name: "the_changes/broadcast",
@@ -63,6 +67,8 @@ final class BroadcastBridge {
         result(nil)
       case "keptMicrophone":
         result(self.keptMicrophone())
+      case "keptListening":
+        result(self.keptListening())
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -98,10 +104,13 @@ final class BroadcastBridge {
       }
       self.mic = mic
     }
+    let record = ListeningRecord(file: folder.appendingPathComponent("listening.raw"))
+    self.record = record
     let listener = BeatListener(
       ring: ring,
       model: model,
       log: folder.appendingPathComponent("beat-this-log.txt"),
+      record: record,
       source: microphone ? "the microphone" : "the broadcast"
     ) { [weak self] heard in
       self?.channel.invokeMethod("heard", arguments: heard)
@@ -186,6 +195,39 @@ final class BroadcastBridge {
     ]
   }
 
+  /// Everything heard since following started, as a WAV, and when its
+  /// last sample was heard, as keptMicrophone gives the last minute.
+  private func keptListening() -> [String: Any]? {
+    guard let kept = record?.kept() else { return nil }
+    let rate = UInt32(kept.sampleRate)
+    var wav = Data()
+    func add<T: FixedWidthInteger>(_ value: T) {
+      withUnsafeBytes(of: value.littleEndian) { wav.append(contentsOf: $0) }
+    }
+    let bytes = UInt32(kept.samples.count)
+    wav.append(contentsOf: Array("RIFF".utf8))
+    add(36 + bytes)
+    wav.append(contentsOf: Array("WAVEfmt ".utf8))
+    add(UInt32(16))
+    add(UInt16(1))
+    add(UInt16(1))
+    add(rate)
+    add(rate * 2)
+    add(UInt16(2))
+    add(UInt16(16))
+    wav.append(contentsOf: Array("data".utf8))
+    add(bytes)
+    wav.append(kept.samples)
+    return [
+      "wav": FlutterStandardTypedData(bytes: wav),
+      "placed": [
+        "seconds": Double(kept.samples.count / 2) / kept.sampleRate,
+        "sampleRate": kept.sampleRate,
+        "endByTimestamp": kept.end,
+      ],
+    ]
+  }
+
   private func read(_ name: String) -> Data? {
     guard let folder else { return nil }
     return try? Data(contentsOf: folder.appendingPathComponent(name))
@@ -212,13 +254,17 @@ final class BeatListener {
   /// What it is listening to, in words: "the broadcast".
   private let source: String
 
+  /// Where everything it hears is kept.
+  private let record: ListeningRecord
+
   init(
-    ring: URL, model: URL, log: URL, source: String,
+    ring: URL, model: URL, log: URL, record: ListeningRecord, source: String,
     heard: @escaping ([String: Any]) -> Void
   ) {
     self.ring = ring
     self.model = model
     self.log = log
+    self.record = record
     self.source = source
     self.heard = heard
   }
@@ -268,6 +314,7 @@ final class BeatListener {
         note(String(format: "ring %.1f s old", now - latest.end))
         return tell(["waiting": "Nothing has arrived from \(source) for a while."])
       }
+      record.add(latest.sound, endingAt: latest.end, sampleRate: shared.sampleRate)
       let started = CACurrentMediaTime()
       let sound = BeatTracker.resample(latest.sound, from: shared.sampleRate)
       let found = try tracker!.track(sound)
@@ -315,6 +362,58 @@ final class BeatListener {
 
   private func tell(_ what: [String: Any]) {
     DispatchQueue.main.async { [heard] in heard(what) }
+  }
+}
+/// Everything Beat This! heard while following, in a file, from the
+/// sound it was given each look: each look adds what is new since the
+/// last, and silence for any time it was given nothing. As 16-bit
+/// samples, little-endian, at the sound's own rate. Twenty minutes at
+/// most, about 110 MB at 48 kHz; after that it keeps what it has.
+final class ListeningRecord {
+  static let mostSeconds = 20.0 * 60
+
+  private let file: URL
+  private let lock = NSLock()
+  private var handle: FileHandle?
+  private var sampleRate = 0.0
+  private var end: Double?
+  private var written = 0
+
+  init(file: URL) {
+    self.file = file
+    FileManager.default.createFile(atPath: file.path, contents: nil)
+    handle = try? FileHandle(forWritingTo: file)
+  }
+
+  /// The sound of one look, [sound] ending at host time [at].
+  func add(_ sound: [Float], endingAt at: Double, sampleRate rate: Double) {
+    lock.lock()
+    defer { lock.unlock() }
+    guard let handle, rate > 0 else { return }
+    if sampleRate == 0 { sampleRate = rate }
+    guard rate == sampleRate, written < Int(ListeningRecord.mostSeconds * rate) else { return }
+    // The first look gives all it has; later ones what is new since.
+    let new = end.map { Int((((at - $0) * rate)).rounded()) } ?? sound.count
+    guard new > 0 else { return }
+    var data = Data(capacity: new * 2)
+    func add(_ value: Int16) {
+      withUnsafeBytes(of: value.littleEndian) { data.append(contentsOf: $0) }
+    }
+    for _ in 0..<max(0, new - sound.count) { add(0) }
+    for value in sound.suffix(min(new, sound.count)) {
+      add(Int16(max(-1, min(1, value)) * 32767))
+    }
+    handle.write(data)
+    written += new
+    end = at
+  }
+
+  /// What it kept, the time its last sample was heard, and its rate.
+  func kept() -> (samples: Data, end: Double, sampleRate: Double)? {
+    lock.lock()
+    defer { lock.unlock() }
+    guard let end, written > 0, let samples = try? Data(contentsOf: file) else { return nil }
+    return (samples.prefix(written * 2), end, sampleRate)
   }
 }
 #endif
