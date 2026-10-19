@@ -219,9 +219,10 @@ class _StageScreenState extends State<StageScreen> {
   }
 
   /// The count's bars moved (Half Time, a new tempo tapped, or beat 1
-  /// heard elsewhere): the bars heard so far were put in the old ones.
+  /// heard elsewhere): the bars heard so far were put in the old ones, and
+  /// are put in the new.
   void _recounted() {
-    _form?.clear();
+    _form?.recount();
     setState(() => _placedByEar = false);
   }
 

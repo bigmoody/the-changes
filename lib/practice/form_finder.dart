@@ -60,6 +60,17 @@ class FormFinder {
 
   void clear() => _bars.clear();
 
+  /// The count's bars have moved (Half Time, a new tempo, beat 1 heard
+  /// elsewhere): what was heard is kept, and each bar is given its bar of
+  /// the count afresh, from the count as it is now. Starting again instead
+  /// lost so much on a microphone, where the count is put right more than
+  /// once, that the place was never found in a minute.
+  void recount() {
+    for (final bar in _bars) {
+      bar.counted = null;
+    }
+  }
+
   int get barsHeard => _bars.length;
 
   /// How many bars the count should move by to put the band where the
