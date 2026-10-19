@@ -236,6 +236,22 @@ void main() {
       taps.stop();
     });
 
+    test('one barline heard in the middle of a bar does not halve it', () {
+      final taps = follower();
+      // Bars every 2 s from 0, and one heard wrongly at 1 s: as halves
+      // either side of it and two bars each after, it would count at 240.
+      for (final at in [0, 1, 2, 4, 6, 8]) {
+        now = Duration(seconds: at);
+        taps.heardBarline(Duration.zero);
+      }
+      expect(taps.counting, isFalse);
+      now = const Duration(seconds: 10);
+      taps.heardBarline(Duration.zero);
+      expect(taps.counting, isTrue);
+      expect(taps.tempo, closeTo(120, 0.5));
+      taps.stop();
+    });
+
     test('half bars do not start it', () {
       final taps = follower();
       hear(taps, 8, every: const Duration(milliseconds: 600));

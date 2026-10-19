@@ -248,9 +248,13 @@ class TapFollower extends ChangeNotifier {
   /// Starts counting from the barlines heard alone, once the last five
   /// have come evenly: each gap a whole number of bars (one, two or three:
   /// a barline Beat This! was not sure of is left out, not guessed), each
-  /// within 6% of it, at least two of them a single bar, and the bar
-  /// between 0.8 and 4 seconds (quicker is half bars). A bar already
-  /// tapped keeps its place; otherwise the count starts on bar 1.
+  /// within 6% of it, at least two of them a single bar and not either
+  /// side of the same barline, and the bar between 0.8 and 4 seconds
+  /// (quicker is half bars). A barline heard wrongly half way through a
+  /// bar makes two half bars side by side, and the bars either side of
+  /// them look like two each: on Blue Monk that counted at twice the
+  /// tempo. A bar already tapped keeps its place; otherwise the count
+  /// starts on bar 1.
   void _startFromHeard() {
     if (_heard.length < 5) return;
     final last = _heard.sublist(_heard.length - 5);
@@ -263,7 +267,11 @@ class TapFollower extends ChangeNotifier {
     final guess = gaps.reduce(min);
     final spans = [for (final gap in gaps) (gap / guess).round()];
     if (spans.any((n) => n < 1 || n > 3)) return;
-    if (spans.where((n) => n == 1).length < 2) return;
+    final singles = [
+      for (var i = 0; i < spans.length; i++)
+        if (spans[i] == 1) i,
+    ];
+    if (singles.length < 2 || singles.last - singles.first < 2) return;
     final bar =
         (last.last - last.first).inMicroseconds / spans.reduce((a, b) => a + b);
     if (bar < 800000 || bar > 4000000) return;
