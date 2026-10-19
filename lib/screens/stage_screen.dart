@@ -181,6 +181,9 @@ class _StageScreenState extends State<StageScreen> {
         _placedByEar = false;
       });
       _keepTapsWithOthers();
+      // The count goes with it: where other apps can be heard there is
+      // nothing else to turn it off with (see the stage bar).
+      if (_tapping) await _toggleTapping();
       return;
     }
     others
@@ -393,11 +396,17 @@ class _StageScreenState extends State<StageScreen> {
                     controller: controller,
                     onPlay: _togglePlay,
                     tapping: _tapping,
-                    onTapping: widget.follow ? _toggleTapping : null,
+                    // Where other apps can be heard, following them (by
+                    // broadcast or microphone) does what the taps and the
+                    // ear were for, so neither is offered on its own. A
+                    // release build still follows by taps.
+                    onTapping: widget.follow && !_canHearOthers
+                        ? _toggleTapping
+                        : null,
                     listening: _listening,
                     // Listening for itself follows iReal Pro and not a real
                     // record, so it is only offered while it is worked on.
-                    onListen: widget.follow && kDebugMode
+                    onListen: widget.follow && kDebugMode && !_canHearOthers
                         ? _toggleListening
                         : null,
                     onSave:

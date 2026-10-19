@@ -4,9 +4,7 @@
 // This is the app's half: the button, and what it shows of the numbers
 // the extension writes, answered here as the phone would.
 
-import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -203,9 +201,9 @@ void main() {
     expect(log, contains('2.500  TAP THE BEAT'));
     expect(log, contains('4.000  TAPPED BAR 3'));
     expect('TAP THE BEAT'.allMatches(log).length, 1);
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
+    expect(taps.counting, isFalse, reason: 'the count goes with it');
   });
 
   testWidgets('the taps still work with the broadcast open', (tester) async {
@@ -228,34 +226,9 @@ void main() {
     await tester.tap(find.text('Top of the Chorus'));
     await tester.pump(const Duration(milliseconds: 50));
     expect(taps.counting, isTrue);
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
-  });
-
-  testWidgets('keeps the ear\'s taps too', (tester) async {
-    final room = StreamController<Float32List>();
-    addTearDown(() {
-      unawaited(room.close());
-    });
-    final ear = RoomListener(
-      tune: standards.firstWhere((tune) => tune.title == 'Cherokee'),
-      source: () async => room.stream,
-    );
-    await _openStage(tester, ear: ear);
-    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('stage-listen')));
-    await tester.pump();
-    _elapsed = const Duration(seconds: 13);
-    await tester.tap(find.byKey(const ValueKey('stage-tap-tempo')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('stage-save-broadcast')));
-    await tester.pump();
-    expect(_leftTaps, contains('3.000  TAP THE BEAT'));
-    await tester.tap(find.byKey(const ValueKey('stage-listen')));
-    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
-    await tester.pump();
+    expect(taps.counting, isFalse, reason: 'the count goes with it');
   });
 
   testWidgets('follows the barlines Beat This! hears', (tester) async {
@@ -316,8 +289,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
     expect(asked, contains('stopFollowing'));
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
-    await tester.pump();
   });
 
   testWidgets('follows through the microphone when chosen', (tester) async {
@@ -333,7 +304,14 @@ void main() {
     expect(find.byKey(const ValueKey('stage-start-broadcast')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
-    await tester.pump();
+  });
+
+  testWidgets('offers neither the taps nor the ear on their own', (
+    tester,
+  ) async {
+    await _openStage(tester);
+    expect(find.byKey(const ValueKey('stage-hear-others')), findsOneWidget);
+    expect(find.byKey(const ValueKey('stage-follow-taps')), findsNothing);
+    expect(find.byKey(const ValueKey('stage-listen')), findsNothing);
   });
 }
