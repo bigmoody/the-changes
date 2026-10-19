@@ -288,6 +288,9 @@ void main() {
     await tester.pump();
     expect(taps.counting, isTrue);
     expect(taps.tempo, closeTo(240 / 1.16, 0.5));
+    // Counting, but not yet knowing which bar: none is marked.
+    expect(taps.placeKnown, isFalse);
+    expect(find.textContaining('listening for which bar'), findsOneWidget);
     expect(
       find.textContaining('heard 5 barlines, 50 ms a look'),
       findsOneWidget,

@@ -62,9 +62,9 @@ class FormFinder {
   int get barsHeard => _bars.length;
 
   /// How many bars the count should move by to put the band where the
-  /// chart fits what was heard, given the bar the count has at a time.
-  /// Null while it cannot tell, or when the count is already there; the
-  /// count is taken to be moved by it when it is not.
+  /// chart fits what was heard, given the bar the count has at a time:
+  /// nought when it is sure the count is already there, null while it
+  /// cannot tell. The count is taken to be moved by it.
   ///
   /// Each bar heard is given its bar of the count the first time it can
   /// be, a second or two after it was played, and keeps it. Asked again a
@@ -92,7 +92,7 @@ class FormFinder {
       ..sort((a, b) => scores[b].compareTo(scores[a]));
     if (order.length < 2) return null;
     final best = order[0];
-    if (scores[best] - scores[order[1]] < lead || best == 0) return null;
+    if (scores[best] - scores[order[1]] < lead) return null;
     for (final bar in _bars) {
       if (bar.counted case final counted?) {
         bar.counted = (counted + best) % tune.barCount;

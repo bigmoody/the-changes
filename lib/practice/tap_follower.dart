@@ -84,6 +84,20 @@ class TapFollower extends ChangeNotifier {
   bool get placedByHand => _placedByHand;
   var _placedByHand = false;
 
+  /// Whether the count knows which bar of the tune the band is in. It
+  /// does not when it started itself from barlines heard, which say where
+  /// bars start and not which bars they are, until a bar is tapped or the
+  /// place is heard (see form_finder.dart).
+  bool get placeKnown => counting && !_startedByEar;
+  var _startedByEar = false;
+
+  /// The place in the tune heard, and right as it is.
+  void placeHeard() {
+    if (!_startedByEar) return;
+    _startedByEar = false;
+    notifyListeners();
+  }
+
   /// What time it is by the count's clock.
   Duration get now => _clock();
 
@@ -105,6 +119,7 @@ class TapFollower extends ChangeNotifier {
   void moveBars(int bars) {
     final anchor = _anchor;
     if (anchor == null) return;
+    _startedByEar = false;
     _anchor = (
       at: anchor.at,
       beat: (anchor.beat + bars * tune.beatsPerBar) % tune.totalBeats,
@@ -205,6 +220,7 @@ class TapFollower extends ChangeNotifier {
   void placeAtBar(int bar) {
     onTapped?.call(bar);
     _placedByHand = true;
+    _startedByEar = false;
     _anchor = (at: _clock(), beat: bar * tune.beatsPerBar);
     _countingIn = false;
     _taps.clear();
@@ -265,6 +281,7 @@ class TapFollower extends ChangeNotifier {
     _beatLength = length;
     _startLength = length;
     _anchor = (at: last.last, beat: startsOn);
+    _startedByEar = placed == null;
     _countingIn = false;
     _taps.clear();
     _run();
@@ -321,6 +338,7 @@ class TapFollower extends ChangeNotifier {
   void stop() {
     _anchor = null;
     _placedByHand = false;
+    _startedByEar = false;
     _taps.clear();
     _heard.clear();
     _ticker?.cancel();

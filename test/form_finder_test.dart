@@ -47,12 +47,12 @@ void main() {
     expect(form.shift((at) => at.inSeconds % 16), isNull);
   });
 
-  test('says nothing when the count is already right', () {
+  test('says nought when sure the count is already right', () {
     final form = FormFinder(tune: tune);
     for (var i = 0; i < 12; i++) {
       form.heard(bar * i, soundOf(i));
     }
-    expect(form.shift((at) => at.inSeconds % 16), isNull);
+    expect(form.shift((at) => at.inSeconds % 16), 0);
   });
 
   test('says nothing when nothing tells the places apart', () {
@@ -71,6 +71,8 @@ void main() {
       now = bar * 2 * i;
       taps.heardBarline(Duration.zero);
     }
+    // Started by the barlines alone: where, not which bar.
+    expect(taps.placeKnown, isFalse);
     // Bar 1 at 8 s; half a bar on, still bar 1.
     now = const Duration(seconds: 9);
     expect(taps.barAt(now), 0);
@@ -80,6 +82,7 @@ void main() {
     // A bar before the count started is a whole bar back.
     expect(taps.barAt(const Duration(seconds: 7)), 7);
     expect(taps.placedByHand, isFalse);
+    expect(taps.placeKnown, isTrue, reason: 'moved to the bar heard');
     taps.placeAtBar(3);
     expect(taps.placedByHand, isTrue);
     taps.stop();

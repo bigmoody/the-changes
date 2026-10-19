@@ -205,7 +205,11 @@ class _StageScreenState extends State<StageScreen> {
     if (taps.placedByHand || !taps.counting) return;
     final move = form.shift(taps.barAt);
     if (move == null) return;
-    taps.moveBars(move);
+    if (move == 0) {
+      taps.placeHeard();
+    } else {
+      taps.moveBars(move);
+    }
     setState(() => _placedByEar = true);
   }
 
@@ -304,8 +308,10 @@ class _StageScreenState extends State<StageScreen> {
       final tapped = taps?.beat;
       // The beat marked: the count's, the ear's, or (with neither) the
       // band's own, which the chart reads for itself.
+      // A count that does not yet know the bar of the tune marks none:
+      // a bar 1 it guessed looks exactly like knowing.
       final followed = taps != null
-          ? tapped
+          ? (taps.placeKnown ? tapped : null)
           : sure
           ? heard.beat
           : null;
@@ -455,7 +461,10 @@ class _Tapping extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tempo = taps.tempo;
-    final text = taps.counting && tempo != null
+    final text = taps.counting && tempo != null && !taps.placeKnown
+        ? 'Counting at ${tempo.round()} BPM, and listening for which bar '
+              'of the tune it is. Tap the bar the band is on if you know it.'
+        : taps.counting && tempo != null
         ? 'Counting at ${tempo.round()} BPM. Top of the Chorus at each '
               'chorus, or tap the bar the band is on.'
         : taps.taps > 0
