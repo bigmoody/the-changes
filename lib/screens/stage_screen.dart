@@ -173,6 +173,7 @@ class _StageScreenState extends State<StageScreen> {
         ..stopReading()
         ..onBarline = null
         ..onBar = null;
+      _taps?.onRecounted = null;
       unawaited(others.stopFollowing());
       _form?.clear();
       setState(() {
@@ -191,6 +192,7 @@ class _StageScreenState extends State<StageScreen> {
       ..onBar = _heardBar;
     setState(() => _hearingOthers = true);
     if (!_tapping) await _toggleTapping();
+    _taps?.onRecounted = _recounted;
     _keepTapsWithOthers();
     await others.follow();
   }
@@ -211,6 +213,13 @@ class _StageScreenState extends State<StageScreen> {
       taps.moveBars(move);
     }
     setState(() => _placedByEar = true);
+  }
+
+  /// The count's bars moved (Half Time, a new tempo tapped, or beat 1
+  /// heard elsewhere): the bars heard so far were put in the old ones.
+  void _recounted() {
+    _form?.clear();
+    setState(() => _placedByEar = false);
   }
 
   /// Taps made while hearing another app are kept with what it heard,
@@ -375,6 +384,9 @@ class _StageScreenState extends State<StageScreen> {
                           _placedByEar && !(_taps?.placedByHand ?? false),
                       onStart: _otherApps!.pick,
                       onSave: _saveWhatOthersPlayed,
+                      onHalfTime: (_taps?.counting ?? false)
+                          ? _taps!.halfTime
+                          : null,
                     ),
                   const Divider(height: 1),
                   _StageBar(
@@ -601,10 +613,15 @@ class _OtherApps extends StatelessWidget {
     required this.sound,
     required this.onStart,
     required this.onSave,
+    this.onHalfTime,
     this.placedByEar = false,
   });
 
   final OtherAppsSound sound;
+
+  /// The count at half its tempo, for when Beat This! has taken half bars
+  /// for bars. Null while nothing is counted.
+  final VoidCallback? onHalfTime;
 
   /// Whether the bar of the tune was found by ear, not tapped.
   final bool placedByEar;
@@ -659,17 +676,26 @@ class _OtherApps extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: SegmentedButton<bool>(
-              key: const ValueKey('stage-other-apps-source'),
-              segments: const [
-                ButtonSegment(value: false, label: Text('Broadcast')),
-                ButtonSegment(value: true, label: Text('Microphone')),
-              ],
-              selected: {microphone},
-              onSelectionChanged: (chosen) => sound.useMicrophone(chosen.first),
-            ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              SegmentedButton<bool>(
+                key: const ValueKey('stage-other-apps-source'),
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Broadcast')),
+                  ButtonSegment(value: true, label: Text('Microphone')),
+                ],
+                selected: {microphone},
+                onSelectionChanged: (chosen) =>
+                    sound.useMicrophone(chosen.first),
+              ),
+              OutlinedButton(
+                key: const ValueKey('stage-half-time'),
+                onPressed: onHalfTime,
+                child: const Text('Half Time'),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(text, style: small),

@@ -302,6 +302,49 @@ void main() {
       taps.stop();
     });
 
+    test('Half Time: bars twice as long, from the barline it has', () {
+      final taps = follower();
+      hear(taps, 5, every: bar ~/ 2); // half bars, at 240
+      expect(taps.tempo, closeTo(240, 0.5));
+      now += const Duration(milliseconds: 300);
+      taps.halfTime();
+      expect(taps.tempo, closeTo(120, 0.5));
+      expect(taps.placeKnown, isFalse);
+      // From the last barline, at 4 s: bar 1 until 6 s.
+      now = const Duration(milliseconds: 5900);
+      expect(taps.beat, 3);
+      now = const Duration(milliseconds: 6100);
+      expect(taps.beat, 4);
+      taps.stop();
+    });
+
+    test('four barlines on another beat put bar 1 there', () {
+      final taps = follower();
+      var recounted = 0;
+      taps.onRecounted = () => recounted++;
+      tapFour(taps); // 120: bar 1 at 2 s, barlines every 2 s
+      // Barlines heard on the third beat of each bar.
+      hear(taps, 3, from: beat * 4 + bar + beat * 2);
+      expect(recounted, 0, reason: 'three are not enough');
+      hear(taps, 1, from: beat * 4 + bar * 4 + beat * 2);
+      expect(recounted, 1);
+      // The fourth was at 11 s: a bar starts there now.
+      now = const Duration(milliseconds: 11100);
+      expect(taps.beat! % 4, 0);
+      taps.stop();
+    });
+
+    test('a bar tapped is not moved to another beat', () {
+      final taps = follower();
+      tapFour(taps);
+      now = beat * 4;
+      taps.placeAtBar(0); // at 2 s
+      hear(taps, 6, from: beat * 4 + bar + beat * 2);
+      now = beat * 4 + bar * 7 + const Duration(milliseconds: 100);
+      expect(taps.beat! % 4, 0, reason: 'counted on from the tap');
+      taps.stop();
+    });
+
     test('a bar tapped is still put right by the barline heard after', () {
       final taps = follower();
       tapFour(taps); // 120: bar 1 at 2 s

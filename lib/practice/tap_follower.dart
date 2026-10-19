@@ -34,6 +34,13 @@
 // anything is tapped, the barlines start the count themselves. The
 // numbers are the ones a tryout on recorded jazz settled on, tuned on half
 // the recordings and checked on the other half.
+//
+// Barlines heard steadily on another beat of the count's bar, four in a
+// row and none where the count has them, move the bar to start on that
+// beat, unless a bar was tapped. That is how the count finds beat 1 after
+// Half Time (Beat This! heard every half bar as a bar, as it did on Blue
+// Monk through a microphone, and nothing heard tells that from a quick
+// tune heard right) or after the beat is tapped while it listens.
 
 import 'dart:async';
 import 'dart:math';
@@ -74,6 +81,15 @@ class TapFollower extends ChangeNotifier {
   static const _nudgeLength = 0.2;
   static const _nearEnough = 0.2;
   static const _furthest = 0.1;
+
+  /// Barlines heard in a row on one other beat of the count's bar: which
+  /// beat, and how many.
+  var _offBeat = (beat: 0, count: 0);
+
+  /// Told when the count's bars are put somewhere else: half as quick, a
+  /// new tempo tapped, or starting on another beat. What was heard of the
+  /// tune's place no longer holds.
+  VoidCallback? onRecounted;
 
   /// How many heard barlines have moved the count.
   int get nudges => _nudges;
@@ -182,6 +198,11 @@ class TapFollower extends ChangeNotifier {
         final countingIn =
             _countingIn && placed != null && now < placed.at + _halfOf(length);
         final current = countingIn ? null : beat;
+        final before = _beatLength;
+        final retimed =
+            current != null &&
+            before != null &&
+            (length - before).abs() > before * 0.2;
         _beatLength = length;
         _startLength = length;
         if (current == null && placed != null && !countingIn) {
@@ -203,14 +224,43 @@ class TapFollower extends ChangeNotifier {
           _countingIn = true;
         } else {
           // Counting already: the beats move to where the taps fell, and
-          // the count keeps the beat it was on.
+          // the count keeps the beat it was on. At a new tempo, that beat
+          // is a guess: what was heard of the place is let go, and the
+          // barlines say where beat 1 is.
           _anchor = (at: now, beat: current);
           _countingIn = false;
+          if (retimed) _recount();
         }
         _run();
       }
     }
     notifyListeners();
+  }
+
+  /// Half Time: the count's bars twice as long, from the barline it has
+  /// now. Which half is the first is left to the barlines heard.
+  void halfTime() {
+    final length = _beatLength;
+    final anchor = _anchor;
+    if (length == null || anchor == null) return;
+    final bar = length * tune.beatsPerBar;
+    final since = _clock() - anchor.at;
+    final bars = (since.inMicroseconds / bar.inMicroseconds).floor();
+    final perBar = tune.beatsPerBar;
+    final barline = ((anchor.beat ~/ perBar) + bars) * perBar;
+    _anchor = (at: anchor.at + bar * bars, beat: barline % tune.totalBeats);
+    _beatLength = length * 2;
+    _startLength = (_startLength ?? length) * 2;
+    _recount();
+    notifyListeners();
+  }
+
+  /// The count's bars moved: the place heard is let go, unless a bar was
+  /// tapped, and the barlines start looking for beat 1 afresh.
+  void _recount() {
+    _offBeat = (beat: 0, count: 0);
+    if (!_placedByHand) _startedByEar = true;
+    onRecounted?.call();
   }
 
   /// The band is at the top of the form now.
@@ -312,7 +362,11 @@ class TapFollower extends ChangeNotifier {
     final expected = anchor.at.inMicroseconds + beats * length;
     final error = at.inMicroseconds - expected;
     final bar = length * perBar;
-    if (error.abs() > _nearEnough * bar) return;
+    if (error.abs() > _nearEnough * bar) {
+      _offBeatHeard(error / length);
+      return;
+    }
+    _offBeat = (beat: 0, count: 0);
     // Bars from the count's anchor to the barline. Behind it, a barline
     // late by [error] means the bars are shorter, not longer.
     // The bar the count was last put on, heard: its place, not its length.
@@ -342,6 +396,25 @@ class TapFollower extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// A barline heard [beats] from the count's nearest, too far to nudge
+  /// it: on another beat of the bar, four in a row put the bar there.
+  void _offBeatHeard(double beats) {
+    if (_placedByHand) return;
+    final whole = beats.round();
+    if (whole == 0 || (beats - whole).abs() > 0.25) {
+      _offBeat = (beat: 0, count: 0);
+      return;
+    }
+    final perBar = tune.beatsPerBar;
+    final on = whole % perBar;
+    _offBeat = (beat: on, count: _offBeat.beat == on ? _offBeat.count + 1 : 1);
+    if (_offBeat.count < 4) return;
+    final anchor = _anchor!;
+    _anchor = (at: anchor.at + _beatLength! * whole, beat: anchor.beat);
+    _recount();
+    notifyListeners();
+  }
+
   /// Stops counting.
   void stop() {
     _anchor = null;
@@ -349,6 +422,7 @@ class TapFollower extends ChangeNotifier {
     _startedByEar = false;
     _taps.clear();
     _heard.clear();
+    _offBeat = (beat: 0, count: 0);
     _ticker?.cancel();
     _ticker = null;
     _lastBeat = null;

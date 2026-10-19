@@ -301,6 +301,11 @@ void main() {
       find.textContaining('heard 5 barlines, 50 ms a look'),
       findsOneWidget,
     );
+    // Half Time: half as quick, from the barline it has.
+    await tester.tap(find.byKey(const ValueKey('stage-half-time')));
+    await tester.pump();
+    expect(taps.tempo, closeTo(120 / 1.16, 0.5));
+    expect(taps.placeKnown, isFalse);
     // Kept with the taps, for playing the count through again: the kept
     // stretch starts at 10 s.
     await tester.tap(find.byKey(const ValueKey('stage-save-broadcast')));
