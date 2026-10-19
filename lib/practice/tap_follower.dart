@@ -35,6 +35,17 @@
 // numbers are the ones a tryout on recorded jazz settled on, tuned on half
 // the recordings and checked on the other half.
 //
+// A count the barlines started can be at twice the tempo: Beat This! takes
+// half bars for bars in its first seconds, when it has heard little, and
+// hears the bars right after. The count, by then twice as quick, hears
+// them on every other one of its bars and never between. Beat This!
+// hearing the beat at two to the count's bar as well, the count halves
+// itself, from a bar the barlines were on. Barlines on every other bar
+// alone are not enough: on Four, Beat This! missed every other barline for
+// a while, and the count was right; its beats were four to the bar. And
+// two beats to the bar alone are not: on I Got Rhythm at 284 they were,
+// with a barline on every bar.
+//
 // Barlines heard steadily on another beat of the count's bar, four in a
 // row and none where the count has them, move the bar to start on that
 // beat, unless a bar was tapped. That is how the count finds beat 1 after
@@ -90,6 +101,16 @@ class TapFollower extends ChangeNotifier {
   /// new tempo tapped, or starting on another beat. What was heard of the
   /// tune's place no longer holds.
   VoidCallback? onRecounted;
+
+  /// Whether the count's tempo came from barlines heard, not taps, and
+  /// has not been halved since: only then may it halve itself.
+  var _byBarlines = false;
+
+  /// When the barlines the count took were, lately.
+  final _taken = <Duration>[];
+
+  /// How long the beat Beat This! hears steadily is, when it does.
+  Duration? _pulse;
 
   /// How many heard barlines have moved the count.
   int get nudges => _nudges;
@@ -205,6 +226,7 @@ class TapFollower extends ChangeNotifier {
             (length - before).abs() > before * 0.2;
         _beatLength = length;
         _startLength = length;
+        _byBarlines = false;
         if (current == null && placed != null && !countingIn) {
           // A bar was tapped before the tempo was: the band has gone on
           // from it since, by as many beats as there have been.
@@ -237,6 +259,82 @@ class TapFollower extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// One look's beats, each how long before now it was: the beat Beat
+  /// This! hears, for telling a count at twice the tempo (see the top).
+  void heardBeats(List<Duration> beats) {
+    final now = _clock();
+    _pulse = _steady([for (final ago in beats) now - ago]..sort(), now);
+    _halveIfDouble();
+  }
+
+  /// How long a beat is, if [beats] from between twelve seconds and one
+  /// second ago are eight or more and fall evenly, each within a sixth of
+  /// a beat of one steady pulse, a beat left out here and there.
+  Duration? _steady(List<Duration> beats, Duration now) {
+    final heard = [
+      for (final at in beats)
+        if (at <= now - const Duration(seconds: 1) &&
+            at >= now - const Duration(seconds: 12))
+          at,
+    ];
+    if (heard.length < 8) return null;
+    final gaps = [
+      for (var i = 1; i < heard.length; i++)
+        (heard[i] - heard[i - 1]).inMicroseconds,
+    ]..sort();
+    final guess = gaps[gaps.length ~/ 2];
+    final span = (heard.last - heard.first).inMicroseconds;
+    final count = (span / guess).round();
+    if (count < 1 || heard.length < 0.75 * (count + 1)) return null;
+    final length = span / count;
+    final first = heard.first.inMicroseconds;
+    for (final at in heard) {
+      final x = (at.inMicroseconds - first) / length;
+      if ((x - x.round()).abs() > 1 / 6) return null;
+    }
+    return Duration(microseconds: length.round());
+  }
+
+  /// Halves the count when the barlines taken over its last eight bars,
+  /// four or more, were all an even number of its bars apart, and Beat
+  /// This! hears two beats to its bar: it is at twice the tempo.
+  void _halveIfDouble() {
+    final length = _beatLength;
+    final pulse = _pulse;
+    final perBar = tune.beatsPerBar;
+    if (!_byBarlines || _placedByHand || perBar.isOdd) return;
+    if (length == null || pulse == null || _taken.length < 4) return;
+    final bar = length.inMicroseconds * perBar;
+    final halfBar = pulse.inMicroseconds * perBar / 2;
+    if ((bar - halfBar).abs() > 0.08 * halfBar) return;
+    final last = _taken.last;
+    final recent = [
+      for (final at in _taken)
+        if ((last - at).inMicroseconds <= 8 * bar) at,
+    ];
+    if (recent.length < 4) return;
+    if ((last - recent.first).inMicroseconds < 5.5 * bar) return;
+    for (final at in recent) {
+      final bars = ((last - at).inMicroseconds / bar).round();
+      if (bars.isOdd) return;
+    }
+    // From the last barline taken, which is on a bar of the tempo halved.
+    final anchor = _anchor!;
+    final since = (last - anchor.at).inMicroseconds / length.inMicroseconds;
+    final barline = ((anchor.beat + since) / perBar).round() * perBar;
+    _anchor = (at: last, beat: barline % tune.totalBeats);
+    _beatLength = length * 2;
+    _startLength = (_startLength ?? length) * 2;
+    _byBarlines = false;
+    _taken.clear();
+    onHalved?.call();
+    _recount();
+    notifyListeners();
+  }
+
+  /// Told when the count halves itself, before [onRecounted].
+  VoidCallback? onHalved;
+
   /// Half Time: the count's bars twice as long, from the barline it has
   /// now. Which half is the first is left to the barlines heard.
   void halfTime() {
@@ -251,6 +349,8 @@ class TapFollower extends ChangeNotifier {
     _anchor = (at: anchor.at + bar * bars, beat: barline % tune.totalBeats);
     _beatLength = length * 2;
     _startLength = (_startLength ?? length) * 2;
+    _byBarlines = false;
+    _taken.clear();
     _recount();
     notifyListeners();
   }
@@ -340,6 +440,8 @@ class TapFollower extends ChangeNotifier {
     _startLength = length;
     _anchor = (at: last.last, beat: startsOn);
     _startedByEar = placed == null;
+    _byBarlines = true;
+    _taken.clear();
     _countingIn = false;
     _taps.clear();
     _run();
@@ -367,6 +469,8 @@ class TapFollower extends ChangeNotifier {
       return;
     }
     _offBeat = (beat: 0, count: 0);
+    _taken.add(at);
+    if (_taken.length > 16) _taken.removeAt(0);
     // Bars from the count's anchor to the barline. Behind it, a barline
     // late by [error] means the bars are shorter, not longer.
     // The bar the count was last put on, heard: its place, not its length.
@@ -423,6 +527,9 @@ class TapFollower extends ChangeNotifier {
     _taps.clear();
     _heard.clear();
     _offBeat = (beat: 0, count: 0);
+    _byBarlines = false;
+    _taken.clear();
+    _pulse = null;
     _ticker?.cancel();
     _ticker = null;
     _lastBeat = null;

@@ -172,8 +172,11 @@ class _StageScreenState extends State<StageScreen> {
       others
         ..stopReading()
         ..onBarline = null
+        ..onBeats = null
         ..onBar = null;
-      _taps?.onRecounted = null;
+      _taps
+        ?..onRecounted = null
+        ..onHalved = null;
       unawaited(others.stopFollowing());
       _form?.clear();
       setState(() {
@@ -198,10 +201,15 @@ class _StageScreenState extends State<StageScreen> {
           others.noted('COUNT STARTED AT ${taps.tempo!.round()} BPM');
         }
       }
+      ..onBeats = (beats) {
+        if (_tapping) _taps?.heardBeats(beats);
+      }
       ..onBar = _heardBar;
     setState(() => _hearingOthers = true);
     if (!_tapping) await _toggleTapping();
-    _taps?.onRecounted = _recounted;
+    _taps
+      ?..onRecounted = _recounted
+      ..onHalved = () => others.noted('COUNT HALVED ITSELF');
     _keepTapsWithOthers();
     await others.follow();
   }

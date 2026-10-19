@@ -226,6 +226,9 @@ class OtherAppsSound extends ChangeNotifier {
   /// Told of each new barline Beat This! hears, as how long ago it was.
   void Function(Duration ago)? onBarline;
 
+  /// Told of every look's beats, each as how long ago it was.
+  void Function(List<Duration> beats)? onBeats;
+
   /// Told of each new bar heard whole: how long ago its middle was, and
   /// what sounded in it (see form_finder.dart).
   void Function(Duration ago, List<double> pitches)? onBar;
@@ -320,6 +323,10 @@ class OtherAppsSound extends ChangeNotifier {
     final offset = _offset;
     if (offset != null && _following) {
       final now = _clock().inMicroseconds / 1e6 + offset;
+      onBeats?.call([
+        for (final b in heard['beats'] as List? ?? const [])
+          Duration(microseconds: ((now - (b as num).toDouble()) * 1e6).round()),
+      ]);
       for (final d in _confirm.take(downbeats)) {
         _barlinesHeard++;
         _barlines.add((heard: now, at: d));

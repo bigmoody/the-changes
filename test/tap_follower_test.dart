@@ -302,6 +302,51 @@ void main() {
       taps.stop();
     });
 
+    /// Beat This!'s beats, every [every], for the twelve seconds to now.
+    List<Duration> beatsEvery(Duration every) => [
+      for (
+        var ago = Duration.zero;
+        ago < const Duration(seconds: 12);
+        ago += every
+      )
+        ago,
+    ];
+
+    test('halves itself on barlines every other bar and two beats to one', () {
+      final taps = follower();
+      var halved = 0;
+      taps.onHalved = () => halved++;
+      hear(taps, 5, every: bar ~/ 2); // half bars: counting at 240
+      expect(taps.tempo, closeTo(240, 0.5));
+      // Then the bars, every 2 s, on every other bar of the count's.
+      hear(taps, 4, from: bar * 3);
+      taps.heardBeats(beatsEvery(beat));
+      expect(halved, 1);
+      expect(taps.tempo, closeTo(120, 0.5));
+      expect(taps.placeKnown, isFalse);
+      taps.stop();
+    });
+
+    test(
+      'does not halve on barlines every other bar with four beats to one',
+      () {
+        final taps = follower();
+        hear(taps, 5, every: bar ~/ 2);
+        hear(taps, 4, from: bar * 3);
+        taps.heardBeats(beatsEvery(beat ~/ 2));
+        expect(taps.tempo, closeTo(240, 0.5));
+        taps.stop();
+      },
+    );
+
+    test('does not halve on two beats to the bar with a barline on each', () {
+      final taps = follower();
+      hear(taps, 9, every: bar ~/ 2);
+      taps.heardBeats(beatsEvery(beat));
+      expect(taps.tempo, closeTo(240, 0.5));
+      taps.stop();
+    });
+
     test('Half Time: bars twice as long, from the barline it has', () {
       final taps = follower();
       hear(taps, 5, every: bar ~/ 2); // half bars, at 240
