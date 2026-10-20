@@ -453,6 +453,29 @@ class TapFollower extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Double Time: the count's bars half as long, from the barline it has
+  /// now. On a guitar and bass duo playing St. Thomas at about 250, Beat
+  /// This!, the notes starting and the chords all heard 122, and nothing
+  /// heard said otherwise, so it is the player's to say.
+  void doubleTime() {
+    final length = _beatLength;
+    final anchor = _anchor;
+    if (length == null || anchor == null) return;
+    final perBar = tune.beatsPerBar;
+    final bar = length * perBar;
+    final bars = ((_clock() - anchor.at).inMicroseconds / bar.inMicroseconds)
+        .floor();
+    final barline = ((anchor.beat ~/ perBar) + bars) * perBar;
+    _anchor = (at: anchor.at + bar * bars, beat: barline % tune.totalBeats);
+    _beatLength = length ~/ 2;
+    _startLength = (_startLength ?? length) ~/ 2;
+    _byBarlines = false;
+    _byChords = false;
+    _taken.clear();
+    _recount();
+    notifyListeners();
+  }
+
   /// The count's bars moved: the place heard is let go, unless a bar was
   /// tapped, and the barlines start looking for beat 1 afresh.
   void _recount() {

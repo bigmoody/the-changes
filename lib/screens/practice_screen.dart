@@ -3,6 +3,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
@@ -244,6 +245,24 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   icon: const Icon(Icons.edit_outlined),
                   tooltip: 'Edit progression',
                   onPressed: _edit,
+                ),
+              // Hearing the band, from a record or the room: on the page,
+              // not in the menu. Builds being worked on, on an iPhone or
+              // iPad (see stage_screen.dart).
+              if (kDebugMode && defaultTargetPlatform == TargetPlatform.iOS)
+                IconButton(
+                  key: const ValueKey('hear-the-band'),
+                  icon: const Icon(Icons.hearing),
+                  tooltip: 'Follow the Band by Ear',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => StageScreen(
+                        controller: _controller,
+                        follow: true,
+                        hearOthers: true,
+                      ),
+                    ),
+                  ),
                 ),
               if (_controller.canRecord)
                 IconButton(

@@ -61,9 +61,14 @@ class StageScreen extends StatefulWidget {
     this.listener,
     this.taps,
     this.otherApps,
+    this.hearOthers = false,
   });
 
   final PracticeController controller;
+
+  /// Whether to start hearing other apps as soon as the stage opens: it
+  /// was opened for that, from the tune's own page.
+  final bool hearOthers;
 
   /// The scrolling stage: a few big rows that move on with the band,
   /// rather than the whole tune fitted to the screen.
@@ -117,6 +122,16 @@ class _StageScreenState extends State<StageScreen> {
   /// Below this the follower is guessing, and a guess marked on the chart
   /// looks exactly like knowing. Nothing is marked until it is surer.
   static const _sureEnough = 0.25;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.hearOthers && _canHearOthers) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_hearingOthers) _toggleHearingOthers();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -407,6 +422,15 @@ class _StageScreenState extends State<StageScreen> {
             body: SafeArea(
               child: Column(
                 children: [
+                  // The way back, where it is looked for first: above the
+                  // chart, not over its first bar. A phone on its side has
+                  // no height to spare for it, so it stays in the bar
+                  // below there.
+                  if (MediaQuery.sizeOf(context).height >= 500)
+                    const Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: _Leave(),
+                    ),
                   Expanded(
                     child: GestureDetector(
                       key: const ValueKey('stage-chart'),
@@ -453,9 +477,16 @@ class _StageScreenState extends State<StageScreen> {
                               _taps!.halfTime();
                             }
                           : null,
+                      onDoubleTime: (_taps?.counting ?? false)
+                          ? () {
+                              _otherApps?.noted('DOUBLE TIME PRESSED');
+                              _taps!.doubleTime();
+                            }
+                          : null,
                     ),
                   const Divider(height: 1),
                   _StageBar(
+                    leave: MediaQuery.sizeOf(context).height < 500,
                     controller: controller,
                     onPlay: _togglePlay,
                     tapping: _tapping,
@@ -692,6 +723,7 @@ class _OtherApps extends StatelessWidget {
     required this.onStart,
     required this.onSave,
     this.onHalfTime,
+    this.onDoubleTime,
     this.placedByEar = false,
   });
 
@@ -700,6 +732,10 @@ class _OtherApps extends StatelessWidget {
   /// The count at half its tempo, for when Beat This! has taken half bars
   /// for bars. Null while nothing is counted.
   final VoidCallback? onHalfTime;
+
+  /// The count at twice its tempo, for when everything heard the band at
+  /// half its tempo. Null while nothing is counted.
+  final VoidCallback? onDoubleTime;
 
   /// Whether the bar of the tune was found by ear, not tapped.
   final bool placedByEar;
@@ -773,6 +809,11 @@ class _OtherApps extends StatelessWidget {
                 onPressed: onHalfTime,
                 child: const Text('Half Time'),
               ),
+              OutlinedButton(
+                key: const ValueKey('stage-double-time'),
+                onPressed: onDoubleTime,
+                child: const Text('Double Time'),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -831,8 +872,22 @@ class _OtherApps extends StatelessWidget {
 
 /// The one strip of controls: what's playing, whether it's playing, and the
 /// way out.
+/// The way off the stage.
+class _Leave extends StatelessWidget {
+  const _Leave();
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    key: const ValueKey('stage-done'),
+    icon: const Icon(Icons.close),
+    tooltip: 'Leave the Stage',
+    onPressed: () => Navigator.of(context).pop(),
+  );
+}
+
 class _StageBar extends StatelessWidget {
   const _StageBar({
+    this.leave = false,
     required this.controller,
     required this.onPlay,
     required this.tapping,
@@ -847,6 +902,10 @@ class _StageBar extends StatelessWidget {
   });
 
   /// Hearing another app, in a build being worked on on an iPhone.
+  /// Whether the way off the stage is here, at the end of the bar: where
+  /// there is no height for it at the top.
+  final bool leave;
+
   final bool hearingOthers;
   final VoidCallback? onHearOthers;
 
@@ -920,8 +979,8 @@ class _StageBar extends StatelessWidget {
                 key: const ValueKey('stage-hear-others'),
                 iconSize: 28,
                 isSelected: hearingOthers,
-                icon: const Icon(Icons.cast_outlined),
-                selectedIcon: const Icon(Icons.cast_connected),
+                icon: const Icon(Icons.hearing_outlined),
+                selectedIcon: const Icon(Icons.hearing),
                 tooltip: hearingOthers
                     ? 'Stop Hearing Other Apps'
                     : 'Hear Other Apps',
@@ -963,12 +1022,7 @@ class _StageBar extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            IconButton(
-              key: const ValueKey('stage-done'),
-              icon: const Icon(Icons.close_fullscreen),
-              tooltip: 'Leave the Stage',
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            if (leave) const _Leave(),
           ],
         ),
       ),

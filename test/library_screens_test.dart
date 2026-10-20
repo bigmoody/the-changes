@@ -193,6 +193,20 @@ void main() {
       expect(find.text('Autumn Leaves'), findsOneWidget);
     });
 
+    testWidgets('the cross clears the whole search at once', (tester) async {
+      final library = LibraryStore.inMemory();
+      await library.justPlayed(TuneRef.standard('Blue Bossa'));
+      await _openTunes(tester, library: library);
+      expect(find.byKey(const ValueKey('tune-search-clear')), findsNothing);
+      await tester.enterText(find.byType(TextField).first, 'autumn');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('tune-search-clear')));
+      await tester.pumpAndSettle();
+      expect(find.text('autumn'), findsNothing);
+      expect(find.text('Recently Played'), findsOneWidget);
+      expect(find.byKey(const ValueKey('tune-search-clear')), findsNothing);
+    });
+
     testWidgets('one of your own progressions shows up in it too', (
       tester,
     ) async {

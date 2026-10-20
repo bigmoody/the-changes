@@ -399,6 +399,21 @@ void main() {
       taps.stop();
     });
 
+    test('Double Time: bars half as long, from the barline it has', () {
+      final taps = follower();
+      hear(taps, 5); // 120, a bar every 2 s, the last at 8 s
+      now += const Duration(milliseconds: 300);
+      taps.doubleTime();
+      expect(taps.tempo, closeTo(240, 0.5));
+      expect(taps.placeKnown, isFalse);
+      // From the barline at 8 s: a bar every second.
+      now = const Duration(milliseconds: 8900);
+      expect(taps.beat! % 4, 3);
+      now = const Duration(milliseconds: 9100);
+      expect(taps.beat! % 4, 0);
+      taps.stop();
+    });
+
     test('Half Time: bars twice as long, from the barline it has', () {
       final taps = follower();
       hear(taps, 5, every: bar ~/ 2); // half bars, at 240
