@@ -309,6 +309,22 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('says how listening works', (tester) async {
+    await _openStage(tester, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.byKey(const ValueKey('stage-listening-help')));
+    await tester.pumpAndSettle();
+    expect(find.text('How Listening Works'), findsWidgets);
+    expect(find.text('Too Fast or Too Slow'), findsOneWidget);
+    Navigator.of(
+      tester.element(find.byKey(const ValueKey('how-listening-works'))),
+    ).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+  });
+
   testWidgets('offers neither the taps nor the ear on their own', (
     tester,
   ) async {

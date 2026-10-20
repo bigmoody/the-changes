@@ -814,6 +814,12 @@ class _OtherApps extends StatelessWidget {
                 onPressed: onDoubleTime,
                 child: const Text('Double Time'),
               ),
+              IconButton(
+                key: const ValueKey('stage-listening-help'),
+                icon: const Icon(Icons.help_outline),
+                tooltip: 'How Listening Works',
+                onPressed: () => _showHowListeningWorks(context),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -872,6 +878,72 @@ class _OtherApps extends StatelessWidget {
 
 /// The one strip of controls: what's playing, whether it's playing, and the
 /// way out.
+/// What following by ear does, and what to do when it goes wrong, for
+/// someone using it the first time.
+void _showHowListeningWorks(BuildContext context) {
+  final theme = Theme.of(context);
+  Widget step(String title, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: theme.textTheme.titleSmall),
+        const SizedBox(height: 2),
+        Text(text, style: theme.textTheme.bodyMedium),
+      ],
+    ),
+  );
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        key: const ValueKey('how-listening-works'),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('How Listening Works', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 12),
+            step(
+              'Choose Where the Music Is',
+              'Broadcast hears another app on this device, such as Spotify '
+                  'or YouTube: press Start Broadcast, choose The Changes, '
+                  'then play. Microphone hears the room: a record played out '
+                  'loud, or a band.',
+            ),
+            step(
+              'Let It Listen',
+              'It finds the beat, then which bar of the tune the band is '
+                  'in, and follows them through the chart. Give it about '
+                  'half a minute; until it knows the bar, none is marked.',
+            ),
+            step(
+              'Too Fast or Too Slow',
+              'If it counts twice as fast as the band, press Half Time. If '
+                  'it counts half as fast, press Double Time. Or tap the '
+                  'beat a few times on Tap the Beat.',
+            ),
+            step(
+              'Show It Where the Band Is',
+              'Tap the bar on the chart the band is playing, right on its '
+                  'first beat, or Top of the Chorus at the top of the form. '
+                  'A bar tapped is always believed.',
+            ),
+            step(
+              'Without Drums',
+              'It listens to the chords and the comping instead, which '
+                  'takes a little longer. A guitar or piano playing freely, '
+                  'without a steady beat, may need a bar tapped.',
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 /// The way off the stage.
 class _Leave extends StatelessWidget {
   const _Leave();
