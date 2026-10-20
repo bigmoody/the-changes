@@ -135,6 +135,19 @@ class _StageScreenState extends State<StageScreen> {
 
   @override
   void dispose() {
+    // Left still listening: Beat This!, the chords and the microphone
+    // would otherwise go on, out of sight, taking the processor the band
+    // needs and leaving the phone's audio set up for recording.
+    if (_hearingOthers) {
+      final others = _otherApps;
+      others
+        ?..stopReading()
+        ..onBarline = null
+        ..onBeats = null
+        ..onChords = null
+        ..onBar = null;
+      if (others != null) unawaited(_stopFollowing(others));
+    }
     _ear?.dispose();
     if (widget.taps == null) _taps?.dispose();
     if (widget.otherApps == null) {
@@ -181,6 +194,14 @@ class _StageScreenState extends State<StageScreen> {
 
   /// Hearing another app follows it too: the count, started by its
   /// barlines or by taps, and nudged by Beat This! from then on.
+  /// Stops Beat This! and, after the microphone, puts the phone's audio
+  /// back as the band needs it, as after the tuner.
+  Future<void> _stopFollowing(OtherAppsSound others) async {
+    final microphone = others.microphone;
+    await others.stopFollowing();
+    if (microphone) await controller.player.restoreAudioSession();
+  }
+
   Future<void> _toggleHearingOthers() async {
     final others = _otherApps ??= widget.otherApps ?? OtherAppsSound();
     if (_hearingOthers) {
@@ -194,7 +215,7 @@ class _StageScreenState extends State<StageScreen> {
         ?..onRecounted = null
         ..onHalved = null
         ..onChords = null;
-      unawaited(others.stopFollowing());
+      unawaited(_stopFollowing(others));
       _form?.clear();
       setState(() {
         _hearingOthers = false;

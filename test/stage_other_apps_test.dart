@@ -309,6 +309,17 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('leaving the stage stops it listening', (tester) async {
+    final asked = await _openStage(tester, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(asked, contains('follow'));
+    expect(asked, isNot(contains('stopFollowing')));
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+    expect(asked, contains('stopFollowing'));
+  });
+
   testWidgets('says how listening works', (tester) async {
     await _openStage(tester, report: _playing());
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));

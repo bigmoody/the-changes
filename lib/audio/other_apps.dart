@@ -334,7 +334,7 @@ class OtherAppsSound extends ChangeNotifier {
     } catch (e) {
       debugPrint('Could not stop Beat This!: $e');
     }
-    notifyListeners();
+    if (!_disposed) notifyListeners();
   }
 
   Future<dynamic> _fromThePhone(MethodCall call) async {
@@ -523,8 +523,13 @@ class OtherAppsSound extends ChangeNotifier {
   @override
   void dispose() {
     stopReading();
+    _disposed = true;
+    // Never left running with nothing to hear it.
+    if (_following) unawaited(stopFollowing());
     super.dispose();
   }
+
+  var _disposed = false;
 }
 
 /// Barlines Beat This! has said twice.
