@@ -80,6 +80,9 @@ final class ChordFollower {
     guard onsets.count > Int(10 * fps), chart.count >= 2 else { return nil }
     let offset = Double(ChordFollower.size / 2) / rate
     let tempo = self.tempo(onsets, fps: fps)
+    // At either end of the tempos tried, the band's is likely beyond it:
+    // a guitar at 205 to 212 came out as 200 every time.
+    guard tempo > ChordFollower.slowest + 1, tempo < ChordFollower.quickest - 1 else { return nil }
     let beat = 60 / tempo
     // Where the beats fall: the phase whose beats land on most onsets.
     var phase = 0.0
