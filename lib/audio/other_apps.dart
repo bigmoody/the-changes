@@ -239,6 +239,39 @@ class OtherAppsSound extends ChangeNotifier {
   /// The tune's chords, half a bar at a time, for following by them.
   Tune? tune;
 
+  /// Every tune the band might be playing, by what the library calls it
+  /// ("s:Four", "p:…"), for telling which it is (TuneFinder.swift).
+  Map<String, Tune> library = const {};
+
+  /// The tunes the band sounds most like so far, best first: by what the
+  /// library calls them, and how far up from its written key it is
+  /// playing each. Empty until it has had two goes, a little over half a
+  /// minute in.
+  ///
+  /// Each go's scores are added to the last: on recordings of Four and St.
+  /// Thomas, kept like this, the right tune was first in four looks in
+  /// five, and by the end of eighteen of nineteen. A blues was not: its
+  /// changes stay near one chord, and many tunes are blues.
+  List<({String id, int semitones})> get soundsLike {
+    if (_tuneLooks < 2) return const [];
+    final best = _tuneScores.keys.toList()
+      ..sort((a, b) => _tuneScores[b]!.compareTo(_tuneScores[a]!));
+    return [
+      for (final id in best.take(3)) (id: id, semitones: _tuneKeys[id] ?? 0),
+    ];
+  }
+
+  final _tuneScores = <String, double>{};
+  final _tuneKeys = <String, int>{};
+  var _tuneLooks = 0;
+
+  /// [library] as the phone wants it.
+  List<Map<String, Object>> _libraryCharts() => [
+    for (final MapEntry(key: id, value: tune) in library.entries)
+      if (tune.barCount > 0)
+        {'id': id, 'beatsPerBar': tune.beatsPerBar, 'halves': chartOf(tune)},
+  ];
+
   /// [tune]'s chart as the phone wants it: each half bar's notes and bass.
   static List<Map<String, Object>> chartOf(Tune tune) {
     final perBar = tune.beatsPerBar;
@@ -313,18 +346,38 @@ class OtherAppsSound extends ChangeNotifier {
     _barlinesHeard = 0;
     _confirm = BarlineFilter();
     _lastBar = null;
+    _tuneScores.clear();
+    _tuneKeys.clear();
+    _tuneLooks = 0;
     try {
       final tune = this.tune;
       _problem = await channel.invokeMethod<String>('follow', {
         'source': _microphone ? 'microphone' : 'broadcast',
         if (tune != null) 'chart': chartOf(tune),
         if (tune != null) 'beatsPerBar': tune.beatsPerBar,
+        if (library.isNotEmpty) 'library': _libraryCharts(),
       });
     } catch (e) {
       _problem = 'Beat This! could not start: $e';
     }
     if (_offset == null) await _setClock();
     notifyListeners();
+  }
+
+  /// One go at which tune it is, added to the others.
+  void _heardTunes(List tunes) {
+    final was = soundsLike.map((t) => t.id).toList();
+    for (final fit in tunes) {
+      final id = fit['id'] as String;
+      _tuneScores[id] =
+          (_tuneScores[id] ?? 0) + (fit['score'] as num).toDouble();
+      _tuneKeys[id] = (fit['semitones'] as num).toInt();
+    }
+    _tuneLooks++;
+    final now = soundsLike.map((t) => t.id).toList();
+    if (now.isNotEmpty && !listEquals(now, was)) {
+      noted('SOUNDS LIKE: ${now.join(', ')}');
+    }
   }
 
   Future<void> stopFollowing() async {
@@ -347,6 +400,9 @@ class OtherAppsSound extends ChangeNotifier {
       for (final d in heard['downbeats'] as List? ?? const [])
         (d as num).toDouble(),
     ]..sort();
+    if (heard['tunes'] case final List tunes when _following) {
+      _heardTunes(tunes);
+    }
     final offset = _offset;
     if (offset != null && _following) {
       final now = _clock().inMicroseconds / 1e6 + offset;

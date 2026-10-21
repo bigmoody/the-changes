@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		B0AD0000000000000000A106 /* MicRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F106 /* MicRecorder.swift */; };
 		B0AD0000000000000000A107 /* ChordFollower.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F107 /* ChordFollower.swift */; };
+		B0AD0000000000000000A108 /* TuneFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F108 /* TuneFinder.swift */; };
 		B0AD0000000000000000A105 /* BarPitches.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F105 /* BarPitches.swift */; };
 		B0AD0000000000000000A101 /* LogMel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F101 /* LogMel.swift */; };
 		B0AD0000000000000000A102 /* BeatTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F102 /* BeatTracker.swift */; };
@@ -81,6 +82,7 @@
 /* Begin PBXFileReference section */
 		B0AD0000000000000000F106 /* MicRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicRecorder.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F107 /* ChordFollower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordFollower.swift; sourceTree = "<group>"; };
+		B0AD0000000000000000F108 /* TuneFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TuneFinder.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F105 /* BarPitches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarPitches.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F101 /* LogMel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMel.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F102 /* BeatTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatTracker.swift; sourceTree = "<group>"; };
@@ -241,6 +243,7 @@
 				B0AD0000000000000000F105 /* BarPitches.swift */,
 				B0AD0000000000000000F106 /* MicRecorder.swift */,
 				B0AD0000000000000000F107 /* ChordFollower.swift */,
+				B0AD0000000000000000F108 /* TuneFinder.swift */,
 				B0AD0000000000000000F006 /* Runner-Debug.entitlements */,
 			);
 			path = Runner;
@@ -521,6 +524,7 @@
 				B0AD0000000000000000A105 /* BarPitches.swift in Sources */,
 				B0AD0000000000000000A106 /* MicRecorder.swift in Sources */,
 				B0AD0000000000000000A107 /* ChordFollower.swift in Sources */,
+				B0AD0000000000000000A108 /* TuneFinder.swift in Sources */,
 				B0AD0000000000000000A103 /* SoundRing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

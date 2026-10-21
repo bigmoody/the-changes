@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/other_apps.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/audio/room_listener.dart';
+import 'package:play_along/library/library_store.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/practice/tap_follower.dart';
@@ -41,6 +42,9 @@ String? _leftTaps;
 
 /// What following was last started on.
 String? _followed;
+
+/// The tunes it was last given to tell the band's from.
+List<String>? _library;
 
 bool _keepTaps(String log) {
   _leftTaps = log;
@@ -73,6 +77,7 @@ Future<List<String>> _openStage(
   bool otherApps = true,
   TapFollower? taps,
   RoomListener? ear,
+  void Function(TuneRef tune, {required bool microphone})? onSwitchTune,
 }) async {
   _elapsed = Duration.zero;
   _leftTaps = null;
@@ -87,6 +92,11 @@ Future<List<String>> _openStage(
       asked.add(call.method);
       if (call.method == 'follow') {
         _followed = (call.arguments as Map?)?['source'] as String?;
+        _library = [
+          for (final chart
+              in (call.arguments as Map?)?['library'] as List? ?? const [])
+            (chart as Map)['id'] as String,
+        ];
       }
       return switch (call.method) {
         'read' => report == null ? null : jsonEncode(report),
@@ -122,6 +132,7 @@ Future<List<String>> _openStage(
         otherApps: otherApps ? sound : null,
         taps: taps,
         listener: ear,
+        onSwitchTune: onSwitchTune,
       ),
     ),
   );
@@ -305,6 +316,56 @@ void main() {
     expect(_followed, 'microphone');
     expect(find.textContaining('through the microphone'), findsOneWidget);
     expect(find.byKey(const ValueKey('stage-start-broadcast')), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+  });
+
+  testWidgets('says which tunes the band sounds like', (tester) async {
+    TuneRef? changedTo;
+    await _openStage(
+      tester,
+      report: _playing(),
+      onSwitchTune: (tune, {required microphone}) => changedTo = tune,
+    );
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    // Every tune in the book, to tell the band's from.
+    expect(_library, contains('s:Four'));
+    expect(_library, contains('s:Cherokee'));
+    Future<void> heard(double four, double cherokee) =>
+        tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          otherAppsChannel.name,
+          otherAppsChannel.codec.encodeMethodCall(
+            MethodCall('heard', {
+              'tunes': [
+                {'id': 's:Four', 'score': four, 'semitones': 2},
+                {'id': 's:Cherokee', 'score': cherokee, 'semitones': 0},
+              ],
+              'end': _phoneAhead,
+            }),
+          ),
+          (_) {},
+        );
+    // Once is not enough to say.
+    await heard(4, 3);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('stage-sounds-like')), findsNothing);
+    // Twice: Four is ahead on the two added up, though not on the second.
+    await heard(3, 3.5);
+    await tester.pump();
+    final four = standards.firstWhere((tune) => tune.title == 'Four');
+    final inKey = 'Four in ${four.transposed(2).key}';
+    expect(find.text(inKey), findsOneWidget);
+    final chips = tester.widgetList<ActionChip>(find.byType(ActionChip));
+    expect(
+      [for (final chip in chips) (chip.label as Text).data],
+      [
+        inKey,
+        'Cherokee in ${standards.firstWhere((t) => t.title == 'Cherokee').key}',
+      ],
+    );
+    await tester.tap(find.text(inKey));
+    expect(changedTo, TuneRef.standard('Four'));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
   });

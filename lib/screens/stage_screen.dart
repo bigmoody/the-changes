@@ -45,6 +45,9 @@ import 'package:flutter/services.dart';
 
 import '../audio/other_apps.dart';
 import '../audio/room_listener.dart';
+import '../library/library_store.dart' show TuneRef;
+import '../music/tune.dart';
+import '../music/tune_library.dart';
 import '../practice/chart_follower.dart';
 import '../practice/form_finder.dart';
 import '../practice/practice_controller.dart';
@@ -62,9 +65,19 @@ class StageScreen extends StatefulWidget {
     this.taps,
     this.otherApps,
     this.hearOthers = false,
+    this.microphone = false,
+    this.onSwitchTune,
   });
 
   final PracticeController controller;
+
+  /// Whether hearing others starts on the microphone rather than a
+  /// broadcast: it was on the microphone on the stage this replaced.
+  final bool microphone;
+
+  /// Changes to another tune, still listening, when the band sounds like
+  /// it. Null where the stage cannot change tune.
+  final void Function(TuneRef tune, {required bool microphone})? onSwitchTune;
 
   /// Whether to start hearing other apps as soon as the stage opens: it
   /// was opened for that, from the tune's own page.
@@ -112,6 +125,9 @@ class _StageScreenState extends State<StageScreen> {
   OtherAppsSound? _otherApps;
   var _hearingOthers = false;
 
+  /// Whether the stage is going because the band is playing another tune.
+  var _switching = false;
+
   /// Only an iPhone or iPad can, and only a build being worked on has
   /// the extension that does it.
   bool get _canHearOthers =>
@@ -127,8 +143,13 @@ class _StageScreenState extends State<StageScreen> {
   void initState() {
     super.initState();
     if (widget.hearOthers && _canHearOthers) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && !_hearingOthers) _toggleHearingOthers();
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted || _hearingOthers) return;
+        if (widget.microphone) {
+          await (_otherApps ??= widget.otherApps ?? OtherAppsSound())
+              .useMicrophone(true);
+        }
+        if (mounted && !_hearingOthers) await _toggleHearingOthers();
       });
     }
   }
@@ -146,7 +167,11 @@ class _StageScreenState extends State<StageScreen> {
         ..onBeats = null
         ..onChords = null
         ..onBar = null;
-      if (others != null) unawaited(_stopFollowing(others));
+      // Changing tune, the next stage starts listening at once: the
+      // phone's audio is left as listening needs it.
+      if (others != null) {
+        unawaited(_switching ? others.stopFollowing() : _stopFollowing(others));
+      }
     }
     _ear?.dispose();
     if (widget.taps == null) _taps?.dispose();
@@ -246,6 +271,7 @@ class _StageScreenState extends State<StageScreen> {
         if (_tapping) _taps?.heardChords(ago, bar, tempo);
       }
       ..tune = controller.tune
+      ..library = _everyTune()
       ..onBar = _heardBar;
     setState(() => _hearingOthers = true);
     if (!_tapping) await _toggleTapping();
@@ -264,6 +290,15 @@ class _StageScreenState extends State<StageScreen> {
     _keepTapsWithOthers();
     await others.follow();
   }
+
+  /// Every tune the band might be playing: the book's, and the player's
+  /// own.
+  Map<String, Tune> _everyTune() => {
+    for (final tune in [...standards, ...practiceProgressions])
+      TuneRef.standard(tune.title).value: tune,
+    for (final progression in controller.progressions?.all ?? const [])
+      TuneRef.mine(progression.id).value: progression.toTune(),
+  };
 
   /// A bar heard whole: put with the others, and the count moved to the
   /// bar of the tune they say the band is in, unless a bar was tapped.
@@ -492,6 +527,17 @@ class _StageScreenState extends State<StageScreen> {
                           _placedByEar && !(_taps?.placedByHand ?? false),
                       onStart: _otherApps!.pick,
                       onSave: _saveWhatOthersPlayed,
+                      playing: controller.ref,
+                      onSwitchTune: widget.onSwitchTune == null
+                          ? null
+                          : (ref) {
+                              _otherApps?.noted('CHANGED TUNE TO $ref');
+                              _switching = true;
+                              widget.onSwitchTune!(
+                                ref,
+                                microphone: _otherApps!.microphone,
+                              );
+                            },
                       onHalfTime: (_taps?.counting ?? false)
                           ? () {
                               _otherApps?.noted('HALF TIME PRESSED');
@@ -746,9 +792,17 @@ class _OtherApps extends StatelessWidget {
     this.onHalfTime,
     this.onDoubleTime,
     this.placedByEar = false,
+    this.playing,
+    this.onSwitchTune,
   });
 
   final OtherAppsSound sound;
+
+  /// The tune on the stage, so it is not offered as another.
+  final TuneRef? playing;
+
+  /// Changes to a tune the band sounds like. Null where it cannot.
+  final void Function(TuneRef tune)? onSwitchTune;
 
   /// The count at half its tempo, for when Beat This! has taken half bars
   /// for bars. Null while nothing is counted.
@@ -878,6 +932,12 @@ class _OtherApps extends StatelessWidget {
               key: const ValueKey('stage-other-apps-following'),
               style: small,
             ),
+          if (sound.soundsLike.isNotEmpty)
+            _SoundsLike(
+              sound: sound,
+              playing: playing,
+              onSwitchTune: onSwitchTune,
+            ),
           if (report != null && report.buffers > 0) ...[
             Text(report.format, style: small),
             Text(
@@ -891,6 +951,51 @@ class _OtherApps extends StatelessWidget {
               style: small,
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The tunes the band sounds like, by their changes: each a button that
+/// changes to it, but the one on the stage.
+class _SoundsLike extends StatelessWidget {
+  const _SoundsLike({
+    required this.sound,
+    required this.playing,
+    required this.onSwitchTune,
+  });
+
+  final OtherAppsSound sound;
+  final TuneRef? playing;
+  final void Function(TuneRef tune)? onSwitchTune;
+
+  @override
+  Widget build(BuildContext context) {
+    final small = Theme.of(context).textTheme.bodySmall;
+    return Padding(
+      key: const ValueKey('stage-sounds-like'),
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('Sounds Like', style: small),
+          for (final (:id, :semitones) in sound.soundsLike)
+            if (sound.library[id] case final tune?)
+              ActionChip(
+                key: ValueKey('stage-sounds-like-$id'),
+                avatar: TuneRef(id) == playing
+                    ? const Icon(Icons.check, size: 16)
+                    : null,
+                label: Text(
+                  '${tune.title} in ${tune.transposed(semitones).key}',
+                ),
+                onPressed: TuneRef(id) == playing || onSwitchTune == null
+                    ? null
+                    : () => onSwitchTune!(TuneRef(id)),
+              ),
         ],
       ),
     );
@@ -957,6 +1062,13 @@ void _showHowListeningWorks(BuildContext context) {
               'It listens to the chords and the comping instead, which '
                   'takes a little longer. A guitar or piano playing freely, '
                   'without a steady beat, may need a bar tapped.',
+            ),
+            step(
+              'Which Tune Is It?',
+              'After about half a minute it says which tunes the band sounds '
+                  'like, from the changes, out of the book and your own. Tap '
+                  'one to change to it and keep listening. Tunes on the same '
+                  'changes, like the blues, sound alike to it.',
             ),
           ],
         ),
