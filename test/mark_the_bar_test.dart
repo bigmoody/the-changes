@@ -4,11 +4,11 @@
 // itself, travelling bar to bar for as long as the tune runs, and the
 // whole of this setting is how loud that is allowed to be.
 //
-// The test that matters most is the last one: with the fill off, the
-// lettering has to go back to the ordinary ink. A colour picked to read
-// on a tinted box is the wrong colour on plain paper, and getting that
-// wrong would leave the one bar somebody is looking at the hardest one
-// to read.
+// The chord being played sits on a pencil-red pill whenever the bar is
+// marked at all, so its lettering is written to read on the pill. With
+// nothing marking the bar there is no pill, and the lettering has to be
+// the ordinary ink: a colour picked to read on the pill is the wrong
+// colour on plain paper.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,7 +59,7 @@ Tune _tune() => Tune.fromChart(
 /// which is an accident of the widget tree, but how many of them are
 /// tinted or ruled in the accent is the behaviour itself, and counting
 /// says it without guessing.
-Future<({int tinted, int ruled, Color ink})> playing(
+Future<({int tinted, int ruled, int pills, Color ink})> playing(
   WidgetTester tester,
   MarkTheBar mark, {
   Color? chordColour,
@@ -122,6 +122,7 @@ Future<({int tinted, int ruled, Color ink})> playing(
               scheme.tertiary,
         )
         .length,
+    pills: find.byKey(const ValueKey('chord-playing')).evaluate().length,
     ink: letters.style!.color!,
   );
 }
@@ -179,37 +180,45 @@ void main() {
       expect(drawn.ruled, 0);
     });
 
-    testWidgets('the lettering follows the tint, not the beat', (tester) async {
-      // Filled, the chord is written to read on the tint. With the tint
-      // gone it has to go back to the ordinary ink, or the one bar
-      // somebody is looking at is the hardest one on the page to read.
+    testWidgets('the chord being played is on a pill, written to read on it', (
+      tester,
+    ) async {
       final scheme = appTheme(Brightness.light).colorScheme;
       // Compared as the packed value they are drawn with: two Colours can
       // hold the same colour and still not be equal, because one was
       // worked out in floats and the other written down as an int.
-      final filled = await playing(tester, MarkTheBar.filled);
-      expect(filled.ink.toARGB32(), scheme.onTertiaryContainer.toARGB32());
-
-      for (final mark in [MarkTheBar.outlined, MarkTheBar.off]) {
+      for (final mark in [MarkTheBar.filled, MarkTheBar.outlined]) {
         final drawn = await playing(tester, mark);
+        expect(drawn.pills, 1, reason: mark.label);
         expect(
           drawn.ink.toARGB32(),
-          scheme.onSurface.toARGB32(),
+          scheme.onTertiary.toARGB32(),
           reason: mark.label,
         );
       }
+      // Nothing marking the bar: no pill, and the ordinary ink.
+      final off = await playing(tester, MarkTheBar.off);
+      expect(off.pills, 0);
+      expect(off.ink.toARGB32(), scheme.onSurface.toARGB32());
     });
 
     testWidgets('somebody\'s own chord colour survives every choice', (
       tester,
     ) async {
       // D is the root of the bar the band is on. Their colour is theirs
-      // whatever the bar is or is not marked with.
+      // whatever the bar is or is not marked with: on the pill, lightened
+      // or darkened only as far as reading it needs, the hue left alone.
       const theirs = Color(0xFF1A3FA0);
       for (final mark in MarkTheBar.values) {
         final drawn = await playing(tester, mark, chordColour: theirs);
-        expect(drawn.ink.toARGB32(), theirs.toARGB32(), reason: mark.label);
+        expect(
+          HSLColor.fromColor(drawn.ink).hue,
+          closeTo(HSLColor.fromColor(theirs).hue, 1),
+          reason: mark.label,
+        );
       }
+      final off = await playing(tester, MarkTheBar.off, chordColour: theirs);
+      expect(off.ink.toARGB32(), theirs.toARGB32());
     });
   });
 }

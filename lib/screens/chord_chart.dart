@@ -693,17 +693,22 @@ class _BarCell extends StatelessWidget {
                       ? Center(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(
-                              simileMark,
-                              textScaler: TextScaler.noScaling,
-                              semanticsLabel: 'the same again',
-                              style: handLettered(
-                                TextStyle(
-                                  fontSize: sizes.first,
-                                  height: 1,
-                                  leadingDistribution:
-                                      TextLeadingDistribution.even,
-                                  color: _chordColour(scheme, 0),
+                            child: _playingMark(
+                              scheme,
+                              0,
+                              sizes.first,
+                              Text(
+                                simileMark,
+                                textScaler: TextScaler.noScaling,
+                                semanticsLabel: 'the same again',
+                                style: handLettered(
+                                  TextStyle(
+                                    fontSize: sizes.first,
+                                    height: 1,
+                                    leadingDistribution:
+                                        TextLeadingDistribution.even,
+                                    color: _chordColour(scheme, 0),
+                                  ),
                                 ),
                               ),
                             ),
@@ -730,28 +735,33 @@ class _BarCell extends StatelessWidget {
                                               Flexible(
                                                 child: FittedBox(
                                                   fit: BoxFit.scaleDown,
-                                                  child: Text(
-                                                    handSymbol(
-                                                      slots[i].chord.display,
-                                                    ),
-                                                    // Sized from the box, which already
-                                                    // grows with Larger Text.
-                                                    textScaler:
-                                                        TextScaler.noScaling,
-                                                    style: handLettered(
-                                                      TextStyle(
-                                                        fontSize: sizes[l],
-                                                        // Chord symbols have no descenders, so
-                                                        // they don't need the space a line of
-                                                        // text keeps below and above itself;
-                                                        // without it they fit a third bigger.
-                                                        height: 1,
-                                                        leadingDistribution:
-                                                            TextLeadingDistribution
-                                                                .even,
-                                                        color: _chordColour(
-                                                          scheme,
-                                                          i,
+                                                  child: _playingMark(
+                                                    scheme,
+                                                    i,
+                                                    sizes[l],
+                                                    Text(
+                                                      handSymbol(
+                                                        slots[i].chord.display,
+                                                      ),
+                                                      // Sized from the box, which already
+                                                      // grows with Larger Text.
+                                                      textScaler:
+                                                          TextScaler.noScaling,
+                                                      style: handLettered(
+                                                        TextStyle(
+                                                          fontSize: sizes[l],
+                                                          // Chord symbols have no descenders, so
+                                                          // they don't need the space a line of
+                                                          // text keeps below and above itself;
+                                                          // without it they fit a third bigger.
+                                                          height: 1,
+                                                          leadingDistribution:
+                                                              TextLeadingDistribution
+                                                                  .even,
+                                                          color: _chordColour(
+                                                            scheme,
+                                                            i,
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
@@ -803,6 +813,44 @@ class _BarCell extends StatelessWidget {
     );
   }
 
+  /// Whether the [index]th chord in the box is being played, whichever
+  /// time through.
+  bool _playing(int index) {
+    final beat = this.beat;
+    if (beat == null) return false;
+    final tune = controller.chart;
+    return cell.bars.any((bar) {
+      final slot = tune.bars[bar][index];
+      return beat >= slot.startBeat && beat < slot.endBeat;
+    });
+  }
+
+  /// [chord], on a pencil-red pill while it is being played: the bar's
+  /// box says which bar, and this which of its chords, from across the
+  /// room.
+  Widget _playingMark(
+    ColorScheme scheme,
+    int index,
+    double size,
+    Widget chord,
+  ) {
+    if (!_playing(index) || !controller.settings.markTheBar.marks) return chord;
+    return DecoratedBox(
+      key: const ValueKey('chord-playing'),
+      decoration: BoxDecoration(
+        color: scheme.tertiary,
+        borderRadius: BorderRadius.circular(size * 0.22),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: size * 0.2,
+          vertical: size * 0.06,
+        ),
+        child: chord,
+      ),
+    );
+  }
+
   /// The [index]th chord in the box: highlighted while it's being played
   /// (whichever time through), dimmed if no time through is in the loop.
   Color _chordColour(ColorScheme scheme, int index) {
@@ -815,18 +863,13 @@ class _BarCell extends StatelessWidget {
     final ink = theirs == null
         ? scheme.onSurface
         : readableOn(theirs, scheme.surface);
-    final beat = this.beat;
-    if (beat != null &&
-        times.any((slot) => beat >= slot.startBeat && beat < slot.endBeat)) {
-      // The bar being played is already boxed and tinted, so it does not
-      // need the lettering as well, and taking somebody's colour away on
-      // the one bar they are looking at would be the wrong way round.
-      //
-      // Unless the tint is not there, in which case the lettering has to
-      // go back to the ordinary ink: a colour chosen to read on a tinted
-      // box is the wrong one on plain paper.
-      if (!controller.settings.markTheBar.fills) return ink;
-      return theirs == null ? scheme.onTertiaryContainer : ink;
+    // On its pill, in whatever colour reads on the pencil red. With the bar
+    // left unmarked, there is no pill and the ordinary ink.
+    if (_playing(index)) {
+      if (!controller.settings.markTheBar.marks) return ink;
+      return theirs == null
+          ? scheme.onTertiary
+          : readableOn(theirs, scheme.tertiary);
     }
     if (!times.any(controller.loop.containsSlot)) {
       return ink.withValues(alpha: 0.4);
