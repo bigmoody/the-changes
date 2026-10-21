@@ -167,7 +167,7 @@ class _ChordChartState extends State<ChordChart> {
           painter.dispose();
           return width;
         });
-        final sizing = BarLayout.chartSizing(
+        final chordSize = BarLayout.chartSize(
           tune,
           [
             for (final line in lines)
@@ -286,9 +286,8 @@ class _ChordChartState extends State<ChordChart> {
                                     section: lines[row].section,
                                     width: cellWidth,
                                     height: rowHeight,
-                                    stack: sizing.stack,
                                     ems: ems,
-                                    chordSize: sizing.size,
+                                    chordSize: chordSize,
                                   ),
                           ),
                         ],
@@ -382,8 +381,8 @@ class _SectionRail extends StatelessWidget {
   }
 }
 
-/// How one bar's chords sit in its box: on one line, or stacked by half-bar
-/// (first half on top), and the biggest size each line fits at.
+/// How one bar's chords sit in its box: on one line, read left to right as
+/// on a page, and the biggest size they fit at.
 class BarLayout {
   const BarLayout(this.lines, this.fits);
 
@@ -418,7 +417,6 @@ class BarLayout {
     int barIndex,
     double width,
     double height, {
-    required bool stack,
     double Function(String chord) ems = emsOf,
   }) {
     final slots = tune.bars[barIndex];
@@ -428,39 +426,24 @@ class BarLayout {
       (sideRoom - 6.0 * line.length) /
           line.map((i) => ems(slots[i].chord.display)).reduce((a, b) => a + b),
     );
-    final halfway = tune.barStartBeat(barIndex) + tune.beatsPerBar / 2;
-    final halves = [
-      [
-        for (var i = 0; i < slots.length; i++)
-          if (slots[i].startBeat < halfway) i,
-      ],
-      [
-        for (var i = 0; i < slots.length; i++)
-          if (slots[i].startBeat >= halfway) i,
-      ],
+    final lines = [
+      [for (var i = 0; i < slots.length; i++) i],
     ];
-    final lines = stack && halves.every((half) => half.isNotEmpty)
-        ? halves
-        : [
-            [for (var i = 0; i < slots.length; i++) i],
-          ];
     return BarLayout(lines, [
       for (final line in lines) fit(line, lines.length),
     ]);
   }
 
-  /// One rule and one size for the whole chart, so every bar looks alike,
-  /// as on a printed lead sheet:
-  ///  • Busy bars stack if that lets the whole chart be drawn clearly
-  ///    bigger (on a phone, where boxes are tall and narrow).
-  ///  • Every chord is drawn at the one size they all fit at. Only a chord
-  ///    far longer than the rest is left to shrink on its own, rather than
-  ///    shrinking the whole chart.
+  /// One size for the whole chart, so every bar looks alike, as on a
+  /// printed lead sheet: every chord on its own in a bar is drawn at the
+  /// one size they all fit at. Only a chord far longer than the rest, or
+  /// two in a bar side by side, are left to shrink on their own, rather
+  /// than shrinking the whole chart.
   /// As big as a chord is ever drawn while practising. Past this the
   /// chart stops looking like a chart and starts looking like a poster.
   static const biggestChord = 80.0;
 
-  static ({bool stack, double size}) chartSizing(
+  static double chartSize(
     Tune tune,
     List<int> bars,
     double width,
@@ -469,16 +452,10 @@ class BarLayout {
   }) {
     double median(List<double> values) =>
         ([...values]..sort())[values.length ~/ 2];
-    final busyBars = [
-      for (final bar in bars)
-        if (tune.bars[bar].length > 1) bar,
-    ];
     // Each line's biggest size, with how many chords are on it.
-    List<({double fit, int chords})> fits(List<int> which, bool stack) => [
-      for (final bar in which)
-        for (final layout in [
-          BarLayout.of(tune, bar, width, height, stack: stack, ems: ems),
-        ])
+    var all = [
+      for (final bar in bars)
+        for (final layout in [BarLayout.of(tune, bar, width, height, ems: ems)])
           for (var i = 0; i < layout.lines.length; i++)
             (fit: layout.fits[i], chords: layout.lines[i].length),
     ];
@@ -486,29 +463,26 @@ class BarLayout {
     // far too long for it are let off only if they're rare: one chord in
     // ten at most, counted as the eye sees them. Any more and they're part
     // of the tune's look, and everything matches them.
-    double sizeWith(bool stack) {
-      final all = fits(bars, stack);
-      final middle = median([for (final line in all) line.fit]);
-      final roomy = [
-        for (final line in all)
-          if (line.fit >= middle * 0.6) line,
-      ];
-      int chordsIn(List<({double fit, int chords})> lines) =>
-          lines.fold(0, (sum, line) => sum + line.chords);
-      final lines = chordsIn(roomy) >= chordsIn(all) * 0.9 ? roomy : all;
-      return lines
-          .map((line) => line.fit)
-          .reduce(math.min)
-          .clamp(10.0, biggestChord);
-    }
-
-    // Stack the busy bars if that lets the whole chart be clearly bigger
-    // (side by side reads more naturally, so it wins a near tie).
-    final sideBySide = sizeWith(false);
-    final stacked = busyBars.isEmpty ? 0.0 : sizeWith(true);
-    final stack = stacked > sideBySide * 1.1;
-    final size = stack ? stacked : sideBySide;
-    return (stack: stack, size: size);
+    // Sized by the bars of one chord, where there are any: a bar of two,
+    // side by side, is drawn smaller rather than the whole chart, as in
+    // iReal Pro.
+    final singles = [
+      for (final line in all)
+        if (line.chords == 1) line,
+    ];
+    if (singles.isNotEmpty) all = singles;
+    final middle = median([for (final line in all) line.fit]);
+    final roomy = [
+      for (final line in all)
+        if (line.fit >= middle * 0.6) line,
+    ];
+    int chordsIn(List<({double fit, int chords})> lines) =>
+        lines.fold(0, (sum, line) => sum + line.chords);
+    final lines = chordsIn(roomy) >= chordsIn(all) * 0.9 ? roomy : all;
+    return lines
+        .map((line) => line.fit)
+        .reduce(math.min)
+        .clamp(10.0, biggestChord);
   }
 }
 
@@ -523,17 +497,12 @@ class _BarCell extends StatelessWidget {
     required this.section,
     required this.width,
     required this.height,
-    required this.stack,
     required this.chordSize,
     required this.ems,
   });
 
   /// How wide a chord is drawn, in ems of the chart's font.
   final double Function(String chord) ems;
-
-  /// Whether bars with chords in both halves stack them (the same for the
-  /// whole chart, so neighbouring bars look alike).
-  final bool stack;
 
   /// The size every chord on the chart is drawn at, if it fits.
   final double chordSize;
@@ -588,16 +557,8 @@ class _BarCell extends StatelessWidget {
     // A 1st or 2nd ending is labelled as one instead of with a bar number.
     final label = cell.ending != null ? '${cell.ending}.' : '${barIndex + 1}';
 
-    final layout = BarLayout.of(
-      tune,
-      barIndex,
-      width,
-      height,
-      stack: stack,
-      ems: ems,
-    );
+    final layout = BarLayout.of(tune, barIndex, width, height, ems: ems);
     final lines = layout.lines;
-    final stacked = lines.length > 1;
     // The chart's one chord size, unless this line can't fit it.
     final sizes = [
       for (final fit in layout.fits)
@@ -753,9 +714,6 @@ class _BarCell extends StatelessWidget {
                             for (var l = 0; l < lines.length; l++)
                               Expanded(
                                 child: Row(
-                                  key: stacked
-                                      ? const ValueKey('stacked')
-                                      : null,
                                   children: [
                                     for (final i in lines[l])
                                       Expanded(

@@ -183,52 +183,75 @@ void main() {
       expect(width, greaterThanOrEqualTo(38));
     });
 
-    /// Every chord's size on the chart (not the big readout below it).
-    List<double> chartSizes(WidgetTester tester) => [
-      for (final text in tester.widgetList<Text>(find.byType(Text)))
-        if (text.textScaler == TextScaler.noScaling &&
-            text.style?.fontFamily == handFont)
-          text.style!.fontSize!,
-    ];
+    /// Every chord's size on the chart (not the big readout below it), and
+    /// how many chords share its bar.
+    List<({double size, int inBar})> chartSizes(WidgetTester tester) {
+      bool isChord(Widget widget) =>
+          widget is Text &&
+          widget.textScaler == TextScaler.noScaling &&
+          widget.style?.fontFamily == handFont;
+      final chords = find.byWidgetPredicate(isChord);
+      return [
+        for (final element in chords.evaluate())
+          (
+            size: (element.widget as Text).style!.fontSize!,
+            inBar: find
+                .descendant(
+                  of: find
+                      .ancestor(
+                        of: find.byWidget(element.widget),
+                        matching: find.byType(Row),
+                      )
+                      .first,
+                  matching: chords,
+                )
+                .evaluate()
+                .length,
+          ),
+      ];
+    }
 
     for (final (title, chord) in [
       ('Mercy', 'E♭/B♭'),
       ('Anthropology', 'E♭Δ7'),
       ('Green Dolphin', 'F7/E♭'),
       ('Moanin', 'G7♭9'),
-      // Long pairs like F♯13 F♯7alt: stacked, rather than shrinking the
-      // whole chart to fit them side by side.
+      // Long pairs like F♯13 F♯7alt: drawn smaller side by side, rather
+      // than shrinking the whole chart to fit them.
       ('Wave', 'F♯13'),
       ('Cherokee', 'Cm7'),
       ('Autumn Leaves', 'Cm7'),
     ]) {
-      testWidgets('$title: every chord on the chart is one size', (
-        tester,
-      ) async {
+      testWidgets('$title: every bar of one chord is one size', (tester) async {
         final width = await chordWidth(tester, title: title, chord: chord);
-        final sizes = chartSizes(tester);
-        expect(sizes.length, greaterThan(20));
+        final all = chartSizes(tester);
+        expect(all.length, greaterThan(20));
+        final sizes = [
+          for (final chord in all)
+            if (chord.inBar == 1) chord.size,
+        ];
         // All the same, bar the odd extreme chord left to shrink alone.
         final common = sizes.reduce(math.max);
         debugPrint('$title: chords drawn at ${common.toStringAsFixed(1)}');
         final same = sizes.where((size) => size == common).length;
         expect(same / sizes.length, greaterThan(0.9), reason: '$sizes');
+        // Two in a bar are never drawn bigger than one.
+        for (final chord in all) {
+          expect(chord.size, lessThanOrEqualTo(common));
+        }
         // And big enough to read on a phone.
         expect(common, greaterThanOrEqualTo(18));
-        expect(width, greaterThan(30));
+        // A chord sharing its bar is drawn smaller, but not much.
+        expect(width, greaterThan(20));
       });
     }
 
-    testWidgets('busy bars stack by half-bar, first half on top', (
-      tester,
-    ) async {
+    testWidgets('a busy bar reads left to right, as on a page', (tester) async {
       await chordWidth(tester, title: 'Mercy', chord: 'E♭/B♭');
-      expect(find.byKey(const ValueKey('stacked')), findsWidgets);
       final first = tester.getRect(find.text('B♭').first);
-      expect(
-        tester.getRect(find.text('E♭/B♭').first).top,
-        greaterThan(first.top),
-      );
+      final second = tester.getRect(find.text('E♭/B♭').first);
+      expect(second.left, greaterThan(first.right - 1));
+      expect(second.center.dy, closeTo(first.center.dy, 1));
     });
 
     testWidgets('Larger Text makes the chart bigger, and it scrolls', (
