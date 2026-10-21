@@ -412,6 +412,10 @@ class BarLayout {
 
   static double emsOfSlot(ChordSlot slot) => emsOf(slot.chord.display);
 
+  /// The space between two chords in a bar, in ems: as wide as a letter,
+  /// so C6/G G7 never reads as C6/GG7.
+  static const gapEms = 0.6;
+
   static BarLayout of(
     Tune tune,
     int barIndex,
@@ -424,7 +428,10 @@ class BarLayout {
     double fit(List<int> line, int lineCount) => math.min(
       height * 0.72 / lineCount,
       (sideRoom - 6.0 * line.length) /
-          line.map((i) => ems(slots[i].chord.display)).reduce((a, b) => a + b),
+          (line
+                  .map((i) => ems(slots[i].chord.display))
+                  .reduce((a, b) => a + b) +
+              gapEms * (line.length - 1)),
     );
     final lines = [
       [for (var i = 0; i < slots.length; i++) i],
@@ -720,11 +727,16 @@ class _BarCell extends StatelessWidget {
                               Expanded(
                                 child: Row(
                                   children: [
-                                    for (final i in lines[l])
+                                    for (final i in lines[l]) ...[
+                                      // Keeps two chords in one bar well
+                                      // apart, as fitting them allowed for.
+                                      if (i != lines[l].first)
+                                        SizedBox(
+                                          width: sizes[l] * BarLayout.gapEms,
+                                        ),
                                       Expanded(
                                         flex: charsOf(i),
                                         child: Padding(
-                                          // Keeps two chords in one bar from touching.
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 2,
                                           ),
@@ -739,31 +751,10 @@ class _BarCell extends StatelessWidget {
                                                     scheme,
                                                     i,
                                                     sizes[l],
-                                                    Text(
-                                                      handSymbol(
-                                                        slots[i].chord.display,
-                                                      ),
-                                                      // Sized from the box, which already
-                                                      // grows with Larger Text.
-                                                      textScaler:
-                                                          TextScaler.noScaling,
-                                                      style: handLettered(
-                                                        TextStyle(
-                                                          fontSize: sizes[l],
-                                                          // Chord symbols have no descenders, so
-                                                          // they don't need the space a line of
-                                                          // text keeps below and above itself;
-                                                          // without it they fit a third bigger.
-                                                          height: 1,
-                                                          leadingDistribution:
-                                                              TextLeadingDistribution
-                                                                  .even,
-                                                          color: _chordColour(
-                                                            scheme,
-                                                            i,
-                                                          ),
-                                                        ),
-                                                      ),
+                                                    _lettered(
+                                                      scheme,
+                                                      i,
+                                                      sizes[l],
                                                     ),
                                                   ),
                                                 ),
@@ -799,6 +790,7 @@ class _BarCell extends StatelessWidget {
                                           ),
                                         ),
                                       ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -851,15 +843,56 @@ class _BarCell extends StatelessWidget {
     );
   }
 
-  /// The [index]th chord in the box: highlighted while it's being played
-  /// (whichever time through), dimmed if no time through is in the loop.
-  Color _chordColour(ColorScheme scheme, int index) {
+  /// The [index]th chord in the box, lettered at [size]: in its root's
+  /// colour, and a slash bass in its own note's colour, being another
+  /// note (C6/G's G is G's colour, not C's).
+  Text _lettered(ColorScheme scheme, int index, double size) {
+    final chord = controller.chart.bars[cell.bars.first][index].chord;
+    final symbol = handSymbol(chord.display);
+    final style = handLettered(
+      TextStyle(
+        fontSize: size,
+        // Chord symbols have no descenders, so they don't need the space a
+        // line of text keeps below and above itself; without it they fit
+        // a third bigger.
+        height: 1,
+        leadingDistribution: TextLeadingDistribution.even,
+        color: _chordColour(scheme, index),
+      ),
+    );
+    final slash = symbol.lastIndexOf('/');
+    // Sized from the box, which already grows with Larger Text.
+    if (chord.bassLetter == null || slash < 0) {
+      return Text(symbol, textScaler: TextScaler.noScaling, style: style);
+    }
+    return Text.rich(
+      TextSpan(
+        text: symbol.substring(0, slash),
+        children: [
+          TextSpan(
+            text: symbol.substring(slash),
+            style: TextStyle(color: _chordColour(scheme, index, bass: true)),
+          ),
+        ],
+      ),
+      textScaler: TextScaler.noScaling,
+      style: style,
+    );
+  }
+
+  /// The [index]th chord in the box (its slash [bass], if asked for):
+  /// highlighted while it's being played (whichever time through), dimmed
+  /// if no time through is in the loop.
+  Color _chordColour(ColorScheme scheme, int index, {bool bass = false}) {
     final tune = controller.chart;
     final times = [for (final bar in cell.bars) tune.bars[bar][index]];
-    // The colour somebody sees this root as, if they see roots as
+    final chord = times.first.chord;
+    // The colour somebody sees this note as, if they see roots as
     // colours. Lifted or dropped only as far as it must be to be read on
     // whichever paper the app is on, which leaves the hue alone.
-    final theirs = controller.settings.chordColourFor(times.first.chord.root);
+    final theirs = controller.settings.chordColourFor(
+      bass ? chord.bass : chord.root,
+    );
     final ink = theirs == null
         ? scheme.onSurface
         : readableOn(theirs, scheme.surface);

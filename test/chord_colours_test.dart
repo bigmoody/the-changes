@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/practice_player.dart';
+import 'package:play_along/music/tune.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
@@ -220,6 +221,69 @@ void main() {
       await settings.setColourChords(false);
       final ink = await inkOf(tester, settings, 'C');
       expect(ink, appTheme(Brightness.light).colorScheme.onSurface);
+    });
+    group('a slash chord', () {
+      /// C6/G and G7 sharing a bar, drawn on the chart.
+      Future<void> draw(WidgetTester tester, AppSettings settings) async {
+        tester.view
+          ..physicalSize = const Size(393, 852) * 3
+          ..devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: appTheme(Brightness.light),
+            home: PracticeScreen(
+              tune: Tune.fromChart(
+                title: 'Slash',
+                key: 'C',
+                defaultTempo: 120,
+                chart: '| C6/G G7 | C6 | C6 | C6 |',
+              ),
+              player: PracticePlayer(),
+              settings: settings,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      /// The colours C6/G is lettered in: its root's, then its bass's.
+      (Color, Color) colours(WidgetTester tester) {
+        final text = tester.widget<Text>(find.text('C6/G').first);
+        final span = text.textSpan! as TextSpan;
+        expect(span.text, 'C6');
+        final bass = span.children!.single as TextSpan;
+        expect(bass.text, '/G');
+        return (text.style!.color!, bass.style!.color ?? text.style!.color!);
+      }
+
+      testWidgets('has its bass in the bass note\'s colour, not the root\'s', (
+        tester,
+      ) async {
+        final settings = AppSettings.inMemory();
+        await settings.setChordColour(0, const Color(0xFF1A3FA0));
+        await draw(tester, settings);
+        final (root, bass) = colours(tester);
+        expect(root, const Color(0xFF1A3FA0));
+        expect(bass, appTheme(Brightness.light).colorScheme.onSurface);
+        // And in G's own, once G has one.
+        await settings.setChordColour(7, const Color(0xFFA01A3F));
+        await tester.pumpAndSettle();
+        expect(colours(tester).$2, const Color(0xFFA01A3F));
+      });
+
+      testWidgets('sits a letter\'s width from the chord beside it', (
+        tester,
+      ) async {
+        await draw(tester, AppSettings.inMemory());
+        final first = tester.getRect(find.text('C6/G').first);
+        final second = tester.getRect(find.text('G7').first);
+        final size = tester
+            .widget<Text>(find.text('G7').first)
+            .style!
+            .fontSize!;
+        expect(second.left - first.right, greaterThan(size * 0.4));
+      });
     });
   });
 }
