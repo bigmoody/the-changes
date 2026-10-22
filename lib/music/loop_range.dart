@@ -95,3 +95,29 @@ LoopRange? introOf(Tune tune) {
   if (next == null || next >= tune.barCount) return null;
   return LoopRange.bars(tune, 0, next - 1);
 }
+
+/// Where a count that has run past the end of [tune] has got to, in
+/// beats: past the end it goes round again, from the top, or from just
+/// after the intro where there is one, because the intro is played once
+/// (see [introOf]). Before the start it goes round backwards, through the
+/// whole tune.
+int wrapBeat(Tune tune, int beat, {LoopRange? intro}) {
+  final n = tune.totalBeats;
+  if (beat >= 0 && beat < n) return beat;
+  final introBeats = intro?.lengthBeats ?? 0;
+  if (beat >= n && introBeats > 0 && introBeats < n) {
+    return introBeats + (beat - introBeats) % (n - introBeats);
+  }
+  return (beat % n + n) % n;
+}
+
+/// The same, in bars.
+int wrapBar(Tune tune, int bar, {LoopRange? intro}) {
+  final n = tune.barCount;
+  if (bar >= 0 && bar < n) return bar;
+  final introBars = intro == null ? 0 : intro.lengthBeats ~/ tune.beatsPerBar;
+  if (bar >= n && introBars > 0 && introBars < n) {
+    return introBars + (bar - introBars) % (n - introBars);
+  }
+  return (bar % n + n) % n;
+}

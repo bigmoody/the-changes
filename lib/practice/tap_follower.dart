@@ -66,6 +66,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../music/loop_range.dart';
 import '../music/tune.dart';
 
 class TapFollower extends ChangeNotifier {
@@ -73,6 +74,13 @@ class TapFollower extends ChangeNotifier {
     : _clock = clock ?? _stopwatch;
 
   final Tune tune;
+
+  /// The tune's intro, played once: past the end of the tune the count
+  /// goes round from just after it, as the band does (see loop_range.dart),
+  /// not back into an intro that never comes again.
+  late final _intro = introOf(tune);
+  int _wrapBeat(int beat) => wrapBeat(tune, beat, intro: _intro);
+  int _wrapBar(int bar) => wrapBar(tune, bar, intro: _intro);
 
   /// What time it is, for counting; a test's own clock in a test.
   final Duration Function() _clock;
@@ -231,7 +239,7 @@ class TapFollower extends ChangeNotifier {
         .floor();
     // Rounded down, not toward nought: a bar before the anchor is a
     // whole bar back even when its beat comes out below nought.
-    return ((anchor.beat + beats) / tune.beatsPerBar).floor() % tune.barCount;
+    return _wrapBar(((anchor.beat + beats) / tune.beatsPerBar).floor());
   }
 
   /// The count moved on by whole bars, its time left as it is: the place
@@ -242,7 +250,7 @@ class TapFollower extends ChangeNotifier {
     _startedByEar = false;
     _anchor = (
       at: anchor.at,
-      beat: (anchor.beat + bars * tune.beatsPerBar) % tune.totalBeats,
+      beat: _wrapBeat(anchor.beat + bars * tune.beatsPerBar),
     );
     notifyListeners();
   }
@@ -277,7 +285,7 @@ class TapFollower extends ChangeNotifier {
     if (anchor == null || length == null) return null;
     final since = _clock() - anchor.at;
     final beats = (since.inMicroseconds / length.inMicroseconds).floor();
-    return (anchor.beat + beats) % tune.totalBeats;
+    return _wrapBeat(anchor.beat + beats);
   }
 
   /// Tap the Beat.
@@ -420,7 +428,7 @@ class TapFollower extends ChangeNotifier {
     final anchor = _anchor!;
     final since = (last - anchor.at).inMicroseconds / length.inMicroseconds;
     final barline = ((anchor.beat + since) / perBar).round() * perBar;
-    _anchor = (at: last, beat: barline % tune.totalBeats);
+    _anchor = (at: last, beat: _wrapBeat(barline));
     _beatLength = length * 2;
     _startLength = (_startLength ?? length) * 2;
     _byBarlines = false;
@@ -444,7 +452,7 @@ class TapFollower extends ChangeNotifier {
     final bars = (since.inMicroseconds / bar.inMicroseconds).floor();
     final perBar = tune.beatsPerBar;
     final barline = ((anchor.beat ~/ perBar) + bars) * perBar;
-    _anchor = (at: anchor.at + bar * bars, beat: barline % tune.totalBeats);
+    _anchor = (at: anchor.at + bar * bars, beat: _wrapBeat(barline));
     _beatLength = length * 2;
     _startLength = (_startLength ?? length) * 2;
     _byBarlines = false;
@@ -466,7 +474,7 @@ class TapFollower extends ChangeNotifier {
     final bars = ((_clock() - anchor.at).inMicroseconds / bar.inMicroseconds)
         .floor();
     final barline = ((anchor.beat ~/ perBar) + bars) * perBar;
-    _anchor = (at: anchor.at + bar * bars, beat: barline % tune.totalBeats);
+    _anchor = (at: anchor.at + bar * bars, beat: _wrapBeat(barline));
     _beatLength = length ~/ 2;
     _startLength = (_startLength ?? length) ~/ 2;
     _byBarlines = false;
@@ -525,8 +533,9 @@ class TapFollower extends ChangeNotifier {
   /// have come evenly: each gap a whole number of bars (one, two or three:
   /// a barline Beat This! was not sure of is left out, not guessed), each
   /// within 6% of it, at least two of them a single bar and not either
-  /// side of the same barline, and the bar between 0.8 and 4 seconds
-  /// (quicker is half bars). A barline heard wrongly half way through a
+  /// side of the same barline, and the bar a bar's worth of beats between
+  /// 300 and 60 to the minute (0.8 to 4 seconds in four; quicker is half
+  /// bars). A barline heard wrongly half way through a
   /// bar makes two half bars side by side, and the bars either side of
   /// them look like two each: on Blue Monk that counted at twice the
   /// tempo. A bar already tapped keeps its place; otherwise the count
@@ -550,7 +559,12 @@ class TapFollower extends ChangeNotifier {
     if (singles.length < 2 || singles.last - singles.first < 2) return;
     final bar =
         (last.last - last.first).inMicroseconds / spans.reduce((a, b) => a + b);
-    if (bar < 800000 || bar > 4000000) return;
+    // A bar's worth of beats between 300 and 60 to the minute: in four,
+    // 0.8 to 4 seconds; in three, a waltz's bar, 0.6 to 3. The same
+    // limits in four only, as they were, turned a quick waltz's bars away
+    // as half bars.
+    final beats = tune.beatsPerBar;
+    if (bar < beats * 200000 || bar > beats * 1000000) return;
     for (var i = 0; i < gaps.length; i++) {
       if ((gaps[i] / spans[i] - bar).abs() >= 0.06 * bar) return;
     }
@@ -560,7 +574,7 @@ class TapFollower extends ChangeNotifier {
     var startsOn = 0;
     if (placed != null) {
       final bars = ((last.last - placed.at).inMicroseconds / bar).round();
-      startsOn = (placed.beat + bars * perBar) % tune.totalBeats;
+      startsOn = _wrapBeat(placed.beat + bars * perBar);
     }
     _beatLength = length;
     _startLength = length;
@@ -615,7 +629,7 @@ class TapFollower extends ChangeNotifier {
             at: Duration(
               microseconds: (expected + _nudgePlace * error).round(),
             ),
-            beat: barline % tune.totalBeats,
+            beat: _wrapBeat(barline),
           )
         : (
             at:

@@ -26,12 +26,19 @@
 
 import 'dart:math';
 
+import '../music/loop_range.dart';
 import '../music/tune.dart';
 
 class FormFinder {
   FormFinder({required this.tune, this.lead = defaultLead});
 
   final Tune tune;
+
+  /// The tune's intro, played once. Sliding the chart along what was
+  /// heard goes round from just after it, not back into it, so a band
+  /// going round Valse Hot's A section is never tried against its intro.
+  late final _intro = introOf(tune);
+  int _wrap(int bar) => wrapBar(tune, bar, intro: _intro);
 
   /// Fewer bars than this are not enough to go on.
   static const fewest = 8;
@@ -92,12 +99,18 @@ class FormFinder {
         if (bar.counted case final counted?) (counted: counted, bar: bar),
     ];
     if (placed.length < fewest) return null;
+    // As many places as the band can be in: with an intro, the bars that
+    // go round, since sliding further only comes back to the same places,
+    // and two places that score the same never lead each other.
+    final intro = _intro;
+    final places = intro == null
+        ? tune.barCount
+        : tune.barCount - intro.lengthBeats ~/ tune.beatsPerBar;
     final scores = [
-      for (var k = 0; k < tune.barCount; k++)
+      for (var k = 0; k < places; k++)
         placed.fold(
           0.0,
-          (sum, p) =>
-              sum + _fit(p.bar.pitches, (p.counted + k) % tune.barCount),
+          (sum, p) => sum + _fit(p.bar.pitches, _wrap(p.counted + k)),
         ),
     ];
     final order = [for (var k = 0; k < scores.length; k++) k]
@@ -107,7 +120,7 @@ class FormFinder {
     if (scores[best] - scores[order[1]] < lead) return null;
     for (final bar in _bars) {
       if (bar.counted case final counted?) {
-        bar.counted = (counted + best) % tune.barCount;
+        bar.counted = _wrap(counted + best);
       }
     }
     return best;
