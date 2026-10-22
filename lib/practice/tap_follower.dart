@@ -596,8 +596,13 @@ class TapFollower extends ChangeNotifier {
         microseconds: span.inMicroseconds ~/ (bars * tune.beatsPerBar),
       );
       if (length >= _quickest && length <= _beatLimit) {
-        _beatLength = length;
-        _startLength = length;
+        // Near the tempo it has, half way there: three taps by hand are a
+        // few per cent out either way. Further off, it is a new tempo.
+        final before = _beatLength;
+        final near = before != null && (length - before).abs() < before * 0.08;
+        final taken = near ? (before + length) ~/ 2 : length;
+        _beatLength = taken;
+        _startLength = taken;
         _byBarlines = false;
       }
     }

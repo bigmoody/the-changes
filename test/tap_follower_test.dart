@@ -114,6 +114,25 @@ void main() {
     expect(taps.beat, 40, reason: 'three bars on: bar 11');
   });
 
+  test('three bars tapped near the tempo move it half way', () {
+    // Counting at 340; three bars tapped a little slow, at 325, as hands
+    // catching up are: half way, not all the way.
+    final taps = follower();
+    const bar340 = Duration(microseconds: 705882);
+    for (var b = 0; b < 4; b++) {
+      if (b > 0) now += bar340;
+      taps.placeAtBar(b);
+    }
+    expect(taps.tempo, closeTo(340, 1));
+    now += const Duration(seconds: 3);
+    const bar325 = Duration(microseconds: 738462);
+    for (var b = 9; b < 12; b++) {
+      if (b > 9) now += bar325;
+      taps.placeAtBar(b);
+    }
+    expect(taps.tempo, closeTo(332, 1.5));
+  });
+
   test('a bar skipped still gives the tempo; a jump does not', () {
     final taps = follower();
     tapFour(taps);
