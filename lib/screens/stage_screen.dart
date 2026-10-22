@@ -539,6 +539,7 @@ class _StageScreenState extends State<StageScreen> {
                       // Only in builds being worked on: it is for testing
                       // the tracker on a computer, not for anybody playing.
                       onSave: kDebugMode ? _saveWhatOthersPlayed : null,
+                      onStop: _toggleHearingOthers,
                       playing: controller.ref,
                       onSwitchTune: widget.onSwitchTune == null
                           ? null
@@ -806,9 +807,14 @@ class _OtherApps extends StatelessWidget {
     this.placedByEar = false,
     this.playing,
     this.onSwitchTune,
+    this.onStop,
   });
 
   final OtherAppsSound sound;
+
+  /// Stops listening, said plainly: the ear on the bar below does the
+  /// same, but only changes how it is drawn.
+  final VoidCallback? onStop;
 
   /// The tune on the stage, so it is not offered as another.
   final TuneRef? playing;
@@ -902,6 +908,12 @@ class _OtherApps extends StatelessWidget {
                 key: const ValueKey('stage-double-time'),
                 onPressed: onDoubleTime,
                 child: const Text('Double Time'),
+              ),
+              IconButton(
+                key: const ValueKey('stage-stop-listening'),
+                icon: const Icon(Icons.stop_circle_outlined),
+                tooltip: 'Stop Listening',
+                onPressed: onStop,
               ),
               IconButton(
                 key: const ValueKey('stage-listening-help'),
