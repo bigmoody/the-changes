@@ -31,7 +31,9 @@ void main() {
       if (event.startsWith('HEARD BARLINE')) {
         taps.heardBarline(now - seconds(word[3]));
       } else if (event.startsWith('DOUBLE TIME')) {
-        taps.doubleTime();
+        // Pressed because it was at half. Two bars tapped a bar apart
+        // now put that right before then, and it would not be pressed.
+        if (taps.tempo! < 250) taps.doubleTime();
       } else if (event.startsWith('TAPPED BAR')) {
         if (word[0] == '91.720') {
           atTheTap = taps.beat! / tune.beatsPerBar;

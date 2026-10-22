@@ -114,6 +114,31 @@ void main() {
     expect(taps.beat, 40, reason: 'three bars on: bar 11');
   });
 
+  test('two bars tapped a bar apart at twice the tempo double it', () {
+    // Counting at half, 170 for a band at 340: bar 5, then bar 6 a bar
+    // of the band's later, and it is at 340 at once.
+    final taps = follower();
+    for (var i = 0; i < 4; i++) {
+      if (i > 0) now += const Duration(microseconds: 352941);
+      taps.tapBeat();
+    }
+    expect(taps.tempo, closeTo(170, 1));
+    now += const Duration(seconds: 2);
+    taps.placeAtBar(4);
+    now += const Duration(microseconds: 720000);
+    taps.placeAtBar(5);
+    expect(taps.tempo, closeTo(340, 1));
+    expect(taps.beat, 20);
+  });
+
+  test('the screen shows the beat a little ahead of the count', () {
+    final taps = follower();
+    tapFour(taps);
+    now += beat - TapFollower.lead + const Duration(milliseconds: 1);
+    expect(taps.beat, isNot(0), reason: 'not bar 1 yet');
+    expect(taps.shownBeat, 0);
+  });
+
   test('three bars tapped near the tempo move it half way', () {
     // Counting at 340; three bars tapped a little slow, at 325, as hands
     // catching up are: half way, not all the way.
@@ -138,10 +163,14 @@ void main() {
     tapFour(taps);
     const bar = Duration(milliseconds: 1000); // 240 to the minute
     taps.placeAtBar(8);
-    now += bar;
-    taps.placeAtBar(9);
-    expect(taps.tempo, closeTo(120, 1), reason: 'two bars are not a tempo');
     now += bar * 2;
+    taps.placeAtBar(10);
+    expect(
+      taps.tempo,
+      closeTo(240, 1),
+      reason: 'two bars a bar of 240 apart: at half, doubled',
+    );
+    now += bar;
     taps.placeAtBar(11);
     expect(taps.tempo, closeTo(240, 1));
     now += bar;

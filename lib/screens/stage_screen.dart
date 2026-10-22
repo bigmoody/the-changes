@@ -455,7 +455,7 @@ class _StageScreenState extends State<StageScreen> {
       final sure =
           heard != null && heard.hearsMusic && heard.confidence >= _sureEnough;
       final taps = _tapping ? _taps : null;
-      final tapped = taps?.beat;
+      final tapped = taps?.shownBeat;
       // The beat marked: the count's, the ear's, or (with neither) the
       // band's own, which the chart reads for itself.
       // A count that does not yet know the bar of the tune marks none:

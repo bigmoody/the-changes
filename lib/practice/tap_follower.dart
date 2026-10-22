@@ -102,6 +102,14 @@ class TapFollower extends ChangeNotifier {
 
   final _taps = <Duration>[];
 
+  /// Whether the tempo was tapped, by the beat or by bars: then a barline
+  /// heard may move it a twenty-fifth from it at most, not a tenth. The
+  /// barlines Beat This! hears on a quick tune come and go, half bars
+  /// among them, and on Cherokee they pulled a tapped 338 about by 4%,
+  /// enough to drift a bar from the band in under a minute.
+  var _tempoTapped = false;
+  static const _furthestTapped = 0.04;
+
   /// The bars tapped one after another lately: when, and which.
   final _barTaps = <({Duration at, int bar})>[];
 
@@ -201,6 +209,7 @@ class TapFollower extends ChangeNotifier {
     _startLength = beat;
     _anchor = (at: at, beat: bar * perBar);
     _byChords = true;
+    _tempoTapped = false;
     _byBarlines = false;
     _startedByEar = false;
     _countingIn = false;
@@ -309,6 +318,25 @@ class TapFollower extends ChangeNotifier {
     return _wrapBeat(anchor.beat + beats);
   }
 
+  /// How far ahead of the count the screen shows it. A chord seen at the
+  /// moment it is heard looks late: the screen takes a frame or two to
+  /// draw it, and the eye is slower than the ear. On Cherokee at 340,
+  /// with the count on the taps to within 50 ms, the underline looked
+  /// late all the time.
+  static const lead = Duration(milliseconds: 100);
+
+  /// The beat to show now: the count's, [lead] ahead.
+  int? get shownBeat => _beatAt(_clock() + lead);
+
+  int? _beatAt(Duration at) {
+    final anchor = _anchor;
+    final length = _beatLength;
+    if (anchor == null || length == null) return null;
+    final beats = ((at - anchor.at).inMicroseconds / length.inMicroseconds)
+        .floor();
+    return _wrapBeat(anchor.beat + beats);
+  }
+
   /// Tap the Beat.
   void tapBeat() {
     final now = _clock();
@@ -337,6 +365,7 @@ class TapFollower extends ChangeNotifier {
             (length - before).abs() > before * 0.2;
         _beatLength = length;
         _startLength = length;
+        _tempoTapped = true;
         _byBarlines = false;
         _byChords = false;
         if (current == null && placed != null && !countingIn) {
@@ -488,7 +517,7 @@ class TapFollower extends ChangeNotifier {
   void doubleTime() {
     final length = _beatLength;
     final anchor = _anchor;
-    if (length == null || anchor == null) return;
+    if (length == null || anchor == null || length ~/ 2 < _quickest) return;
     final perBar = tune.beatsPerBar;
     final bar = length * perBar;
     final bars = ((_clock() - anchor.at).inMicroseconds / bar.inMicroseconds)
@@ -603,7 +632,29 @@ class TapFollower extends ChangeNotifier {
         final taken = near ? (before + length) ~/ 2 : length;
         _beatLength = taken;
         _startLength = taken;
+        _tempoTapped = true;
         _byBarlines = false;
+      }
+    } else if (_barTaps.length == 2 && _beatLength != null) {
+      // Two bars are not a tempo, but they tell twice from half: two bars
+      // a bar apart that say the count is at half the band's tempo, or
+      // twice it, put it right at once, from the tempo it has.
+      final gap = _barTaps[1].at - _barTaps[0].at;
+      final bars = _wrapBar(_barTaps[0].bar + 1) == bar ? 1 : 2;
+      final ratio =
+          gap.inMicroseconds /
+          (bars * tune.beatsPerBar * _beatLength!.inMicroseconds);
+      final before = _beatLength!;
+      if (ratio > 0.42 && ratio < 0.58 && before ~/ 2 >= _quickest) {
+        _beatLength = before ~/ 2;
+      } else if (ratio > 1.7 && ratio < 2.3 && before * 2 <= _beatLimit) {
+        _beatLength = before * 2;
+      }
+      if (_beatLength != before) {
+        _startLength = _beatLength;
+        _byBarlines = false;
+        _byChords = false;
+        _taken.clear();
       }
     }
     _countingIn = false;
@@ -685,6 +736,7 @@ class TapFollower extends ChangeNotifier {
     _anchor = (at: last.last, beat: startsOn);
     _startedByEar = placed == null;
     _byBarlines = true;
+    _tempoTapped = false;
     _byChords = false;
     _fell.clear();
     _taken.clear();
@@ -730,9 +782,10 @@ class TapFollower extends ChangeNotifier {
     final off = error.abs() / (_nearEnough * bar);
     final trust = 1 - off * off;
     final lengthened = across == 0 ? 0 : trust * _nudgeLength * error / across;
+    final furthest = _tempoTapped ? _furthestTapped : _furthest;
     final nudged = (bar + lengthened).clamp(
-      started * (1 - _furthest),
-      started * (1 + _furthest),
+      started * (1 - furthest),
+      started * (1 + furthest),
     );
     _anchor = beats > 0
         ? (
@@ -797,7 +850,7 @@ class TapFollower extends ChangeNotifier {
   void _run() {
     if (_beatLength == null || _ticker != null) return;
     _ticker = Timer.periodic(const Duration(milliseconds: 20), (_) {
-      final now = beat;
+      final now = shownBeat;
       if (now != _lastBeat) {
         _lastBeat = now;
         notifyListeners();
