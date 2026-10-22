@@ -4,15 +4,15 @@
 // This is the app's half: the button, and what it shows of the numbers
 // the extension writes, answered here as the phone would.
 
-import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/other_apps.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/audio/room_listener.dart';
+import 'package:play_along/library/library_store.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/practice_controller.dart';
 import 'package:play_along/practice/tap_follower.dart';
@@ -39,6 +39,12 @@ final _keptPlaced = {
 
 /// The log the app left beside the kept sound, last time it did.
 String? _leftTaps;
+
+/// What following was last started on.
+String? _followed;
+
+/// The tunes it was last given to tell the band's from.
+List<String>? _library;
 
 bool _keepTaps(String log) {
   _leftTaps = log;
@@ -71,6 +77,7 @@ Future<List<String>> _openStage(
   bool otherApps = true,
   TapFollower? taps,
   RoomListener? ear,
+  void Function(TuneRef tune, {required bool microphone})? onSwitchTune,
 }) async {
   _elapsed = Duration.zero;
   _leftTaps = null;
@@ -83,6 +90,14 @@ Future<List<String>> _openStage(
     otherAppsChannel,
     (call) async {
       asked.add(call.method);
+      if (call.method == 'follow') {
+        _followed = (call.arguments as Map?)?['source'] as String?;
+        _library = [
+          for (final chart
+              in (call.arguments as Map?)?['library'] as List? ?? const [])
+            (chart as Map)['id'] as String,
+        ];
+      }
       return switch (call.method) {
         'read' => report == null ? null : jsonEncode(report),
         'pick' => true,
@@ -117,6 +132,7 @@ Future<List<String>> _openStage(
         otherApps: otherApps ? sound : null,
         taps: taps,
         listener: ear,
+        onSwitchTune: onSwitchTune,
       ),
     ),
   );
@@ -179,8 +195,6 @@ void main() {
     await _openStage(tester, taps: taps);
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
-    await tester.pump();
     // Before the kept twenty seconds, then in them: 10 s to 30 s.
     _elapsed = const Duration(seconds: 5);
     taps.tapBeat();
@@ -198,9 +212,9 @@ void main() {
     expect(log, contains('2.500  TAP THE BEAT'));
     expect(log, contains('4.000  TAPPED BAR 3'));
     expect('TAP THE BEAT'.allMatches(log).length, 1);
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
+    expect(taps.counting, isFalse, reason: 'the count goes with it');
   });
 
   testWidgets('the taps still work with the broadcast open', (tester) async {
@@ -212,8 +226,8 @@ void main() {
     await _openStage(tester, taps: taps, report: _playing());
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump(const Duration(milliseconds: 250));
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
-    await tester.pump(const Duration(milliseconds: 250));
+    // Hearing another app follows it by taps too.
+    expect(find.byKey(const ValueKey('stage-tapping')), findsOneWidget);
     for (var i = 0; i < 4; i++) {
       _elapsed += const Duration(milliseconds: 300);
       await tester.tap(find.byKey(const ValueKey('stage-tap-beat')));
@@ -223,33 +237,172 @@ void main() {
     await tester.tap(find.text('Top of the Chorus'));
     await tester.pump(const Duration(milliseconds: 50));
     expect(taps.counting, isTrue);
-    await tester.tap(find.byKey(const ValueKey('stage-follow-taps')));
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+    expect(taps.counting, isFalse, reason: 'the count goes with it');
+  });
+
+  testWidgets('follows the barlines Beat This! hears', (tester) async {
+    final taps = TapFollower(
+      tune: standards.firstWhere((tune) => tune.title == 'Cherokee'),
+      clock: () => _elapsed,
+    );
+    addTearDown(taps.dispose);
+    final asked = await _openStage(tester, taps: taps, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(asked, contains('follow'));
+    expect(find.textContaining('listening for the bars'), findsOneWidget);
+    // Five barlines 1.16 s apart, the last just now, by the phone's clock.
+    _elapsed = const Duration(seconds: 15);
+    final now = _phoneAhead + 15;
+    // The same look twice: a barline is handed on once two agree on it.
+    for (var look = 0; look < 2; look++) {
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        otherAppsChannel.name,
+        otherAppsChannel.codec.encodeMethodCall(
+          MethodCall('heard', {
+            'downbeats': [for (var i = 4; i >= 0; i--) now - 1.16 * i],
+            'beats': <double>[],
+            // The bar between the last two barlines, and what sounded in it.
+            'bars': [
+              {'start': now - 1.16, 'pitches': List<double>.filled(48, 0.5)},
+            ],
+            'end': now,
+            'took': 0.05,
+          }),
+        ),
+        (_) {},
+      );
+    }
+    await tester.pump();
+    expect(taps.counting, isTrue);
+    expect(taps.tempo, closeTo(240 / 1.16, 0.5));
+    // Counting, but not yet knowing which bar: none is marked.
+    expect(taps.placeKnown, isFalse);
+    expect(find.textContaining('listening for which bar'), findsOneWidget);
+    expect(
+      find.textContaining('heard 5 barlines, 50 ms a look'),
+      findsOneWidget,
+    );
+    // Half Time: half as quick, from the barline it has.
+    await tester.tap(find.byKey(const ValueKey('stage-half-time')));
+    await tester.pump();
+    expect(taps.tempo, closeTo(120 / 1.16, 0.5));
+    expect(taps.placeKnown, isFalse);
+    // Kept with the taps, for playing the count through again: the kept
+    // stretch starts at 10 s.
+    await tester.tap(find.byKey(const ValueKey('stage-save-broadcast')));
+    await tester.pump();
+    expect(_leftTaps, contains('5.000  HEARD BARLINE 5.000'));
+    expect(_leftTaps, contains('5.000  HEARD BARLINE 0.360'));
+    expect(_leftTaps, contains('5.000  HEARD BAR 3.840 0.5000'));
+    // And what the count did, as it was shown.
+    expect(_leftTaps, contains('COUNT STARTED AT 207 BPM'));
+    expect(_leftTaps, contains('HALF TIME PRESSED'));
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump();
+    expect(asked, contains('stopFollowing'));
+  });
+
+  testWidgets('follows through the microphone when chosen', (tester) async {
+    final asked = await _openStage(tester, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(_followed, 'broadcast');
+    await tester.tap(find.text('Microphone'));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(asked.where((m) => m == 'stopFollowing'), hasLength(1));
+    expect(_followed, 'microphone');
+    expect(find.textContaining('through the microphone'), findsOneWidget);
+    expect(find.byKey(const ValueKey('stage-start-broadcast')), findsNothing);
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
   });
 
-  testWidgets('keeps the ear\'s taps too', (tester) async {
-    final room = StreamController<Float32List>();
-    addTearDown(() {
-      unawaited(room.close());
-    });
-    final ear = RoomListener(
-      tune: standards.firstWhere((tune) => tune.title == 'Cherokee'),
-      source: () async => room.stream,
+  testWidgets('says which tunes the band sounds like', (tester) async {
+    TuneRef? changedTo;
+    await _openStage(
+      tester,
+      report: _playing(),
+      onSwitchTune: (tune, {required microphone}) => changedTo = tune,
     );
-    await _openStage(tester, ear: ear);
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    // Every tune in the book, to tell the band's from.
+    expect(_library, contains('s:Four'));
+    expect(_library, contains('s:Cherokee'));
+    Future<void> heard(double four, double cherokee) =>
+        tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+          otherAppsChannel.name,
+          otherAppsChannel.codec.encodeMethodCall(
+            MethodCall('heard', {
+              'tunes': [
+                {'id': 's:Four', 'score': four, 'semitones': 2},
+                {'id': 's:Cherokee', 'score': cherokee, 'semitones': 0},
+              ],
+              'end': _phoneAhead,
+            }),
+          ),
+          (_) {},
+        );
+    // Once is not enough to say.
+    await heard(4, 3);
+    await tester.pump();
+    expect(find.byKey(const ValueKey('stage-sounds-like')), findsNothing);
+    // Twice: Four is ahead on the two added up, though not on the second.
+    await heard(3, 3.5);
+    await tester.pump();
+    final four = standards.firstWhere((tune) => tune.title == 'Four');
+    final inKey = 'Four in ${four.transposed(2).key}';
+    expect(find.text(inKey), findsOneWidget);
+    final chips = tester.widgetList<ActionChip>(find.byType(ActionChip));
+    expect(
+      [for (final chip in chips) (chip.label as Text).data],
+      [
+        inKey,
+        'Cherokee in ${standards.firstWhere((t) => t.title == 'Cherokee').key}',
+      ],
+    );
+    await tester.tap(find.text(inKey));
+    expect(changedTo, TuneRef.standard('Four'));
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('stage-listen')));
+  });
+
+  testWidgets('leaving the stage stops it listening', (tester) async {
+    final asked = await _openStage(tester, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(asked, contains('follow'));
+    expect(asked, isNot(contains('stopFollowing')));
+    await tester.pumpWidget(const SizedBox());
     await tester.pump();
-    _elapsed = const Duration(seconds: 13);
-    await tester.tap(find.byKey(const ValueKey('stage-tap-tempo')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('stage-save-broadcast')));
-    await tester.pump();
-    expect(_leftTaps, contains('3.000  TAP THE BEAT'));
-    await tester.tap(find.byKey(const ValueKey('stage-listen')));
+    expect(asked, contains('stopFollowing'));
+  });
+
+  testWidgets('says how listening works', (tester) async {
+    await _openStage(tester, report: _playing());
+    await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.tap(find.byKey(const ValueKey('stage-listening-help')));
+    await tester.pumpAndSettle();
+    expect(find.text('How Listening Works'), findsWidgets);
+    expect(find.text('Too Fast or Too Slow'), findsOneWidget);
+    Navigator.of(
+      tester.element(find.byKey(const ValueKey('how-listening-works'))),
+    ).pop();
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('stage-hear-others')));
     await tester.pump();
+  });
+
+  testWidgets('offers neither the taps nor the ear on their own', (
+    tester,
+  ) async {
+    await _openStage(tester);
+    expect(find.byKey(const ValueKey('stage-hear-others')), findsOneWidget);
+    expect(find.byKey(const ValueKey('stage-follow-taps')), findsNothing);
+    expect(find.byKey(const ValueKey('stage-listen')), findsNothing);
   });
 }

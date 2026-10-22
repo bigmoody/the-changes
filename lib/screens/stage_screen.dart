@@ -30,10 +30,13 @@
 // (see chart_follower.dart). It follows iReal Pro's backing and not a
 // real record, so nobody else is shown it until it does.
 //
-// So is hearing another app on an iPhone (see other_apps.dart): only the
-// proof that a record playing in YouTube or Spotify reaches the app, with
-// a meter and the format it arrives in.
+// So is hearing another band on an iPhone or iPad (see other_apps.dart):
+// a record playing in another app, by broadcast, or the room through the
+// microphone, followed by Beat This! and the chords. In builds being
+// worked on, and a release built with LISTENING (see [listeningBuild]);
+// the tune's page opens it with the ear.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -44,12 +47,24 @@ import 'package:flutter/services.dart';
 
 import '../audio/other_apps.dart';
 import '../audio/room_listener.dart';
+import '../library/library_store.dart' show TuneRef;
+import '../music/tune.dart';
+import '../music/tune_library.dart';
 import '../practice/chart_follower.dart';
+import '../practice/form_finder.dart';
 import '../practice/practice_controller.dart';
 import '../practice/tap_follower.dart';
 import '../theme.dart';
 import 'chord_chart.dart' show ChordChart, CountInBubble;
 import 'play_shortcuts.dart';
+
+/// Whether this build can follow another band by ear: every build being
+/// worked on, and a release built with `--dart-define=LISTENING=true`,
+/// which keeps working on the device away from the computer.
+const listeningBuild = bool.fromEnvironment(
+  'LISTENING',
+  defaultValue: kDebugMode,
+);
 
 class StageScreen extends StatefulWidget {
   const StageScreen({
@@ -59,9 +74,24 @@ class StageScreen extends StatefulWidget {
     this.listener,
     this.taps,
     this.otherApps,
+    this.hearOthers = false,
+    this.microphone = false,
+    this.onSwitchTune,
   });
 
   final PracticeController controller;
+
+  /// Whether hearing others starts on the microphone rather than a
+  /// broadcast: it was on the microphone on the stage this replaced.
+  final bool microphone;
+
+  /// Changes to another tune, still listening, when the band sounds like
+  /// it. Null where the stage cannot change tune.
+  final void Function(TuneRef tune, {required bool microphone})? onSwitchTune;
+
+  /// Whether to start hearing other apps as soon as the stage opens: it
+  /// was opened for that, from the tune's own page.
+  final bool hearOthers;
 
   /// The scrolling stage: a few big rows that move on with the band,
   /// rather than the whole tune fitted to the screen.
@@ -91,6 +121,12 @@ class _StageScreenState extends State<StageScreen> {
   TapFollower? _taps;
   var _tapping = false;
 
+  /// Where in the tune the band is, by ear, while following another app.
+  FormFinder? _form;
+
+  /// Whether the ear has moved the count to the bar it heard.
+  var _placedByEar = false;
+
   /// The ear says whether it is listening, so the screen and the
   /// microphone cannot disagree about it.
   bool get _listening => _ear?.listening ?? false;
@@ -99,11 +135,14 @@ class _StageScreenState extends State<StageScreen> {
   OtherAppsSound? _otherApps;
   var _hearingOthers = false;
 
-  /// Only an iPhone or iPad can, and only a build being worked on has
-  /// the extension that does it.
+  /// Whether the stage is going because the band is playing another tune.
+  var _switching = false;
+
+  /// Only an iPhone or iPad can, and only a build with listening in it
+  /// has the extension that does it.
   bool get _canHearOthers =>
       widget.follow &&
-      kDebugMode &&
+      listeningBuild &&
       (widget.otherApps != null || defaultTargetPlatform == TargetPlatform.iOS);
 
   /// Below this the follower is guessing, and a guess marked on the chart
@@ -111,7 +150,39 @@ class _StageScreenState extends State<StageScreen> {
   static const _sureEnough = 0.25;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.hearOthers && _canHearOthers) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted || _hearingOthers) return;
+        if (widget.microphone) {
+          await (_otherApps ??= widget.otherApps ?? OtherAppsSound())
+              .useMicrophone(true);
+        }
+        if (mounted && !_hearingOthers) await _toggleHearingOthers();
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    // Left still listening: Beat This!, the chords and the microphone
+    // would otherwise go on, out of sight, taking the processor the band
+    // needs and leaving the phone's audio set up for recording.
+    if (_hearingOthers) {
+      final others = _otherApps;
+      others
+        ?..stopReading()
+        ..onBarline = null
+        ..onBeats = null
+        ..onChords = null
+        ..onBar = null;
+      // Changing tune, the next stage starts listening at once: the
+      // phone's audio is left as listening needs it.
+      if (others != null) {
+        unawaited(_switching ? others.stopFollowing() : _stopFollowing(others));
+      }
+    }
     _ear?.dispose();
     if (widget.taps == null) _taps?.dispose();
     if (widget.otherApps == null) {
@@ -156,15 +227,138 @@ class _StageScreenState extends State<StageScreen> {
     }
   }
 
-  void _toggleHearingOthers() {
+  /// Hearing another app follows it too: the count, started by its
+  /// barlines or by taps, and nudged by Beat This! from then on.
+  /// Stops Beat This! and, after the microphone, puts the phone's audio
+  /// back as the band needs it, as after the tuner.
+  Future<void> _stopFollowing(OtherAppsSound others) async {
+    final microphone = others.microphone;
+    await others.stopFollowing();
+    if (microphone) await controller.player.restoreAudioSession();
+  }
+
+  Future<void> _toggleHearingOthers() async {
     final others = _otherApps ??= widget.otherApps ?? OtherAppsSound();
     if (_hearingOthers) {
-      others.stopReading();
-    } else {
-      others.startReading();
+      others
+        ..stopReading()
+        ..onBarline = null
+        ..onBeats = null
+        ..onChords = null
+        ..onBar = null;
+      _taps
+        ?..onRecounted = null
+        ..onHalved = null
+        ..onChords = null;
+      unawaited(_stopFollowing(others));
+      _form?.clear();
+      setState(() {
+        _hearingOthers = false;
+        _placedByEar = false;
+      });
+      _keepTapsWithOthers();
+      // The count goes with it: where other apps can be heard there is
+      // nothing else to turn it off with (see the stage bar).
+      if (_tapping) await _toggleTapping();
+      return;
     }
-    setState(() => _hearingOthers = !_hearingOthers);
+    others
+      ..startReading()
+      // Only while following by taps: turned off, the count stays off.
+      ..onBarline = (ago) {
+        final taps = _tapping ? _taps : null;
+        if (taps == null) return;
+        final was = taps.counting;
+        taps.heardBarline(ago);
+        if (!was && taps.counting) {
+          others.noted('COUNT STARTED AT ${taps.tempo!.round()} BPM');
+        }
+      }
+      ..onBeats = (beats) {
+        if (_tapping) _taps?.heardBeats(beats);
+      }
+      ..onChords = (ago, bar, tempo) {
+        if (_tapping) _taps?.heardChords(ago, bar, tempo);
+      }
+      ..tune = controller.tune
+      ..library = _everyTune()
+      ..onBar = _heardBar;
+    setState(() => _hearingOthers = true);
+    if (!_tapping) await _toggleTapping();
+    _taps
+      ?..onRecounted = _recounted
+      ..onHalved = (() => others.noted('COUNT HALVED ITSELF'))
+      ..onChords = () {
+        final taps = _taps!;
+        others.noted(
+          'CHORDS: ${taps.tempo!.round()} BPM, '
+          'BAR ${taps.barAt(taps.now)! + 1}',
+        );
+        _form?.clear();
+        setState(() => _placedByEar = true);
+      };
     _keepTapsWithOthers();
+    await others.follow();
+  }
+
+  /// Every tune the band might be playing: the book's, and the player's
+  /// own.
+  Map<String, Tune> _everyTune() => {
+    for (final tune in [...standards, ...practiceProgressions])
+      TuneRef.standard(tune.title).value: tune,
+    for (final progression in controller.progressions?.all ?? const [])
+      TuneRef.mine(progression.id).value: progression.toTune(),
+  };
+
+  /// A bar heard whole: put with the others, and the count moved to the
+  /// bar of the tune they say the band is in, unless a bar was tapped.
+  void _heardBar(Duration ago, List<double> pitches) {
+    final taps = _taps;
+    if (!_tapping || taps == null) return;
+    final form = _form ??= FormFinder(tune: controller.tune);
+    form.heard(taps.now - ago, pitches);
+    _noteShown(taps);
+    if (taps.placedByHand ||
+        !taps.counting ||
+        taps.losesTheBars ||
+        taps.byChords) {
+      return;
+    }
+    final move = form.shift(taps.barAt);
+    if (move == null) return;
+    if (move == 0) {
+      taps.placeHeard();
+    } else {
+      taps.moveBars(move);
+    }
+    _otherApps?.noted(
+      move == 0 ? 'EAR SURE OF THE BAR' : 'EAR MOVED THE COUNT $move BARS',
+    );
+    setState(() => _placedByEar = true);
+  }
+
+  /// For the log, what the count shows now, once a bar heard: the tempo,
+  /// and the bar of the tune, or that it does not know it.
+  void _noteShown(TapFollower taps) {
+    if (!taps.counting) return;
+    final bar = taps.barAt(taps.now);
+    _otherApps?.noted(
+      'SHOWING ${taps.tempo!.round()} BPM, '
+      '${taps.losesTheBars
+          ? 'NOT HEARING THE BARS'
+          : taps.placeKnown && bar != null
+          ? 'BAR ${bar + 1}'
+          : 'NO BAR'}',
+    );
+  }
+
+  /// The count's bars moved (Half Time, a new tempo tapped, or beat 1
+  /// heard elsewhere): the bars heard so far were put in the old ones, and
+  /// are put in the new.
+  void _recounted() {
+    _otherApps?.noted('COUNT MOVED ITS BARS, NOW ${_taps?.tempo?.round()} BPM');
+    _form?.recount();
+    setState(() => _placedByEar = false);
   }
 
   /// Taps made while hearing another app are kept with what it heard,
@@ -262,8 +456,15 @@ class _StageScreenState extends State<StageScreen> {
       final tapped = taps?.beat;
       // The beat marked: the count's, the ear's, or (with neither) the
       // band's own, which the chart reads for itself.
+      // A count that does not yet know the bar of the tune marks none:
+      // a bar 1 it guessed looks exactly like knowing.
+      // Nor one while the barlines heard do not agree with the count:
+      // without drums Beat This! cannot hear them, and every bar shown
+      // would be wrong.
       final followed = taps != null
-          ? tapped
+          ? (taps.placeKnown && (!_hearingOthers || !taps.losesTheBars)
+                ? tapped
+                : null)
           : sure
           ? heard.beat
           : null;
@@ -287,6 +488,15 @@ class _StageScreenState extends State<StageScreen> {
             body: SafeArea(
               child: Column(
                 children: [
+                  // The way back, where it is looked for first: above the
+                  // chart, not over its first bar. A phone on its side has
+                  // no height to spare for it, so it stays in the bar
+                  // below there.
+                  if (MediaQuery.sizeOf(context).height >= 500)
+                    const Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: _Leave(),
+                    ),
                   Expanded(
                     child: GestureDetector(
                       key: const ValueKey('stage-chart'),
@@ -311,7 +521,7 @@ class _StageScreenState extends State<StageScreen> {
                       ),
                     ),
                   ),
-                  if (taps != null) _Tapping(taps: taps),
+                  if (taps != null) _Tapping(taps: taps, byEar: _hearingOthers),
                   if (_listening)
                     _Hearing(
                       level: _ear!.level,
@@ -323,19 +533,51 @@ class _StageScreenState extends State<StageScreen> {
                   if (_hearingOthers)
                     _OtherApps(
                       sound: _otherApps!,
+                      placedByEar:
+                          _placedByEar && !(_taps?.placedByHand ?? false),
                       onStart: _otherApps!.pick,
                       onSave: _saveWhatOthersPlayed,
+                      playing: controller.ref,
+                      onSwitchTune: widget.onSwitchTune == null
+                          ? null
+                          : (ref) {
+                              _otherApps?.noted('CHANGED TUNE TO $ref');
+                              _switching = true;
+                              widget.onSwitchTune!(
+                                ref,
+                                microphone: _otherApps!.microphone,
+                              );
+                            },
+                      onHalfTime: (_taps?.counting ?? false)
+                          ? () {
+                              _otherApps?.noted('HALF TIME PRESSED');
+                              _taps!.halfTime();
+                            }
+                          : null,
+                      onDoubleTime: (_taps?.counting ?? false)
+                          ? () {
+                              _otherApps?.noted('DOUBLE TIME PRESSED');
+                              _taps!.doubleTime();
+                            }
+                          : null,
                     ),
                   const Divider(height: 1),
                   _StageBar(
+                    leave: MediaQuery.sizeOf(context).height < 500,
                     controller: controller,
                     onPlay: _togglePlay,
                     tapping: _tapping,
-                    onTapping: widget.follow ? _toggleTapping : null,
+                    // Where other apps can be heard, following them (by
+                    // broadcast or microphone) does what the taps and the
+                    // ear were for, so neither is offered on its own. A
+                    // release build still follows by taps.
+                    onTapping: widget.follow && !_canHearOthers
+                        ? _toggleTapping
+                        : null,
                     listening: _listening,
                     // Listening for itself follows iReal Pro and not a real
                     // record, so it is only offered while it is worked on.
-                    onListen: widget.follow && kDebugMode
+                    onListen: widget.follow && kDebugMode && !_canHearOthers
                         ? _toggleListening
                         : null,
                     onSave:
@@ -403,15 +645,24 @@ class _Pedals extends StatelessWidget {
 
 /// Following by taps: what to do next, and the two things it can be told.
 class _Tapping extends StatelessWidget {
-  const _Tapping({required this.taps});
+  const _Tapping({required this.taps, this.byEar = false});
 
   final TapFollower taps;
+
+  /// Whether Beat This! is following too, by broadcast or microphone.
+  final bool byEar;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tempo = taps.tempo;
-    final text = taps.counting && tempo != null
+    final text = byEar && taps.counting && taps.losesTheBars
+        ? "Can't hear a steady beat. Tap the beat, or the bar the band is "
+              'on.'
+        : taps.counting && tempo != null && !taps.placeKnown
+        ? 'Counting at ${tempo.round()} BPM, and listening for which bar '
+              'of the tune it is. Tap the bar the band is on if you know it.'
+        : taps.counting && tempo != null
         ? 'Counting at ${tempo.round()} BPM. Top of the Chorus at each '
               'chorus, or tap the bar the band is on.'
         : taps.taps > 0
@@ -548,18 +799,44 @@ class _OtherApps extends StatelessWidget {
     required this.sound,
     required this.onStart,
     required this.onSave,
+    this.onHalfTime,
+    this.onDoubleTime,
+    this.placedByEar = false,
+    this.playing,
+    this.onSwitchTune,
   });
 
   final OtherAppsSound sound;
+
+  /// The tune on the stage, so it is not offered as another.
+  final TuneRef? playing;
+
+  /// Changes to a tune the band sounds like. Null where it cannot.
+  final void Function(TuneRef tune)? onSwitchTune;
+
+  /// The count at half its tempo, for when Beat This! has taken half bars
+  /// for bars. Null while nothing is counted.
+  final VoidCallback? onHalfTime;
+
+  /// The count at twice its tempo, for when everything heard the band at
+  /// half its tempo. Null while nothing is counted.
+  final VoidCallback? onDoubleTime;
+
+  /// Whether the bar of the tune was found by ear, not tapped.
+  final bool placedByEar;
   final VoidCallback onStart;
   final VoidCallback onSave;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final report = sound.report;
+    final microphone = sound.microphone;
+    final report = microphone ? null : sound.report;
     final arriving = sound.arriving;
-    final text = report == null
+    final text = microphone
+        ? 'Listening to the room through the microphone. Play the record '
+              'out loud, or play along with a band.'
+        : report == null
         ? 'Start Broadcast, choose The Changes and start it, then play '
               'something in another app.'
         : !arriving
@@ -570,6 +847,19 @@ class _OtherApps extends StatelessWidget {
         ? 'Sound is arriving, but it is silent. Protected music, like '
               'Apple Music, is silenced in a broadcast.'
         : 'Hearing the other app.';
+    final took = sound.took;
+    final following = !sound.following
+        ? null
+        : sound.problem ??
+              sound.waiting ??
+              (sound.barlinesHeard == 0
+                  ? 'Beat This! is listening for the bars'
+                        '${took == null ? '' : ', ${(took * 1000).round()} ms a look'}. '
+                        'The count starts once it hears them steadily, or tap '
+                        'the bar it is on.'
+                  : 'Beat This! has heard ${sound.barlinesHeard} barlines'
+                        '${took == null ? '' : ', ${(took * 1000).round()} ms a look'}'
+                        '${placedByEar ? ', and found the bar by ear' : ''}.');
     // Loudness on a decibel scale, 60 dB below full scale to full scale,
     // so a quiet record still moves it.
     final level = arriving && report != null && report.level > 0
@@ -585,23 +875,59 @@ class _OtherApps extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              SegmentedButton<bool>(
+                key: const ValueKey('stage-other-apps-source'),
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Broadcast')),
+                  ButtonSegment(value: true, label: Text('Microphone')),
+                ],
+                selected: {microphone},
+                onSelectionChanged: (chosen) =>
+                    sound.useMicrophone(chosen.first),
+              ),
+              OutlinedButton(
+                key: const ValueKey('stage-half-time'),
+                onPressed: onHalfTime,
+                child: const Text('Half Time'),
+              ),
+              OutlinedButton(
+                key: const ValueKey('stage-double-time'),
+                onPressed: onDoubleTime,
+                child: const Text('Double Time'),
+              ),
+              IconButton(
+                key: const ValueKey('stage-listening-help'),
+                icon: const Icon(Icons.help_outline),
+                tooltip: 'How Listening Works',
+                onPressed: () => _showHowListeningWorks(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
           Text(text, style: small),
           Row(
             children: [
               Expanded(
-                child: LinearProgressIndicator(
-                  key: const ValueKey('stage-other-apps-level'),
-                  value: level,
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                child: microphone
+                    ? const SizedBox()
+                    : LinearProgressIndicator(
+                        key: const ValueKey('stage-other-apps-level'),
+                        value: level,
+                        minHeight: 8,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
-                key: const ValueKey('stage-start-broadcast'),
-                onPressed: onStart,
-                child: const Text('Start Broadcast'),
-              ),
+              if (!microphone)
+                OutlinedButton(
+                  key: const ValueKey('stage-start-broadcast'),
+                  onPressed: onStart,
+                  child: const Text('Start Broadcast'),
+                ),
               IconButton(
                 key: const ValueKey('stage-save-broadcast'),
                 icon: const Icon(Icons.save_alt),
@@ -610,6 +936,18 @@ class _OtherApps extends StatelessWidget {
               ),
             ],
           ),
+          if (following != null)
+            Text(
+              following,
+              key: const ValueKey('stage-other-apps-following'),
+              style: small,
+            ),
+          if (sound.soundsLike.isNotEmpty)
+            _SoundsLike(
+              sound: sound,
+              playing: playing,
+              onSwitchTune: onSwitchTune,
+            ),
           if (report != null && report.buffers > 0) ...[
             Text(report.format, style: small),
             Text(
@@ -629,10 +967,142 @@ class _OtherApps extends StatelessWidget {
   }
 }
 
+/// The tunes the band sounds like, by their changes: each a button that
+/// changes to it, but the one on the stage.
+class _SoundsLike extends StatelessWidget {
+  const _SoundsLike({
+    required this.sound,
+    required this.playing,
+    required this.onSwitchTune,
+  });
+
+  final OtherAppsSound sound;
+  final TuneRef? playing;
+  final void Function(TuneRef tune)? onSwitchTune;
+
+  @override
+  Widget build(BuildContext context) {
+    final small = Theme.of(context).textTheme.bodySmall;
+    return Padding(
+      key: const ValueKey('stage-sounds-like'),
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('Sounds Like', style: small),
+          for (final (:id, :semitones) in sound.soundsLike)
+            if (sound.library[id] case final tune?)
+              ActionChip(
+                key: ValueKey('stage-sounds-like-$id'),
+                avatar: TuneRef(id) == playing
+                    ? const Icon(Icons.check, size: 16)
+                    : null,
+                label: Text(
+                  '${tune.title} in ${tune.transposed(semitones).key}',
+                ),
+                onPressed: TuneRef(id) == playing || onSwitchTune == null
+                    ? null
+                    : () => onSwitchTune!(TuneRef(id)),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
 /// The one strip of controls: what's playing, whether it's playing, and the
 /// way out.
+/// What following by ear does, and what to do when it goes wrong, for
+/// someone using it the first time.
+void _showHowListeningWorks(BuildContext context) {
+  final theme = Theme.of(context);
+  Widget step(String title, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: theme.textTheme.titleSmall),
+        const SizedBox(height: 2),
+        Text(text, style: theme.textTheme.bodyMedium),
+      ],
+    ),
+  );
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: SingleChildScrollView(
+        key: const ValueKey('how-listening-works'),
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('How Listening Works', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 12),
+            step(
+              'Choose Where the Music Is',
+              'Broadcast hears another app on this device, such as Spotify '
+                  'or YouTube: press Start Broadcast, choose The Changes, '
+                  'then play. Microphone hears the room: a record played out '
+                  'loud, or a band.',
+            ),
+            step(
+              'Let It Listen',
+              'It finds the beat, then which bar of the tune the band is '
+                  'in, and follows them through the chart. Give it about '
+                  'half a minute; until it knows the bar, none is marked.',
+            ),
+            step(
+              'Too Fast or Too Slow',
+              'If it counts twice as fast as the band, press Half Time. If '
+                  'it counts half as fast, press Double Time. Or tap the '
+                  'beat a few times on Tap the Beat.',
+            ),
+            step(
+              'Show It Where the Band Is',
+              'Tap the bar on the chart the band is playing, right on its '
+                  'first beat, or Top of the Chorus at the top of the form. '
+                  'A bar tapped is always believed.',
+            ),
+            step(
+              'Without Drums',
+              'It listens to the chords and the comping instead, which '
+                  'takes a little longer. A guitar or piano playing freely, '
+                  'without a steady beat, may need a bar tapped.',
+            ),
+            step(
+              'Which Tune Is It?',
+              'After about half a minute it says which tunes the band sounds '
+                  'like, from the changes, out of the book and your own. Tap '
+                  'one to change to it and keep listening. Tunes on the same '
+                  'changes, like the blues, sound alike to it.',
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// The way off the stage.
+class _Leave extends StatelessWidget {
+  const _Leave();
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    key: const ValueKey('stage-done'),
+    icon: const Icon(Icons.close),
+    tooltip: 'Leave the Stage',
+    onPressed: () => Navigator.of(context).pop(),
+  );
+}
+
 class _StageBar extends StatelessWidget {
   const _StageBar({
+    this.leave = false,
     required this.controller,
     required this.onPlay,
     required this.tapping,
@@ -647,6 +1117,10 @@ class _StageBar extends StatelessWidget {
   });
 
   /// Hearing another app, in a build being worked on on an iPhone.
+  /// Whether the way off the stage is here, at the end of the bar: where
+  /// there is no height for it at the top.
+  final bool leave;
+
   final bool hearingOthers;
   final VoidCallback? onHearOthers;
 
@@ -720,8 +1194,8 @@ class _StageBar extends StatelessWidget {
                 key: const ValueKey('stage-hear-others'),
                 iconSize: 28,
                 isSelected: hearingOthers,
-                icon: const Icon(Icons.cast_outlined),
-                selectedIcon: const Icon(Icons.cast_connected),
+                icon: const Icon(Icons.hearing_outlined),
+                selectedIcon: const Icon(Icons.hearing),
                 tooltip: hearingOthers
                     ? 'Stop Hearing Other Apps'
                     : 'Hear Other Apps',
@@ -763,12 +1237,7 @@ class _StageBar extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-            IconButton(
-              key: const ValueKey('stage-done'),
-              icon: const Icon(Icons.close_fullscreen),
-              tooltip: 'Leave the Stage',
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+            if (leave) const _Leave(),
           ],
         ),
       ),

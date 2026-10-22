@@ -65,7 +65,7 @@ class LibraryContext {
           recordingStore: recordingStore,
           library: library,
           progression: found.progression,
-          progressions: found.progression == null ? null : progressions,
+          progressions: progressions,
           startAt: startAt,
         ),
       ),

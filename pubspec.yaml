@@ -42,6 +42,12 @@ dependencies:
   share_plus: ^12.0.0
   file_picker: ^8.1.7
 
+# file_picker 8.3.7 with the iOS crash on cancelling a save or pick fixed
+# (see third_party/file_picker/PATCHED.md).
+dependency_overrides:
+  file_picker:
+    path: third_party/file_picker
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

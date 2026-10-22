@@ -3,10 +3,12 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
 import '../audio/tuner_listener.dart';
+import '../library/find_tune.dart';
 import '../library/library_store.dart';
 import '../music/guitar_voicing.dart';
 import '../music/tune.dart';
@@ -49,7 +51,15 @@ class PracticeScreen extends StatefulWidget {
     this.library,
     this.listener,
     this.startAt,
+    this.hearTheBand = false,
+    this.byMicrophone = false,
   });
+
+  /// Whether to open the stage hearing the band straight away, and on the
+  /// microphone or a broadcast: this replaced a tune that was being
+  /// listened to when the band turned out to be playing this one.
+  final bool hearTheBand;
+  final bool byMicrophone;
 
   final Tune tune;
   final PracticePlayer player;
@@ -74,6 +84,9 @@ class PracticeScreen extends StatefulWidget {
   /// Set when [tune] is one of the player's own progressions: only those can
   /// be edited from here.
   final UserProgression? progression;
+
+  /// The player's own progressions, whichever [tune] is: for editing it if
+  /// it is one, and for hearing which tune a band is playing.
   final ProgressionStore? progressions;
 
   /// Where recordings of you are kept; without it there's no recording.
@@ -120,6 +133,11 @@ class _PracticeScreenState extends State<PracticeScreen> {
       // and the screen has not been laid out yet.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _controller.play();
+      });
+    }
+    if (widget.hearTheBand) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _hearTheBand(microphone: widget.byMicrophone);
       });
     }
     // Work out this tune's guitar shapes now rather than on the frame where
@@ -175,6 +193,54 @@ class _PracticeScreenState extends State<PracticeScreen> {
         ),
       );
     });
+  }
+
+  /// Whether the page has the ear, for hearing a band (see
+  /// stage_screen.dart): builds with listening in them, on an iPhone or
+  /// iPad.
+  bool get _hearsTheBand =>
+      listeningBuild && defaultTargetPlatform == TargetPlatform.iOS;
+
+  /// The stage, hearing the band by ear (see stage_screen.dart).
+  void _hearTheBand({bool microphone = false}) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => StageScreen(
+        controller: _controller,
+        follow: true,
+        hearOthers: true,
+        microphone: microphone,
+        onSwitchTune: _switchTune,
+      ),
+    ),
+  );
+
+  /// The band is playing [ref], not this: this page and its stage are
+  /// replaced by its, still listening.
+  void _switchTune(TuneRef ref, {required bool microphone}) {
+    final found = findTune(ref, progressions: widget.progressions);
+    if (found == null) return;
+    widget.library?.justPlayed(ref);
+    Navigator.of(context)
+      ..pop()
+      ..pushReplacement(
+        PageRouteBuilder<void>(
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+          pageBuilder: (_, _, _) => PracticeScreen(
+            tune: found.tune,
+            player: widget.player,
+            settings: widget.settings,
+            takes: widget.takes,
+            partStore: widget.partStore,
+            recordingStore: widget.recordingStore,
+            library: widget.library,
+            progression: found.progression,
+            progressions: widget.progressions,
+            hearTheBand: true,
+            byMicrophone: microphone,
+          ),
+        ),
+      );
   }
 
   /// Opens the editor; after a save, this screen is replaced by one playing
@@ -245,6 +311,16 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   tooltip: 'Edit progression',
                   onPressed: _edit,
                 ),
+              // Hearing the band, from a record or the room: on the page,
+              // not in the menu. Builds with listening in them, on an
+              // iPhone or iPad (see stage_screen.dart).
+              if (_hearsTheBand)
+                IconButton(
+                  key: const ValueKey('hear-the-band'),
+                  icon: const Icon(Icons.hearing),
+                  tooltip: 'Follow the Band by Ear',
+                  onPressed: _hearTheBand,
+                ),
               if (_controller.canRecord)
                 IconButton(
                   key: const ValueKey('takes'),
@@ -281,6 +357,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 // The same controller goes with it, so the band carries on
                 // playing as you walk on and off.
+                // The ear opens the scrolling stage where there is one.
+                scrollingInMenu: !_hearsTheBand,
                 onStage: (follow) => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) =>
@@ -552,6 +630,7 @@ class _MoreMenu extends StatelessWidget {
     required this.onStage,
     required this.onRecord,
     required this.onExercises,
+    this.scrollingInMenu = true,
   });
 
   final LibraryStore? library;
@@ -562,6 +641,10 @@ class _MoreMenu extends StatelessWidget {
   /// Opens the stage: the chart and nothing else, all of it at once or
   /// scrolling with the band.
   final void Function(bool follow) onStage;
+
+  /// Whether the scrolling stage is offered here. Not where the page has
+  /// the ear, which opens it.
+  final bool scrollingInMenu;
 
   /// Opens the practice record for this tune.
   final VoidCallback onRecord;
@@ -621,14 +704,15 @@ class _MoreMenu extends StatelessWidget {
               title: Text('Stage View'),
             ),
           ),
-          const PopupMenuItem(
-            value: 'stage-scrolling',
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.swap_vert),
-              title: Text('Scrolling Stage View'),
+          if (scrollingInMenu)
+            const PopupMenuItem(
+              value: 'stage-scrolling',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.swap_vert),
+                title: Text('Scrolling Stage View'),
+              ),
             ),
-          ),
           if (library != null) ...[
             PopupMenuItem(
               value: 'star',

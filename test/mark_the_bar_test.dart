@@ -4,11 +4,10 @@
 // itself, travelling bar to bar for as long as the tune runs, and the
 // whole of this setting is how loud that is allowed to be.
 //
-// The test that matters most is the last one: with the fill off, the
-// lettering has to go back to the ordinary ink. A colour picked to read
-// on a tinted box is the wrong colour on plain paper, and getting that
-// wrong would leave the one bar somebody is looking at the hardest one
-// to read.
+// The chord being played is underlined in the pencil red whenever the bar
+// is marked at all. Its lettering follows the tint: with the fill off, it
+// has to go back to the ordinary ink. A colour picked to read on a tinted
+// box is the wrong colour on plain paper.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,7 +58,7 @@ Tune _tune() => Tune.fromChart(
 /// which is an accident of the widget tree, but how many of them are
 /// tinted or ruled in the accent is the behaviour itself, and counting
 /// says it without guessing.
-Future<({int tinted, int ruled, Color ink})> playing(
+Future<({int tinted, int ruled, int underlined, Color ink})> playing(
   WidgetTester tester,
   MarkTheBar mark, {
   Color? chordColour,
@@ -122,6 +121,7 @@ Future<({int tinted, int ruled, Color ink})> playing(
               scheme.tertiary,
         )
         .length,
+    underlined: find.byKey(const ValueKey('chord-playing')).evaluate().length,
     ink: letters.style!.color!,
   );
 }
@@ -179,17 +179,22 @@ void main() {
       expect(drawn.ruled, 0);
     });
 
+    testWidgets('the chord being played is underlined while it is marked', (
+      tester,
+    ) async {
+      for (final mark in [MarkTheBar.filled, MarkTheBar.outlined]) {
+        expect((await playing(tester, mark)).underlined, 1, reason: mark.label);
+      }
+      expect((await playing(tester, MarkTheBar.off)).underlined, 0);
+    });
+
     testWidgets('the lettering follows the tint, not the beat', (tester) async {
-      // Filled, the chord is written to read on the tint. With the tint
-      // gone it has to go back to the ordinary ink, or the one bar
-      // somebody is looking at is the hardest one on the page to read.
       final scheme = appTheme(Brightness.light).colorScheme;
       // Compared as the packed value they are drawn with: two Colours can
       // hold the same colour and still not be equal, because one was
       // worked out in floats and the other written down as an int.
       final filled = await playing(tester, MarkTheBar.filled);
       expect(filled.ink.toARGB32(), scheme.onTertiaryContainer.toARGB32());
-
       for (final mark in [MarkTheBar.outlined, MarkTheBar.off]) {
         final drawn = await playing(tester, mark);
         expect(

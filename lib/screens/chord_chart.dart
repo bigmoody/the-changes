@@ -167,7 +167,7 @@ class _ChordChartState extends State<ChordChart> {
           painter.dispose();
           return width;
         });
-        final sizing = BarLayout.chartSizing(
+        final chordSize = BarLayout.chartSize(
           tune,
           [
             for (final line in lines)
@@ -286,9 +286,8 @@ class _ChordChartState extends State<ChordChart> {
                                     section: lines[row].section,
                                     width: cellWidth,
                                     height: rowHeight,
-                                    stack: sizing.stack,
                                     ems: ems,
-                                    chordSize: sizing.size,
+                                    chordSize: chordSize,
                                   ),
                           ),
                         ],
@@ -382,8 +381,8 @@ class _SectionRail extends StatelessWidget {
   }
 }
 
-/// How one bar's chords sit in its box: on one line, or stacked by half-bar
-/// (first half on top), and the biggest size each line fits at.
+/// How one bar's chords sit in its box: on one line, read left to right as
+/// on a page, and the biggest size they fit at.
 class BarLayout {
   const BarLayout(this.lines, this.fits);
 
@@ -413,12 +412,15 @@ class BarLayout {
 
   static double emsOfSlot(ChordSlot slot) => emsOf(slot.chord.display);
 
+  /// The space between two chords in a bar, in ems: as wide as a letter,
+  /// so C6/G G7 never reads as C6/GG7.
+  static const gapEms = 0.6;
+
   static BarLayout of(
     Tune tune,
     int barIndex,
     double width,
     double height, {
-    required bool stack,
     double Function(String chord) ems = emsOf,
   }) {
     final slots = tune.bars[barIndex];
@@ -426,41 +428,29 @@ class BarLayout {
     double fit(List<int> line, int lineCount) => math.min(
       height * 0.72 / lineCount,
       (sideRoom - 6.0 * line.length) /
-          line.map((i) => ems(slots[i].chord.display)).reduce((a, b) => a + b),
+          (line
+                  .map((i) => ems(slots[i].chord.display))
+                  .reduce((a, b) => a + b) +
+              gapEms * (line.length - 1)),
     );
-    final halfway = tune.barStartBeat(barIndex) + tune.beatsPerBar / 2;
-    final halves = [
-      [
-        for (var i = 0; i < slots.length; i++)
-          if (slots[i].startBeat < halfway) i,
-      ],
-      [
-        for (var i = 0; i < slots.length; i++)
-          if (slots[i].startBeat >= halfway) i,
-      ],
+    final lines = [
+      [for (var i = 0; i < slots.length; i++) i],
     ];
-    final lines = stack && halves.every((half) => half.isNotEmpty)
-        ? halves
-        : [
-            [for (var i = 0; i < slots.length; i++) i],
-          ];
     return BarLayout(lines, [
       for (final line in lines) fit(line, lines.length),
     ]);
   }
 
-  /// One rule and one size for the whole chart, so every bar looks alike,
-  /// as on a printed lead sheet:
-  ///  • Busy bars stack if that lets the whole chart be drawn clearly
-  ///    bigger (on a phone, where boxes are tall and narrow).
-  ///  • Every chord is drawn at the one size they all fit at. Only a chord
-  ///    far longer than the rest is left to shrink on its own, rather than
-  ///    shrinking the whole chart.
+  /// One size for the whole chart, so every bar looks alike, as on a
+  /// printed lead sheet: every chord on its own in a bar is drawn at the
+  /// one size they all fit at. Only a chord far longer than the rest, or
+  /// two in a bar side by side, are left to shrink on their own, rather
+  /// than shrinking the whole chart.
   /// As big as a chord is ever drawn while practising. Past this the
   /// chart stops looking like a chart and starts looking like a poster.
   static const biggestChord = 80.0;
 
-  static ({bool stack, double size}) chartSizing(
+  static double chartSize(
     Tune tune,
     List<int> bars,
     double width,
@@ -469,16 +459,10 @@ class BarLayout {
   }) {
     double median(List<double> values) =>
         ([...values]..sort())[values.length ~/ 2];
-    final busyBars = [
-      for (final bar in bars)
-        if (tune.bars[bar].length > 1) bar,
-    ];
     // Each line's biggest size, with how many chords are on it.
-    List<({double fit, int chords})> fits(List<int> which, bool stack) => [
-      for (final bar in which)
-        for (final layout in [
-          BarLayout.of(tune, bar, width, height, stack: stack, ems: ems),
-        ])
+    var all = [
+      for (final bar in bars)
+        for (final layout in [BarLayout.of(tune, bar, width, height, ems: ems)])
           for (var i = 0; i < layout.lines.length; i++)
             (fit: layout.fits[i], chords: layout.lines[i].length),
     ];
@@ -486,29 +470,26 @@ class BarLayout {
     // far too long for it are let off only if they're rare: one chord in
     // ten at most, counted as the eye sees them. Any more and they're part
     // of the tune's look, and everything matches them.
-    double sizeWith(bool stack) {
-      final all = fits(bars, stack);
-      final middle = median([for (final line in all) line.fit]);
-      final roomy = [
-        for (final line in all)
-          if (line.fit >= middle * 0.6) line,
-      ];
-      int chordsIn(List<({double fit, int chords})> lines) =>
-          lines.fold(0, (sum, line) => sum + line.chords);
-      final lines = chordsIn(roomy) >= chordsIn(all) * 0.9 ? roomy : all;
-      return lines
-          .map((line) => line.fit)
-          .reduce(math.min)
-          .clamp(10.0, biggestChord);
-    }
-
-    // Stack the busy bars if that lets the whole chart be clearly bigger
-    // (side by side reads more naturally, so it wins a near tie).
-    final sideBySide = sizeWith(false);
-    final stacked = busyBars.isEmpty ? 0.0 : sizeWith(true);
-    final stack = stacked > sideBySide * 1.1;
-    final size = stack ? stacked : sideBySide;
-    return (stack: stack, size: size);
+    // Sized by the bars of one chord, where there are any: a bar of two,
+    // side by side, is drawn smaller rather than the whole chart, as in
+    // iReal Pro.
+    final singles = [
+      for (final line in all)
+        if (line.chords == 1) line,
+    ];
+    if (singles.isNotEmpty) all = singles;
+    final middle = median([for (final line in all) line.fit]);
+    final roomy = [
+      for (final line in all)
+        if (line.fit >= middle * 0.6) line,
+    ];
+    int chordsIn(List<({double fit, int chords})> lines) =>
+        lines.fold(0, (sum, line) => sum + line.chords);
+    final lines = chordsIn(roomy) >= chordsIn(all) * 0.9 ? roomy : all;
+    return lines
+        .map((line) => line.fit)
+        .reduce(math.min)
+        .clamp(10.0, biggestChord);
   }
 }
 
@@ -523,17 +504,12 @@ class _BarCell extends StatelessWidget {
     required this.section,
     required this.width,
     required this.height,
-    required this.stack,
     required this.chordSize,
     required this.ems,
   });
 
   /// How wide a chord is drawn, in ems of the chart's font.
   final double Function(String chord) ems;
-
-  /// Whether bars with chords in both halves stack them (the same for the
-  /// whole chart, so neighbouring bars look alike).
-  final bool stack;
 
   /// The size every chord on the chart is drawn at, if it fits.
   final double chordSize;
@@ -588,16 +564,8 @@ class _BarCell extends StatelessWidget {
     // A 1st or 2nd ending is labelled as one instead of with a bar number.
     final label = cell.ending != null ? '${cell.ending}.' : '${barIndex + 1}';
 
-    final layout = BarLayout.of(
-      tune,
-      barIndex,
-      width,
-      height,
-      stack: stack,
-      ems: ems,
-    );
+    final layout = BarLayout.of(tune, barIndex, width, height, ems: ems);
     final lines = layout.lines;
-    final stacked = lines.length > 1;
     // The chart's one chord size, unless this line can't fit it.
     final sizes = [
       for (final fit in layout.fits)
@@ -732,17 +700,22 @@ class _BarCell extends StatelessWidget {
                       ? Center(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
-                            child: Text(
-                              simileMark,
-                              textScaler: TextScaler.noScaling,
-                              semanticsLabel: 'the same again',
-                              style: handLettered(
-                                TextStyle(
-                                  fontSize: sizes.first,
-                                  height: 1,
-                                  leadingDistribution:
-                                      TextLeadingDistribution.even,
-                                  color: _chordColour(scheme, 0),
+                            child: _playingMark(
+                              scheme,
+                              0,
+                              sizes.first,
+                              Text(
+                                simileMark,
+                                textScaler: TextScaler.noScaling,
+                                semanticsLabel: 'the same again',
+                                style: handLettered(
+                                  TextStyle(
+                                    fontSize: sizes.first,
+                                    height: 1,
+                                    leadingDistribution:
+                                        TextLeadingDistribution.even,
+                                    color: _chordColour(scheme, 0),
+                                  ),
                                 ),
                               ),
                             ),
@@ -753,15 +726,17 @@ class _BarCell extends StatelessWidget {
                             for (var l = 0; l < lines.length; l++)
                               Expanded(
                                 child: Row(
-                                  key: stacked
-                                      ? const ValueKey('stacked')
-                                      : null,
                                   children: [
-                                    for (final i in lines[l])
+                                    for (final i in lines[l]) ...[
+                                      // Keeps two chords in one bar well
+                                      // apart, as fitting them allowed for.
+                                      if (i != lines[l].first)
+                                        SizedBox(
+                                          width: sizes[l] * BarLayout.gapEms,
+                                        ),
                                       Expanded(
                                         flex: charsOf(i),
                                         child: Padding(
-                                          // Keeps two chords in one bar from touching.
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 2,
                                           ),
@@ -772,30 +747,14 @@ class _BarCell extends StatelessWidget {
                                               Flexible(
                                                 child: FittedBox(
                                                   fit: BoxFit.scaleDown,
-                                                  child: Text(
-                                                    handSymbol(
-                                                      slots[i].chord.display,
-                                                    ),
-                                                    // Sized from the box, which already
-                                                    // grows with Larger Text.
-                                                    textScaler:
-                                                        TextScaler.noScaling,
-                                                    style: handLettered(
-                                                      TextStyle(
-                                                        fontSize: sizes[l],
-                                                        // Chord symbols have no descenders, so
-                                                        // they don't need the space a line of
-                                                        // text keeps below and above itself;
-                                                        // without it they fit a third bigger.
-                                                        height: 1,
-                                                        leadingDistribution:
-                                                            TextLeadingDistribution
-                                                                .even,
-                                                        color: _chordColour(
-                                                          scheme,
-                                                          i,
-                                                        ),
-                                                      ),
+                                                  child: _playingMark(
+                                                    scheme,
+                                                    i,
+                                                    sizes[l],
+                                                    _lettered(
+                                                      scheme,
+                                                      i,
+                                                      sizes[l],
                                                     ),
                                                   ),
                                                 ),
@@ -831,6 +790,7 @@ class _BarCell extends StatelessWidget {
                                           ),
                                         ),
                                       ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -845,21 +805,98 @@ class _BarCell extends StatelessWidget {
     );
   }
 
-  /// The [index]th chord in the box: highlighted while it's being played
-  /// (whichever time through), dimmed if no time through is in the loop.
-  Color _chordColour(ColorScheme scheme, int index) {
+  /// Whether the [index]th chord in the box is being played, whichever
+  /// time through.
+  bool _playing(int index) {
+    final beat = this.beat;
+    if (beat == null) return false;
+    final tune = controller.chart;
+    return cell.bars.any((bar) {
+      final slot = tune.bars[bar][index];
+      return beat >= slot.startBeat && beat < slot.endBeat;
+    });
+  }
+
+  /// [chord], underlined in the pencil red while it is being played: the
+  /// bar's box says which bar, and this which of its chords.
+  Widget _playingMark(
+    ColorScheme scheme,
+    int index,
+    double size,
+    Widget chord,
+  ) {
+    if (!_playing(index) || !controller.settings.markTheBar.marks) return chord;
+    return DecoratedBox(
+      key: const ValueKey('chord-playing'),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.tertiary,
+            width: (size * 0.08).clamp(2.0, 6.0),
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: size * 0.08),
+        child: chord,
+      ),
+    );
+  }
+
+  /// The [index]th chord in the box, lettered at [size]: in its root's
+  /// colour, and a slash bass in its own note's colour, being another
+  /// note (C6/G's G is G's colour, not C's).
+  Text _lettered(ColorScheme scheme, int index, double size) {
+    final chord = controller.chart.bars[cell.bars.first][index].chord;
+    final symbol = handSymbol(chord.display);
+    final style = handLettered(
+      TextStyle(
+        fontSize: size,
+        // Chord symbols have no descenders, so they don't need the space a
+        // line of text keeps below and above itself; without it they fit
+        // a third bigger.
+        height: 1,
+        leadingDistribution: TextLeadingDistribution.even,
+        color: _chordColour(scheme, index),
+      ),
+    );
+    final slash = symbol.lastIndexOf('/');
+    // Sized from the box, which already grows with Larger Text.
+    if (chord.bassLetter == null || slash < 0) {
+      return Text(symbol, textScaler: TextScaler.noScaling, style: style);
+    }
+    return Text.rich(
+      TextSpan(
+        text: symbol.substring(0, slash),
+        children: [
+          TextSpan(
+            text: symbol.substring(slash),
+            style: TextStyle(color: _chordColour(scheme, index, bass: true)),
+          ),
+        ],
+      ),
+      textScaler: TextScaler.noScaling,
+      style: style,
+    );
+  }
+
+  /// The [index]th chord in the box (its slash [bass], if asked for):
+  /// highlighted while it's being played (whichever time through), dimmed
+  /// if no time through is in the loop.
+  Color _chordColour(ColorScheme scheme, int index, {bool bass = false}) {
     final tune = controller.chart;
     final times = [for (final bar in cell.bars) tune.bars[bar][index]];
-    // The colour somebody sees this root as, if they see roots as
+    final chord = times.first.chord;
+    // The colour somebody sees this note as, if they see roots as
     // colours. Lifted or dropped only as far as it must be to be read on
     // whichever paper the app is on, which leaves the hue alone.
-    final theirs = controller.settings.chordColourFor(times.first.chord.root);
+    final theirs = controller.settings.chordColourFor(
+      bass ? chord.bass : chord.root,
+    );
     final ink = theirs == null
         ? scheme.onSurface
         : readableOn(theirs, scheme.surface);
-    final beat = this.beat;
-    if (beat != null &&
-        times.any((slot) => beat >= slot.startBeat && beat < slot.endBeat)) {
+    if (_playing(index)) {
       // The bar being played is already boxed and tinted, so it does not
       // need the lettering as well, and taking somebody's colour away on
       // the one bar they are looking at would be the wrong way round.

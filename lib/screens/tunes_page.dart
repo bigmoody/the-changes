@@ -60,6 +60,7 @@ class _TunesPageState extends State<TunesPage> {
   var _starredOnly = false;
   final _scroll = ScrollController();
   late final _letters = LetterIndex(_scroll);
+  final _search = TextEditingController();
 
   late final _deps = LibraryContext(
     player: widget.player,
@@ -74,6 +75,7 @@ class _TunesPageState extends State<TunesPage> {
   @override
   void dispose() {
     _scroll.dispose();
+    _search.dispose();
     super.dispose();
   }
 
@@ -235,10 +237,24 @@ class _TunesPageState extends State<TunesPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: TextField(
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
+                  key: const ValueKey('tune-search'),
+                  controller: _search,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    // All of it cleared at once, rather than a key at a time.
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            key: const ValueKey('tune-search-clear'),
+                            icon: const Icon(Icons.close),
+                            tooltip: 'Clear the Search',
+                            onPressed: () {
+                              _search.clear();
+                              _filter(() => _query = '');
+                            },
+                          ),
                     hintText: 'Search tunes, composers or keys',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                     isDense: true,
                   ),
                   onChanged: (value) => _filter(() => _query = value),

@@ -7,6 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B0AD0000000000000000A106 /* MicRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F106 /* MicRecorder.swift */; };
+		B0AD0000000000000000A107 /* ChordFollower.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F107 /* ChordFollower.swift */; };
+		B0AD0000000000000000A108 /* TuneFinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F108 /* TuneFinder.swift */; };
+		B0AD0000000000000000A105 /* BarPitches.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F105 /* BarPitches.swift */; };
+		B0AD0000000000000000A101 /* LogMel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F101 /* LogMel.swift */; };
+		B0AD0000000000000000A102 /* BeatTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F102 /* BeatTracker.swift */; };
+		B0AD0000000000000000A103 /* SoundRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F103 /* SoundRing.swift */; };
+		B0AD0000000000000000A104 /* SoundRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F103 /* SoundRing.swift */; };
 		B0AD0000000000000000A001 /* SampleHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F001 /* SampleHandler.swift */; };
 		B0AD0000000000000000A003 /* BroadcastBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0AD0000000000000000F005 /* BroadcastBridge.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
@@ -72,6 +80,13 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B0AD0000000000000000F106 /* MicRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicRecorder.swift; sourceTree = "<group>"; };
+		B0AD0000000000000000F107 /* ChordFollower.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordFollower.swift; sourceTree = "<group>"; };
+		B0AD0000000000000000F108 /* TuneFinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TuneFinder.swift; sourceTree = "<group>"; };
+		B0AD0000000000000000F105 /* BarPitches.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarPitches.swift; sourceTree = "<group>"; };
+		B0AD0000000000000000F101 /* LogMel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogMel.swift; sourceTree = "<group>"; };
+		B0AD0000000000000000F102 /* BeatTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BeatTracker.swift; sourceTree = "<group>"; };
+		B0AD0000000000000000F103 /* SoundRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundRing.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F001 /* SampleHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleHandler.swift; sourceTree = "<group>"; };
 		B0AD0000000000000000F002 /* BroadcastExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BroadcastExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0AD0000000000000000F003 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -130,6 +145,14 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B0AD0000000000000000B101 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B0AD0000000000000000F103 /* SoundRing.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
 		B0AD0000000000000000B001 /* BroadcastExtension */ = {
 			isa = PBXGroup;
 			children = (
@@ -186,6 +209,7 @@
 				5EC241B41A1E14757BBC5D48 /* Frameworks */,
 				B0BF5EAA7A684F8BB8043343 /* ShareExtension */,
 				B0AD0000000000000000B001 /* BroadcastExtension */,
+				B0AD0000000000000000B101 /* Shared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -214,6 +238,12 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				2AB848BA5C12A6203DB833D4 /* Runner.entitlements */,
 				B0AD0000000000000000F005 /* BroadcastBridge.swift */,
+				B0AD0000000000000000F101 /* LogMel.swift */,
+				B0AD0000000000000000F102 /* BeatTracker.swift */,
+				B0AD0000000000000000F105 /* BarPitches.swift */,
+				B0AD0000000000000000F106 /* MicRecorder.swift */,
+				B0AD0000000000000000F107 /* ChordFollower.swift */,
+				B0AD0000000000000000F108 /* TuneFinder.swift */,
 				B0AD0000000000000000F006 /* Runner-Debug.entitlements */,
 			);
 			path = Runner;
@@ -295,6 +325,7 @@
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				0EEC81D7E3CE239E6B1731DC /* Embed Foundation Extensions */,
 				B0AD00000000000000004001 /* Embed the Broadcast Extension in Debug */,
+				B0AD00000000000000004101 /* Add Beat This! in Debug */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 			);
 			buildRules = (
@@ -391,6 +422,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		B0AD00000000000000004101 /* Add Beat This! in Debug */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Add Beat This! in Debug";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Beat This!, for following a broadcast or the room. The model is made by\n# tool/beat_this/convert.py and kept out of git; a build without it says\n# so when asked to follow.\nMODEL=\"$SRCROOT/Models/BeatThis.mlpackage\"\nif [ -d \"$MODEL\" ]; then\n  xcrun coremlcompiler compile \"$MODEL\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nfi\n";
+		};
 		B0AD00000000000000004001 /* Embed the Broadcast Extension in Debug */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -445,6 +491,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B0AD0000000000000000A001 /* SampleHandler.swift in Sources */,
+				B0AD0000000000000000A104 /* SoundRing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -472,6 +519,13 @@
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				B0AD0000000000000000A003 /* BroadcastBridge.swift in Sources */,
+				B0AD0000000000000000A101 /* LogMel.swift in Sources */,
+				B0AD0000000000000000A102 /* BeatTracker.swift in Sources */,
+				B0AD0000000000000000A105 /* BarPitches.swift in Sources */,
+				B0AD0000000000000000A106 /* MicRecorder.swift in Sources */,
+				B0AD0000000000000000A107 /* ChordFollower.swift in Sources */,
+				B0AD0000000000000000A108 /* TuneFinder.swift in Sources */,
+				B0AD0000000000000000A103 /* SoundRing.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -549,6 +603,8 @@
 		B0AD00000000000000002002 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BroadcastExtension/BroadcastExtension.entitlements;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = LISTENING;
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGNING_ALLOWED = NO;
@@ -576,6 +632,8 @@
 		B0AD00000000000000002003 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BroadcastExtension/BroadcastExtension.entitlements;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = LISTENING;
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGNING_ALLOWED = NO;
@@ -657,6 +715,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Runner/Runner-Debug.entitlements";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) LISTENING";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
@@ -919,7 +979,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -929,6 +989,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Runner/Runner-Debug.entitlements";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) LISTENING";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";

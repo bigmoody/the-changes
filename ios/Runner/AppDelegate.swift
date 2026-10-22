@@ -15,7 +15,7 @@ import UIKit
   /// buttons come back on.
   private var nowPlaying: NowPlayingBridge?
 
-  #if DEBUG
+  #if DEBUG || LISTENING
   /// Hearing other apps, in builds being worked on.
   private var broadcast: BroadcastBridge?
   #endif
@@ -37,7 +37,7 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "NowPlaying") {
       nowPlaying = NowPlayingBridge(messenger: registrar.messenger())
     }
-    #if DEBUG
+    #if DEBUG || LISTENING
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "Broadcast") {
       broadcast = BroadcastBridge(messenger: registrar.messenger())
     }
