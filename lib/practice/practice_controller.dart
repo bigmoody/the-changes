@@ -1133,6 +1133,24 @@ class PracticeController extends ChangeNotifier {
   }
 
   /// The band exactly as it was when [take] was recorded.
+  /// The tune's intro, played once before the band goes round the rest,
+  /// when the whole tune is being played from the top: how iReal Pro plays
+  /// a chart that opens with one. A loop somebody has set, or a start
+  /// partway in, is played as asked, intro or not.
+  LoopRange? get _intro =>
+      _loop.isWholeTune(tune) && pickUpBeats == 0 ? introOf(tune) : null;
+
+  /// What the band goes round: the whole of the loop, or all of it after
+  /// the intro.
+  LoopRange get _goesRound {
+    final intro = _intro;
+    if (intro == null) return _loop;
+    return LoopRange(
+      startBeat: intro.endBeat,
+      lengthBeats: _loop.endBeat - intro.endBeat,
+    );
+  }
+
   BackingRequest _requestFor(Take take, {Arrangement? arrangement}) =>
       BackingRequest(
         tune: originalTune.transposed(take.semitones),
@@ -1157,7 +1175,8 @@ class PracticeController extends ChangeNotifier {
 
   BackingRequest _exportRequest({Arrangement? arrangement}) => BackingRequest(
     tune: tune,
-    loop: _loop,
+    loop: _goesRound,
+    intro: _intro,
     tempo: _tempo,
     countInBars: _countInBars,
     seed: _lastSeed == 0 ? 1 : _lastSeed,
@@ -1340,7 +1359,8 @@ class PracticeController extends ChangeNotifier {
       await player.start(
         BackingRequest(
           tune: tune,
-          loop: _loop,
+          loop: _goesRound,
+          intro: _intro,
           tempo: _tempo,
           countInBars: withCountIn ? _countInBars : 0,
           seed: _lastSeed,

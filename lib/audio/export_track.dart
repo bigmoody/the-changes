@@ -24,6 +24,8 @@ const _longest = 20 * 60;
 /// making the later ones shorter.
 int beatsIn(BackingRequest request, Duration time) {
   var left = time.inMicroseconds * request.sampleRate / 1000000;
+  // The intro is played once, before any of these.
+  left -= _introSamples(request);
   final perChorus = request.loop.lengthBeats;
   var beats = 0;
   var chorus = 0;
@@ -63,11 +65,13 @@ int finishSectionAfter(Tune tune, LoopRange loop, int beats) {
 /// The sample [beat] falls on, counting the count-in if there is one.
 int samplesAtBeat(BackingRequest request, int beat, {bool withCountIn = true}) {
   final perChorus = request.loop.lengthBeats;
-  var samples = withCountIn
-      ? request.countInBars *
-            request.tune.beatsPerBar *
-            samplesPerBeatFor(request, 0)
-      : 0;
+  var samples =
+      (withCountIn
+          ? request.countInBars *
+                request.tune.beatsPerBar *
+                samplesPerBeatFor(request, 0)
+          : 0) +
+      _introSamples(request);
   var left = beat;
   var chorus = 0;
   while (left > 0) {
@@ -237,10 +241,16 @@ Duration exportLength(BackingRequest request) {
   final choruses = request.arrangement.choruses ?? 0;
   var samples =
       request.countInBars *
-      request.tune.beatsPerBar *
-      samplesPerBeatFor(request, 0);
+          request.tune.beatsPerBar *
+          samplesPerBeatFor(request, 0) +
+      _introSamples(request);
   for (var chorus = 0; chorus < choruses; chorus++) {
     samples += request.loop.lengthBeats * samplesPerBeatFor(request, chorus);
   }
   return Duration(milliseconds: samples * 1000 ~/ request.sampleRate);
 }
+
+/// How long the intro lasts, played once before the loop, where there is
+/// one (see BackingRequest.intro).
+int _introSamples(BackingRequest request) =>
+    (request.intro?.lengthBeats ?? 0) * samplesPerBeatFor(request, 0);

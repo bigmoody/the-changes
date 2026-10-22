@@ -79,3 +79,19 @@ class LoopRange {
   @override
   int get hashCode => Object.hash(startBeat, lengthBeats);
 }
+
+/// Where a tune's intro is, if it has one: the bars from the top up to
+/// the next section, when the first section is marked Intro. iReal Pro
+/// plays those once and goes round the rest (see BackingRequest.intro).
+/// Null when the tune does not open with an intro, or is nothing else.
+LoopRange? introOf(Tune tune) {
+  if (tune.sections[0] != 'Intro') return null;
+  final next = tune.sections.keys
+      .where((bar) => bar > 0)
+      .fold<int?>(
+        null,
+        (first, bar) => first == null || bar < first ? bar : first,
+      );
+  if (next == null || next >= tune.barCount) return null;
+  return LoopRange.bars(tune, 0, next - 1);
+}

@@ -197,10 +197,19 @@ class BackingRequest {
     this.imported,
     this.drumLevels = const DrumLevels(),
     this.swing,
+    this.intro,
   });
 
   final Tune tune;
   final LoopRange loop;
+
+  /// Bars played once, after the count-in and before the first time round
+  /// [loop], and never again: a tune's intro. iReal Pro plays a chart's
+  /// intro that way and then goes round the rest for as long as the band
+  /// plays (Valse Hot's eight bars, then its A section over and over), so
+  /// a chart brought in from it has to as well. Null for the usual case,
+  /// a band that goes round the whole of [loop] from the start.
+  final LoopRange? intro;
 
   /// Beats per minute.
   final int tempo;
@@ -285,7 +294,34 @@ class BackingRequest {
     imported: imported,
     drumLevels: drumLevels,
     swing: swing,
+    intro: intro,
   );
+
+  /// The same request going round [loop] instead, with no intro and, where
+  /// given, another [arrangement]. Every field written out, like
+  /// [withSamples] and for the same reason.
+  BackingRequest withLoop(LoopRange loop, {Arrangement? arrangement}) =>
+      BackingRequest(
+        tune: tune,
+        loop: loop,
+        tempo: tempo,
+        countInBars: countInBars,
+        sampleRate: sampleRate,
+        seed: seed,
+        samples: samples,
+        comping: comping,
+        bassSound: bassSound,
+        drumSound: drumSound,
+        arpeggios: arpeggios,
+        arpeggioSound: arpeggioSound,
+        arpeggioStart: arpeggioStart,
+        arpeggioRate: arpeggioRate,
+        arpeggioReach: arpeggioReach,
+        arrangement: arrangement ?? this.arrangement,
+        imported: imported,
+        drumLevels: drumLevels,
+        swing: swing,
+      );
 }
 
 /// Where each player got to, so the next batch continues from there.
@@ -340,6 +376,7 @@ class RenderedBacking {
     required this.samplesPerBeat,
     required this.samplesPerBeatByChorus,
     required this.countInBeats,
+    this.introBeats = 0,
     required this.gain,
     required this.batch,
   });
@@ -362,6 +399,10 @@ class RenderedBacking {
   /// so the list is short even for a performance that goes on all night.
   final List<int> samplesPerBeatByChorus;
   final int countInBeats;
+
+  /// How many beats of intro come after the count-in, played once before
+  /// the loop goes round (see [BackingRequest.intro]).
+  final int introBeats;
 
   /// The volume scaling applied to everything; later batches reuse it.
   final double gain;
@@ -443,7 +484,7 @@ Uint8List ringOut(Float32List tail, double gain, int sampleRate) =>
 /// Renders the first batch, including the count-in, and works out the volume
 /// scaling the whole performance uses.
 RenderedBacking renderBacking(BackingRequest request) {
-  final parts = _renderParts(request, batch: 0, withCountIn: true);
+  final parts = _firstParts(request);
   final sampleRate = request.sampleRate;
   final loopStart = parts.offset;
 
@@ -498,8 +539,80 @@ RenderedBacking renderBacking(BackingRequest request) {
     samplesPerBeat: parts.samplesPerBeat,
     samplesPerBeatByChorus: samplesPerBeatByChorus(request),
     countInBeats: request.countInBars * request.tune.beatsPerBar,
+    introBeats: request.intro?.lengthBeats ?? 0,
     gain: gain,
     batch: parts.toBatch(gain, sampleRate),
+  );
+}
+
+/// The first batch: the count-in, the intro where there is one, and the
+/// first passes round the loop.
+///
+/// The intro is written as a batch of its own, once through its bars,
+/// and the loop carries on from it the way every batch carries on from
+/// the one before: where the bass had got to and the voicings the hands
+/// were on, and whatever was still ringing. So the band plays across the
+/// join as it would across any barline.
+_Parts _firstParts(BackingRequest request) {
+  final intro = request.intro;
+  if (intro == null || intro.lengthBeats == 0) {
+    return _renderParts(request, batch: 0, withCountIn: true);
+  }
+  final opening = _renderParts(
+    request.withLoop(
+      intro,
+      arrangement: request.arrangement.copyWith(choruses: 1),
+    ),
+    batch: 0,
+    withCountIn: true,
+  );
+  final rest = _renderParts(
+    request,
+    batch: 0,
+    withCountIn: false,
+    state: opening.state,
+  );
+  final at = opening.length;
+  _Mix joined(_Mix first, _Mix then) {
+    final mix = _Mix(
+      sampleRate: first.sampleRate,
+      loopStart: first.loopStart,
+      length: at + then.buffer.length,
+    );
+    final buffer = mix.buffer;
+    for (var i = 0; i < first.buffer.length && i < buffer.length; i++) {
+      buffer[i] = first.buffer[i];
+    }
+    for (var i = 0; i < then.buffer.length; i++) {
+      buffer[at + i] += then.buffer[i];
+    }
+    return mix;
+  }
+
+  final asRecorded = opening.drumsAsRecorded;
+  final restAsRecorded = rest.drumsAsRecorded;
+  return _Parts(
+    mixes: {
+      for (final entry in rest.mixes.entries)
+        entry.key: opening.mixes[entry.key] == null
+            ? joined(
+                _Mix(
+                  sampleRate: request.sampleRate,
+                  loopStart: opening.offset,
+                  length: at,
+                ),
+                entry.value,
+              )
+            : joined(opening.mixes[entry.key]!, entry.value),
+    },
+    drumsAsRecorded: asRecorded == null || restAsRecorded == null
+        ? null
+        : joined(asRecorded, restAsRecorded),
+    clicks: joined(opening.clicks, rest.clicks),
+    length: at + rest.length,
+    offset: opening.offset,
+    samplesPerBeat: rest.samplesPerBeat,
+    state: rest.state,
   );
 }
 

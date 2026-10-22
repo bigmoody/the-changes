@@ -376,6 +376,7 @@ class PracticePlayer {
       samplesPerBeat: backing.samplesPerBeat,
       samplesPerBeatByChorus: backing.samplesPerBeatByChorus,
       countInBeats: backing.countInBeats,
+      introBeats: backing.introBeats,
       gain: backing.gain,
       batch: BackingBatch(
         pcm: {
@@ -887,10 +888,23 @@ class PlaybackClock {
     }
     _countInFinished = true;
 
-    // Walk the passes off one at a time: they aren't all the same length
-    // when the tempo is climbing.
     var left = samples - countInSamples;
     if (left < 0) left = 0;
+    // An intro, once, before the loop: its own bars, just ahead of the
+    // loop's first, and the first time round.
+    final introSamples = backing.introBeats * _samplesPerBeat(0);
+    if (left < introSamples) {
+      return PlaybackPosition(
+        tuneBeat:
+            loop.startBeat -
+            backing.introBeats +
+            (left / _samplesPerBeat(0)).floor(),
+        chorus: 0,
+      );
+    }
+    left -= introSamples;
+    // Walk the passes off one at a time: they aren't all the same length
+    // when the tempo is climbing.
     left += pickUpBeats * _samplesPerBeat(0);
     var chorus = 0;
     while (true) {
