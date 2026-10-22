@@ -494,7 +494,12 @@ class TapFollower extends ChangeNotifier {
   }
 
   /// The band is at the top of the form now.
-  void topOfChorus() => placeAtBar(0);
+  ///
+  /// The top of a chorus is the first bar the band goes round from: bar 1,
+  /// or the bar after the intro where there is one, since a chorus of
+  /// Valse Hot starts on its A section and not on the intro.
+  void topOfChorus() =>
+      placeAtBar(_intro == null ? 0 : _intro.lengthBeats ~/ tune.beatsPerBar);
 
   /// The band is at [bar] now, its first beat.
   void placeAtBar(int bar) {

@@ -701,6 +701,7 @@ class _BarCell extends StatelessWidget {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: _playingMark(
+                              context,
                               scheme,
                               0,
                               sizes.first,
@@ -748,6 +749,7 @@ class _BarCell extends StatelessWidget {
                                                 child: FittedBox(
                                                   fit: BoxFit.scaleDown,
                                                   child: _playingMark(
+                                                    context,
                                                     scheme,
                                                     i,
                                                     sizes[l],
@@ -819,19 +821,28 @@ class _BarCell extends StatelessWidget {
 
   /// [chord], underlined in the pencil red while it is being played: the
   /// bar's box says which bar, and this which of its chords.
+  ///
+  /// The underline beats like a metronome: it flashes full on every beat
+  /// and fades across it, strongest on the first beat of the bar, so the
+  /// pulse can be seen from a stand as well as heard. Somebody who has
+  /// asked their phone to cut down on movement gets it steady.
   Widget _playingMark(
+    BuildContext context,
     ColorScheme scheme,
     int index,
     double size,
     Widget chord,
   ) {
     if (!_playing(index) || !controller.settings.markTheBar.marks) return chord;
-    return DecoratedBox(
+    final beat = this.beat!;
+    final steady = MediaQuery.of(context).disableAnimations;
+    final downbeat = beat % controller.chart.beatsPerBar == 0;
+    Widget underlined(double strength) => DecoratedBox(
       key: const ValueKey('chord-playing'),
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: scheme.tertiary,
+            color: scheme.tertiary.withValues(alpha: strength),
             width: (size * 0.08).clamp(2.0, 6.0),
           ),
         ),
@@ -840,6 +851,15 @@ class _BarCell extends StatelessWidget {
         padding: EdgeInsets.only(bottom: size * 0.08),
         child: chord,
       ),
+    );
+    if (steady) return underlined(1);
+    return TweenAnimationBuilder<double>(
+      // A new beat starts the flash again.
+      key: ValueKey('beat-$beat'),
+      tween: Tween(begin: downbeat ? 1 : 0.8, end: 0.25),
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOut,
+      builder: (context, strength, _) => underlined(strength),
     );
   }
 

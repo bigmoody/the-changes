@@ -103,4 +103,53 @@ void main() {
     expect(taps.tempo, closeTo(240, 1));
     taps.stop();
   });
+
+  test('top of the chorus is the A, not the intro', () {
+    var now = Duration.zero;
+    final taps = TapFollower(tune: _valse, clock: () => now);
+    addTearDown(taps.dispose);
+    const beat = Duration(milliseconds: 400);
+    for (var i = 0; i < 4; i++) {
+      now += beat;
+      taps.tapBeat();
+    }
+    now += beat * 20;
+    taps.topOfChorus();
+    expect(taps.barAt(now), 8, reason: 'the A section starts on bar 9');
+    taps.stop();
+  });
+
+  test('a band that goes back into the intro is found there', () {
+    // The count goes round the A, the usual way; this band has played
+    // the head and gone back into the intro's vamp between choruses, as
+    // a record of Valse Hot heard through the stage did.
+    List<double> soundOf(int index) {
+      final out = <double>[];
+      for (var half = 0; half < 2; half++) {
+        final chord = _valse.slotAtBeat(index * 3 + half).chord;
+        final harmony = List<double>.filled(12, 0.1);
+        for (final pc in chord.pitchClasses) {
+          harmony[pc] = 1;
+        }
+        final bass = List<double>.filled(12, 0.1)..[chord.bass] = 1;
+        out
+          ..addAll(harmony)
+          ..addAll(bass);
+      }
+      return out;
+    }
+
+    const bar = Duration(seconds: 1);
+    final form = FormFinder(tune: _valse);
+    // The count thinks it is on bars 9 onwards (the A again); the band is
+    // on the intro, bars 1 to 8, and then into the A.
+    for (var i = 0; i < 12; i++) {
+      form.heard(bar * i, soundOf(i));
+    }
+    final shift = form.shift(
+      (at) => wrapBar(_valse, 8 + at.inSeconds, intro: intro),
+    );
+    expect(shift, isNotNull);
+    expect(wrapBar(_valse, 8 + shift!, intro: intro), 0, reason: 'bar 1');
+  });
 }

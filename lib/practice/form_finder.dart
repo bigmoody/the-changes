@@ -99,15 +99,26 @@ class FormFinder {
         if (bar.counted case final counted?) (counted: counted, bar: bar),
     ];
     if (placed.length < fewest) return null;
-    // As many places as the band can be in: with an intro, the bars that
-    // go round, since sliding further only comes back to the same places,
-    // and two places that score the same never lead each other.
-    final intro = _intro;
-    final places = intro == null
-        ? tune.barCount
-        : tune.barCount - intro.lengthBeats ~/ tune.beatsPerBar;
+    // Every place the band could be, forward or back: going round from
+    // after the intro is the usual way (iReal Pro's, and most records'),
+    // but a band can go back into the intro between choruses (a record
+    // of Valse Hot heard through the stage spent ten bars on its A flat
+    // vamp between choruses), and a place that is ruled out can never be
+    // found. Two moves that put every bar heard in the same place are the
+    // same place, and only the first is kept, forward moves before back:
+    // two places that score the same never lead each other, and nothing
+    // would ever be decided.
+    final shifts = <int>[];
+    final seen = <String>{};
+    for (final k in [
+      for (var k = 0; k < tune.barCount; k++) k,
+      for (var k = -1; k > -tune.barCount; k--) k,
+    ]) {
+      final where = [for (final p in placed) _wrap(p.counted + k)].join(',');
+      if (seen.add(where)) shifts.add(k);
+    }
     final scores = [
-      for (var k = 0; k < places; k++)
+      for (final k in shifts)
         placed.fold(
           0.0,
           (sum, p) => sum + _fit(p.bar.pitches, _wrap(p.counted + k)),
@@ -116,8 +127,8 @@ class FormFinder {
     final order = [for (var k = 0; k < scores.length; k++) k]
       ..sort((a, b) => scores[b].compareTo(scores[a]));
     if (order.length < 2) return null;
-    final best = order[0];
-    if (scores[best] - scores[order[1]] < lead) return null;
+    if (scores[order[0]] - scores[order[1]] < lead) return null;
+    final best = shifts[order[0]];
     for (final bar in _bars) {
       if (bar.counted case final counted?) {
         bar.counted = _wrap(counted + best);
