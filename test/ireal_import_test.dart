@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/music/chart_layout.dart';
 import 'package:play_along/music/chord.dart';
 import 'package:play_along/music/ireal_import.dart';
+import 'package:play_along/music/loop_range.dart';
+import 'package:play_along/music/user_progression.dart';
 import 'package:play_along/music/tune.dart';
 
 /// iReal Pro's scrambling, done here independently: in each 50-character
@@ -248,4 +250,27 @@ void main() {
     expect(parseIrealPro('just some text'), isEmpty);
     expect(parseIrealPro('irealb://'), isEmpty);
   });
+
+  test(
+    'an intro comes across, and survives being saved, to be played once',
+    () {
+      // Valse Hot's shape: iReal Pro's "in" box over four bars here, then
+      // the A section. The intro is what is played once before the band
+      // goes round the rest, so the mark has to come all the way through:
+      // read from the link, kept when the progression is saved, and still
+      // the first section of the tune it plays.
+      const valse =
+          '[T34*iBb-7XyQ|Eb7XyQ|Ab^7XyQ|Ab^7XyQ]'
+          '[*AAb^7XyQ|Db^7XyQ|C-7XyQ|F7XyQZ';
+      final song = parseIrealPro(
+        _link([_song('Valse', 'Rollins Sonny', 'Waltz', 'Ab', valse)]),
+      ).single;
+      expect(song.progression.sections[0], 'Intro');
+      final saved = UserProgression.fromJson(song.progression.toJson());
+      final tune = saved.toTune();
+      final intro = introOf(tune)!;
+      expect(intro.firstBar(tune), 0);
+      expect(intro.lastBar(tune), 3);
+    },
+  );
 }
