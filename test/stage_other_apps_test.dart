@@ -389,6 +389,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('How Listening Works'), findsWidgets);
     expect(find.text('Too Fast or Too Slow'), findsOneWidget);
+    // What the two buttons do, and the pedal.
+    for (final section in [
+      'Tap the Beat',
+      'Top of the Chorus',
+      'With a Foot Pedal',
+    ]) {
+      await tester.dragUntilVisible(
+        find.descendant(
+          of: find.byKey(const ValueKey('how-listening-works')),
+          matching: find.text(section),
+        ),
+        find.byKey(const ValueKey('how-listening-works')),
+        const Offset(0, -100),
+      );
+    }
     // And which tunes need a tap, and why.
     await tester.dragUntilVisible(
       find.text('Tunes That Need a Tap'),

@@ -1067,6 +1067,29 @@ void _showHowListeningWorks(BuildContext context) {
                   'beat a few times on Tap the Beat.',
             ),
             step(
+              'Tap the Beat',
+              'Tap it in time with the band, three or four times, and it '
+                  'counts at the tempo you tapped, moving its beats to where '
+                  'your taps fell. Use it when it has the tempo wrong, or to '
+                  'get it going before it has found the beat itself. Before '
+                  'the band starts, the taps count it in: bar 1 comes on the '
+                  'beat after your last tap.',
+            ),
+            step(
+              'Top of the Chorus',
+              'Press it as the band starts a chorus and it goes to the top '
+                  'of the form: bar 1, or the first bar after the intro on a '
+                  'tune that has one. Pressed at the top of each chorus of a '
+                  'solo, it can never be more than a chorus out.',
+            ),
+            step(
+              'With a Foot Pedal',
+              'A page-turner pedal works too: its right pedal (or the right '
+                  'arrow, down arrow or page down key) taps the beat, and its '
+                  'left pedal (left arrow, up arrow or page up) is Top of the '
+                  'Chorus.',
+            ),
+            step(
               'Show It Where the Band Is',
               'Tap the bar on the chart the band is playing, right on its '
                   'first beat, or Top of the Chorus at the top of the form. '
