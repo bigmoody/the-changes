@@ -389,6 +389,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('How Listening Works'), findsWidgets);
     expect(find.text('Too Fast or Too Slow'), findsOneWidget);
+    // And which tunes need a tap, and why.
+    await tester.dragUntilVisible(
+      find.text('Tunes That Need a Tap'),
+      find.byKey(const ValueKey('how-listening-works')),
+      const Offset(0, -200),
+    );
+    expect(find.text('Tunes That Need a Tap'), findsOneWidget);
     Navigator.of(
       tester.element(find.byKey(const ValueKey('how-listening-works'))),
     ).pop();

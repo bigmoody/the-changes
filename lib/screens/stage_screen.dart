@@ -1078,6 +1078,20 @@ void _showHowListeningWorks(BuildContext context) {
                   'takes a little longer. A guitar or piano playing freely, '
                   'without a steady beat, may need a bar tapped.',
             ),
+            // Learnt on a record of Valse Hot: its A section has the same
+            // chord in several bars, and the band vamped between choruses
+            // on something that is not on the chart at all.
+            step(
+              'Tunes That Need a Tap',
+              'Some tunes repeat the same chords in several bars, like '
+                  'Valse Hot, whose A section has the same chord in three or '
+                  'four places. By ear it cannot tell which of those bars '
+                  'the band is in, and it can be a few bars out. Bands also '
+                  'play intros, vamps and interludes that are not on the '
+                  'chart, and it carries on counting through them. On tunes '
+                  'like these, tap the bar as the band comes back to the '
+                  'chart, or press Top of the Chorus as the chorus starts.',
+            ),
             step(
               'Which Tune Is It?',
               'After about half a minute it says which tunes the band sounds '
