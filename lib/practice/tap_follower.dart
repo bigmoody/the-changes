@@ -108,6 +108,9 @@ class TapFollower extends ChangeNotifier {
   /// among them, and on Cherokee they pulled a tapped 338 about by 4%,
   /// enough to drift a bar from the band in under a minute.
   var _tempoTapped = false;
+
+  /// Whether the tempo was tapped, not heard.
+  bool get tempoTapped => _tempoTapped;
   static const _furthestTapped = 0.04;
 
   /// The bars tapped one after another lately: when, and which.

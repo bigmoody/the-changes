@@ -320,6 +320,26 @@ class _StageScreenState extends State<StageScreen> {
     final form = _form ??= FormFinder(tune: controller.tune);
     form.heard(taps.now - ago, pitches);
     _noteShown(taps);
+    // The chords say each bar heard is two of the tune's: the count is at
+    // half the band's tempo (see form_finder.dart). Not when the tempo was
+    // tapped, which the player knows.
+    if (taps.counting &&
+        !taps.tempoTapped &&
+        form.twiceAsLong(
+          Duration(
+            microseconds: (60e6 / taps.tempo! * controller.tune.beatsPerBar)
+                .round(),
+          ),
+        )) {
+      final before = taps.tempo;
+      taps.doubleTime();
+      if (taps.tempo != before) {
+        _otherApps?.noted(
+          'CHORDS SAY DOUBLE TIME, NOW ${taps.tempo!.round()} BPM',
+        );
+        form.clear();
+      }
+    }
     if (taps.placedByHand ||
         !taps.counting ||
         taps.losesTheBars ||
@@ -1079,8 +1099,9 @@ void _showHowListeningWorks(BuildContext context) {
               'If it counts twice as fast as the band, press Half Time. If '
                   'it counts half as fast, press Double Time. Or tap the '
                   'beat a few times on Tap the Beat. On a quick tune it often '
-                  'starts at half and goes to double time by itself once it '
-                  'hears every bar; if it does not, press Double Time.',
+                  'starts at half, and goes to double time by itself once '
+                  'the chords show each bar it hears is two of the tune\'s, '
+                  'about a chorus in. If it has not, press Double Time.',
             ),
             step(
               'Tap the Beat',

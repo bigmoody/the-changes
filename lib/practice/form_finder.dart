@@ -137,26 +137,84 @@ class FormFinder {
     return best;
   }
 
+  /// Whether the bars heard are each two of the tune's: the count at
+  /// half the band's tempo. On a quick tune Beat This! can hear every
+  /// other barline for a minute, and the beat at half as well, so nothing
+  /// in the time says otherwise; the chords do. Each bar heard is fitted
+  /// whole to the chart, a bar at a time as [shift] does, and then each
+  /// half of it to a bar of the chart, two bars at a time, sliding both
+  /// along it; when the second fits better by 1.5, added up, it is two.
+  ///
+  /// Tried on four Cherokee broadcasts at 338, counted at 169 for their
+  /// first minute: two bars a heard bar fitted better by 1.5 after 32 to
+  /// 47 seconds (on the fourth, not used to choose the figure, 35.5,
+  /// a second before Double Time was pressed). Where the count was right,
+  /// it never fitted better by more than 0.41. Most of Cherokee's chords
+  /// last two bars, which is why it takes about a chorus: at half the
+  /// tempo, a bar heard looks like one of the chart's.
+  ///
+  /// Only while the bars heard are the count's [bar] long, to a sixth:
+  /// once it is doubled, Beat This! may go on hearing every other barline,
+  /// and the bars heard are two of the count's, as they should be.
+  bool twiceAsLong(Duration countBar) {
+    if (_bars.length < 16) return false;
+    final gaps = [
+      for (var i = 1; i < _bars.length; i++)
+        (_bars[i].at - _bars[i - 1].at).inMicroseconds,
+    ]..sort();
+    final bar = gaps[gaps.length ~/ 2];
+    final count = countBar.inMicroseconds;
+    if (bar <= 0 || (bar - count).abs() > count / 6) return false;
+    final first = _bars.first.at;
+    final index = [
+      for (final b in _bars) ((b.at - first).inMicroseconds / bar).round(),
+    ];
+    final perBar = tune.beatsPerBar;
+    double best(bool two) {
+      var most = double.negativeInfinity;
+      for (var start = 0; start < tune.barCount; start++) {
+        var sum = 0.0;
+        for (var i = 0; i < _bars.length; i++) {
+          final pitches = _bars[i].pitches;
+          if (two) {
+            final at = _wrap(start + 2 * index[i]);
+            sum +=
+                _fitHalf(pitches, 0, at * perBar) +
+                _fitHalf(pitches, 1, _wrap(at + 1) * perBar);
+          } else {
+            sum += _fit(pitches, _wrap(start + index[i]));
+          }
+        }
+        most = max(most, sum);
+      }
+      return most;
+    }
+
+    return best(true) - best(false) >= 1.5;
+  }
+
   /// How well a bar heard fits the chart's bar [barIndex]: for each half,
   /// the harmony against the chord's notes, and the bass against its
   /// lowest note.
   double _fit(List<double> pitches, int barIndex) {
-    var sum = 0.0;
     final perBar = tune.beatsPerBar;
-    for (var half = 0; half < 2; half++) {
-      final chord = tune
-          .slotAtBeat(barIndex * perBar + half * (perBar ~/ 2))
-          .chord;
-      final tones = List<double>.filled(12, 0);
-      for (final pc in chord.pitchClasses) {
-        tones[pc] = 1;
-      }
-      final offset = half * 24;
-      sum += _cosine(pitches.sublist(offset, offset + 12), tones);
-      final bass = pitches.sublist(offset + 12, offset + 24);
-      final length = _length(bass);
-      if (length > 0) sum += _bassWeight * bass[chord.bass] / length;
+    return _fitHalf(pitches, 0, barIndex * perBar) +
+        _fitHalf(pitches, 1, barIndex * perBar + perBar ~/ 2);
+  }
+
+  /// How well one half of a bar heard fits the chord sounding at [beat]:
+  /// the harmony against the chord's notes, the bass against its lowest.
+  double _fitHalf(List<double> pitches, int half, int beat) {
+    final chord = tune.slotAtBeat(beat).chord;
+    final tones = List<double>.filled(12, 0);
+    for (final pc in chord.pitchClasses) {
+      tones[pc] = 1;
     }
+    final offset = half * 24;
+    var sum = _cosine(pitches.sublist(offset, offset + 12), tones);
+    final bass = pitches.sublist(offset + 12, offset + 24);
+    final length = _length(bass);
+    if (length > 0) sum += _bassWeight * bass[chord.bass] / length;
     return sum;
   }
 
