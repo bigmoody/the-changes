@@ -536,7 +536,9 @@ class _StageScreenState extends State<StageScreen> {
                       placedByEar:
                           _placedByEar && !(_taps?.placedByHand ?? false),
                       onStart: _otherApps!.pick,
-                      onSave: _saveWhatOthersPlayed,
+                      // Only in builds being worked on: it is for testing
+                      // the tracker on a computer, not for anybody playing.
+                      onSave: kDebugMode ? _saveWhatOthersPlayed : null,
                       playing: controller.ref,
                       onSwitchTune: widget.onSwitchTune == null
                           ? null
@@ -798,7 +800,7 @@ class _OtherApps extends StatelessWidget {
   const _OtherApps({
     required this.sound,
     required this.onStart,
-    required this.onSave,
+    this.onSave,
     this.onHalfTime,
     this.onDoubleTime,
     this.placedByEar = false,
@@ -825,7 +827,9 @@ class _OtherApps extends StatelessWidget {
   /// Whether the bar of the tune was found by ear, not tapped.
   final bool placedByEar;
   final VoidCallback onStart;
-  final VoidCallback onSave;
+
+  /// Saving what was heard, in a build being worked on; null elsewhere.
+  final VoidCallback? onSave;
 
   @override
   Widget build(BuildContext context) {
@@ -928,12 +932,13 @@ class _OtherApps extends StatelessWidget {
                   onPressed: onStart,
                   child: const Text('Start Broadcast'),
                 ),
-              IconButton(
-                key: const ValueKey('stage-save-broadcast'),
-                icon: const Icon(Icons.save_alt),
-                tooltip: 'Save the Last Minute and the Taps',
-                onPressed: onSave,
-              ),
+              if (onSave != null)
+                IconButton(
+                  key: const ValueKey('stage-save-broadcast'),
+                  icon: const Icon(Icons.save_alt),
+                  tooltip: 'Save the Last Minute and the Taps',
+                  onPressed: onSave,
+                ),
             ],
           ),
           if (following != null)
