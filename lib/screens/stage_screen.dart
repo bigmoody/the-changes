@@ -249,6 +249,7 @@ class _StageScreenState extends State<StageScreen> {
       _taps
         ?..onRecounted = null
         ..onHalved = null
+        ..onDoubled = null
         ..onChords = null;
       unawaited(_stopFollowing(others));
       _form?.clear();
@@ -288,6 +289,7 @@ class _StageScreenState extends State<StageScreen> {
     _taps
       ?..onRecounted = _recounted
       ..onHalved = (() => others.noted('COUNT HALVED ITSELF'))
+      ..onDoubled = (() => others.noted('COUNT DOUBLED ITSELF'))
       ..onChords = () {
         final taps = _taps!;
         others.noted(
@@ -1076,7 +1078,9 @@ void _showHowListeningWorks(BuildContext context) {
               'Too Fast or Too Slow',
               'If it counts twice as fast as the band, press Half Time. If '
                   'it counts half as fast, press Double Time. Or tap the '
-                  'beat a few times on Tap the Beat.',
+                  'beat a few times on Tap the Beat. On a quick tune it often '
+                  'starts at half and goes to double time by itself once it '
+                  'hears every bar; if it does not, press Double Time.',
             ),
             step(
               'Tap the Beat',

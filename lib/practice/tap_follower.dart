@@ -513,6 +513,41 @@ class TapFollower extends ChangeNotifier {
     onRecounted?.call();
   }
 
+  /// Doubles the count when the last eight barlines heard came steadily
+  /// at half its bar, each gap within a tenth of it, and Beat This! hears
+  /// the beat at half the count's too: it is at half the tempo. On a quick
+  /// tune Beat This! hears every other barline at first, and the count
+  /// starts at half; then it hears them all. On Cherokee at 338 the count
+  /// started at 169, and from 48 seconds in every barline came 0.72
+  /// seconds after the last, half its bar. Not when the tempo was tapped,
+  /// and not past four hundred.
+  void _doubleIfHalf() {
+    final length = _beatLength;
+    if (length == null || !(_byBarlines || _byChords)) return;
+    if (length ~/ 2 < _quickest || _heard.length < 8) return;
+    final half = length.inMicroseconds * tune.beatsPerBar / 2;
+    for (var i = 1; i < _heard.length; i++) {
+      final gap = (_heard[i] - _heard[i - 1]).inMicroseconds;
+      if ((gap - half).abs() > 0.1 * half) return;
+    }
+    if (_clock() - _heard.last > const Duration(seconds: 3)) return;
+    // The beat Beat This! hears, steady or roughly: at half the count's
+    // as well, or it is not doubled. On Take the A Train it heard half
+    // bars steadily for a while, but the beat at the count's.
+    final heard = _pulse ?? _lookBeat;
+    final halfBeat = length.inMicroseconds / 2;
+    if (heard == null ||
+        (heard.inMicroseconds - halfBeat).abs() > 0.12 * halfBeat) {
+      return;
+    }
+    doubleTime();
+    _heard.clear();
+    onDoubled?.call();
+  }
+
+  /// Told when the count doubled itself.
+  VoidCallback? onDoubled;
+
   /// The band is at the top of the form now.
   ///
   /// The top of a chorus is the first bar the band goes round from: bar 1,
@@ -587,6 +622,7 @@ class TapFollower extends ChangeNotifier {
       _nudge(at);
       _fell.add(_nudges > before);
       if (_fell.length > 10) _fell.removeAt(0);
+      _doubleIfHalf();
     } else {
       _startFromHeard();
     }
