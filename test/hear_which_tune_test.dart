@@ -92,4 +92,33 @@ void main() {
     expect(find.text(mine.displayTitle), findsWidgets);
     expect(find.text('Cherokee'), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  Future<void> openMenu(WidgetTester tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme(Brightness.light),
+        home: PracticeScreen(
+          tune: standards.firstWhere((tune) => tune.title == 'Cherokee'),
+          player: PracticePlayer(),
+          settings: AppSettings.inMemory(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tune-menu')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('the menu leaves the scrolling stage to the ear', (tester) async {
+    await openMenu(tester);
+    expect(find.byKey(const ValueKey('hear-the-band')), findsOneWidget);
+    expect(find.text('Stage View'), findsOneWidget);
+    expect(find.text('Scrolling Stage View'), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('and keeps it where there is no ear', (tester) async {
+    await openMenu(tester);
+    expect(find.byKey(const ValueKey('hear-the-band')), findsNothing);
+    expect(find.text('Scrolling Stage View'), findsOneWidget);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 }

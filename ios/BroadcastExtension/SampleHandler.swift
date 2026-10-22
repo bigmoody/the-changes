@@ -95,7 +95,7 @@ class SampleHandler: RPBroadcastSampleHandler {
   private var ringAt = 0
   private var ringFull = false
 
-  #if DEBUG
+  #if DEBUG || LISTENING
   /// The ring the app follows from.
   private var shared: SoundRing?
   #endif
@@ -189,7 +189,7 @@ class SampleHandler: RPBroadcastSampleHandler {
     ring = [Int16](repeating: 0, count: Int(sampleRate * SampleHandler.keptSeconds))
     ringAt = 0
     ringFull = false
-    #if DEBUG
+    #if DEBUG || LISTENING
     shared = folder.flatMap {
       SoundRing(writingTo: $0.appendingPathComponent("broadcast-ring.raw"), sampleRate: sampleRate)
     }
@@ -292,7 +292,7 @@ class SampleHandler: RPBroadcastSampleHandler {
         }
       }
     }
-    #if DEBUG
+    #if DEBUG || LISTENING
     shared?.append(mono, endingAt: played)
     #endif
     let values = count * channelCount

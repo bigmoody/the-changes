@@ -30,9 +30,11 @@
 // (see chart_follower.dart). It follows iReal Pro's backing and not a
 // real record, so nobody else is shown it until it does.
 //
-// So is hearing another app on an iPhone (see other_apps.dart): only the
-// proof that a record playing in YouTube or Spotify reaches the app, with
-// a meter and the format it arrives in.
+// So is hearing another band on an iPhone or iPad (see other_apps.dart):
+// a record playing in another app, by broadcast, or the room through the
+// microphone, followed by Beat This! and the chords. In builds being
+// worked on, and a release built with LISTENING (see [listeningBuild]);
+// the tune's page opens it with the ear.
 
 import 'dart:async';
 import 'dart:convert';
@@ -55,6 +57,14 @@ import '../practice/tap_follower.dart';
 import '../theme.dart';
 import 'chord_chart.dart' show ChordChart, CountInBubble;
 import 'play_shortcuts.dart';
+
+/// Whether this build can follow another band by ear: every build being
+/// worked on, and a release built with `--dart-define=LISTENING=true`,
+/// which keeps working on the device away from the computer.
+const listeningBuild = bool.fromEnvironment(
+  'LISTENING',
+  defaultValue: kDebugMode,
+);
 
 class StageScreen extends StatefulWidget {
   const StageScreen({
@@ -128,11 +138,11 @@ class _StageScreenState extends State<StageScreen> {
   /// Whether the stage is going because the band is playing another tune.
   var _switching = false;
 
-  /// Only an iPhone or iPad can, and only a build being worked on has
-  /// the extension that does it.
+  /// Only an iPhone or iPad can, and only a build with listening in it
+  /// has the extension that does it.
   bool get _canHearOthers =>
       widget.follow &&
-      kDebugMode &&
+      listeningBuild &&
       (widget.otherApps != null || defaultTargetPlatform == TargetPlatform.iOS);
 
   /// Below this the follower is guessing, and a guess marked on the chart

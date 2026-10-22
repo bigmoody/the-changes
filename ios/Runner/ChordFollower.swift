@@ -14,7 +14,7 @@
 // seldom far ahead of the next, so one answer is not taken on its own
 // (see tap_follower.dart).
 
-#if DEBUG
+#if DEBUG || LISTENING
 import Accelerate
 import Foundation
 

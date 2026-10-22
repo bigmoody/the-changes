@@ -435,7 +435,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Beat This!, for following a broadcast, in builds being worked on only.\n# The model is made by tool/beat_this/convert.py and kept out of git; a\n# build without it says so when asked to follow.\nMODEL=\"$SRCROOT/Models/BeatThis.mlpackage\"\nif [ \"$CONFIGURATION\" = \"Debug\" ] && [ -d \"$MODEL\" ]; then\n  xcrun coremlcompiler compile \"$MODEL\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nfi\n";
+			shellScript = "# Beat This!, for following a broadcast or the room. The model is made by\n# tool/beat_this/convert.py and kept out of git; a build without it says\n# so when asked to follow.\nMODEL=\"$SRCROOT/Models/BeatThis.mlpackage\"\nif [ -d \"$MODEL\" ]; then\n  xcrun coremlcompiler compile \"$MODEL\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"\nfi\n";
 		};
 		B0AD00000000000000004001 /* Embed the Broadcast Extension in Debug */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -603,6 +603,8 @@
 		B0AD00000000000000002002 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BroadcastExtension/BroadcastExtension.entitlements;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = LISTENING;
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGNING_ALLOWED = NO;
@@ -630,6 +632,8 @@
 		B0AD00000000000000002003 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BroadcastExtension/BroadcastExtension.entitlements;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = LISTENING;
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGNING_ALLOWED = NO;
@@ -711,6 +715,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Runner/Runner-Debug.entitlements";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) LISTENING";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
@@ -983,6 +989,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Runner/Runner-Debug.entitlements";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) LISTENING";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";

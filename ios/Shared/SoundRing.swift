@@ -11,7 +11,7 @@
 // written as silence, so a sample's place in the file is always its place
 // in time.
 
-#if DEBUG
+#if DEBUG || LISTENING
 import Accelerate
 import Foundation
 

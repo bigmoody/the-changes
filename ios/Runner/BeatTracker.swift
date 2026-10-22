@@ -8,7 +8,7 @@
 // (beat_this/model/postprocessor.py), copied here. Kept apart from the
 // app so it can be checked on a Mac against the Python it copies.
 
-#if DEBUG
+#if DEBUG || LISTENING
 import AVFoundation
 import CoreML
 import Foundation

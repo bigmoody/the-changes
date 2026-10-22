@@ -14,7 +14,7 @@
 // rhythm changes are rhythm changes, whatever the head. The answer is a
 // short list, not a name.
 
-#if DEBUG
+#if DEBUG || LISTENING
 import Foundation
 
 final class TuneFinder {

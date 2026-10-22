@@ -12,7 +12,7 @@
 // about what a broadcast gives. Slowly, so the loud and soft of a band
 // are left as they are.
 
-#if DEBUG
+#if DEBUG || LISTENING
 import AVFoundation
 import QuartzCore
 

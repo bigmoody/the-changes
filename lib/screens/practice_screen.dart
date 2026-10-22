@@ -195,6 +195,12 @@ class _PracticeScreenState extends State<PracticeScreen> {
     });
   }
 
+  /// Whether the page has the ear, for hearing a band (see
+  /// stage_screen.dart): builds with listening in them, on an iPhone or
+  /// iPad.
+  bool get _hearsTheBand =>
+      listeningBuild && defaultTargetPlatform == TargetPlatform.iOS;
+
   /// The stage, hearing the band by ear (see stage_screen.dart).
   void _hearTheBand({bool microphone = false}) => Navigator.of(context).push(
     MaterialPageRoute<void>(
@@ -306,9 +312,9 @@ class _PracticeScreenState extends State<PracticeScreen> {
                   onPressed: _edit,
                 ),
               // Hearing the band, from a record or the room: on the page,
-              // not in the menu. Builds being worked on, on an iPhone or
-              // iPad (see stage_screen.dart).
-              if (kDebugMode && defaultTargetPlatform == TargetPlatform.iOS)
+              // not in the menu. Builds with listening in them, on an
+              // iPhone or iPad (see stage_screen.dart).
+              if (_hearsTheBand)
                 IconButton(
                   key: const ValueKey('hear-the-band'),
                   icon: const Icon(Icons.hearing),
@@ -351,6 +357,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                 ),
                 // The same controller goes with it, so the band carries on
                 // playing as you walk on and off.
+                // The ear opens the scrolling stage where there is one.
+                scrollingInMenu: !_hearsTheBand,
                 onStage: (follow) => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) =>
@@ -622,6 +630,7 @@ class _MoreMenu extends StatelessWidget {
     required this.onStage,
     required this.onRecord,
     required this.onExercises,
+    this.scrollingInMenu = true,
   });
 
   final LibraryStore? library;
@@ -632,6 +641,10 @@ class _MoreMenu extends StatelessWidget {
   /// Opens the stage: the chart and nothing else, all of it at once or
   /// scrolling with the band.
   final void Function(bool follow) onStage;
+
+  /// Whether the scrolling stage is offered here. Not where the page has
+  /// the ear, which opens it.
+  final bool scrollingInMenu;
 
   /// Opens the practice record for this tune.
   final VoidCallback onRecord;
@@ -691,14 +704,15 @@ class _MoreMenu extends StatelessWidget {
               title: Text('Stage View'),
             ),
           ),
-          const PopupMenuItem(
-            value: 'stage-scrolling',
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.swap_vert),
-              title: Text('Scrolling Stage View'),
+          if (scrollingInMenu)
+            const PopupMenuItem(
+              value: 'stage-scrolling',
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.swap_vert),
+                title: Text('Scrolling Stage View'),
+              ),
             ),
-          ),
           if (library != null) ...[
             PopupMenuItem(
               value: 'star',

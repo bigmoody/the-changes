@@ -2,7 +2,7 @@
 // being worked on only: a release build has neither the extension nor
 // the App Group, and none of this is compiled into it.
 
-#if DEBUG
+#if DEBUG || LISTENING
 import AVFoundation
 import Flutter
 import QuartzCore

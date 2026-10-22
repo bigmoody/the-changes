@@ -10,7 +10,7 @@
 // the Python it copies: on twenty seconds of St. Thomas from a broadcast,
 // within 0.0001 of it everywhere.
 
-#if DEBUG
+#if DEBUG || LISTENING
 import Accelerate
 import Foundation
 

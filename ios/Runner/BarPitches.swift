@@ -9,7 +9,7 @@
 // someone listening tapped: matched to the chart, eight bars of this put
 // the band in the right bar of the tune 141 times in 143.
 
-#if DEBUG
+#if DEBUG || LISTENING
 import Accelerate
 import Foundation
 
