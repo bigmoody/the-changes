@@ -682,7 +682,13 @@ class TapFollower extends ChangeNotifier {
     final bars = beats / perBar;
     final across = bars.abs() < 1 ? bars.sign : bars;
     final started = (_startLength ?? _beatLength!).inMicroseconds * perBar;
-    final lengthened = across == 0 ? 0 : _nudgeLength * error / across;
+    // Trusted less the further it is from the count's barline: one right
+    // at the edge of near enough is as likely a half bar heard a little
+    // late. On Cherokee at 338 one such took the count to 325, and it
+    // fell behind a bar and a half before a tap put it right.
+    final off = error.abs() / (_nearEnough * bar);
+    final trust = 1 - off * off;
+    final lengthened = across == 0 ? 0 : trust * _nudgeLength * error / across;
     final nudged = (bar + lengthened).clamp(
       started * (1 - _furthest),
       started * (1 + _furthest),
@@ -690,14 +696,14 @@ class TapFollower extends ChangeNotifier {
     _anchor = beats > 0
         ? (
             at: Duration(
-              microseconds: (expected + _nudgePlace * error).round(),
+              microseconds: (expected + trust * _nudgePlace * error).round(),
             ),
             beat: _wrapBeat(barline),
           )
         : (
             at:
                 anchor.at +
-                Duration(microseconds: (_nudgePlace * error).round()),
+                Duration(microseconds: (trust * _nudgePlace * error).round()),
             beat: anchor.beat,
           );
     _beatLength = Duration(microseconds: (nudged / perBar).round());
