@@ -269,6 +269,16 @@ void main() {
           ),
         );
         for (final instrument in backing.stems.keys) {
+          // A gypsy band has no drummer (Dark Eyes): its drums are silent
+          // on purpose, and stay so.
+          if (instrument == Instrument.drums && !tune.style.drums.hasDrums) {
+            expect(
+              rms(backing.stems[instrument]!),
+              lessThan(1),
+              reason: '${tune.title} has no drummer',
+            );
+            continue;
+          }
           expect(
             rms(backing.stems[instrument]!),
             greaterThan(200),
