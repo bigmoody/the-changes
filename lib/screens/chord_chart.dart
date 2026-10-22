@@ -817,9 +817,8 @@ class _BarCell extends StatelessWidget {
     });
   }
 
-  /// [chord], on a pencil-red pill while it is being played: the bar's
-  /// box says which bar, and this which of its chords, from across the
-  /// room.
+  /// [chord], underlined in the pencil red while it is being played: the
+  /// bar's box says which bar, and this which of its chords.
   Widget _playingMark(
     ColorScheme scheme,
     int index,
@@ -830,14 +829,15 @@ class _BarCell extends StatelessWidget {
     return DecoratedBox(
       key: const ValueKey('chord-playing'),
       decoration: BoxDecoration(
-        color: scheme.tertiary,
-        borderRadius: BorderRadius.circular(size * 0.22),
+        border: Border(
+          bottom: BorderSide(
+            color: scheme.tertiary,
+            width: (size * 0.08).clamp(2.0, 6.0),
+          ),
+        ),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: size * 0.2,
-          vertical: size * 0.06,
-        ),
+        padding: EdgeInsets.only(bottom: size * 0.08),
         child: chord,
       ),
     );
@@ -896,13 +896,16 @@ class _BarCell extends StatelessWidget {
     final ink = theirs == null
         ? scheme.onSurface
         : readableOn(theirs, scheme.surface);
-    // On its pill, in whatever colour reads on the pencil red. With the bar
-    // left unmarked, there is no pill and the ordinary ink.
     if (_playing(index)) {
-      if (!controller.settings.markTheBar.marks) return ink;
-      return theirs == null
-          ? scheme.onTertiary
-          : readableOn(theirs, scheme.tertiary);
+      // The bar being played is already boxed and tinted, so it does not
+      // need the lettering as well, and taking somebody's colour away on
+      // the one bar they are looking at would be the wrong way round.
+      //
+      // Unless the tint is not there, in which case the lettering has to
+      // go back to the ordinary ink: a colour chosen to read on a tinted
+      // box is the wrong one on plain paper.
+      if (!controller.settings.markTheBar.fills) return ink;
+      return theirs == null ? scheme.onTertiaryContainer : ink;
     }
     if (!times.any(controller.loop.containsSlot)) {
       return ink.withValues(alpha: 0.4);
