@@ -98,6 +98,44 @@ void main() {
     expect(taps.beat, 32 + 3);
   });
 
+  test('bars tapped one after another give the tempo', () {
+    // An up-tempo Cherokee, 340 to the minute: a bar every 0.706 seconds,
+    // easier to tap than every beat.
+    final taps = follower();
+    const bar = Duration(microseconds: 705882);
+    taps.placeAtBar(4);
+    expect(taps.counting, isFalse, reason: 'one bar is not a tempo');
+    for (var b = 5; b <= 7; b++) {
+      now += bar;
+      taps.placeAtBar(b);
+    }
+    expect(taps.tempo, closeTo(340, 1));
+    now += bar * 3;
+    expect(taps.beat, 40, reason: 'three bars on: bar 11');
+  });
+
+  test('a bar skipped still gives the tempo; a jump does not', () {
+    final taps = follower();
+    tapFour(taps);
+    const bar = Duration(milliseconds: 1000); // 240 to the minute
+    taps.placeAtBar(8);
+    now += bar * 2;
+    taps.placeAtBar(10);
+    expect(taps.tempo, closeTo(240, 1));
+    now += bar;
+    taps.placeAtBar(20);
+    expect(taps.tempo, closeTo(240, 1), reason: 'bar 20 is somewhere else');
+  });
+
+  test('the beat can be tapped up to 400', () {
+    final taps = follower();
+    for (var i = 0; i < 4; i++) {
+      if (i > 0) now += const Duration(microseconds: 176471); // 340
+      taps.tapBeat();
+    }
+    expect(taps.tempo, closeTo(340, 1));
+  });
+
   group('on the stage', () {
     Future<TapFollower> openStage(
       WidgetTester tester, {

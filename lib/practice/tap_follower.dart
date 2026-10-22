@@ -19,7 +19,12 @@
 //   Top of the Chorus the band is at bar 1 now. Pressed at the top of
 //                     each chorus of a solo, the chart can never be more
 //                     than a chorus out.
-//   A bar on the chart the band is at that bar now.
+//   A bar on the chart the band is at that bar now. Bars tapped one
+//                     after another, each on its first beat, give the
+//                     tempo too: a bar's length from how far apart they
+//                     came. On a quick tune that is easier than tapping
+//                     every beat: an up-tempo Cherokee is a bar every
+//                     seven tenths of a second, a beat every fifth.
 //
 // Between them it counts at the tempo tapped, and goes on doing so until
 // told otherwise. A band that drifts is put right with a few more taps.
@@ -96,6 +101,9 @@ class TapFollower extends ChangeNotifier {
   Duration? _beatLength;
 
   final _taps = <Duration>[];
+
+  /// The bars tapped one after another lately: when, and which.
+  final _barTaps = <({Duration at, int bar})>[];
 
   /// The beat's length when the count last started, which a heard
   /// barline may move it a tenth from at most.
@@ -303,9 +311,8 @@ class TapFollower extends ChangeNotifier {
         for (var i = 1; i < _taps.length; i++) _taps[i] - _taps[i - 1],
       ]..sort();
       final length = gaps[gaps.length ~/ 2];
-      // Fifty to three hundred and twenty: outside that it was not a beat.
-      if (length >= const Duration(microseconds: 187500) &&
-          length <= const Duration(milliseconds: 1200)) {
+      // Fifty to four hundred: outside that it was not a beat.
+      if (length >= _quickest && length <= _beatLimit) {
         final placed = _anchor;
         final countingIn =
             _countingIn && placed != null && now < placed.at + _halfOf(length);
@@ -501,13 +508,53 @@ class TapFollower extends ChangeNotifier {
   void topOfChorus() =>
       placeAtBar(_intro == null ? 0 : _intro.lengthBeats ~/ tune.beatsPerBar);
 
+  /// The quickest beat taken as one: four hundred to the minute.
+  static const _quickest = Duration(milliseconds: 150);
+
+  /// The slowest: fifty.
+  static const _beatLimit = Duration(milliseconds: 1200);
+
   /// The band is at [bar] now, its first beat.
+  ///
+  /// Tapped on the bar after the last one tapped, or the one after that,
+  /// soon enough after it, the two say how long a bar is, and so the
+  /// tempo: the middle of the last four bars' worth, so one tap a little
+  /// late does not pull it about.
   void placeAtBar(int bar) {
     onTapped?.call(bar);
+    final now = _clock();
     _placedByHand = true;
     _byChords = false;
     _startedByEar = false;
-    _anchor = (at: _clock(), beat: bar * tune.beatsPerBar);
+    _anchor = (at: now, beat: bar * tune.beatsPerBar);
+    final last = _barTaps.isEmpty ? null : _barTaps.last;
+    final on = last == null
+        ? null
+        : [1, 2].where((k) => _wrapBar(last.bar + k) == bar).firstOrNull;
+    if (last == null ||
+        on == null ||
+        now - last.at > _beatLimit * (tune.beatsPerBar * on)) {
+      _barTaps.clear();
+    }
+    _barTaps.add((at: now, bar: bar));
+    if (_barTaps.length > 5) _barTaps.removeAt(0);
+    if (_barTaps.length >= 2) {
+      final beats = <int>[];
+      for (var i = 1; i < _barTaps.length; i++) {
+        final gap = _barTaps[i].at - _barTaps[i - 1].at;
+        final bars = _wrapBar(_barTaps[i - 1].bar + 1) == _barTaps[i].bar
+            ? 1
+            : 2;
+        beats.add(gap.inMicroseconds ~/ (bars * tune.beatsPerBar));
+      }
+      beats.sort();
+      final length = Duration(microseconds: beats[beats.length ~/ 2]);
+      if (length >= _quickest && length <= _beatLimit) {
+        _beatLength = length;
+        _startLength = length;
+        _byBarlines = false;
+      }
+    }
     _countingIn = false;
     _taps.clear();
     _run();

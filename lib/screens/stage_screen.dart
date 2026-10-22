@@ -1105,7 +1105,9 @@ void _showHowListeningWorks(BuildContext context) {
               'Show It Where the Band Is',
               'Tap the bar on the chart the band is playing, right on its '
                   'first beat, or Top of the Chorus at the top of the form. '
-                  'A bar tapped is always believed.',
+                  'A bar tapped is always believed. Tap bar after bar, each '
+                  'on its first beat, and it takes the tempo from them too: '
+                  'easier than tapping every beat on a quick tune.',
             ),
             step(
               'Without Drums',
