@@ -119,12 +119,34 @@ void main() {
     tapFour(taps);
     const bar = Duration(milliseconds: 1000); // 240 to the minute
     taps.placeAtBar(8);
+    now += bar;
+    taps.placeAtBar(9);
+    expect(taps.tempo, closeTo(120, 1), reason: 'two bars are not a tempo');
     now += bar * 2;
-    taps.placeAtBar(10);
+    taps.placeAtBar(11);
     expect(taps.tempo, closeTo(240, 1));
     now += bar;
     taps.placeAtBar(20);
     expect(taps.tempo, closeTo(240, 1), reason: 'bar 20 is somewhere else');
+  });
+
+  test('taps a little ahead of the beat do not lose beats', () {
+    // Cherokee at 340, tapped along unevenly a little early, as hands do.
+    final taps = follower();
+    const beat = Duration(microseconds: 176471);
+    for (var i = 0; i < 4; i++) {
+      if (i > 0) now += beat;
+      taps.tapBeat();
+    }
+    now += beat; // bar 1
+    final start = now;
+    for (var i = 1; i <= 24; i++) {
+      // Some on it, some 25 ms ahead.
+      now = start + beat * i - Duration(milliseconds: i.isOdd ? 25 : 0);
+      taps.tapBeat();
+    }
+    now = start + beat * 24 + const Duration(milliseconds: 20);
+    expect(taps.beat, 24, reason: 'bar 7, not bars behind');
   });
 
   test('the beat can be tapped up to 400', () {

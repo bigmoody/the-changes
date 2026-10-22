@@ -296,6 +296,19 @@ class TapFollower extends ChangeNotifier {
     return _wrapBeat(anchor.beat + beats);
   }
 
+  /// The beat of the tune nearest [at]: where a tap meant, early or
+  /// late. Not the beat it fell in: taps a little ahead of the beat, as
+  /// they mostly are, would each put the count back a beat, and on
+  /// Cherokee at 340 twenty taps lost two bars.
+  int? _nearestBeat(Duration at) {
+    final anchor = _anchor;
+    final length = _beatLength;
+    if (anchor == null || length == null) return null;
+    final beats = ((at - anchor.at).inMicroseconds / length.inMicroseconds)
+        .round();
+    return _wrapBeat(anchor.beat + beats);
+  }
+
   /// Tap the Beat.
   void tapBeat() {
     final now = _clock();
@@ -316,7 +329,7 @@ class TapFollower extends ChangeNotifier {
         final placed = _anchor;
         final countingIn =
             _countingIn && placed != null && now < placed.at + _halfOf(length);
-        final current = countingIn ? null : beat;
+        final current = countingIn ? null : _nearestBeat(now);
         final before = _beatLength;
         final retimed =
             current != null &&
@@ -517,9 +530,9 @@ class TapFollower extends ChangeNotifier {
   /// The band is at [bar] now, its first beat.
   ///
   /// Tapped on the bar after the last one tapped, or the one after that,
-  /// soon enough after it, the two say how long a bar is, and so the
-  /// tempo: the middle of the last four bars' worth, so one tap a little
-  /// late does not pull it about.
+  /// soon enough after it, three or more in a row say how long a bar is,
+  /// and so the tempo: from the first of the last five to the last. Not
+  /// from two: on Cherokee at 340 one gap said 364, and another 371.
   void placeAtBar(int bar) {
     onTapped?.call(bar);
     final now = _clock();
@@ -538,17 +551,15 @@ class TapFollower extends ChangeNotifier {
     }
     _barTaps.add((at: now, bar: bar));
     if (_barTaps.length > 5) _barTaps.removeAt(0);
-    if (_barTaps.length >= 2) {
-      final beats = <int>[];
+    if (_barTaps.length >= 3) {
+      var bars = 0;
       for (var i = 1; i < _barTaps.length; i++) {
-        final gap = _barTaps[i].at - _barTaps[i - 1].at;
-        final bars = _wrapBar(_barTaps[i - 1].bar + 1) == _barTaps[i].bar
-            ? 1
-            : 2;
-        beats.add(gap.inMicroseconds ~/ (bars * tune.beatsPerBar));
+        bars += _wrapBar(_barTaps[i - 1].bar + 1) == _barTaps[i].bar ? 1 : 2;
       }
-      beats.sort();
-      final length = Duration(microseconds: beats[beats.length ~/ 2]);
+      final span = _barTaps.last.at - _barTaps.first.at;
+      final length = Duration(
+        microseconds: span.inMicroseconds ~/ (bars * tune.beatsPerBar),
+      );
       if (length >= _quickest && length <= _beatLimit) {
         _beatLength = length;
         _startLength = length;
