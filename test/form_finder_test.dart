@@ -58,11 +58,13 @@ void main() {
   test('keeps what it heard when the count is recounted', () {
     final form = FormFinder(tune: tune);
     // Ten bars heard, the count at twice the tempo: it called each bar
-    // two of its own, so they fit nowhere.
+    // two of its own, so they do not fit where the band is. (On the Real
+    // Book's St. Thomas, with a II V in its first bar, they fit somewhere
+    // else a little better: not the place, which is all this is about.)
     for (var i = 0; i < 10; i++) {
       form.heard(bar * i, soundOf((8 + i) % 16));
     }
-    expect(form.shift((at) => (at.inMilliseconds ~/ 500) % 16), isNull);
+    expect(form.shift((at) => (at.inMilliseconds ~/ 500) % 16), isNot(8));
     // Half Time: the same bars, put in the count's bars as they are now.
     form.recount();
     expect(form.shift((at) => at.inSeconds % 16), 8);

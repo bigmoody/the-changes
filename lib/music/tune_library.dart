@@ -979,8 +979,8 @@ final _firstStandards = <Tune>[
     feel: Feel.calypso,
     defaultTempo: 150,
     chart:
-        '| [A] C6 | Eø7 A7 | Dm7 G7 | C6 | C6 | Eø7 A7 | Dm7 G7 | C6 '
-        '| [B] Eø7 | A7b9 | Dm7 | G7 | C6 C7 | F6 F#o7 | C6/G G7 | C6 |',
+        '| [A] CΔ7 F7 | Em7 A7 | Dm7 G7 | C6 | CΔ7 F7 | Em7 A7 | Dm7 G7 | C6 '
+        '| [B] Eø7 | A7b9 | Dm7 | G7 | CΔ7 C7/E | FΔ7 F#o7 | G7 | C6 |',
   ),
   Tune.fromChart(
     title: 'Wave',
