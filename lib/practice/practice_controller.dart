@@ -761,25 +761,29 @@ class PracticeController extends ChangeNotifier {
     _applyMix();
   }
 
-  /// Everything the mixer sheet changes about *this tune*, put back.
+  /// Everything the mixer sheet changes, put back.
   ///
-  /// The levels, the mutes and the solos, which is what Reset used to
-  /// do on its own, and now also the band: the groove, the bass, the
-  /// comping, the figure and the swing all go back to the way the tune
-  /// is written, the count-in to a bar, the arpeggios off. The sheet
-  /// grew from a mixer into the whole band, and a button at the top of
-  /// it saying Reset that only moved the faders was answering a
-  /// question nobody asked.
-  ///
-  /// What it leaves alone is what is not this tune's: which kit and
-  /// which instrument plays the chords are settings that follow the
-  /// player from tune to tune, and a reset here is not a reason to
-  /// forget them.
-  void resetSheet() {
+  /// The levels, the mutes and the solos; the band as the tune is written
+  /// (the groove, the bass, the comping, the figure and the swing); the
+  /// count-in to a bar and the arpeggios off. And the sounds: the kit
+  /// (sticks, not brushes), the upright bass, the piano on the chords and
+  /// the arpeggios, the arpeggios as they start out, and a recording
+  /// played if there is one. Those follow the player from tune to tune,
+  /// and were left alone once for that reason; but a Reset at the top of
+  /// the sheet that leaves brushes on is not a reset.
+  Future<void> resetSheet() async {
     setStyle(null);
     setCountInBars(1);
     setArpeggios(false);
+    setUseRecording(true);
     resetMix();
+    await setDrumSound(DrumSound.kit);
+    await setBassSound(BassSound.upright);
+    await setComping(Comping.piano);
+    await setArpeggioSound(Comping.piano);
+    await setArpeggioStart(ArpeggioStart.root);
+    await setArpeggioRate(ArpeggioRate.eighths);
+    await setArpeggioReach(ArpeggioReach.plain);
   }
 
   /// Sends the effective volume of every instrument to the audio engine.
