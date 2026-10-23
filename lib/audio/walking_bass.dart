@@ -19,9 +19,12 @@
 import 'dart:math' as math;
 
 import 'drum_patterns.dart' show funkKicksFor;
+import 'grouped_grooves.dart' show groupKicks;
 
 import '../music/bass_moves.dart';
 import '../music/chord.dart';
+import '../music/meter.dart';
+import '../music/tune.dart' show Feel;
 
 /// One bass note. [beat] counts from the start of the line.
 typedef BassNote = ({int pitch, double beat, double length, double velocity});
@@ -399,6 +402,96 @@ class _Bassist {
 
   // ── Bossa figures ──────────────────────────────────────────────────────
 
+  /// One chord across a bar of three, five or seven, a cell to each of
+  /// its groups (see [meterGroups]): the front of each group on the root
+  /// or the fifth, turn about, the rest of the cell the groove's own.
+  /// Funk and calypso play on the drum's kick, read from the same place
+  /// the drummer reads it; a bossa on its surdo, the front of the group
+  /// and, in three, its last beat. The last group leads into the next
+  /// chord where there is one to lead to.
+  List<(int, double, double)> _inGroups(
+    _Style style,
+    int beatsPerBar, {
+    required int bar,
+    required int root,
+    required int fifth,
+    required int octave,
+    required int third,
+    required int approach,
+    required bool changing,
+  }) {
+    final feel = switch (style) {
+      _Style.funk => Feel.funk,
+      _Style.calypso => Feel.calypso,
+      _ => Feel.bossa,
+    };
+    final lengths = meterGroups(beatsPerBar);
+    final starts = groupStarts(beatsPerBar);
+    final notes = <(int, double, double)>[];
+    for (var g = 0; g < lengths.length; g++) {
+      final length = lengths[g];
+      final start = starts[g].toDouble();
+      final lastGroup = g == lengths.length - 1;
+      // The root at the front of the bar; after that the fifth and the
+      // root by turns, with the octave or the third now and then.
+      final front = g == 0
+          ? root
+          : g.isOdd
+          ? fifth
+          : (random.nextDouble() < 0.3 ? octave : root);
+      final answer = front == root
+          ? (random.nextDouble() < 0.25 ? third : fifth)
+          : root;
+      final kicks = groupKicks(feel, length, bar: bar, group: g);
+      switch (style) {
+        case _Style.funk:
+          for (final kick in kicks) {
+            notes.add((
+              kick == 0 ? front : root,
+              start + kick,
+              kick == 0 ? 0.9 : 0.4,
+            ));
+          }
+          if (lastGroup) {
+            final late = length - 0.5;
+            if (!kicks.contains(late)) {
+              notes.add((changing ? approach : octave, start + late, 0.4));
+            }
+          }
+        case _Style.calypso:
+          if (length == 3) {
+            notes
+              ..add((front, start, 1.4))
+              ..add((answer, start + 1.5, 1.4));
+          } else {
+            notes.add((front, start, 0.9));
+            if (lastGroup && changing) {
+              notes.add((approach, start + length - 0.5, 0.45));
+            }
+          }
+        case _Style.bossa || _Style.walking:
+          if (length == 3) {
+            notes
+              ..add((front, start, 1.9))
+              ..add((
+                lastGroup && changing ? approach : answer,
+                start + 2,
+                0.9,
+              ));
+          } else {
+            notes
+              ..add((front, start, 1.4))
+              ..add((
+                lastGroup && changing ? approach : answer,
+                start + 1.5,
+                0.45,
+              ));
+          }
+      }
+    }
+    return notes;
+  }
+
   List<BassNote> playGrooveChord(
     Chord chord,
     Chord next,
@@ -450,9 +543,30 @@ class _Bassist {
     final nextRoot = _nearest(next.bass, fifth);
     final approach = _approachNote(nextRoot, fifth);
 
+    // A bar of three, five or seven with one chord in it: played as its
+    // groups, with the drum (see grouped_grooves.dart).
+    final grouped =
+        beatInBar == 0 &&
+            beats == beatsPerBar &&
+            const {3, 5, 7}.contains(beatsPerBar)
+        ? _inGroups(
+            style,
+            beatsPerBar,
+            bar: bar,
+            root: root,
+            fifth: fifth,
+            octave: octave,
+            third: thirdUp,
+            approach: approach,
+            changing: next.bass != chord.bass && canAnticipate,
+          )
+        : null;
+
     // (weight, figure): each figure is (pitch, beat, length) notes.
     final figures = <(int, List<(int, double, double)>)>[
-      if (style == _Style.calypso) ...[
+      if (grouped != null)
+        (1, grouped)
+      else if (style == _Style.calypso) ...[
         // The 3-3-2: 1, the "and" of 2 held over 3, then 4. Beat 3 is left
         // empty: that's what makes it lift rather than oom-pah.
         if (beats >= 3 && beatsPerBar == 3) ...[
@@ -695,6 +809,26 @@ class _Bassist {
   ) {
     final fifth = _nearest((root + t.fifth) % 12, first);
     final approach = _approachNote(_nearest(next.bass, fifth), fifth);
+    // A chord lasting five or seven beats is a bar of five or seven, and
+    // a two-feel there is a note at the front of each group: half notes
+    // stopped at beat 3, and the bar went quiet for its last group or two.
+    if (beats >= 5) {
+      final starts = groupStarts(beats);
+      final lengths = meterGroups(beats);
+      final last = starts.length - 1;
+      return [
+        for (var g = 0; g < starts.length; g++)
+          _note(
+            g == 0 ? first : (g.isOdd ? fifth : first),
+            starts[g].toDouble(),
+            (g == last ? lengths[g] - 1 : lengths[g]) - 0.1,
+            accent: g == 0,
+          ),
+        // Into the next chord on the last beat, as the two-feel in four
+        // does on 4.
+        _note(approach, beats - 1.0, 0.9),
+      ];
+    }
     final options = <List<BassNote> Function()>[
       if (beats >= 4) ...[
         () => [_note(first, 0, 1.9, accent: true), _note(fifth, 2, 1.9)],

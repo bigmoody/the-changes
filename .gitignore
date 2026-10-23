@@ -52,3 +52,4 @@ ear_captures/
 
 # The Beat This! model for debug builds, made by tool/beat_this/convert.py: never committed.
 /ios/Models/
+meter-demos/

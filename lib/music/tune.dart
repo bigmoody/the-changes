@@ -174,15 +174,14 @@ enum Feel {
   /// a calypso counted in six eight came out as half a 3-3-2 with its
   /// off-beats dragged onto triplets.
   ///
-  /// A bar of three is played as itself too, but for the street beat:
-  /// the 3-3-2 becomes the 3+3 a calypso in three is, the bossa's clave
-  /// still turns over two bars, and a funk backbeat lands on 2 and 3.
-  /// Played in its place, swing made every groove on a waltz-time tune
-  /// the same groove.
+  /// Three, five and seven are played as themselves too: the band counts
+  /// them in groups of two and three and plays each groove's own cell in
+  /// each (see grouped_grooves.dart), as players do in odd meters. Swing
+  /// played in their place made every groove on a waltz-time tune the
+  /// same groove.
   bool suits(Meter meter) =>
       !_isAFigure ||
-      (!meter.compound &&
-          (meter.pulses == 4 || (meter.pulses == 3 && this != secondLine)));
+      (!meter.compound && const {3, 4, 5, 7}.contains(meter.pulses));
 
   /// Whether what makes this groove itself is a figure that takes a bar
   /// of four to play.

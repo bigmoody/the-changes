@@ -81,24 +81,17 @@ void main() {
       }
     });
 
-    test('and it is a different bar from swing counted in three', () {
-      // Swing in three skips after every backbeat, so it carries the
-      // "and" of 3 in every bar. The waltz reaches past the bar now and
-      // then, which is where its other syncopations live, but it is the
-      // exception there rather than the pattern.
-      var waltz = 0;
-      var swing = 0;
-      for (var i = 0; i < 64; i++) {
-        bool skips(Feel feel) => bar(
-          feel,
-          bar: i,
-          seed: i,
-        ).any((hit) => hit.drum == Drum.ride && hit.beat == 2.5);
-        if (skips(Feel.jazzWaltz)) waltz++;
-        if (skips(Feel.swing)) swing++;
+    test('and swing counted in three is played as one', () {
+      // Swing in three used to skip after every backbeat, carrying the
+      // "and" of 3 into every bar: a bar of four cut short, not a waltz.
+      // A jazz drummer asked to swing in three plays a jazz waltz.
+      for (var i = 0; i < 16; i++) {
+        String played(Feel feel) => [
+          for (final hit in bar(feel, bar: i, seed: i))
+            '${hit.drum.name}@${hit.beat}',
+        ].join(' ');
+        expect(played(Feel.swing), played(Feel.jazzWaltz), reason: 'bar $i');
       }
-      expect(swing, 64);
-      expect(waltz, lessThan(32));
     });
 
     test('the hi-hat closes under 2 and 3', () {

@@ -18,6 +18,7 @@ import 'dart:math' as math;
 import '../music/chord.dart';
 import '../music/voicings.dart';
 import '../music/comping.dart';
+import '../music/meter.dart';
 import '../music/tune.dart';
 
 // Where the voicings live now. Re-exported so the guitarist and the
@@ -189,9 +190,9 @@ class Comper {
     final pattern = held
         ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
         : pompe
-        ? _pompePattern(beats, beatInBar)
+        ? _pompePattern(beats, beatInBar, beatsPerBar)
         : calypso
-        ? _calypsoPattern(beats, beatInBar)
+        ? _calypsoPattern(beats, beatInBar, beatsPerBar)
         : _pickPattern(
             beats,
             feel,
@@ -272,16 +273,48 @@ class Comper {
   /// four short chords with 2 and 4 carrying. There are no grace notes
   /// here: an upstroke on the bass strings is a thing a pick does and
   /// not a thing a piano can do.
-  _Pattern _pompePattern(int beats, double beatInBar) => [
-    for (var beat = 0.0; beat < beats; beat++)
-      if ((beatInBar + beat) % 2 == 1)
-        (beat, 0.3, 0.85)
-      else
-        (beat, 0.22, 0.62),
-  ];
+  ///
+  /// The beats that carry are the ones that are not the front of a group:
+  /// 2 and 4 in four, 2 and 3 in a waltz (the valse musette's pompe, the
+  /// bass alone on 1), 2, 3 and 5 in five.
+  _Pattern _pompePattern(int beats, double beatInBar, int beatsPerBar) {
+    final fronts = beatsPerBar == 4
+        ? const {0, 2}
+        : groupStarts(beatsPerBar).toSet();
+    return [
+      for (var beat = 0.0; beat < beats; beat++)
+        if (!fronts.contains(((beatInBar + beat) % beatsPerBar).round()))
+          (beat, 0.3, 0.85)
+        else
+          (beat, 0.22, 0.62),
+    ];
+  }
 
-  _Pattern _calypsoPattern(int beats, double beatInBar) {
-    if (beatInBar == 0 || _strum == null) {
+  /// The strum for a bar of three, five or seven: in each group of three
+  /// the 3+3 (1 and the "and" of 2, held), in each group of two the "2"
+  /// of the 3-3-2, a chord on its front, chopped on its second beat now
+  /// and then. The same points the bass and the kick are on.
+  _Pattern _groupedStrum(int beatsPerBar) {
+    final chop = random.nextDouble() < 0.4;
+    return [
+      for (final (g, length) in meterGroups(beatsPerBar).indexed)
+        ...switch (length) {
+          3 => [
+            (groupStarts(beatsPerBar)[g] + 0.0, 1.3, 0.85),
+            (groupStarts(beatsPerBar)[g] + 1.5, 1.3, 0.95),
+          ],
+          _ => [
+            (groupStarts(beatsPerBar)[g] + 0.0, chop ? 0.35 : 0.9, 0.8),
+            if (chop) (groupStarts(beatsPerBar)[g] + 1.0, 0.3, 0.55),
+          ],
+        },
+    ];
+  }
+
+  _Pattern _calypsoPattern(int beats, double beatInBar, int beatsPerBar) {
+    if (beatsPerBar != 4 && (beatInBar == 0 || _strum == null)) {
+      _strum = _groupedStrum(beatsPerBar);
+    } else if (beatInBar == 0 || _strum == null) {
       final weights = [for (final (w, _) in _calypsoStrums) w.toDouble()];
       var roll = random.nextDouble() * weights.fold(0.0, (a, b) => a + b);
       var chosen = 0;
@@ -369,7 +402,11 @@ class Comper {
     final halfBar = beats * 2 >= beatsPerBar;
     // Where the figures that move with the bar land.
     final last = (beatsPerBar - 1).toDouble();
-    final half = (beatsPerBar ~/ 2).toDouble();
+    // The second half of a bar of five or seven is its last group, not
+    // its middle beat (see [meterGroups]).
+    final half = beatsPerBar == 5 || beatsPerBar == 7
+        ? groupStarts(beatsPerBar).last.toDouble()
+        : (beatsPerBar ~/ 2).toDouble();
 
     /// Whether every strike of a figure falls inside the bar, so a
     /// short bar is never given a figure that hangs off the end of it.

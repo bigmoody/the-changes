@@ -27,6 +27,7 @@
 
 import 'dart:math' as math;
 
+import 'grouped_grooves.dart';
 import '../music/swing.dart';
 import '../music/tune.dart';
 
@@ -138,6 +139,22 @@ List<DrumHit> drumBar({
   // Figures written for a four-beat bar lose whatever falls past the end
   // of a shorter one (a waltz keeps the first two beats of the clave).
   for (final hit in switch (feel) {
+    _ when _playedInGroups(feel, beatsPerBar, compound: compound) =>
+      groupedDrumBar(
+        feel: feel,
+        bar: bar,
+        beatsPerBar: beatsPerBar,
+        random: random,
+        brushes: brushes,
+      ),
+    // Swing in three is a jazz waltz, which has its own pattern.
+    Feel.swing when beatsPerBar == 3 && !compound && brushes =>
+      _jazzWaltzBrushBar(bar, beatsPerBar, random),
+    Feel.swing when beatsPerBar == 3 && !compound => _jazzWaltzBar(
+      bar,
+      beatsPerBar,
+      random,
+    ),
     Feel.swing when brushes => _swingBrushBar(
       bar,
       beatsPerBar,
@@ -164,6 +181,17 @@ List<DrumHit> drumBar({
     if (hit.beat < beatsPerBar)
       hit.at(keepsTime(hit.drum) ? hit.beat : leaned(hit.beat, feel, swing)),
 ];
+
+/// Whether a bar of [feel] is played as its groups of two and three (see
+/// grouped_grooves.dart): in three, five and seven, for every groove that
+/// has a drummer and is not written beat by beat already. A jazz waltz in
+/// three is the one groove written for three, and keeps its own.
+bool _playedInGroups(Feel feel, int beatsPerBar, {required bool compound}) =>
+    !compound &&
+    (beatsPerBar == 3 || beatsPerBar == 5 || beatsPerBar == 7) &&
+    feel != Feel.afroSix &&
+    feel != Feel.gypsy &&
+    !(beatsPerBar == 3 && (feel == Feel.jazzWaltz || feel == Feel.swing));
 
 /// Whether this voice holds the pulse rather than leaning with it.
 ///

@@ -17,6 +17,8 @@
 // lesson: the pianist and the guitarist pick from this list every bar of
 // every tune in the app.
 
+import 'meter.dart';
+
 /// One strike of the chord: which beat of the bar, how long it rings, and
 /// how hard relative to the chord's own level.
 typedef CompStrike = (double beat, double length, double weight);
@@ -131,6 +133,23 @@ enum CompFigure {
           return [(1, 0.6, 0.9), (2, 0.8, 0.85)];
         case offbeat:
           return [(and, 0.8, 0.95), (2 + and, 0.5, 0.8)];
+        default:
+      }
+    }
+    // Five and seven are counted in groups (see [meterGroups]), and the
+    // figures that split the bar split it where the groups do: Twice a
+    // Bar on the front of the first group and of the last (in five, 1 and
+    // 4, Take Five's two halves), Off the Beats on their "and"s, Three
+    // Times reaching the last group rather than the bar's last beat.
+    if (beatsPerBar == 5 || beatsPerBar == 7) {
+      final back = groupStarts(beatsPerBar).last.toDouble();
+      switch (this) {
+        case twice:
+          return [(0, 0.6, 1), (back, 1.0, 0.85)];
+        case offbeat:
+          return [(and, 0.7, 0.95), (back + and, 1.1, 0.85)];
+        case three:
+          return [(0, 0.5, 1), (1 + and, 0.5, 0.8), (back, 0.9, 0.9)];
         default:
       }
     }

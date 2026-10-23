@@ -323,14 +323,12 @@ void main() {
       ]) {
         expect(feel.suits(Meter.four), isTrue, reason: feel.name);
         expect(feel.suits(const Meter(6, 8)), isFalse, reason: feel.name);
-        expect(feel.suits(const Meter(5, 4)), isFalse, reason: feel.name);
-        // Three is played as itself, but for the street beat: swung in
-        // its place, every groove on a waltz-time tune was the same one.
-        expect(
-          feel.suits(const Meter(3, 4)),
-          feel != Feel.secondLine,
-          reason: feel.name,
-        );
+        // Three, five and seven are played as themselves, in groups of
+        // two and three (grouped_grooves.dart): swung in their place,
+        // every groove on a waltz-time tune was the same one.
+        for (final pulses in [3, 5, 7]) {
+          expect(feel.suits(Meter(pulses, 4)), isTrue, reason: feel.name);
+        }
       }
       // The ones written beat by beat fit any bar there is.
       for (final feel in [
@@ -350,7 +348,7 @@ void main() {
       'so the band hands over to one that does, and the whole band goes',
       () {
         expect(Feel.calypso.standIn(const Meter(6, 8)), Feel.afroSix);
-        expect(Feel.calypso.standIn(const Meter(5, 4)), Feel.swing);
+        expect(Feel.calypso.standIn(const Meter(5, 4)), Feel.calypso);
         expect(Feel.swing.standIn(const Meter(6, 8)), Feel.swing);
         final calypso = BandStyle.of(Feel.calypso);
         final inSix = calypso.inMeter(const Meter(6, 8));
@@ -421,7 +419,9 @@ void main() {
         (2.0, 0.8, 0.85),
       ]);
       expect(CompFigure.twice.strikes(0.5).last.$1, 2.5, reason: 'in four');
-      expect(CompFigure.three.strikes(0.5, beatsPerBar: 5).last.$1, 4.0);
+      // In five, three and two: Three Times reaches the front of the
+      // two, beat 4, rather than the bar's last beat.
+      expect(CompFigure.three.strikes(0.5, beatsPerBar: 5).last.$1, 3.0);
       expect(CompFigure.held.strikes(0.5, beatsPerBar: 3).single.$2, 2.2);
       expect(CompFigure.everyBeat.strikes(0.5, beatsPerBar: 7), hasLength(7));
     });

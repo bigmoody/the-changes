@@ -18,8 +18,8 @@ void main() {
     for (final feel in [Feel.bossa, Feel.samba, Feel.funk, Feel.calypso]) {
       expect(BandStyle.of(feel).inMeter(three).drums, feel, reason: feel.name);
     }
-    // The street beat has no bar of three, and still hands over.
-    expect(BandStyle.of(Feel.secondLine).inMeter(three).drums, Feel.swing);
+    // Nor the street beat, built from its own cells (grouped_grooves.dart).
+    expect(BandStyle.of(Feel.secondLine).inMeter(three).drums, Feel.secondLine);
   });
 
   test('a calypso bass in three plays each bar its own chord', () {

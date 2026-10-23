@@ -131,3 +131,35 @@ class Meter {
   @override
   String toString() => label;
 }
+
+/// How a bar of [beatsPerBar] simple beats is felt: groups of two and
+/// three, the way players count odd meters. Five is three and two (Take
+/// Five), seven is two, two and three (Unsquare Dance, and the four and
+/// three of a 7/4 funk vamp), three is one group of three. Every style
+/// plays its own cell in each group, so a groove in five is a groove and
+/// not a bar of four with a beat stuck on.
+///
+/// Four is two and two, though the band's grooves in four are written
+/// whole and do not go through this.
+List<int> meterGroups(int beatsPerBar) => switch (beatsPerBar) {
+  <= 0 => const [],
+  1 => const [1],
+  2 => const [2],
+  3 => const [3],
+  4 => const [2, 2],
+  5 => const [3, 2],
+  7 => const [2, 2, 3],
+  _ => [
+    for (var i = 0; i < (beatsPerBar - (beatsPerBar.isOdd ? 3 : 0)) ~/ 2; i++)
+      2,
+    if (beatsPerBar.isOdd) 3,
+  ],
+};
+
+/// Where each of [meterGroups]' groups starts, in beats from the bar line.
+List<int> groupStarts(int beatsPerBar) {
+  var at = 0;
+  return [
+    for (final length in meterGroups(beatsPerBar)) (at += length) - length,
+  ];
+}
