@@ -771,7 +771,11 @@ class PracticeController extends ChangeNotifier {
   /// played if there is one. Those follow the player from tune to tune,
   /// and were left alone once for that reason; but a Reset at the top of
   /// the sheet that leaves brushes on is not a reset.
+  ///
+  /// The tempo too, back to the tune's own, if it was moved: a Reset that
+  /// leaves the band playing at a tempo somebody set is not one.
   Future<void> resetSheet() async {
+    if (tempoIsChosen) resetTempo();
     setStyle(null);
     setCountInBars(1);
     setArpeggios(false);

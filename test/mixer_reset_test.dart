@@ -37,7 +37,8 @@ void main() {
       ..setArpeggios(true)
       ..toggleMute(Instrument.bass)
       ..toggleSolo(Instrument.drums)
-      ..setVolume(Instrument.chords, 0.2);
+      ..setVolume(Instrument.chords, 0.2)
+      ..setTempo(tune.defaultTempo + 40);
     await settings.setDrumSound(DrumSound.brushes);
     await settings.setComping(Comping.guitar);
     await settings.setBassSound(BassSound.imported);
@@ -51,6 +52,7 @@ void main() {
     expect(controller.style.figure, isNull);
     expect(controller.swing, isNull, reason: 'back to following the tempo');
     expect(controller.countInBars, 1);
+    expect(controller.tempoIsChosen, isFalse, reason: 'the tempo too');
     expect(controller.arpeggios, isFalse);
     expect(controller.isMuted(Instrument.bass), isFalse);
     expect(controller.isSoloed(Instrument.drums), isFalse);
