@@ -117,7 +117,23 @@ enum CompFigure {
   /// the end. In four they are what they always were: the Charleston is
   /// 1 and the "and" of 2 wherever it is played, and what moves with the
   /// bar is the half way point and the last beat.
+  ///
+  /// A bar of three is the exception: halving it as a bar of four is
+  /// halved put Twice a Bar on 1 and the "and" of 2, which is the
+  /// Charleston, and Off the Beats on both "and"s of the first two beats,
+  /// so a waltz was comped in one place nearly every bar. In three,
+  /// Twice a Bar is the waltz comp, 2 and 3, with the bass on 1; Off the
+  /// Beats is the "and" of 1 and the "and" of 3.
   List<CompStrike> strikes(double and, {int beatsPerBar = 4}) {
+    if (beatsPerBar == 3) {
+      switch (this) {
+        case twice:
+          return [(1, 0.6, 0.9), (2, 0.8, 0.85)];
+        case offbeat:
+          return [(and, 0.8, 0.95), (2 + and, 0.5, 0.8)];
+        default:
+      }
+    }
     final last = (beatsPerBar - 1).toDouble();
     final half = (beatsPerBar ~/ 2).toDouble();
     return switch (this) {

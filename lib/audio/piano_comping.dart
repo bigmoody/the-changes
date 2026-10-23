@@ -420,7 +420,15 @@ class Comper {
           // different names and the same landing, so it never noticed.
           ('remind', _held.isOdd ? 2 : 4, [(1 + and, 1.1, 0.75)]),
           ('lift', 3, [(last + and, 0.9, 0.8)]),
-          ('inside', 3, [(half + and, 1.0, 0.8)]),
+          // In three, half way is the "and" of 2, where the reminder
+          // already lands: the waltz's 2 and 3 instead.
+          (
+            'inside',
+            3,
+            beatsPerBar == 3
+                ? [(1.0, 0.5, 0.7), (2.0, 0.7, 0.75)]
+                : [(half + and, 1.0, 0.8)],
+          ),
           ('on four', 2, [(last, 0.9, 0.75)]),
           ('echo', 3, [(1 + and, 0.7, 0.75), (last, 0.6, 0.65)]),
           ('answer', 3, [(half, 0.5, 0.7), (last + and, 0.9, 0.8)]),

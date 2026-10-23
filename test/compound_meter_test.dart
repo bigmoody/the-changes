@@ -407,7 +407,12 @@ void main() {
         (0.0, 0.6, 1.0),
         (1.5, 1.4, 0.9),
       ]);
-      expect(CompFigure.twice.strikes(0.5, beatsPerBar: 3).last.$1, 1.5);
+      // Except Twice a Bar in three, which halved was the Charleston
+      // again: the waltz's 2 and 3 instead (see waltz_comping_test.dart).
+      expect(CompFigure.twice.strikes(0.5, beatsPerBar: 3), [
+        (1.0, 0.6, 0.9),
+        (2.0, 0.8, 0.85),
+      ]);
       expect(CompFigure.twice.strikes(0.5).last.$1, 2.5, reason: 'in four');
       expect(CompFigure.three.strikes(0.5, beatsPerBar: 5).last.$1, 4.0);
       expect(CompFigure.held.strikes(0.5, beatsPerBar: 3).single.$2, 2.2);
