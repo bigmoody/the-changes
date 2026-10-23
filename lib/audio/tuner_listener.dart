@@ -8,6 +8,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:record/record.dart';
 
 import 'pitch_detector.dart';
@@ -22,11 +23,20 @@ class TunerListener {
     this.everyMs = 80,
     this.smoothing = 5,
     this.lowestHz = 60,
-    this.silence = 0.008,
+    // A guitar's low E on an iPad's own microphone is quiet: the little
+    // microphone hardly hears 82 Hz. At 0.008 a recorded low E, rolled
+    // off below 150 Hz as a small microphone does and at a tenth of full
+    // level, was named in 3 to 5 windows of 22; at 0.0005, 16 to 22.
+    // Noise alone named no note at either (see silence, above).
+    this.silence = 0.0005,
+    // Five periods of the lowest note, not three: a little steadier on a
+    // low string (17 to 22 windows of 22, from 16 to 21), and 85 ms.
+    int periods = 5,
   }) : _detector = PitchDetector(
          sampleRate: sampleRate,
          lowestHz: lowestHz,
          silence: silence,
+         periods: periods,
        );
 
   /// Listening to one player while a band plays underneath them.
@@ -50,6 +60,8 @@ class TunerListener {
     lowestHz: 110,
     // Only a guard against a dead input: quiet playing must get through.
     silence: 0.0002,
+    // Short, for eighth notes.
+    periods: 3,
   );
 
   /// The lowest note it will look for.
@@ -88,6 +100,7 @@ class TunerListener {
   var _filled = 0;
   final _clock = Stopwatch();
   final _recent = <double>[];
+  var _lastLevel = 0.0;
 
   /// Asks for the microphone if need be. False if the player said no.
   Future<bool> hasPermission() {
@@ -137,6 +150,22 @@ class TunerListener {
     });
   }
 
+  /// [samples] as if they had just come from the microphone, read as a
+  /// reading would be: for a test to play a recording to.
+  @visibleForTesting
+  Heard playToIt(Float32List samples) {
+    final bytes = ByteData(samples.length * 2);
+    for (var i = 0; i < samples.length; i++) {
+      bytes.setInt16(
+        i * 2,
+        (samples[i].clamp(-1.0, 1.0) * 32767).round(),
+        Endian.little,
+      );
+    }
+    _add(bytes.buffer.asUint8List());
+    return _filled < _window.length ? null : _read();
+  }
+
   void _add(Uint8List bytes) {
     final data = ByteData.sublistView(bytes);
     final count = bytes.length ~/ 2;
@@ -164,13 +193,33 @@ class TunerListener {
     final heard = _detector.detect(_window);
     if (heard == null || heard.clarity < minClarity) {
       _recent.clear();
+      _lastLevel = level;
       return null;
     }
+    var hz = heard.hz;
+    // A string dying away can leave its third or second harmonic louder
+    // than the note: the recorded low E read as the B above its octave
+    // for the last half second. Twice or three times the note just heard,
+    // to a third of a semitone, getting no louder, is that note still. A
+    // string plucked is louder at once: the B string after the low E is
+    // three times it, and is the B.
+    final dying = level <= _lastLevel * 1.2;
+    _lastLevel = level;
+    if (_recent.isNotEmpty && dying) {
+      final note = _recent.last;
+      for (final k in [2, 3]) {
+        final cents = 1200 * math.log(hz / (note * k)) / math.ln2;
+        if (cents.abs() < 33) {
+          hz /= k;
+          break;
+        }
+      }
+    }
     // A new note (more than a semitone away): start averaging afresh.
-    if (_recent.isNotEmpty && (heard.hz / _recent.last - 1).abs() > 0.06) {
+    if (_recent.isNotEmpty && (hz / _recent.last - 1).abs() > 0.06) {
       _recent.clear();
     }
-    _recent.add(heard.hz);
+    _recent.add(hz);
     if (_recent.length > smoothing) _recent.removeAt(0);
     final sorted = [..._recent]..sort();
     return (hz: sorted[sorted.length ~/ 2], clarity: heard.clarity);

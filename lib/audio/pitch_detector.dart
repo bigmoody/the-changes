@@ -17,6 +17,7 @@ class PitchDetector {
     this.highestHz = 1200,
     this.threshold = 0.15,
     this.silence = 0.008,
+    this.periods = 3,
   });
 
   final int sampleRate;
@@ -30,11 +31,15 @@ class PitchDetector {
   /// Quieter than this (RMS, where full scale is 1) counts as silence.
   final double silence;
 
-  /// How many samples [detect] wants: enough for two periods of the lowest
-  /// note, plus the comparison window.
+  /// How many periods of the lowest note [detect] wants. More is steadier
+  /// on a low string a small microphone hardly hears, and slower to follow.
+  final int periods;
+
+  /// How many samples [detect] wants: [periods] periods of the lowest
+  /// note, one of them the longest shift tried.
   int get windowSize {
     final longest = (sampleRate / lowestHz).ceil();
-    return longest * 3;
+    return longest * periods;
   }
 
   /// The pitch in [samples] (−1 … 1), with how clearly it's a single note

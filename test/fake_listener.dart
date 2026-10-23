@@ -1,6 +1,8 @@
 // A microphone that hears whatever the test says, for the tuner and for
 // checking what you played.
 
+import 'dart:typed_data';
+
 import 'package:play_along/audio/tuner_listener.dart';
 
 class FakeListener implements TunerListener {
@@ -28,6 +30,10 @@ class FakeListener implements TunerListener {
 
   @override
   double level = 0;
+
+  /// Not for a fake: it hears what [hear] says.
+  @override
+  Heard playToIt(Float32List samples) => throw UnimplementedError();
 
   @override
   double get silence => 0.0002;
