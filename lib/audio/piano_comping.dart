@@ -19,6 +19,7 @@ import '../music/chord.dart';
 import '../music/voicings.dart';
 import '../music/comping.dart';
 import '../music/meter.dart';
+import '../music/swing.dart';
 import '../music/tune.dart';
 
 // Where the voicings live now. Re-exported so the guitarist and the
@@ -192,7 +193,7 @@ class Comper {
         : pompe
         ? _pompePattern(beats, beatInBar, beatsPerBar)
         : calypso
-        ? _calypsoPattern(beats, beatInBar, beatsPerBar)
+        ? _calypsoPattern(beats, beatInBar, beatsPerBar, swing)
         : _pickPattern(
             beats,
             feel,
@@ -311,7 +312,12 @@ class Comper {
     ];
   }
 
-  _Pattern _calypsoPattern(int beats, double beatInBar, int beatsPerBar) {
+  _Pattern _calypsoPattern(
+    int beats,
+    double beatInBar,
+    int beatsPerBar,
+    double swing,
+  ) {
     if (beatsPerBar != 4 && (beatInBar == 0 || _strum == null)) {
       _strum = _groupedStrum(beatsPerBar);
     } else if (beatInBar == 0 || _strum == null) {
@@ -326,8 +332,11 @@ class Comper {
     }
     final end = beatInBar + beats;
     return [
-      for (final (beat, length, velocity) in _strum!)
-        if (beat >= beatInBar && beat < end)
+      for (final (written, length, velocity) in _strum!)
+        // The "and"s leaned with the band, so a strum in twelve eight
+        // lands on the last triplet with the bell and not between.
+        if (swungBeat(written, swing) case final beat
+            when beat >= beatInBar && beat < end)
           (
             beat - beatInBar,
             // Never ringing into the next chord.

@@ -24,6 +24,7 @@ import 'grouped_grooves.dart' show groupKicks;
 import '../music/bass_moves.dart';
 import '../music/chord.dart';
 import '../music/meter.dart';
+import '../music/swing.dart';
 import '../music/tune.dart' show Feel;
 
 /// One bass note. [beat] counts from the start of the line.
@@ -43,10 +44,11 @@ List<BassNote> walkingBassLine(
   required double swing,
   int beatsPerBar = 4,
   int? startPitch,
+  bool compound = false,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch, swing: swing),
+  _Bassist(random, startPitch, swing: swing, compound: compound),
   _Style.walking,
   beatsPerBar,
 );
@@ -60,10 +62,17 @@ List<BassNote> twoFeelBassLine(
   required double swing,
   int beatsPerBar = 4,
   int? startPitch,
+  bool compound = false,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch, swing: swing, alwaysTwoFeel: true),
+  _Bassist(
+    random,
+    startPitch,
+    swing: swing,
+    alwaysTwoFeel: true,
+    compound: compound,
+  ),
   _Style.walking,
   beatsPerBar,
 );
@@ -78,10 +87,11 @@ List<BassNote> bossaBassLine(
   required double swing,
   int beatsPerBar = 4,
   int? startPitch,
+  bool compound = false,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch, swing: swing),
+  _Bassist(random, startPitch, swing: swing, compound: compound),
   _Style.bossa,
   beatsPerBar,
 );
@@ -135,10 +145,11 @@ List<BassNote> funkBassLine(
   required double swing,
   int beatsPerBar = 4,
   int? startPitch,
+  bool compound = false,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch, swing: swing),
+  _Bassist(random, startPitch, swing: swing, compound: compound),
   _Style.funk,
   beatsPerBar,
 );
@@ -152,10 +163,11 @@ List<BassNote> calypsoBassLine(
   required double swing,
   int beatsPerBar = 4,
   int? startPitch,
+  bool compound = false,
 }) => _play(
   chords,
   choruses,
-  _Bassist(random, startPitch, swing: swing),
+  _Bassist(random, startPitch, swing: swing, compound: compound),
   _Style.calypso,
   beatsPerBar,
 );
@@ -223,6 +235,7 @@ class _Bassist {
     int? startPitch, {
     required this.swing,
     this.alwaysTwoFeel = false,
+    this.compound = false,
   }) : previous = startPitch ?? 38 {
     _newPhrase();
   }
@@ -232,6 +245,10 @@ class _Bassist {
   /// Where the off-beat eighth falls inside the beat, so the ghost notes
   /// and the pushes land with the ride rather than beside it.
   final double swing;
+
+  /// Whether the pulse divides in three (six eight, twelve eight), where
+  /// every groove's "and" is the last triplet, funk's included.
+  final bool compound;
 
   /// Stay in two-feel rather than drifting in and out of it.
   final bool alwaysTwoFeel;
@@ -729,7 +746,14 @@ class _Bassist {
         if (_inRange(pitch))
           (
             pitch: pitch,
-            beat: beat == 0 ? 0.0 : beat + (random.nextDouble() - 0.5) * 0.015,
+            // In six eight and twelve eight the "and" is the last
+            // triplet, and a line on the half way point of the pulse was
+            // between the drummer's notes. In four the groove lines keep
+            // their eighths even, as they always have.
+            beat: beat == 0
+                ? 0.0
+                : (compound ? swungBeat(beat, swing) : beat) +
+                      (random.nextDouble() - 0.5) * 0.015,
             length: length * (0.9 + random.nextDouble() * 0.08),
             velocity:
                 ((beat % 1 == 0 ? 0.85 : 0.68) + random.nextDouble() * 0.15) *

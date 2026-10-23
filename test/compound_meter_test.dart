@@ -176,7 +176,13 @@ void main() {
         swing: tripletSwing,
         compound: true,
       ).where((hit) => hit.drum == Drum.ride);
-      expect(hits, hasLength(9), reason: 'four beats, four skips, one tail');
+      // The gospel twelve eight (compoundDrumBar): the ride on the pulse
+      // and its last triplet, four pulses.
+      expect(hits, hasLength(8));
+      expect(hits.map((hit) => (hit.beat * 3).round() % 3).toSet(), {
+        0,
+        2,
+      }, reason: 'on the pulse and the last triplet, nowhere else');
     });
 
     test('a swing somebody has set by hand is still theirs', () {
@@ -313,7 +319,9 @@ void main() {
   group('a groove that does not fit the bar', () {
     test('a bar-length figure is not cut to a bar of another length', () {
       // What made a calypso counted in six eight sound wrong: half a
-      // 3-3-2 with its off-beats dragged onto triplets.
+      // 3-3-2 with its off-beats dragged onto triplets. Six eight and
+      // twelve eight have their own patterns now (compoundDrumBar); six
+      // eight counted in six is the one bar still handed over.
       for (final feel in [
         Feel.calypso,
         Feel.bossa,
@@ -322,7 +330,13 @@ void main() {
         Feel.secondLine,
       ]) {
         expect(feel.suits(Meter.four), isTrue, reason: feel.name);
-        expect(feel.suits(const Meter(6, 8)), isFalse, reason: feel.name);
+        expect(feel.suits(const Meter(6, 8)), isTrue, reason: feel.name);
+        expect(feel.suits(const Meter(12, 8)), isTrue, reason: feel.name);
+        expect(
+          feel.suits(const Meter(6, 8, countedIn: 6)),
+          isFalse,
+          reason: feel.name,
+        );
         // Three, five and seven are played as themselves, in groups of
         // two and three (grouped_grooves.dart): swung in their place,
         // every groove on a waltz-time tune was the same one.
@@ -347,16 +361,17 @@ void main() {
     test(
       'so the band hands over to one that does, and the whole band goes',
       () {
-        expect(Feel.calypso.standIn(const Meter(6, 8)), Feel.afroSix);
+        const inSixes = Meter(6, 8, countedIn: 6);
+        expect(Feel.calypso.standIn(const Meter(6, 8)), Feel.calypso);
         expect(Feel.calypso.standIn(const Meter(5, 4)), Feel.calypso);
-        expect(Feel.swing.standIn(const Meter(6, 8)), Feel.swing);
+        expect(Feel.calypso.standIn(inSixes), Feel.swing);
         final calypso = BandStyle.of(Feel.calypso);
-        final inSix = calypso.inMeter(const Meter(6, 8));
-        expect(inSix.drums, Feel.afroSix);
+        final inSix = calypso.inMeter(inSixes);
+        expect(inSix.drums, Feel.swing);
         expect(
           inSix.bass,
-          BandStyle.of(Feel.afroSix).bass,
-          reason: 'a calypso bass under a bell is two grooves at once',
+          BandStyle.of(Feel.swing).bass,
+          reason: 'a calypso bass under another groove is two at once',
         );
         expect(calypso.inMeter(Meter.four), calypso);
       },
@@ -365,8 +380,9 @@ void main() {
     test('and what is playing is said, not swapped quietly', () {
       // The sheet reads it off the same rule the band plays by, so the
       // two cannot come to disagree. This is that rule.
-      expect(Feel.calypso.suits(const Meter(6, 8)), isFalse);
-      expect(Feel.calypso.standIn(const Meter(6, 8)).label, 'Afro 6/8');
+      const inSixes = Meter(6, 8, countedIn: 6);
+      expect(Feel.calypso.suits(inSixes), isFalse);
+      expect(Feel.calypso.standIn(inSixes).label, 'Swing');
     });
   });
 

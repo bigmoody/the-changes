@@ -39,17 +39,57 @@ Future<void> main(List<String> args) async {
     Feel.bossa,
     Feel.calypso,
   };
-  for (final beats in [3, 5, 7]) {
-    for (final MapEntry(key: feel, value: tempo) in tempos.entries) {
+  // Tempos for six eight and twelve eight are the pulse's, a dotted
+  // quarter: slower numbers for the same music.
+  const compoundTempos = {
+    6: {
+      Feel.swing: 110,
+      Feel.ballad: 50,
+      Feel.shuffle: 72,
+      Feel.funk: 90,
+      Feel.bossa: 100,
+      Feel.samba: 100,
+      Feel.calypso: 110,
+      Feel.secondLine: 90,
+      Feel.afroSix: 100,
+    },
+    12: {
+      Feel.swing: 70,
+      Feel.ballad: 50,
+      Feel.shuffle: 60,
+      Feel.funk: 76,
+      Feel.bossa: 80,
+      Feel.samba: 80,
+      Feel.calypso: 86,
+      Feel.secondLine: 76,
+      Feel.afroSix: 80,
+    },
+  };
+  final which = args.length > 1 ? args[1] : 'all';
+  final meters = [
+    if (which != 'compound') ...[
+      const Meter(3, 4),
+      const Meter(5, 4),
+      const Meter(7, 4),
+    ],
+    if (which != 'odd') ...[const Meter(6, 8), const Meter(12, 8)],
+  ];
+  for (final meter in meters) {
+    final beats = meter.pulses;
+    final feels = meter.compound ? compoundTempos[meter.beats]! : tempos;
+    for (final MapEntry(key: feel, value: tempo) in feels.entries) {
       // Swing in three is the jazz waltz, and in five and seven the
       // waltz is the swing drummer's cells: one file each, not two the
       // same.
-      if (feel == (beats == 3 ? Feel.swing : Feel.jazzWaltz)) continue;
+      if (!meter.compound &&
+          feel == (beats == 3 ? Feel.swing : Feel.jazzWaltz)) {
+        continue;
+      }
       final tune = Tune.fromChart(
-        title: '${feel.label} in $beats',
+        title: '${feel.label} in ${meter.beats}',
         key: 'C',
         feel: feel,
-        meter: Meter(beats, 4),
+        meter: meter,
         defaultTempo: tempo,
         chart: '| Dm7 | G7 | CΔ7 | A7 | Dm7 | G7 | CΔ7 | CΔ7 |',
       );
@@ -87,7 +127,7 @@ Future<void> main(List<String> args) async {
           }
         }
         final name =
-            '$beats-4 ${feel.label}${sound == DrumSound.brushes ? ' (brushes)' : ''}'
+            '${meter.beats}-${meter.unit} ${feel.label}${sound == DrumSound.brushes ? ' (brushes)' : ''}'
                 .replaceAll('/', '-');
         File('${out.path}/$name.wav').writeAsBytesSync(_wav(mix, 44100));
         stdout.writeln('wrote $name');

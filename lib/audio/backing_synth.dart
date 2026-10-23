@@ -867,6 +867,7 @@ _Parts _renderParts(
       swing: swing,
       beatsPerBar: beatsPerBar,
       startPitch: state.bassPitch,
+      compound: tune.meter.compound,
     );
   } else {
     // The feel changes part-way through the batch, so the line is written a
@@ -881,6 +882,7 @@ _Parts _renderParts(
         swing: swing,
         beatsPerBar: beatsPerBar,
         startPitch: from,
+        compound: tune.meter.compound,
       );
       final shift = chorus * loop.lengthBeats;
       for (final note in pass) {

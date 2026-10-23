@@ -314,3 +314,196 @@ List<DrumHit> _cell(
   }
   return hits;
 }
+
+/// One bar of [feel] in six eight (two pulses) or twelve eight (four),
+/// where each pulse divides in three.
+///
+/// These are not the grooves of four with their off-beats moved onto
+/// the triplet, and not the Afro bell standing in for all of them, which
+/// is what they were. Each is what a band plays in that time:
+///
+/// - shuffle: the slow blues, triplets on the ride, the backbeat on 2
+///   and 4, the kick on 1 and 3 picked up from the last triplet before;
+/// - ballad: the gospel 12/8, the ride on the pulse and its last
+///   triplet, a rim on the backbeat (with brushes, a circle a pulse);
+/// - funk: the 12/8 groove, triplets on the hat, the backbeat cracked,
+///   the kick riff on its triplet;
+/// - second line: New Orleans in triplets, the snare running in ghosts
+///   with the backbeat on top, the kick on 1 and 3;
+/// - bossa and samba: Latin six eight, the shaker in triplets, the
+///   surdo on the pulse, the six eight clave on the rim;
+/// - calypso: the bell in triplets, accented on the same clave.
+///
+/// Swing and the jazz waltz play the jazz six eight (the ride's skip on
+/// every pulse) and the Afro groove its bell, as before.
+///
+/// Every place is written exactly, a third or two thirds into the pulse,
+/// so nothing here is leaned again.
+List<DrumHit> compoundDrumBar({
+  required Feel feel,
+  required int bar,
+  required int pulses,
+  required math.Random random,
+  bool brushes = false,
+}) {
+  const third = 1 / 3;
+  const twoThirds = 2 / 3;
+  final hits = <DrumHit>[];
+  void hit(Drum drum, double beat, double velocity, {bool hard = false}) =>
+      hits.add(
+        DrumHit(
+          drum: drum,
+          beat: beat,
+          velocity: velocity * _human(random),
+          hard: hard,
+        ),
+      );
+  void swirl(double beat, double velocity) => hits.add(
+    DrumHit(
+      drum: Drum.swirl,
+      beat: beat,
+      velocity: velocity * _human(random),
+      beats: 1,
+    ),
+  );
+  // The backbeat: the second pulse in six, the second and fourth in
+  // twelve.
+  final backbeats = [for (var b = 1; b < pulses; b += 2) b.toDouble()];
+  // The six eight clave, five strokes across twelve eighths: a bar of
+  // twelve holds it, a bar of six its halves by turns.
+  const clave = [0.0, twoThirds, 1 + third, 2 + third, 3.0];
+  final rim = pulses >= 4
+      ? clave
+      : bar.isEven
+      ? clave.where((b) => b < 2).toList()
+      : [
+          for (final b in clave)
+            if (b >= 2) b - 2,
+        ];
+
+  switch (feel) {
+    case Feel.shuffle:
+      for (var b = 0; b < pulses; b++) {
+        hit(Drum.ride, b.toDouble(), 0.5);
+        hit(Drum.ride, b + third, 0.2);
+        hit(Drum.ride, b + twoThirds, 0.34);
+      }
+      for (final b in backbeats) {
+        hit(Drum.snare, b, 0.5, hard: true);
+        hit(Drum.hiHatPedal, b, 0.4, hard: true);
+      }
+      for (var b = 0; b < pulses; b += 2) {
+        hit(Drum.kick, b.toDouble(), b == 0 ? 0.5 : 0.42);
+        if (b > 0) hit(Drum.kick, b - third, 0.26);
+      }
+    case Feel.ballad:
+      for (var b = 0; b < pulses; b++) {
+        if (brushes) {
+          swirl(b.toDouble(), 0.2);
+        } else {
+          hit(Drum.ride, b.toDouble(), 0.36);
+          hit(Drum.ride, b + twoThirds, 0.22);
+        }
+      }
+      for (final b in backbeats) {
+        hit(brushes ? Drum.snare : Drum.crossStick, b, 0.32);
+        hit(Drum.hiHatPedal, b, 0.36, hard: true);
+      }
+      for (var b = 0; b < pulses; b += 2) {
+        hit(Drum.kick, b.toDouble(), 0.3);
+      }
+    case Feel.funk:
+      for (var b = 0; b < pulses; b++) {
+        hit(Drum.hiHatClosed, b.toDouble(), 0.62, hard: true);
+        hit(Drum.hiHatClosed, b + third, 0.3);
+        hit(Drum.hiHatClosed, b + twoThirds, 0.4);
+      }
+      for (final b in backbeats) {
+        hit(Drum.snare, b, 0.5, hard: true);
+      }
+      if (random.nextDouble() < 0.4) {
+        hit(Drum.snare, pulses - 1 + twoThirds, 0.13);
+      }
+      // The riff of four, its off-beats on the last triplet: what the
+      // funk bass plays too, leaned the same way.
+      for (final kick in funkKicksFor(bar)) {
+        final at = kick.floorToDouble() + (kick % 1 == 0.5 ? twoThirds : 0);
+        if (at < pulses && !backbeats.contains(at)) {
+          hit(Drum.kick, at, at == 0 ? 0.62 : 0.48);
+        }
+      }
+    case Feel.secondLine:
+      for (var b = 0; b < pulses; b++) {
+        for (final k in [0.0, third, twoThirds]) {
+          if (backbeats.contains(b + k)) continue;
+          hit(Drum.snare, b + k, k == 0 ? 0.22 : 0.15);
+        }
+      }
+      for (final b in backbeats) {
+        hit(Drum.snare, b, 0.6, hard: true);
+        hit(Drum.hiHatPedal, b, 0.32, hard: true);
+      }
+      for (var b = 0; b < pulses; b += 2) {
+        hit(Drum.kick, b.toDouble(), b == 0 ? 0.55 : 0.45);
+        hit(Drum.kick, b + 1 + twoThirds, 0.3);
+      }
+    case Feel.bossa || Feel.samba:
+      for (var b = 0; b < pulses; b++) {
+        if (brushes) {
+          swirl(b.toDouble(), b == 0 ? 0.22 : 0.18);
+        } else {
+          hit(Drum.hiHatClosed, b.toDouble(), 0.28);
+          hit(Drum.hiHatClosed, b + third, 0.14);
+          hit(Drum.hiHatClosed, b + twoThirds, 0.18);
+        }
+        final heavy = feel == Feel.samba ? b.isOdd : b == 0;
+        hit(Drum.kick, b.toDouble(), heavy ? 0.5 : 0.34);
+        if (feel == Feel.samba) {
+          hit(Drum.tomLow, b.toDouble(), heavy ? 0.7 : 0.3, hard: heavy);
+        }
+      }
+      for (final b in rim) {
+        hit(Drum.crossStick, b, feel == Feel.samba ? 0.5 : 0.42);
+      }
+    case Feel.calypso:
+      for (var b = 0; b < pulses; b++) {
+        for (final k in [0.0, third, twoThirds]) {
+          final accented = rim.contains(b + k);
+          if (brushes) {
+            if (k == 0) swirl(b.toDouble(), 0.2);
+            if (accented) hit(Drum.snare, b + k, 0.36);
+          } else {
+            hits.add(
+              DrumHit(
+                drum: Drum.cowbell,
+                beat: b + k,
+                velocity: (accented ? 0.34 : 0.13) * _human(random),
+                hard: accented,
+              ),
+            );
+          }
+        }
+        hit(Drum.kick, b.toDouble(), b == 0 ? 0.58 : 0.4);
+      }
+      for (final b in backbeats) {
+        hit(Drum.crossStick, b, brushes ? 0.42 : 0.5);
+        hit(Drum.hiHatPedal, b, 0.28);
+      }
+    case Feel.swing || Feel.jazzWaltz || Feel.afroSix || Feel.gypsy:
+      break;
+  }
+  // The end of the phrase: the last pulse's triplets played through.
+  if (bar % 8 == 7 && feel != Feel.ballad && random.nextDouble() < 0.5) {
+    final from = pulses - 1.0;
+    final latin =
+        feel == Feel.bossa || feel == Feel.samba || feel == Feel.calypso;
+    for (final (i, k) in [0.0, third, twoThirds].indexed) {
+      hit(
+        latin ? (i < 2 ? Drum.tomHigh : Drum.tomLow) : Drum.snare,
+        from + k,
+        0.45 + i * 0.07,
+      );
+    }
+  }
+  return hits;
+}

@@ -179,9 +179,13 @@ enum Feel {
   /// each (see grouped_grooves.dart), as players do in odd meters. Swing
   /// played in their place made every groove on a waltz-time tune the
   /// same groove.
+  ///
+  /// Six eight and twelve eight have a pattern of their own for each,
+  /// written in triplets (see compoundDrumBar).
   bool suits(Meter meter) =>
       !_isAFigure ||
-      (!meter.compound && const {3, 4, 5, 7}.contains(meter.pulses));
+      meter.compound ||
+      const {3, 4, 5, 7}.contains(meter.pulses);
 
   /// Whether what makes this groove itself is a figure that takes a bar
   /// of four to play.

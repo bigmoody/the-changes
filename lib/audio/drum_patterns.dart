@@ -135,52 +135,93 @@ List<DrumHit> drumBar({
   required double swing,
   bool brushes = false,
   bool compound = false,
-}) => [
-  // Figures written for a four-beat bar lose whatever falls past the end
-  // of a shorter one (a waltz keeps the first two beats of the clave).
-  for (final hit in switch (feel) {
-    _ when _playedInGroups(feel, beatsPerBar, compound: compound) =>
-      groupedDrumBar(
-        feel: feel,
-        bar: bar,
-        beatsPerBar: beatsPerBar,
-        random: random,
-        brushes: brushes,
-      ),
-    // Swing in three is a jazz waltz, which has its own pattern.
-    Feel.swing when beatsPerBar == 3 && !compound && brushes =>
-      _jazzWaltzBrushBar(bar, beatsPerBar, random),
-    Feel.swing when beatsPerBar == 3 && !compound => _jazzWaltzBar(
-      bar,
-      beatsPerBar,
-      random,
-    ),
-    Feel.swing when brushes => _swingBrushBar(
-      bar,
-      beatsPerBar,
-      random,
-      compound: compound,
-    ),
-    Feel.swing => _swingBar(bar, beatsPerBar, random, compound: compound),
-    Feel.bossa when brushes => _bossaBrushBar(bar, beatsPerBar, random),
-    Feel.bossa => _bossaBar(bar, beatsPerBar, random),
-    Feel.funk => _funkBar(bar, beatsPerBar, random),
-    Feel.calypso when brushes => _calypsoBrushBar(bar, beatsPerBar, random),
-    Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
-    Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
-    Feel.samba => _sambaBar(bar, beatsPerBar, random),
-    Feel.jazzWaltz when brushes => _jazzWaltzBrushBar(bar, beatsPerBar, random),
-    Feel.jazzWaltz => _jazzWaltzBar(bar, beatsPerBar, random),
-    Feel.ballad when brushes => _balladBrushBar(bar, beatsPerBar, random),
-    Feel.ballad => _balladBar(bar, beatsPerBar, random, compound: compound),
-    Feel.secondLine => _secondLineBar(bar, beatsPerBar, random),
-    Feel.afroSix => _afroSixBar(bar, beatsPerBar, random),
-    // No drummer at all: the guitar's chop is the time. See [Feel.gypsy].
-    Feel.gypsy => const <DrumHit>[],
-  })
-    if (hit.beat < beatsPerBar)
-      hit.at(keepsTime(hit.drum) ? hit.beat : leaned(hit.beat, feel, swing)),
-];
+}) => compound && _writtenInTriplets.contains(feel)
+    // Six eight and twelve eight, written in their own triplets and not
+    // leaned again (see grouped_grooves.dart).
+    ? [
+        for (final hit in compoundDrumBar(
+          feel: feel,
+          bar: bar,
+          pulses: beatsPerBar,
+          random: random,
+          brushes: brushes,
+        ))
+          if (hit.beat < beatsPerBar) hit,
+      ]
+    : [
+        // Figures written for a four-beat bar lose whatever falls past the end
+        // of a shorter one (a waltz keeps the first two beats of the clave).
+        for (final hit in switch (feel) {
+          _ when _playedInGroups(feel, beatsPerBar, compound: compound) =>
+            groupedDrumBar(
+              feel: feel,
+              bar: bar,
+              beatsPerBar: beatsPerBar,
+              random: random,
+              brushes: brushes,
+            ),
+          // Swing in three is a jazz waltz, which has its own pattern.
+          Feel.swing when beatsPerBar == 3 && !compound && brushes =>
+            _jazzWaltzBrushBar(bar, beatsPerBar, random),
+          Feel.swing when beatsPerBar == 3 && !compound => _jazzWaltzBar(
+            bar,
+            beatsPerBar,
+            random,
+          ),
+          Feel.swing when brushes => _swingBrushBar(
+            bar,
+            beatsPerBar,
+            random,
+            compound: compound,
+          ),
+          Feel.swing => _swingBar(bar, beatsPerBar, random, compound: compound),
+          Feel.bossa when brushes => _bossaBrushBar(bar, beatsPerBar, random),
+          Feel.bossa => _bossaBar(bar, beatsPerBar, random),
+          Feel.funk => _funkBar(bar, beatsPerBar, random),
+          Feel.calypso when brushes => _calypsoBrushBar(
+            bar,
+            beatsPerBar,
+            random,
+          ),
+          Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
+          Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
+          Feel.samba => _sambaBar(bar, beatsPerBar, random),
+          Feel.jazzWaltz when brushes => _jazzWaltzBrushBar(
+            bar,
+            beatsPerBar,
+            random,
+          ),
+          Feel.jazzWaltz => _jazzWaltzBar(bar, beatsPerBar, random),
+          Feel.ballad when brushes => _balladBrushBar(bar, beatsPerBar, random),
+          Feel.ballad => _balladBar(
+            bar,
+            beatsPerBar,
+            random,
+            compound: compound,
+          ),
+          Feel.secondLine => _secondLineBar(bar, beatsPerBar, random),
+          Feel.afroSix => _afroSixBar(bar, beatsPerBar, random),
+          // No drummer at all: the guitar's chop is the time. See [Feel.gypsy].
+          Feel.gypsy => const <DrumHit>[],
+        })
+          if (hit.beat < beatsPerBar)
+            hit.at(
+              keepsTime(hit.drum) ? hit.beat : leaned(hit.beat, feel, swing),
+            ),
+      ];
+
+/// The grooves with a six eight and twelve eight of their own (see
+/// [compoundDrumBar]). Swing and the jazz waltz play their own pattern
+/// with a skip on every pulse, and the Afro groove is its bell.
+const _writtenInTriplets = {
+  Feel.shuffle,
+  Feel.ballad,
+  Feel.funk,
+  Feel.secondLine,
+  Feel.bossa,
+  Feel.samba,
+  Feel.calypso,
+};
 
 /// Whether a bar of [feel] is played as its groups of two and three (see
 /// grouped_grooves.dart): in three, five and seven, for every groove that
