@@ -194,6 +194,7 @@ List<BassNote> _play(
               style: style,
               beatInBar: start % beatsPerBar,
               bar: start ~/ beatsPerBar,
+              beatsPerBar: beatsPerBar,
             );
       for (final note in played) {
         notes.add((
@@ -407,8 +408,14 @@ class _Bassist {
     required _Style style,
     int beatInBar = 0,
     int bar = 0,
+    int beatsPerBar = 4,
   }) {
     final funk = style == _Style.funk;
+    // Two chords to a bar of four, the second come early: a bar of three
+    // has no room for it, and anticipating the next chord every bar left
+    // a waltz-time calypso playing the following chord's root half the
+    // time.
+    final splitsTheBar = beatsPerBar == 4;
     // Calypso, two chords to a bar: the second chord's root comes in early,
     // on the "and" of 2, and is held over 3, the 3-3-2 across the change.
     final anticipated = _calypsoAnticipated;
@@ -448,14 +455,24 @@ class _Bassist {
       if (style == _Style.calypso) ...[
         // The 3-3-2: 1, the "and" of 2 held over 3, then 4. Beat 3 is left
         // empty: that's what makes it lift rather than oom-pah.
-        if (beats >= 4) ...[
+        if (beats >= 3 && beatsPerBar == 3) ...[
+          // In three the 3-3-2 is 3+3: 1 and the "and" of 2, both held.
+          (5, [(root, 0, 1.4), (fifth, 1.5, 1.4)]),
+          (3, [(root, 0, 1.4), (thirdUp, 1.5, 1.4)]),
+          (2, [(root, 0, 1.4), (octave, 1.5, 1.4)]),
+          if (canAnticipate)
+            (1, [(root, 0, 1.4), (fifth, 1.5, 0.9), (nextRoot, 2.5, 0.6)]),
+        ] else if (beats >= 4) ...[
           (5, [(root, 0, 1.4), (fifth, 1.5, 1.4), (root, 3, 0.9)]),
           (4, [(root, 0, 1.4), (thirdUp, 1.5, 1.4), (fifth, 3, 0.9)]),
           (3, [(root, 0, 1.4), (fifth, 1.5, 1.4), (approach, 3, 0.9)]),
           (2, [(root, 0, 1.4), (octave, 1.5, 1.4), (fifth, 3, 0.9)]),
           if (canAnticipate)
             (2, [(root, 0, 1.4), (fifth, 1.5, 1.9), (nextRoot, 3.5, 1.0)]),
-        ] else if (beats >= 2 && beatInBar == 0 && canAnticipate) ...[
+        ] else if (beats >= 2 &&
+            beatInBar == 0 &&
+            canAnticipate &&
+            splitsTheBar) ...[
           // First of two chords: 1, then the next chord early on the "and"
           // of 2 (see below).
           (1, [(root, 0, 1.4), (nextRoot, 1.5, 1.4)]),
@@ -573,7 +590,8 @@ class _Bassist {
         beats >= 2 &&
         beats < 4 &&
         beatInBar == 0 &&
-        canAnticipate) {
+        canAnticipate &&
+        splitsTheBar) {
       _calypsoAnticipated = true;
     }
 

@@ -323,7 +323,14 @@ void main() {
       ]) {
         expect(feel.suits(Meter.four), isTrue, reason: feel.name);
         expect(feel.suits(const Meter(6, 8)), isFalse, reason: feel.name);
-        expect(feel.suits(const Meter(3, 4)), isFalse, reason: feel.name);
+        expect(feel.suits(const Meter(5, 4)), isFalse, reason: feel.name);
+        // Three is played as itself, but for the street beat: swung in
+        // its place, every groove on a waltz-time tune was the same one.
+        expect(
+          feel.suits(const Meter(3, 4)),
+          feel != Feel.secondLine,
+          reason: feel.name,
+        );
       }
       // The ones written beat by beat fit any bar there is.
       for (final feel in [
