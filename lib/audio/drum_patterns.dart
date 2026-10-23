@@ -148,6 +148,7 @@ List<DrumHit> drumBar({
     Feel.bossa when brushes => _bossaBrushBar(bar, beatsPerBar, random),
     Feel.bossa => _bossaBar(bar, beatsPerBar, random),
     Feel.funk => _funkBar(bar, beatsPerBar, random),
+    Feel.calypso when brushes => _calypsoBrushBar(bar, beatsPerBar, random),
     Feel.calypso => _calypsoBar(bar, beatsPerBar, random),
     Feel.shuffle => _shuffleBar(bar, beatsPerBar, random),
     Feel.samba => _sambaBar(bar, beatsPerBar, random),
@@ -682,6 +683,74 @@ List<DrumHit> _calypsoBar(int bar, int beatsPerBar, math.Random random) {
         ),
       );
   }
+  hits.addAll(_calypsoTurnaround(bar, beatsPerBar, random));
+  return hits;
+}
+
+/// A calypso, played with brushes.
+///
+/// The stick groove keeps its pulse on a cowbell, and a cowbell played
+/// with a brush is a wire fan dragged across metal: it sounded like
+/// brushing a tin, which is nothing anyone plays. So, as in the bossa,
+/// the pulse goes onto the snare head, a circle a beat, and the 3-3-2 the
+/// bell picked out is tapped on the head instead, with the kick under it
+/// as before. The rim on 2 and 4, the hi-hat foot and the toms at the
+/// end of a phrase stay as they were.
+List<DrumHit> _calypsoBrushBar(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
+  for (var beat = 0; beat < beatsPerBar; beat++) {
+    hits.add(
+      DrumHit(
+        drum: Drum.swirl,
+        beat: beat.toDouble(),
+        // As quiet as the bossa's circle, and for its reason: a wash
+        // carries far more than a tap at the same velocity.
+        velocity: (beat.isEven ? 0.22 : 0.18) * _human(random),
+        beats: 1,
+      ),
+    );
+  }
+  for (final beat in _tresillo.where((beat) => beat < beatsPerBar)) {
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.snare,
+          beat: beat,
+          velocity: (beat == 0 ? 0.4 : 0.34) * _human(random),
+        ),
+      )
+      ..add(
+        DrumHit(
+          drum: Drum.kick,
+          beat: beat,
+          velocity: (beat == 0 ? 0.58 : 0.44) * _human(random),
+        ),
+      );
+  }
+  for (final beat in _backbeats(beatsPerBar)) {
+    hits
+      ..add(
+        DrumHit(
+          drum: Drum.crossStick,
+          beat: beat.toDouble(),
+          velocity: 0.42 * _human(random),
+        ),
+      )
+      ..add(
+        DrumHit(
+          drum: Drum.hiHatPedal,
+          beat: beat.toDouble(),
+          velocity: 0.28 * _human(random),
+        ),
+      );
+  }
+  hits.addAll(_calypsoTurnaround(bar, beatsPerBar, random));
+  return hits;
+}
+
+/// The toms at the end of an eight-bar phrase, most of the time.
+List<DrumHit> _calypsoTurnaround(int bar, int beatsPerBar, math.Random random) {
+  final hits = <DrumHit>[];
   // Toms only to turn a phrase around. They used to play a figure every
   // bar, against the 3-3-2 rather than with it, and that was most of why
   // this groove sounded like three grooves at once.

@@ -148,11 +148,43 @@ void main() {
     });
   });
 
+  group('a calypso, with the brushes out', () {
+    // Its pulse is a cowbell, and a cowbell under a brush sounded like
+    // brushing metal.
+    test('the cowbell is put down', () {
+      expect(countOf(played(Feel.calypso), Drum.cowbell), greaterThan(0));
+      expect(countOf(played(Feel.calypso, brushes: true), Drum.cowbell), 0);
+    });
+
+    test('a circle a beat keeps the pulse on the head', () {
+      final hits = played(Feel.calypso, brushes: true);
+      expect(countOf(hits, Drum.swirl), 4 * 32);
+    });
+
+    test('the 3-3-2 is tapped on the head, with the kick under it', () {
+      final hits = played(Feel.calypso, brushes: true);
+      // The and of 2 a little late, as the swing slider has it.
+      for (final hit in hits.where((hit) => hit.drum == Drum.snare)) {
+        final beat = hit.beat % 4;
+        expect(
+          [0.0, 1.5, 3.0].any((at) => (beat - at).abs() < 0.2),
+          isTrue,
+          reason: 'a tap on $beat',
+        );
+      }
+      expect(countOf(hits, Drum.snare), 3 * 32);
+      expect(
+        countOf(hits, Drum.kick),
+        countOf(played(Feel.calypso), Drum.kick),
+      );
+    });
+  });
+
   group('the other grooves are left alone', () {
     // Brushes belong to a swing feel and to a bossa. A funk backbeat is
     // not played with them, and a brush kit under one is a choice
     // somebody made rather than a pattern that should rewrite itself.
-    for (final feel in [Feel.funk, Feel.samba, Feel.calypso]) {
+    for (final feel in [Feel.funk, Feel.samba]) {
       test('${feel.name} plays the same bar either way', () {
         final sticks = played(feel);
         final brushed = played(feel, brushes: true);
@@ -168,9 +200,16 @@ void main() {
       // The circle is the sound of a brush groove, so it belongs to the
       // feels that are played with brushes at all: swing and the two it
       // is the normal kit for, a jazz waltz and a ballad, plus the bossa,
-      // where it stands in for a shaker. Under a funk backbeat or a
+      // where it stands in for a shaker, and the calypso, where it keeps
+      // the pulse a brushed cowbell could not. Under a funk backbeat or a
       // samba it would be somebody's mistake.
-      const circles = [Feel.swing, Feel.bossa, Feel.jazzWaltz, Feel.ballad];
+      const circles = [
+        Feel.swing,
+        Feel.bossa,
+        Feel.jazzWaltz,
+        Feel.ballad,
+        Feel.calypso,
+      ];
       for (final feel in Feel.values) {
         if (circles.contains(feel)) continue;
         expect(countOf(played(feel, brushes: true), Drum.swirl), 0);
