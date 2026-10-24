@@ -198,4 +198,67 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pump(const Duration(seconds: 3));
   });
+
+  group('laid out as a strobe-style tuner', () {
+    Color panel(WidgetTester tester) =>
+        (tester
+                    .widget<AnimatedContainer>(
+                      find.byKey(const ValueKey('tuner-trace')),
+                    )
+                    .decoration!
+                as BoxDecoration)
+            .color!;
+
+    testWidgets('hertz, the note with its octave, and cents across the top', (
+      tester,
+    ) async {
+      final (listener, _) = await open(tester);
+      listener.hear(cents(440, -12));
+      await tester.pumpAndSettle();
+      expect(find.text('HERTZ'), findsOneWidget);
+      expect(find.text('CENTS'), findsOneWidget);
+      expect(find.text('437.0'), findsOneWidget);
+      expect(find.text('−12.0'), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const ValueKey('tuner-octave'))).data,
+        '4',
+      );
+    });
+
+    testWidgets('the panel goes green in tune, and not out of it', (
+      tester,
+    ) async {
+      final (listener, _) = await open(tester);
+      listener.hear(cents(440, -20));
+      await tester.pumpAndSettle();
+      final out = panel(tester);
+      listener.hear(cents(440, 1));
+      await tester.pumpAndSettle();
+      final inTune = panel(tester);
+      expect(inTune, isNot(out));
+      expect(inTune.g, greaterThan(inTune.r), reason: 'green');
+    });
+
+    testWidgets('the raised keys sit between the naturals', (tester) async {
+      await open(tester);
+      final c = tester.getCenter(find.byKey(const ValueKey('note-0')));
+      final cSharp = tester.getCenter(find.byKey(const ValueKey('note-1')));
+      final d = tester.getCenter(find.byKey(const ValueKey('note-2')));
+      expect(cSharp.dy, lessThan(c.dy), reason: 'raised');
+      expect(cSharp.dx, closeTo((c.dx + d.dx) / 2, 1));
+    });
+
+    testWidgets('Default takes the notes back to middle C\'s octave', (
+      tester,
+    ) async {
+      await open(tester);
+      expect(find.text('Default'), findsOneWidget);
+      await tester.tap(find.byTooltip('Lower octave'));
+      await tester.pump();
+      expect(find.text('Octave 3'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('octave-default')));
+      await tester.pump();
+      expect(find.text('Default'), findsOneWidget);
+    });
+  });
 }
