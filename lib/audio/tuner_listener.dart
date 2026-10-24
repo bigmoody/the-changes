@@ -32,6 +32,7 @@ class TunerListener {
     // Five periods of the lowest note, not three: a little steadier on a
     // low string (17 to 22 windows of 22, from 16 to 21), and 85 ms.
     int periods = 5,
+    this.follows = true,
   }) : _detector = PitchDetector(
          sampleRate: sampleRate,
          lowestHz: lowestHz,
@@ -62,7 +63,14 @@ class TunerListener {
     silence: 0.0002,
     // Short, for eighth notes.
     periods: 3,
+    // A line of notes changes note every reading or two: each is taken
+    // as it comes, not followed.
+    follows: false,
   );
+
+  /// Whether a note, once found, is followed while it rings (see
+  /// [_follow]): what a tuner wants, a string held and dying away.
+  final bool follows;
 
   /// The lowest note it will look for.
   final double lowestHz;
@@ -190,6 +198,7 @@ class TunerListener {
       energy += sample * sample;
     }
     level = math.sqrt(energy / _window.length);
+    if (follows) return _follow();
     final heard = _detector.detect(_window);
     if (heard == null || heard.clarity < minClarity) {
       _recent.clear();
@@ -225,6 +234,156 @@ class TunerListener {
     return (hz: sorted[sorted.length ~/ 2], clarity: heard.clarity);
   }
 
+  /// The note being followed, and how many readings in a row it has not
+  /// been found.
+  double? _note;
+  var _misses = 0;
+
+  /// A different note heard, waiting to be heard again, and how many
+  /// times it has been since.
+  double? _candidate;
+  var _heardAgain = 0;
+
+  /// Whether the candidate came in on a pluck.
+  var _candidatePlucked = false;
+
+  /// Every ratio of two whole numbers from one to seven but one itself.
+  static final _overtoneRatios = {
+    for (var n = 1; n <= 7; n++)
+      for (var m = 1; m <= 7; m++)
+        if (n != m) n / m,
+  };
+
+  /// The note last let go, and how many readings ago.
+  ({double hz, int readings})? _faded;
+
+  /// Readings a note is held through when it cannot be found, so a
+  /// moment's dropout is not the display flashing back to listening:
+  /// about a third of a second.
+  static const _holdFor = 4;
+
+  /// Following a note while it rings, the way a tuner has to. Played to
+  /// a recording of a guitar on an iPad (the player's own, taken off the
+  /// screen recording of this tuner and another), the tuner asked from
+  /// scratch every reading lost a string as it died away, and named C2,
+  /// E3 or A2 under an E4 and B3 under an E2 as it went: harmonics and
+  /// undertones outlasting the note.
+  ///
+  /// So once a note is found it is looked for where it was, more loosely
+  /// ([PitchDetector.detectNear]); a different note takes over at once
+  /// when it is plucked (the sound gets louder at once), and otherwise
+  /// only when the note being followed can no longer be found and the
+  /// new one has been heard twice; and a note that cannot be found is
+  /// held for a moment before the tuner says it has lost it.
+  Heard _follow() {
+    final strict = _detector.detect(_window);
+    final clear = strict != null && strict.clarity >= minClarity
+        ? strict
+        : null;
+    final plucked = level > _lastLevel * 1.3;
+    _lastLevel = level;
+    // The string let go a couple of seconds ago is forgotten, and so is
+    // one a pluck has taken the place of.
+    if (_faded case final faded?) {
+      _faded = plucked || faded.readings > 25
+          ? null
+          : (hz: faded.hz, readings: faded.readings + 1);
+    }
+
+    double cents(double a, double b) => 1200 * math.log(a / b) / math.ln2;
+    bool sameNote(double a, double b) => cents(a, b).abs() < 60;
+    // What the same string throws up for a reading at the attack of a
+    // fresh pluck, or as it dies: its harmonics, an undertone, and the
+    // intervals between harmonics, every ratio of two whole numbers up to
+    // seven (a B♭2 read off a low E is seven to five), to a third of a
+    // semitone. A second is never one, so a string tuned up or down a
+    // step is never taken for one.
+    bool related(double hz, double note) =>
+        _overtoneRatios.any((k) => cents(hz, note * k).abs() < 33);
+
+    final note = _note;
+    final near = note == null ? null : _detector.detectNear(_window, note);
+    if (clear != null && (note == null || !sameNote(clear.hz, note))) {
+      // The same string plucked again reads for an instant as one of its
+      // overtones, some of them at no tidy ratio (a B♭2, seven fifths of
+      // a low E): where the note being followed is still there at least
+      // as plainly, it is that string, plucked again.
+      final kin =
+          note != null &&
+          (related(clear.hz, note) ||
+              (near != null && near.clarity >= clear.clarity));
+      // Plucked: a new note at once. From nothing, only if it is clearly
+      // a note; and not on one reading if it is a harmonic or undertone
+      // of the note ringing, which is what the same string re-plucked
+      // reads as for an instant (a B3 or an A2 off a low E).
+      if (plucked && !kin && (note != null || clear.clarity >= 0.9)) {
+        _candidate = null;
+        _recent.clear();
+        return _found(clear.hz, clear.clarity);
+      }
+      if (_candidate != null && sameNote(clear.hz, _candidate!)) {
+        _heardAgain++;
+      } else {
+        _candidate = clear.hz;
+        _heardAgain = 0;
+        _candidatePlucked = plucked;
+      }
+      // Plucked and heard twice more, plainly: a new note an octave or a
+      // fifth from the last is still a new note, even while the old one
+      // can be found under it. A low E plucked again read as a B♭2 twice
+      // running, faintly, and took over.
+      if (_candidatePlucked && _heardAgain >= 2 && clear.clarity >= 0.9) {
+        _candidate = null;
+        _recent.clear();
+        return _found(clear.hz, clear.clarity);
+      }
+    } else if (clear != null) {
+      _candidate = null;
+    }
+    // Not plucked, a different note only takes over once the one being
+    // followed is gone, and once it has been heard twice: what a dying
+    // string throws up comes and goes while the string can still be heard.
+    final candidate = _candidate;
+    if (near != null) return _found(near.hz, near.clarity);
+    // What is left when a low string has faded past following is mostly
+    // its own overtones, and the strings ringing with it: an A2 or a B2
+    // off a dying low E. Those are let go, not named.
+    // The same once it has gone: for a couple of seconds the string that
+    // was being followed is still the one a new note is judged against,
+    // and nothing unplucked starts unless it is plainly a note.
+    final faded = _faded;
+    if (candidate != null &&
+        note == null &&
+        _heardAgain >= 1 &&
+        (clear?.clarity ?? 0) >= 0.9 &&
+        (faded == null || !related(candidate, faded.hz))) {
+      _candidate = null;
+      _recent.clear();
+      return _found(candidate, minClarity);
+    }
+    if (note == null) return null;
+    if (++_misses <= _holdFor) {
+      return (hz: _smoothed(), clarity: 0.0);
+    }
+    _faded = (hz: note, readings: 0);
+    _note = null;
+    _recent.clear();
+    return null;
+  }
+
+  Heard _found(double hz, double clarity) {
+    _misses = 0;
+    _recent.add(hz);
+    if (_recent.length > smoothing) _recent.removeAt(0);
+    _note = _smoothed();
+    return (hz: _note!, clarity: clarity);
+  }
+
+  double _smoothed() {
+    final sorted = [..._recent]..sort();
+    return sorted[sorted.length ~/ 2];
+  }
+
   Future<void> stop() async {
     await _subscription?.cancel();
     _subscription = null;
@@ -232,6 +391,10 @@ class TunerListener {
     _filled = 0;
     level = 0;
     _recent.clear();
+    _note = null;
+    _candidate = null;
+    _faded = null;
+    _misses = 0;
   }
 
   Future<void> dispose() async {

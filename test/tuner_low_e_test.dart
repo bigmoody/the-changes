@@ -89,4 +89,35 @@ void main() {
     final onB = read.where((c) => c != null && c.abs() < 50).length;
     expect(onB, greaterThanOrEqualTo(read.length * 0.7), reason: '$read');
   });
+
+  test('string after string, each is named within a few readings', () {
+    // The recorded guitar, a second of each, plucked in turn: low E, A,
+    // then C, D sharp, F sharp and A above, as a player goes from string
+    // to string and fret to fret. Each is named, and nothing else is.
+    const notes = [40, 45, 48, 51, 54, 57, 40];
+    final tuner = TunerListener();
+    for (final midi in notes) {
+      final sound = throughSmallMicrophone(
+        'assets/sounds/guitar/guitar_${midi}_rr1.wav',
+        level: 0.3,
+      );
+      final hz = 440 * math.pow(2, (midi - 69) / 12).toDouble();
+      final read = readings(
+        tuner,
+        Float32List.sublistView(sound, 0, 44100),
+        hz,
+      );
+      final named = [for (final c in read) ?c];
+      // Named by the fourth reading (a third of a second)...
+      final first = read.indexWhere((c) => c != null && c.abs() < 50);
+      expect(first, inInclusiveRange(0, 3), reason: 'midi $midi: $read');
+      // ...and never anything else after that.
+      expect(
+        read.skip(first).where((c) => c != null && c.abs() >= 50),
+        isEmpty,
+        reason: 'midi $midi: $read',
+      );
+      expect(named, isNotEmpty);
+    }
+  });
 }

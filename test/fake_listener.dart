@@ -42,6 +42,9 @@ class FakeListener implements TunerListener {
   double get lowestHz => 110;
 
   @override
+  bool get follows => true;
+
+  @override
   int get sampleRate => 44100;
 
   @override
