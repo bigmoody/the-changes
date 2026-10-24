@@ -425,6 +425,7 @@ class _Trace extends StatelessWidget {
               line: scheme.onSurface,
               band: green.withValues(alpha: inTune ? 0.45 : 0.22),
               marks: scheme.outline.withValues(alpha: 0.5),
+              centre: scheme.onSurface.withValues(alpha: 0.55),
               length: _TunerScreenState._traceLength,
             ),
             child: const SizedBox.expand(),
@@ -441,6 +442,7 @@ class _TracePainter extends CustomPainter {
     required this.line,
     required this.band,
     required this.marks,
+    required this.centre,
     required this.length,
   });
 
@@ -448,6 +450,7 @@ class _TracePainter extends CustomPainter {
   final Color line;
   final Color band;
   final Color marks;
+  final Color centre;
   final int length;
 
   @override
@@ -465,6 +468,14 @@ class _TracePainter extends CustomPainter {
     for (final mark in [-25.0, 25.0]) {
       canvas.drawLine(Offset(x(mark), 0), Offset(x(mark), size.height), tick);
     }
+    // Dead centre, the note exactly: the line the trace is aiming at.
+    canvas.drawLine(
+      Offset(x(0), 0),
+      Offset(x(0), size.height),
+      Paint()
+        ..color = centre
+        ..strokeWidth = 1.5,
+    );
     // Newest at the top.
     final step = size.height / (length - 1);
     final pen = Paint()
