@@ -69,8 +69,9 @@ class _TunerScreenState extends State<TunerScreen> {
   /// (or the nearest note), or null where nothing was heard.
   final _trace = <double?>[];
 
-  /// How many readings the trace shows: about four seconds.
-  static const _traceLength = 50;
+  /// How many readings the trace shows: two seconds, a reading every
+  /// 80 ms. Four seconds crawled down the page; a tuner's trace runs.
+  static const _traceLength = 25;
 
   /// How far the player's written notes are above concert pitch.
   int get _transpose => widget.settings.instrument.semitones;
