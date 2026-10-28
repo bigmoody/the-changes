@@ -213,13 +213,36 @@ HeardNotes listenForNotes(
     }
   }
 
+  /// Whether there is a peak of the spectrum's own at [note]: a bin
+  /// louder than both its neighbours, within a bin of where the note is.
+  bool peaksAt(int note) {
+    final centre = (midiToHz(note) * binsPerHz).round();
+    for (var bin = centre - 1; bin <= centre + 1; bin++) {
+      if (bin < 1 || bin >= spectrum.length - 1) continue;
+      if (spectrum[bin] > spectrum[bin - 1] &&
+          spectrum[bin] > spectrum[bin + 1]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // A note sitting exactly on a harmonic of a louder note below it, and
   // much quieter than it, is that note's harmonic and not a note anybody
   // played. Left in, these turn plain triads into 9ths and 13ths.
+  //
+  // And a note a semitone from a louder one, with no peak of its own, is
+  // the louder one spilling into the bins beside it. A guitar's low C,
+  // played hard, spilled a steady eighth of itself into the B below, and
+  // a Cmaj7 was named Cmaj7/B for as long as it rang.
   final notes = <int>[];
   final weights = <double>[];
   for (var i = 0; i < picked.length; i++) {
     var ghost = false;
+    for (var j = 0; j < picked.length && !ghost; j++) {
+      if ((picked[j] - picked[i]).abs() != 1) continue;
+      ghost = strength[j] > strength[i] && !peaksAt(picked[i]);
+    }
     for (var j = 0; j < i && !ghost; j++) {
       if (picked[j] >= picked[i]) continue;
       if (strength[j] < strength[i] * _muchLouder) continue;
