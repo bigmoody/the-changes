@@ -16,6 +16,7 @@
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
+import '../music/chord.dart';
 import '../music/key_order.dart';
 import '../music/changes_to_run.dart';
 import '../music/tune.dart';
@@ -23,6 +24,7 @@ import '../music/user_progression.dart';
 import '../practice/practice_controller.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
+import 'chord_diagram.dart';
 import 'key_round.dart';
 import 'transport.dart';
 import 'note_ink.dart';
@@ -143,6 +145,24 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
     _controller.transpose(move);
   }
 
+  /// Which diagram the chords open with here: the one chosen in Settings,
+  /// or the guitar where that is off, and whatever was last picked in the
+  /// sheet after that.
+  late var _diagram = widget.settings.diagram == ChordDiagram.none
+      ? ChordDiagram.guitar
+      : widget.settings.diagram;
+
+  /// How to play [chord]: its diagram, in a sheet over the changes.
+  void _showChord(Chord chord) => showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => _ChordSheet(
+      chord: chord,
+      diagram: _diagram,
+      onDiagram: (diagram) => _diagram = diagram,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: _controller,
@@ -207,6 +227,7 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
                     tune: _over.toTune().transposed(
                       move + widget.settings.instrument.semitones,
                     ),
+                    onChord: _showChord,
                   ),
                   const SizedBox(height: 16),
                   SwitchListTile(
@@ -277,37 +298,144 @@ class _ChangesInKeysScreenState extends State<ChangesInKeysScreen> {
 }
 
 /// The changes written out, a box to a bar, as a chart would have them.
+/// Each chord can be tapped for how to play it.
 class _Bars extends StatelessWidget {
-  const _Bars({required this.tune});
+  const _Bars({required this.tune, required this.onChord});
 
   final Tune tune;
+  final ValueChanged<Chord> onChord;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final style = theme.textTheme.titleMedium?.copyWith(
+      fontFamily: 'PetalumaScript',
+    );
     return Wrap(
       spacing: 6,
       runSpacing: 6,
       children: [
         for (final (i, bar) in tune.bars.indexed)
           Container(
+            key: ValueKey('round-bar-$i'),
             constraints: const BoxConstraints(minWidth: 72),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               border: Border.all(color: theme.colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(
-              key: ValueKey('round-bar-$i'),
-              [for (final slot in bar) handSymbol(slot.chord.display)]
-                  .join('  '),
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontFamily: 'PetalumaScript',
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final (j, slot) in bar.indexed)
+                  Semantics(
+                    button: true,
+                    label: 'How to play ${slot.chord.display}',
+                    excludeSemantics: true,
+                    child: InkWell(
+                      key: ValueKey('round-chord-$i-$j'),
+                      borderRadius: BorderRadius.circular(6),
+                      onTap: () => onChord(slot.chord),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Text(
+                          handSymbol(slot.chord.display),
+                          textAlign: TextAlign.center,
+                          style: style,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A chord and how to play it: on the guitar (open or barre), the
+/// keyboard or the bass, whichever is picked.
+class _ChordSheet extends StatefulWidget {
+  const _ChordSheet({
+    required this.chord,
+    required this.diagram,
+    required this.onDiagram,
+  });
+
+  final Chord chord;
+  final ChordDiagram diagram;
+  final ValueChanged<ChordDiagram> onDiagram;
+
+  @override
+  State<_ChordSheet> createState() => _ChordSheetState();
+}
+
+class _ChordSheetState extends State<_ChordSheet> {
+  late var _diagram = widget.diagram;
+
+  static const _choices = [
+    ChordDiagram.guitar,
+    ChordDiagram.barre,
+    ChordDiagram.keyboard,
+    ChordDiagram.bass,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              handSymbol(widget.chord.display),
+              key: const ValueKey('chord-sheet-name'),
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontFamily: 'PetalumaScript',
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 200,
+              child: Center(
+                child: FingeringDiagram(
+                  key: ValueKey('chord-sheet-${_diagram.name}'),
+                  chord: widget.chord,
+                  diagram: _diagram,
+                  height: 200,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SegmentedButton<ChordDiagram>(
+              showSelectedIcon: false,
+              segments: [
+                for (final diagram in _choices)
+                  ButtonSegment(
+                    value: diagram,
+                    label: FittedBox(
+                      child: Text(switch (diagram) {
+                        ChordDiagram.barre => 'Barre',
+                        _ => diagram.label,
+                      }),
+                    ),
+                  ),
+              ],
+              selected: {_diagram},
+              onSelectionChanged: (picked) {
+                setState(() => _diagram = picked.first);
+                widget.onDiagram(picked.first);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

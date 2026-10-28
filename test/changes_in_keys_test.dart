@@ -64,14 +64,15 @@ void main() {
     final widget = find.byKey(key).evaluate().single.widget;
     if (widget is Text) return widget.data!;
     // A key written in its own colour is a KeyText, which draws a Text of
-    // its own underneath.
-    return (find
-                .descendant(of: find.byKey(key), matching: find.byType(Text))
-                .evaluate()
-                .single
-                .widget
-            as Text)
-        .data!;
+    // its own underneath; a bar is a Text for each of its chords, each
+    // tappable on its own.
+    return [
+      for (final element
+          in find
+              .descendant(of: find.byKey(key), matching: find.byType(Text))
+              .evaluate())
+        (element.widget as Text).data!,
+    ].join('  ');
   }
 
   group('nothing to set up', () {
@@ -311,6 +312,39 @@ void main() {
       await tester.pumpAndSettle();
       // E flat instruments read a major sixth above concert: C becomes A.
       expect(textOf(const ValueKey('round-key')), 'Key of A');
+    });
+  });
+
+  group('how to play a chord', () {
+    testWidgets('a chord tapped opens its diagram, and the kind can change', (
+      tester,
+    ) async {
+      await open(tester);
+      await tester.tap(find.byKey(const ValueKey('round-chord-0-0')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Text>(find.byKey(const ValueKey('chord-sheet-name')))
+            .data,
+        'Dm7',
+      );
+      // Settings say no diagram, so it opens on the guitar.
+      expect(find.byKey(const ValueKey('chord-sheet-guitar')), findsOneWidget);
+      await tester.tap(find.text('Keyboard'));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('chord-sheet-keyboard')),
+        findsOneWidget,
+      );
+      // And the next chord opens on the keyboard too.
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('round-chord-1-0')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('chord-sheet-keyboard')),
+        findsOneWidget,
+      );
     });
   });
 }
