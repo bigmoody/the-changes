@@ -349,4 +349,93 @@ void main() {
     expect(barre, isNotNull);
     expect(barre!.position, greaterThan(2));
   });
+
+  group('the note underneath, through a small microphone', () {
+    // A tablet's or a phone's own microphone hardly hears the bottom of a
+    // guitar, and the string above the lowest was taken for the bass: a
+    // Cmaj7 shown as Cmaj7/B, 15 of these shapes over the wrong note.
+    // Rolled off below 150 Hz, two first-order filters, as such a
+    // microphone is.
+    Float32List smallMic(Float32List samples) {
+      var y = samples;
+      for (var pass = 0; pass < 2; pass++) {
+        const rc = 1 / (2 * math.pi * 150);
+        const dt = 1 / _rate;
+        const a = rc / (rc + dt);
+        final out = Float32List(y.length);
+        for (var i = 1; i < y.length; i++) {
+          out[i] = a * (out[i - 1] + y[i] - y[i - 1]);
+        }
+        y = out;
+      }
+      return y;
+    }
+
+    ChordGuess? named(SampleBank bank, List<int> pitches) {
+      final heard = listenForNotes(
+        smallMic(_strumPitches(bank, pitches)),
+        sampleRate: _rate,
+        size: _size,
+      );
+      final guesses = namesFor(
+        heard.chroma,
+        bass: heard.bass == null ? null : heard.bass! % 12,
+      );
+      return guesses.isEmpty ? null : guesses.first;
+    }
+
+    test('a chord in root position is not turned over', () async {
+      final bank = await _bank();
+      const symbols = [
+        'C', 'G', 'D', 'A', 'E', 'F', 'Bb', 'Am', 'Em', 'Dm', //
+        'C7', 'G7', 'A7', 'E7', 'D7', 'Cm7', 'Dm7', 'Em7', 'Am7',
+        'C^7', 'F^7', 'G^7', 'A^7', 'Bb^7', 'Bh7', 'C6', 'G6', 'C9', 'G13',
+      ];
+      final turned = <String>[];
+      for (final symbol in symbols) {
+        final chord = Chord.parse(symbol);
+        for (final shape in allGuitarShapes(chord).take(3)) {
+          if (shape.pitches.reduce(math.min) % 12 != chord.root) continue;
+          final guess = named(bank, shape.pitches);
+          if (guess != null && _isSame(guess, chord) && guess.bass != null) {
+            turned.add('${chord.display} ${shape.pitches}: ${guess.display}');
+          }
+        }
+      }
+      expect(turned, isEmpty);
+    });
+
+    test('a chord played over another of its notes keeps it', () async {
+      final bank = await _bank();
+      for (final (pitches, bass) in [
+        ([40, 48, 52, 55, 60, 64], 'E'), // C/E
+        ([47, 50, 55, 59, 67], 'B'), // G/B
+        ([42, 50, 57, 62, 66], 'F♯'), // D/F♯
+        ([43, 48, 52, 55, 60, 64], 'G'), // C/G
+      ]) {
+        expect(named(bank, pitches)?.bass, bass, reason: '$pitches');
+      }
+    });
+  });
+}
+
+/// A strum of [pitches] on the recorded guitar, as [_strum] plays a shape.
+Float32List _strumPitches(SampleBank bank, List<int> pitches) {
+  final wav = renderSnippet(room: false, bank, [
+    for (final (i, pitch) in pitches.indexed)
+      (
+        pitch: pitch,
+        start: i * 0.03,
+        length: 2.5 - i * 0.03,
+        velocity: 0.8,
+        bass: false,
+      ),
+  ], guitar: true);
+  final pcm = decodeWav(wav);
+  final from = (0.35 * _rate).round();
+  final window = Float32List(_size);
+  for (var i = 0; i < _size && from + i < pcm.length; i++) {
+    window[i] = pcm[from + i] / 32768;
+  }
+  return window;
 }

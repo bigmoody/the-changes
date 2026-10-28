@@ -60,7 +60,9 @@ class HeardNotes {
     required this.pitches,
     required this.chroma,
     required this.level,
-  });
+    int? bass,
+    // ignore: prefer_initializing_formals
+  }) : _bass = bass;
 
   /// The notes taken out, loudest first. Empty when there was nothing to
   /// hear.
@@ -74,8 +76,10 @@ class HeardNotes {
   final double level;
 
   /// The lowest note played, which decides whether a chord is in its root
-  /// position or turned over.
-  int? get bass => pitches.isEmpty ? null : pitches.reduce(math.min);
+  /// position or turned over: the lowest note heard, or a string below it
+  /// heard only by its overtones (see [listenForNotes]).
+  int? get bass => _bass ?? (pitches.isEmpty ? null : pitches.reduce(math.min));
+  final int? _bass;
 
   bool get isEmpty => pitches.isEmpty;
 }
@@ -240,5 +244,49 @@ HeardNotes listenForNotes(
       chroma[i] /= total;
     }
   }
-  return HeardNotes(pitches: notes, chroma: chroma, level: level);
+  return HeardNotes(
+    pitches: notes,
+    chroma: chroma,
+    level: level,
+    bass: notes.isEmpty ? null : _bassOf(notes, spectrum, at),
+  );
+}
+
+/// The guitar's low E: nothing below it is looked for as a hidden bass.
+const _lowestString = 40;
+
+/// The lowest note of a chord, allowing for a low string the microphone
+/// hardly hears.
+///
+/// A tablet's or a phone's own microphone barely picks up the bottom of a
+/// guitar: a low C at 131 Hz, a low E at 82. Strummed, the bottom string's
+/// own note can be too weak to be taken out at all, and the string above
+/// it is then the lowest note heard. A Cmaj7 read as Cmaj7/B, and through
+/// a microphone rolled off below 150 Hz 15 of 87 of the app's own guitar
+/// shapes were named over the wrong bass.
+///
+/// But the string still rings at its octave, its twelfth and its double
+/// octave. So any note below the lowest one heard, down to the low E, of
+/// one of the chord's notes, whose second, third and fourth harmonics are
+/// all plainly there, is taken for the bass. The lowest such note wins.
+int _bassOf(
+  List<int> notes,
+  Float64List spectrum,
+  double Function(Float64List, double) at,
+) {
+  final lowest = notes.reduce(math.min);
+  final loudest = spectrum.reduce(math.max);
+  final pitchClasses = {for (final note in notes) note % 12};
+  for (var note = _lowestString; note < lowest; note++) {
+    if (!pitchClasses.contains(note % 12)) continue;
+    final root = midiToHz(note);
+    final rings =
+        at(spectrum, root) >= loudest * 0.02 &&
+        [
+          2,
+          3,
+        ].every((harmonic) => at(spectrum, root * harmonic) >= loudest * 0.06);
+    if (rings) return note;
+  }
+  return lowest;
 }
