@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 
 import '../audio/chord_ear.dart';
 import '../audio/chord_listener.dart';
+import '../audio/chord_reader.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
 import '../music/chord_match.dart';
@@ -79,20 +80,19 @@ class _ChordIdentifierScreenState extends State<ChordIdentifierScreen> {
     }
   }
 
+  /// Which moments to name a chord from (see chord_reader.dart).
+  final _reader = ChordReader();
+
   void _heard(HeardNotes heard) {
     if (!mounted) return;
-    final guesses = namesFor(
-      heard.chroma,
-      bass: heard.bass == null ? null : heard.bass! % 12,
-    );
     setState(() {
       _level = heard.level;
       _hearingSomething = heard.pitches.isNotEmpty;
-      // Two notes could be anything; wait for a chord. And keep the last
-      // one on screen while the strings die away.
-      if (heard.pitches.length >= 3 && guesses.isNotEmpty) {
-        _guesses = guesses;
-        _pitches = heard.pitches;
+      // The chord strummed, once it has settled, kept on screen while the
+      // strings die away.
+      if (_reader.hear(heard)) {
+        _guesses = _reader.guesses;
+        _pitches = _reader.pitches;
         _chosen = 0;
       }
     });

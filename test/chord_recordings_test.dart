@@ -9,6 +9,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/chord_ear.dart';
+import 'package:play_along/audio/chord_reader.dart';
 import 'package:play_along/audio/sample_bank.dart';
 import 'package:play_along/music/chord_match.dart';
 
@@ -33,4 +34,27 @@ void main() {
       expect(named.display, 'CΔ7', reason: 'at ${end / 44100} s');
     }
   }, skip: file.existsSync() ? false : 'not on this machine');
+
+  // The C9 (x32330): its B flat, on the G string, gone within half a
+  // second, and C, D and E left named C69 for as long as they rang; and
+  // the attack of each strum named something else for a moment.
+  final c9 = File('ear_captures/chord-c9-x32330.wav');
+  test('a C9 strummed is named C9, and stays C9 as it dies away', () {
+    final raw = decodeWav(c9.readAsBytesSync());
+    final sound = Float32List.fromList([for (final s in raw) s / 32768]);
+    const size = 16384;
+    final reader = ChordReader();
+    final shown = <String>{};
+    for (var end = size; end < sound.length; end += 5292) {
+      reader.hear(
+        listenForNotes(
+          Float32List.sublistView(sound, end - size, end),
+          sampleRate: 44100,
+          size: size,
+        ),
+      );
+      if (reader.guesses.isNotEmpty) shown.add(reader.guesses.first.display);
+    }
+    expect(shown, {'C9'});
+  }, skip: c9.existsSync() ? false : 'not on this machine');
 }
