@@ -60,7 +60,9 @@ void main() {
     tester,
   ) async {
     await _open(tester);
-    expect(_isOn(tester, 'choruses-keep'), isTrue, reason: 'a loop to start');
+    // A tune knows when to stop: in, a chorus to blow on, out.
+    expect(_isOn(tester, 'choruses-3'), isTrue);
+    expect(_isOn(tester, 'choruses-keep'), isFalse);
 
     await _tap(tester, 'choruses-4');
     await _tap(tester, 'head-in-out');
@@ -98,13 +100,14 @@ void main() {
     expect(_isOn(tester, 'lay-out-chords'), isFalse);
     // With nobody trading there is nothing to answer, so the choice goes.
     expect(find.byKey(const ValueKey('trade-with-drums')), findsNothing);
-    expect(_isOn(tester, 'choruses-keep'), isTrue);
+    expect(_isOn(tester, 'choruses-3'), isTrue);
   });
 
   testWidgets('a tempo ramp, and what it says it will do', (tester) async {
     await _open(tester);
     expect(find.textContaining('Ramp it and every time round'), findsOneWidget);
 
+    await _tap(tester, 'choruses-keep');
     await _tap(tester, 'ramp-5');
     expect(_isOn(tester, 'ramp-5'), isTrue);
     // Blue Bossa starts at its own tempo; the ceiling is shown as a tempo,
@@ -154,7 +157,10 @@ void main() {
       settings: AppSettings.inMemory(),
     );
     addTearDown(controller.dispose);
-    expect(controller.arrangement, Arrangement.keepGoing);
+    expect(
+      controller.arrangement,
+      const Arrangement(choruses: AppSettings.defaultChoruses),
+    );
     expect(controller.chorus, isNull);
     expect(controller.chorusPlan, isNull);
     controller.setArrangement(const Arrangement(choruses: 4));

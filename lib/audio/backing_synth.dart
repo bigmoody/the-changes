@@ -565,6 +565,8 @@ _Parts _firstParts(BackingRequest request) {
     ),
     batch: 0,
     withCountIn: true,
+    // The intro is a chorus of one, but the tune goes on after it.
+    mayEnd: false,
   );
   final rest = _renderParts(
     request,
@@ -712,6 +714,7 @@ _Parts _renderParts(
   required int batch,
   required bool withCountIn,
   BandState state = const BandState(),
+  bool mayEnd = true,
 }) {
   final tune = request.tune;
   // What the band can actually play in this bar: a groove whose figure
@@ -750,8 +753,17 @@ _Parts _renderParts(
       ? request.countInBars * beatsPerBar * samplesPerBeat
       : 0;
   final length = offset + (choruses == 0 ? 0 : playing);
-  // Room at the end for sounds that ring past the batch.
-  final pad = sampleRate;
+  // Whether the arrangement's last chorus is in this batch, so the band
+  // lands on a final chord after it instead of stopping in the air.
+  final total = request.arrangement.choruses;
+  final ends =
+      mayEnd &&
+      total != null &&
+      choruses > 0 &&
+      firstChorus + choruses >= total;
+  // Room at the end for sounds that ring past the batch, and for the
+  // final chord to die away when there is one.
+  final pad = sampleRate * (ends ? 4 : 1);
 
   _Mix newMix() =>
       _Mix(sampleRate: sampleRate, loopStart: offset, length: length + pad);
@@ -1438,6 +1450,94 @@ _Parts _renderParts(
             drumsAsRecorded?.addSamples(at(beat), sound, asRecorded);
           }
         }
+      }
+    }
+  }
+
+  // ── The ending ─────────────────────────────────────────────────────────
+  // After the last chorus the band comes down together on the home chord,
+  // on the one of the bar after the form, and lets it ring. Stopping dead
+  // on the last beat of a turnaround is not an ending: it sounds like the
+  // band lost its place.
+  if (ends) {
+    final home = readKeyLabel(tune.key);
+    final endBeat = (choruses * loop.lengthBeats).toDouble();
+    final start = at(endBeat);
+    final beatSeconds = secondsPerBeatAt(endBeat - 1);
+    // About two seconds of chord, whatever the tempo, before it is let go.
+    final hold = 2.2 / beatSeconds;
+    // A six-nine, or a minor six-nine: the chord a jazz tune ends on.
+    // Third, sixth, ninth and fifth, a hand's width around middle C.
+    var low = 52 + (home.pitchClass + (home.minor ? 3 : 4) - 52 % 12) % 12;
+    if (low > 59) low -= 12;
+    final above = home.minor ? 3 : 4;
+    final voicing = [low, low - above + 9, low - above + 14, low - above + 19];
+    if (request.comping == Comping.guitar) {
+      for (var v = 0; v < voicing.length; v++) {
+        playGuitarNote(
+          voicing[v],
+          start + (v * 0.012 * sampleRate).round(),
+          hold,
+          0.8,
+          beatSeconds: beatSeconds,
+        );
+      }
+    } else {
+      for (var v = 0; v < voicing.length; v++) {
+        playPianoNote(
+          voicing[v],
+          start + (v * 0.004 * sampleRate).round(),
+          hold,
+          0.8,
+          instrument: chordSound,
+          beatSeconds: beatSeconds,
+        );
+      }
+    }
+    // The root, low, under it.
+    final root = 33 + (home.pitchClass - 33 % 12 + 12) % 12;
+    if (bank != null) {
+      final recordings = bassSound!.at(root);
+      bass.addRecording(
+        start,
+        recordings[takesRandom.nextInt(recordings.length)],
+        1.25 * 0.9,
+        holdSamples: (beatSeconds * hold * sampleRate).round(),
+        releaseSamples: (0.3 * sampleRate).round(),
+      );
+    } else {
+      bass.addSamples(
+        start,
+        pluckedBass(
+          midiToFrequency(root),
+          beatSeconds * hold,
+          sampleRate,
+          takesRandom,
+          velocity: 0.9,
+        ),
+        0.5,
+      );
+    }
+    // The kick and a cymbal together, the drummer's full stop.
+    for (final drum in const [Drum.kick, Drum.ride]) {
+      final samples = recordedDrum(drum);
+      if (samples != null) {
+        final layer = samples.length - 1;
+        final take = pickTake(samples.layers[layer]);
+        final asRecorded =
+            _drumLevel *
+            0.9 *
+            samples.levelling[layer] *
+            (playingBrushes ? _brushTrim : 1);
+        drums.addRecording(
+          start,
+          take,
+          asRecorded * request.drumLevels.of(drum),
+        );
+        drumsAsRecorded?.addRecording(start, take, asRecorded);
+      } else if (synthesisedDrum(drum) case final sound?) {
+        drums.addSamples(start, sound, 0.3 * request.drumLevels.of(drum));
+        drumsAsRecorded?.addSamples(start, sound, 0.3);
       }
     }
   }

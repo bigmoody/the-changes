@@ -1287,8 +1287,9 @@ void showArrangement(BuildContext context, PracticeController controller) {
                 ),
                 TextButton(
                   key: const ValueKey('arrangement-reset'),
-                  onPressed: () =>
-                      controller.setArrangement(Arrangement.keepGoing),
+                  onPressed: () => controller.setArrangement(
+                    const Arrangement(choruses: AppSettings.defaultChoruses),
+                  ),
                   child: const Text('Reset'),
                 ),
               ],
@@ -1313,7 +1314,7 @@ void showArrangement(BuildContext context, PracticeController controller) {
                   onSelected: (_) =>
                       controller.setArrangement(a.copyWith(keepGoing: true)),
                 ),
-                for (final count in [2, 3, 4, 5, 6, 8, 12])
+                for (final count in [1, 2, 3, 4, 5, 6, 8, 12])
                   ChoiceChip(
                     key: ValueKey('choruses-$count'),
                     label: Text('$count'),
@@ -1323,6 +1324,16 @@ void showArrangement(BuildContext context, PracticeController controller) {
                         controller.setArrangement(a.copyWith(choruses: count)),
                   ),
               ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                'Times round the whole tune, then the band ends on the home '
+                'chord. A loop of a few bars keeps going until you stop it.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ),
             SwitchListTile(
               key: const ValueKey('head-in-out'),

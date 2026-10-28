@@ -289,6 +289,7 @@ class AppSettings extends ChangeNotifier {
   static const _markTheBarKey = 'markTheBar';
   static const _drumLevelsKey = 'drumLevels';
   static const _fadeChartKey = 'fadeChart';
+  static const _chorusesKey = 'choruses';
 
   /// Reads saved settings. Falls back to defaults if storage is unavailable.
   static Future<AppSettings> load() async {
@@ -464,6 +465,14 @@ class AppSettings extends ChangeNotifier {
     } catch (e) {
       debugPrint('Could not read settings: $e');
     }
+    int? choruses = defaultChoruses;
+    try {
+      final saved = await storage.getInt(_chorusesKey);
+      // Nought is how "keep going" is kept.
+      if (saved != null) choruses = saved == 0 ? null : saved;
+    } catch (e) {
+      debugPrint('Could not read settings: $e');
+    }
     return AppSettings._(
       storage,
       instrument,
@@ -498,10 +507,31 @@ class AppSettings extends ChangeNotifier {
       arpeggioReach,
       chartFont,
       minorSign,
-    );
+    ).._choruses = choruses;
   }
 
   final SharedPreferencesAsync? _storage;
+
+  /// How many times round the form a tune plays before the band ends it,
+  /// for somebody who has not chosen: in once, a chorus to blow on, out.
+  static const defaultChoruses = 3;
+
+  /// How many times round the whole tune the band plays before it ends,
+  /// or null to keep going until stopped. Kept from tune to tune: how long
+  /// somebody likes to play for is theirs, not the tune's.
+  int? get choruses => _choruses;
+  int? _choruses = defaultChoruses;
+
+  Future<void> setChoruses(int? value) async {
+    if (value == _choruses) return;
+    _choruses = value;
+    notifyListeners();
+    try {
+      await _storage?.setInt(_chorusesKey, value ?? 0);
+    } catch (e) {
+      debugPrint('Could not save settings: $e');
+    }
+  }
 
   ChartInstrument get instrument => _instrument;
   ChartInstrument _instrument;

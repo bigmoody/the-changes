@@ -323,12 +323,14 @@ void main() {
           );
           var checked = 0;
           for (final number in numbers.evaluate()) {
-            final cell = find
-                .ancestor(
-                  of: find.byWidget(number.widget),
-                  matching: find.byType(Stack),
-                )
-                .first;
+            // Only the chart's: the loop bar's chorus count is a number
+            // too, and it is not in a bar.
+            final cells = find.ancestor(
+              of: find.byWidget(number.widget),
+              matching: find.byType(Stack),
+            );
+            if (cells.evaluate().isEmpty) continue;
+            final cell = cells.first;
             final numberRect = tester.getRect(find.byWidget(number.widget));
             for (final text
                 in find

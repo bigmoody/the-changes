@@ -54,22 +54,34 @@ class LoopBar extends StatelessWidget {
             // either one on its own is wider than the phone, and without a
             // ceiling it pushes the rest over the edge.
             final most = constraints.maxWidth * 0.4;
+            final compact = constraints.maxWidth < 600;
+            // On a phone, "Whole tune", where the band comes in and how many
+            // times round are more than the row holds. The chorus count
+            // already says it is the whole tune, so the name gives way.
+            final named =
+                !(compact && wholeTune && controller.startBar != null);
             return Row(
               children: [
-                Icon(Icons.repeat, size: 20, color: theme.colorScheme.tertiary),
-                const SizedBox(width: 6),
-                // A long loop's name ("Bars 1–16") may shrink to an ellipsis
-                // if it has to, but it takes no share of the free space: with
-                // a flex of 1 it split the row with the chips beside it and
-                // squeezed them off the edge.
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: most),
-                  child: Text(
-                    loop.describe(tune),
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall,
+                if (named) ...[
+                  Icon(
+                    Icons.repeat,
+                    size: 20,
+                    color: theme.colorScheme.tertiary,
                   ),
-                ),
+                  const SizedBox(width: 6),
+                  // A long loop's name ("Bars 1–16") may shrink to an
+                  // ellipsis if it has to, but it takes no share of the free
+                  // space: with a flex of 1 it split the row with the chips
+                  // beside it and squeezed them off the edge.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: most),
+                    child: Text(
+                      loop.describe(tune),
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                  ),
+                ],
                 // Where the band comes in, when that isn't the top. It sits
                 // outside the scrolling strip: it is a thing you have
                 // switched on, and it has to be as easy to switch off.
@@ -230,6 +242,20 @@ class LoopBar extends StatelessWidget {
                     ),
                   ),
                 ),
+                // How many times round before the band ends it, where the
+                // whole tune is playing: a tune has to know when to stop,
+                // and that was three taps deep in the Arrangement sheet.
+                if (wholeTune)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: most),
+                    // On a phone the row is shared with the start chip and
+                    // the chart's chips, so it says the number and no more;
+                    // the menu and the tooltip say what it is a number of.
+                    child: _ChorusCount(
+                      controller: controller,
+                      compact: compact,
+                    ),
+                  ),
                 if (!wholeTune)
                   ConstrainedBox(
                     constraints: BoxConstraints(maxWidth: most),
@@ -263,7 +289,7 @@ String _chorusLine(PracticeController controller) {
   if (controller.isFinishing) return "That's it";
   final chorus = controller.chorus;
   if (chorus == null) return '';
-  final total = controller.arrangement.choruses;
+  final total = controller.choruses;
   final plan = controller.chorusPlan;
   return [
     total == null ? 'Chorus $chorus' : 'Chorus $chorus of $total',
@@ -279,3 +305,72 @@ String _chorusLine(PracticeController controller) {
     ],
   ].join(' · ');
 }
+
+/// How many choruses the band plays, as a button that offers the others.
+class _ChorusCount extends StatelessWidget {
+  const _ChorusCount({required this.controller, required this.compact});
+
+  final PracticeController controller;
+  final bool compact;
+
+  /// The counts on offer. Nought stands for keep going.
+  static const counts = [1, 2, 3, 4, 5, 6, 8, 12, 0];
+
+  @override
+  Widget build(BuildContext context) {
+    final count = controller.arrangement.choruses;
+    return PopupMenuButton<int>(
+      key: const ValueKey('chorus-count'),
+      tooltip: 'How many times round the tune before the band ends it',
+      initialValue: count ?? 0,
+      onSelected: (chosen) => controller.setArrangement(
+        chosen == 0
+            ? controller.arrangement.copyWith(keepGoing: true)
+            : controller.arrangement.copyWith(choruses: chosen),
+      ),
+      itemBuilder: (context) => [
+        for (final option in counts)
+          PopupMenuItem(
+            key: ValueKey('chorus-count-$option'),
+            value: option,
+            child: Text(chorusCountLabel(option == 0 ? null : option)),
+          ),
+      ],
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 6 : 10,
+          vertical: 8,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              count == null ? Icons.all_inclusive : Icons.flag_outlined,
+              size: 18,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            if (!compact || count != null) ...[
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  compact ? '$count' : chorusCountLabel(count),
+                  semanticsLabel: chorusCountLabel(count),
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelLarge
+                      ?.copyWith(color: Theme.of(context).colorScheme.primary),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "3 Choruses", "1 Chorus" or "Keep Going".
+String chorusCountLabel(int? count) => switch (count) {
+  null => 'Keep Going',
+  1 => '1 Chorus',
+  _ => '$count Choruses',
+};

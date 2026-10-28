@@ -132,7 +132,32 @@ void main() {
     final wanted = exportLength(request).inMilliseconds / 1000;
     expect(wanted, closeTo(1.5 + 24, 0.1));
     expect(seconds, greaterThan(wanted));
-    expect(seconds, lessThan(wanted + 2), reason: 'only the ring is extra');
+    expect(
+      seconds,
+      lessThan(wanted + 4.5),
+      reason: 'only the final chord ringing is extra',
+    );
+  });
+
+  test('the band ends on a final chord rather than stopping dead', () {
+    final request = _request(choruses: 2);
+    final samples = _mono(exportTrack(request));
+    final end = (exportLength(request).inMilliseconds / 1000 * 44100).round();
+    double loudness(int from, int to) {
+      var sum = 0.0;
+      for (var i = from; i < to && i < samples.length; i++) {
+        sum += samples[i].abs();
+      }
+      return sum / (to - from);
+    }
+
+    // Half a second into where the form has finished, the band is still
+    // sounding: the chord it came down on, not the dregs of the last bar.
+    final lastBar = loudness(end - 44100, end);
+    final after = loudness(end + 22050, end + 44100);
+    expect(after, greaterThan(lastBar / 4), reason: 'a chord to end on');
+    // And it dies away rather than being cut off.
+    expect(loudness(samples.length - 4410, samples.length), lessThan(after / 4));
   });
 
   test('the whole band is in it, all the way through', () {

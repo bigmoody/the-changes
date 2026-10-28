@@ -86,6 +86,8 @@ class PracticeController extends ChangeNotifier {
                ? null
                : tempoToOpenAt(library?.runsFor(ref) ?? const [])) ??
            tune.defaultTempo {
+    // As many times round as the player last asked for, on any tune.
+    _arrangement = Arrangement(choruses: settings.choruses);
     settings.addListener(_updateChart);
     recordingStore?.addListener(_recordingsChanged);
     _imported = partStore?.forTune(_ref);
@@ -300,7 +302,7 @@ class PracticeController extends ChangeNotifier {
   /// What the band is doing on this chorus (the melody, trading, who's
   /// laid out) or null when nothing is playing.
   ChorusPlan? get chorusPlan =>
-      _chorus == null ? null : _arrangement.planFor(_chorus!);
+      _chorus == null ? null : _playing.planFor(_chorus!);
 
   /// How the band plays the form: choruses, heads, trading, who lays out.
   Arrangement get arrangement => _arrangement;
@@ -312,8 +314,24 @@ class PracticeController extends ChangeNotifier {
   /// True once the last chorus has been played and the band is ringing off.
   bool get isFinishing => _finishing;
 
+  /// How many times round the band goes before it ends, or null when it
+  /// keeps going.
+  ///
+  /// The count is for the whole tune. Looping a few bars is drilling them,
+  /// and a drill that stops after three times round four bars has stopped
+  /// before it started; it goes on until it is stopped.
+  int? get choruses => _playing.choruses;
+
+  /// The arrangement as it is actually played: see [choruses].
+  Arrangement get _playing => _loop.isWholeTune(_tune)
+      ? _arrangement
+      : _arrangement.copyWith(keepGoing: true);
+
   void setArrangement(Arrangement value) {
     if (value == _arrangement) return;
+    if (value.choruses != _arrangement.choruses) {
+      unawaited(settings.setChoruses(value.choruses));
+    }
     _arrangement = value;
     notifyListeners();
     // A different arrangement is a different performance: it starts again
@@ -1014,7 +1032,7 @@ class PracticeController extends ChangeNotifier {
         loopStart: _loop.startBeat,
         loopBeats: _loop.lengthBeats,
         seed: _lastSeed,
-        arrangement: _arrangement,
+        arrangement: _playing,
       ),
     );
   }
@@ -1380,7 +1398,7 @@ class PracticeController extends ChangeNotifier {
           arpeggioStart: settings.arpeggioStart,
           arpeggioRate: settings.arpeggioRate,
           arpeggioReach: settings.arpeggioReach,
-          arrangement: _arrangement,
+          arrangement: _playing,
           imported: _imported?.transposedBy(_semitones),
           drumLevels: settings.drumLevels,
           swing: style.swing,
@@ -1540,14 +1558,14 @@ class PracticeController extends ChangeNotifier {
       final position = player.position();
       if (position == null) return;
       // The last chorus has gone by: let the final chord ring, then stop.
-      final total = _arrangement.choruses;
+      final total = choruses;
       if (total != null &&
           position.chorus != null &&
           position.chorus! >= total) {
         _finishing = true;
         _ticker?.cancel();
         notifyListeners();
-        _finishTimer = Timer(const Duration(milliseconds: 1400), () {
+        _finishTimer = Timer(const Duration(milliseconds: 3200), () {
           if (_finishing) stop();
         });
         return;

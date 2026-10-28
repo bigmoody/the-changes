@@ -365,6 +365,7 @@ void main() {
   group('exporting', () {
     test('it will not write a track that never ends', () async {
       final (:controller, :mic, :store, :player) = _build();
+      controller.setArrangement(Arrangement.keepGoing);
       await controller.exportBacking();
       expect(controller.error, contains('choruses'));
       expect(controller.isExporting, isFalse);
@@ -372,6 +373,7 @@ void main() {
 
     test('with a chorus count it knows how long the file will be', () {
       final (:controller, :mic, :store, :player) = _build();
+      controller.setArrangement(Arrangement.keepGoing);
       expect(controller.exportLengthNow, isNull, reason: 'keeps going');
       controller.setTempo(120);
       controller.setArrangement(const Arrangement(choruses: 2));
@@ -438,6 +440,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('arrangement')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('choruses-keep')));
     await tester.pumpAndSettle();
 
     final button = find.byKey(const ValueKey('export'));
