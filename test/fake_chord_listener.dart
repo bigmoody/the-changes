@@ -12,10 +12,10 @@ class FakeChordListener implements ChordListener {
 
   bool get listening => _onHeard != null && !stopped;
 
-  /// Hears these notes (MIDI), evenly weighted, for three readings in a
+  /// Hears these notes (MIDI), evenly weighted, for four readings in a
   /// row as a chord strummed and ringing is: the first, louder than what
-  /// came before, is the strum; then it has to read the same twice before
-  /// it is named (see chord_reader.dart).
+  /// came before, is the strum; then it has to read the same three times
+  /// before it is named (see chord_reader.dart).
   void hear(List<int> pitches, {double level = 0.05}) {
     final chroma = List.filled(12, 0.0);
     for (final pitch in pitches) {
@@ -29,7 +29,7 @@ class FakeChordListener implements ChordListener {
     }
     this.level = level;
     final heard = HeardNotes(pitches: pitches, chroma: chroma, level: level);
-    for (var reading = 0; reading < 3; reading++) {
+    for (var reading = 0; reading < 4; reading++) {
       _onHeard?.call(heard);
     }
   }

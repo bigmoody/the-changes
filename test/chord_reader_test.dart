@@ -14,9 +14,10 @@ HeardNotes notes(List<int> pitches, double level) {
 }
 
 void main() {
-  test('one reading is not named; two the same are', () {
+  test('the same three readings running are named; fewer are not', () {
     final reader = ChordReader();
     reader.hear(notes([48, 52, 55], 0.05)); // the strum: louder
+    expect(reader.hear(notes([48, 52, 55], 0.05)), isFalse);
     expect(reader.hear(notes([48, 52, 55], 0.05)), isFalse);
     expect(reader.hear(notes([48, 52, 55], 0.05)), isTrue);
     expect(reader.guesses.first.display, 'C');
@@ -24,7 +25,7 @@ void main() {
 
   test('a chord dying away keeps its name', () {
     final reader = ChordReader();
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 4; i++) {
       reader.hear(notes([48, 52, 58, 62], 0.05)); // C9: C E B♭ D
     }
     expect(reader.guesses.first.display, 'C9');
@@ -38,14 +39,39 @@ void main() {
 
   test('a new chord strummed is named, even one inside the last', () {
     final reader = ChordReader();
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 4; i++) {
       reader.hear(notes([48, 52, 55, 59], 0.05)); // CΔ7
     }
     expect(reader.guesses.first.display, 'CΔ7');
     // The same strings less one, struck again: a C, louder.
-    reader.hear(notes([48, 52, 55], 0.08));
-    reader.hear(notes([48, 52, 55], 0.08));
-    reader.hear(notes([48, 52, 55], 0.08));
+    for (var i = 0; i < 4; i++) {
+      reader.hear(notes([48, 52, 55], 0.08));
+    }
     expect(reader.guesses.first.display, 'C');
+  });
+
+  test('a seventh that dies at once still names the chord', () {
+    // A note fretted on the G string, heard through an iPad, is gone in
+    // a fifth of a second: the C7's B flat, here, after one reading.
+    final reader = ChordReader();
+    reader.hear(notes([48, 52, 55, 58], 0.05)); // the strum
+    reader.hear(notes([48, 52, 55, 58], 0.05));
+    for (var i = 0; i < 4; i++) {
+      reader.hear(notes([48, 52, 55], 0.045 - i * 0.004));
+    }
+    expect(reader.guesses.first.display, 'C7');
+  });
+
+  test('once settled, the name holds until the next strum', () {
+    final reader = ChordReader();
+    for (var i = 0; i < 10; i++) {
+      reader.hear(notes([44, 48, 51, 53], 0.05)); // A♭6, half a second
+    }
+    expect(reader.guesses.first.display, 'A♭6');
+    // Half a second later, the ring throws up a B flat, steadily: no.
+    for (var i = 0; i < 12; i++) {
+      reader.hear(notes([44, 48, 51, 53, 58], 0.05 - i * 0.001));
+    }
+    expect(reader.guesses.first.display, 'A♭6');
   });
 }

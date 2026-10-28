@@ -20,7 +20,7 @@ void main() {
     final sound = Float32List.fromList([for (final s in raw) s / 32768]);
     const size = 16384;
     // The first strum, once it has settled: 0.6 to 2.5 seconds.
-    for (var end = 26460; end < 110250; end += 5292) {
+    for (var end = 26460; end < 110250; end += 2646) {
       final heard = listenForNotes(
         Float32List.sublistView(sound, end - size, end),
         sampleRate: 44100,
@@ -45,7 +45,7 @@ void main() {
     const size = 16384;
     final reader = ChordReader();
     final shown = <String>{};
-    for (var end = size; end < sound.length; end += 5292) {
+    for (var end = size; end < sound.length; end += 2646) {
       reader.hear(
         listenForNotes(
           Float32List.sublistView(sound, end - size, end),

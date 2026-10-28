@@ -18,6 +18,10 @@
 #
 # What has gone from the everyday run is rendering every tune in the book,
 # not rendering: the audio tests that render one tune still run every time.
+#
+# The chord identifier's sweep (chord_sweep_test.dart) is tagged the same
+# way: every chord it knows, in every key, strummed clean and as a guitar
+# sounds through an iPad, which takes most of a minute.
 
 tags:
   sweep:

@@ -17,7 +17,10 @@ class ChordListener {
   ChordListener({
     this.sampleRate = 44100,
     this.size = 16384,
-    this.everyMs = 120,
+    // Every 60 ms: a note fretted on the G string, heard through an
+    // iPad, is gone in a fifth of a second, and read every 120 ms it was
+    // often gone before the chord could be named (chord_reader.dart).
+    this.everyMs = 60,
   });
 
   final int sampleRate;
