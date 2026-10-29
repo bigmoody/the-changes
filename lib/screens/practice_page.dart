@@ -46,6 +46,7 @@ import 'number_patterns_screen.dart';
 import 'passing_chords_screen.dart';
 import 'rhythm_changes_screen.dart';
 import 'scale_patterns_screen.dart';
+import 'playing_fast_screen.dart';
 import 'scale_of_the_day_screen.dart';
 import 'session_drills_screen.dart';
 import 'scales_reference_screen.dart';
@@ -550,6 +551,23 @@ class _Roadmap extends StatelessWidget {
             SessionDrillSet.recover,
             routine.first.tuneOfTheDay,
             instrument,
+          ),
+        ),
+        ListTile(
+          key: const ValueKey('practice-playing-fast'),
+          leading: const Icon(Icons.speed),
+          title: const Text('Playing Fast'),
+          subtitle: const Text(
+            'What fast players are doing, and how to get from slow to fast',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => PlayingFastScreen(
+                player: page.player,
+                settings: page.settings,
+              ),
+            ),
           ),
         ),
         SectionHeader('My Session\'s Tunes'),

@@ -37,6 +37,7 @@ import 'walking_bass_screen.dart';
 import 'ear_training_screen.dart';
 import 'scale_patterns_screen.dart';
 import 'phrases_screen.dart';
+import 'playing_fast_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
@@ -340,6 +341,16 @@ class _LearnPageState extends State<LearnPage> {
             'hand stays still while the notes move',
         onTap: () =>
             open(NumberPatternsScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-playing-fast'),
+        icon: Icons.speed,
+        title: 'Playing Fast',
+        subtitle:
+            'What fast players are actually doing, and how to get from slow '
+            'to fast: feeling it in two, shapes, targets, the tempo ladder',
+        onTap: () =>
+            open(PlayingFastScreen(player: player, settings: settings)),
       ),
       _LearnCard(
         key: const ValueKey('learn-rhythm-changes'),
