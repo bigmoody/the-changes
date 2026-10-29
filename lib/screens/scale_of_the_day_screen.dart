@@ -38,7 +38,11 @@ class ScaleOfTheDayScreen extends StatefulWidget {
     required this.player,
     required this.settings,
     required this.onDone,
+    this.level = PlayerLevel.intermediate,
   });
+
+  /// Who is playing, which sets where the tempo starts and aims for.
+  final PlayerLevel level;
 
   /// The block's name, for the bar at the top.
   final String title;
@@ -77,7 +81,10 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
   /// Whether the band plays the scale with you, or only counts.
   var _guide = true;
 
-  late var _tempo = widget.progress.scaleTempo(_tempoKey, widget.exercise.from);
+  late var _tempo = widget.progress.scaleTempo(
+    _tempoKey,
+    widget.level.tempo(widget.exercise.from),
+  );
 
   /// Which note of the line is being played, while it is.
   int? _playing;
@@ -200,7 +207,10 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
     }
     setState(() {
       _at++;
-      _tempo = widget.progress.scaleTempo(_tempoKey, widget.exercise.from);
+      _tempo = widget.progress.scaleTempo(
+        _tempoKey,
+        widget.level.tempo(widget.exercise.from),
+      );
     });
   }
 
@@ -217,7 +227,7 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
         ? step.mode.chordOn(widget.keyName).display
         : '${step.mode.spelledRoot(widget.keyName)} ${step.mode.name}';
     final last = _at == _steps.length - 1;
-    final atGoal = _tempo >= widget.exercise.to;
+    final atGoal = _tempo >= widget.level.tempo(widget.exercise.to);
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
@@ -324,10 +334,10 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
                             ),
                             Text(
                               atGoal
-                                  ? 'At the goal of ${widget.exercise.to}. '
+                                  ? 'At the goal of ${widget.level.tempo(widget.exercise.to)}. '
                                         'Keep it there, or push on.'
                                   : 'BPM, two notes a beat. Goal: '
-                                        '${widget.exercise.to}',
+                                        '${widget.level.tempo(widget.exercise.to)}',
                               key: const ValueKey('scale-goal'),
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodySmall?.copyWith(

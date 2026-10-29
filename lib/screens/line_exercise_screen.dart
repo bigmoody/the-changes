@@ -17,6 +17,7 @@ import '../audio/drum_patterns.dart';
 import '../audio/practice_player.dart';
 import '../music/swing.dart';
 import '../practice/line_exercise.dart';
+import '../practice/roadmap.dart';
 import '../practice/roadmap_progress.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
@@ -33,7 +34,11 @@ class LineExerciseScreen extends StatefulWidget {
     required this.player,
     required this.settings,
     required this.onDone,
+    this.level = PlayerLevel.intermediate,
   });
+
+  /// Who is playing, which sets where the tempo starts and aims for.
+  final PlayerLevel level;
 
   final String title;
 
@@ -58,7 +63,10 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
   var _times = 4;
   var _guide = true;
 
-  late var _tempo = widget.progress.scaleTempo(_tempoKey, widget.exercise.from);
+  late var _tempo = widget.progress.scaleTempo(
+    _tempoKey,
+    widget.level.tempo(widget.exercise.from),
+  );
 
   /// Which note of the line is sounding, while it plays.
   int? _playing;
@@ -169,7 +177,10 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
     }
     setState(() {
       _at++;
-      _tempo = widget.progress.scaleTempo(_tempoKey, widget.exercise.from);
+      _tempo = widget.progress.scaleTempo(
+        _tempoKey,
+        widget.level.tempo(widget.exercise.from),
+      );
     });
   }
 
@@ -188,7 +199,7 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
         if (e.pitch != null) i,
     ];
     final lit = _playing == null ? -1 : pitched.indexOf(_playing!);
-    final atGoal = _tempo >= widget.exercise.to;
+    final atGoal = _tempo >= widget.level.tempo(widget.exercise.to);
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
@@ -262,10 +273,10 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
                             ),
                             Text(
                               atGoal
-                                  ? 'At the goal of ${widget.exercise.to}. '
+                                  ? 'At the goal of ${widget.level.tempo(widget.exercise.to)}. '
                                         'Keep it there, or push on.'
                                   : 'BPM, swung eighths. Goal: '
-                                        '${widget.exercise.to}',
+                                        '${widget.level.tempo(widget.exercise.to)}',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: atGoal

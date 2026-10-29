@@ -99,6 +99,8 @@ class PracticePage extends StatelessWidget {
         body: SafeArea(
           child: instrument == null
               ? _ChooseInstrument(progress: progress)
+              : progress.level == null
+              ? _ChooseLevel(progress: progress, instrument: instrument)
               : _Roadmap(page: this, instrument: instrument),
         ),
       );
@@ -169,6 +171,7 @@ class PracticePage extends StatelessWidget {
   }) => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => ScaleOfTheDayScreen(
+        level: block.level,
         title: block.block.title,
         modes: block.block.modes,
         keyName: block.key,
@@ -241,6 +244,7 @@ class PracticePage extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => LickScreen(
+          level: block.level,
           licks: names.isEmpty
               ? licks
               : [
@@ -265,6 +269,7 @@ class PracticePage extends StatelessWidget {
   }) => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => LineExerciseScreen(
+        level: block.level,
         title: block.block.title,
         keyName: block.key,
         exercise: block.block.line!,
@@ -314,6 +319,131 @@ class PracticePage extends StatelessWidget {
       partStore: partStore,
       recordingStore: recordingStore,
     ).play(context, FoundTune(tune));
+  }
+}
+
+/// Then: how far along are you? It decides where you start, and how each
+/// day is shared out.
+class _ChooseLevel extends StatelessWidget {
+  const _ChooseLevel({required this.progress, required this.instrument});
+
+  final RoadmapProgress progress;
+  final RoadmapInstrument instrument;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text('Where Are You Now?', style: theme.textTheme.headlineSmall),
+        const SizedBox(height: 12),
+        Text(
+          'A beginner and somebody who gigs should not practise the same '
+          'things. This sets the stage you start on, how the time is shared '
+          'out each day, the tempos, and the keys. It can be changed later.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 20),
+        for (final level in PlayerLevel.values)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Card(
+              key: ValueKey('level-${level.name}'),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => progress.setLevel(level, instrument),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(level.label, style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(level.about, style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Starts on stage ${level.startStage}: '
+                        '${stagesFor(instrument)[level.startStage - 1].title}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// The level, shown under the instrument with a way to change it.
+class _LevelRow extends StatelessWidget {
+  const _LevelRow({required this.progress, required this.instrument});
+
+  final RoadmapProgress progress;
+  final RoadmapInstrument instrument;
+
+  Future<void> _change(BuildContext context, PlayerLevel level) async {
+    if (level == progress.level) return;
+    final stage = level.startStage;
+    final move = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text(level.label),
+        content: Text(
+          '${level.about}\n\nStart on stage $stage? Goals already ticked '
+          'are kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialog).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const ValueKey('level-confirm'),
+            onPressed: () => Navigator.of(dialog).pop(true),
+            child: Text('Start on Stage $stage'),
+          ),
+        ],
+      ),
+    );
+    if (move ?? false) progress.setLevel(level, instrument);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final level = progress.level ?? PlayerLevel.intermediate;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      // A Wrap rather than a Row: at a large text size "Level" and
+      // "Intermediate" with its arrow are wider than a phone.
+      child: Wrap(
+        spacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text('Level', style: theme.textTheme.labelLarge),
+          PopupMenuButton<PlayerLevel>(
+            key: const ValueKey('roadmap-level'),
+            tooltip: 'Change your level',
+            initialValue: level,
+            onSelected: (chosen) => _change(context, chosen),
+            itemBuilder: (_) => [
+              for (final l in PlayerLevel.values)
+                PopupMenuItem(value: l, child: Text(l.label)),
+            ],
+            child: Chip(
+              label: Text(level.label),
+              avatar: const Icon(Icons.expand_more, size: 18),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -380,6 +510,7 @@ class _Roadmap extends StatelessWidget {
       progress.minutes,
       day: day,
       sessionTunes: progress.sessionTunes,
+      level: progress.level ?? PlayerLevel.intermediate,
     );
     final done = [
       for (var b = 0; b < routine.length; b++)
@@ -403,6 +534,7 @@ class _Roadmap extends StatelessWidget {
                 progress.setInstrument(chosen.single),
           ),
         ),
+        _LevelRow(progress: progress, instrument: instrument),
         SectionHeader('Today'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -510,6 +642,7 @@ class _Roadmap extends StatelessWidget {
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => LickScreen(
+                level: routine.first.level,
                 licks: licks,
                 keyName: routine.first.key,
                 instrument: instrument,

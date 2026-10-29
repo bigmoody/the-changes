@@ -13,12 +13,18 @@ import 'roadmap.dart';
 class RoadmapProgress extends ChangeNotifier {
   RoadmapProgress._(this._storage);
 
-  /// Progress that isn't saved anywhere, for tests.
-  RoadmapProgress.inMemory({RoadmapInstrument? instrument})
-    : _storage = null,
-      // A private field can't be a named parameter.
-      // ignore: prefer_initializing_formals
-      _instrument = instrument;
+  /// Progress that isn't saved anywhere, for tests: an intermediate
+  /// player unless a test says otherwise, which is the routine exactly as
+  /// the stages write it.
+  RoadmapProgress.inMemory({
+    RoadmapInstrument? instrument,
+    PlayerLevel? level = PlayerLevel.intermediate,
+  }) : _storage = null,
+       // Private fields can't be named parameters.
+       // ignore: prefer_initializing_formals
+       _level = level,
+       // ignore: prefer_initializing_formals
+       _instrument = instrument;
 
   static const _key = 'roadmap';
 
@@ -80,6 +86,21 @@ class RoadmapProgress extends ChangeNotifier {
   int stageOf(RoadmapInstrument instrument) => _stage[instrument] ?? 1;
 
   int get minutes => _minutes;
+
+  /// How far along somebody says they are, or null until they have said.
+  PlayerLevel? get level => _level;
+  PlayerLevel? _level;
+
+  /// Sets the level and starts [instrument] on the stage it begins at;
+  /// the first time, the session length too. Ticks are kept: moving to a
+  /// stage is not losing what was done on another.
+  void setLevel(PlayerLevel value, RoadmapInstrument instrument) {
+    final first = _level == null;
+    _level = value;
+    _stage[instrument] = value.startStage;
+    if (first) _minutes = value.defaultMinutes;
+    _changed();
+  }
 
   /// Whether [goal] is ticked for [instrument]. The ticks are kept for
   /// each instrument apart: a guitarist who takes up the sax has not
@@ -144,6 +165,7 @@ class RoadmapProgress extends ChangeNotifier {
 
   Map<String, Object?> _toJson() => {
     'instrument': _instrument?.name,
+    'level': _level?.name,
     'stages': {for (final e in _stage.entries) e.key.name: e.value},
     'ticked': _ticked.toList(),
     'minutes': _minutes,
@@ -156,6 +178,9 @@ class RoadmapProgress extends ChangeNotifier {
   void _read(Map<String, Object?> json) {
     _instrument = RoadmapInstrument.values
         .where((i) => i.name == json['instrument'])
+        .firstOrNull;
+    _level = PlayerLevel.values
+        .where((l) => l.name == json['level'])
         .firstOrNull;
     final stages = json['stages'];
     if (stages is Map) {

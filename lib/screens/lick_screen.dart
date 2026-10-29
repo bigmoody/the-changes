@@ -47,7 +47,11 @@ class LickScreen extends StatefulWidget {
     this.title = 'Licks in Context',
     this.onDone,
     this.chooseKey = false,
+    this.level = PlayerLevel.intermediate,
   });
+
+  /// Who is playing, which sets the tempo the licks start at.
+  final PlayerLevel level;
 
   final List<Lick> licks;
 
@@ -79,7 +83,10 @@ class _LickScreenState extends State<LickScreen> {
   var _times = 4;
   var _turns = LickTurns.callAndResponse;
   late var _key = widget.keyName;
-  late var _tempo = widget.progress.scaleTempo(_tempoKey, 100);
+  late var _tempo = widget.progress.scaleTempo(
+    _tempoKey,
+    widget.level.tempo(100),
+  );
 
   /// Which note of the lick is sounding (or would be, on your turn).
   int? _playing;
@@ -196,7 +203,7 @@ class _LickScreenState extends State<LickScreen> {
     unawaited(_stop());
     setState(() {
       _at = index;
-      _tempo = widget.progress.scaleTempo(_tempoKey, 100);
+      _tempo = widget.progress.scaleTempo(_tempoKey, widget.level.tempo(100));
     });
   }
 

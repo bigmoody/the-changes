@@ -41,6 +41,109 @@ enum RoadmapInstrument {
   bool get comps => this == guitar || this == piano;
 }
 
+/// How far along somebody already is, which decides where they start on
+/// the roadmap and how a day's practice is shared out.
+///
+/// The stages say what to work on. The level says how: a beginner on any
+/// stage spends longer on the sound, the time and the scales, in the
+/// easier keys, slower; somebody who gigs keeps the scales as a short
+/// warm-up and spends the time on the ear, the vocabulary and the tunes,
+/// faster and in every key.
+enum PlayerLevel {
+  beginner(
+    'Beginner',
+    'New to jazz, or still finding your way round the instrument.',
+    startStage: 1,
+    tempoScale: 0.8,
+    tuneShare: 1 / 3,
+    defaultMinutes: 30,
+  ),
+  intermediate(
+    'Intermediate',
+    'You can play a blues and a few standards, and improvise a little.',
+    startStage: 2,
+    tempoScale: 1,
+    tuneShare: 1 / 3,
+    defaultMinutes: 30,
+  ),
+  advanced(
+    'Advanced',
+    'You play sessions, know twenty or more tunes, and can play in every '
+        'key.',
+    startStage: 4,
+    tempoScale: 1.15,
+    tuneShare: 0.38,
+    defaultMinutes: 60,
+  ),
+  professional(
+    'Professional',
+    'You gig: keeping it all up, and pushing further.',
+    startStage: 5,
+    tempoScale: 1.3,
+    tuneShare: 0.4,
+    defaultMinutes: 60,
+  );
+
+  const PlayerLevel(
+    this.label,
+    this.about, {
+    required this.startStage,
+    required this.tempoScale,
+    required this.tuneShare,
+    required this.defaultMinutes,
+  });
+
+  final String label;
+  final String about;
+
+  /// The stage somebody at this level starts on.
+  final int startStage;
+
+  /// How much faster (or slower) than the stage's own tempos the exercises
+  /// start and aim for.
+  final double tempoScale;
+
+  /// How much of a session of half an hour or more goes on the tune.
+  final double tuneShare;
+  final int defaultMinutes;
+
+  /// How much more (or less) of the day [area] gets than the stage's own
+  /// balance gives it.
+  double weightFor(Area area) => switch ((this, area)) {
+    (beginner, Area.sound) => 1.5,
+    (beginner, Area.scales) => 1.3,
+    (beginner, Area.language) => 0.6,
+    (beginner, Area.ear) => 0.8,
+    (beginner, Area.session) => 0.5,
+    (advanced, Area.sound || Area.scales) => 0.8,
+    (advanced, Area.language || Area.ear || Area.session) => 1.2,
+    (professional, Area.sound || Area.scales) => 0.6,
+    (professional, Area.chordTones) => 0.9,
+    (professional, Area.language) => 1.3,
+    (professional, Area.ear) => 1.4,
+    (professional, Area.role) => 1.1,
+    _ => 1,
+  };
+
+  /// The keys today's key is drawn from, out of the stage's [keys]: a
+  /// beginner stays in the keys the tunes are mostly written in until
+  /// those are easy, whatever the stage says; everybody else takes them
+  /// all.
+  List<String> keysFrom(List<String> keys) {
+    if (this != beginner) return keys;
+    final easy = [
+      for (final key in keys)
+        if (_easyKeys.contains(key)) key,
+    ];
+    return easy.isEmpty ? keys : easy;
+  }
+
+  /// [tempo] at this level, to the nearest five.
+  int tempo(int tempo) => ((tempo * tempoScale) / 5).round() * 5;
+}
+
+const _easyKeys = {'C', 'F', 'B♭', 'E♭', 'G', 'D'};
+
 /// What a piece of practice works on.
 enum Area {
   sound('Sound and Time'),
@@ -223,6 +326,7 @@ class RoutineBlock {
     required this.how,
     required this.key,
     required this.tuneOfTheDay,
+    this.level = PlayerLevel.intermediate,
     this.tune,
   });
 
@@ -240,6 +344,9 @@ class RoutineBlock {
 
   /// Today's tune, which session drills are played on.
   final String tuneOfTheDay;
+
+  /// Who it is for, which sets the tempos its exercises start at.
+  final PlayerLevel level;
 }
 
 /// The session lengths on offer, in minutes.
@@ -330,7 +437,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           ),
           modes: ['Ionian'],
           how:
-              '{key} major, $range, slowly and evenly at 70 to 90. Then in '
+              '{key} major, $range, slowly and evenly at {from} to {to}. Then in '
               'thirds. Say each note name as you go.',
           weight: 3,
           tool: Tool.scalesReference,
@@ -435,7 +542,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           ),
           modes: ['Ionian'],
           how:
-              '{key} major, $range, at 90 to 110. Then the seventh chord '
+              '{key} major, $range, at {from} to {to}. Then the seventh chord '
               'on every degree of it: the scale as the harmony it holds.',
           weight: 3,
           tool: Tool.scalePatterns,
@@ -1251,10 +1358,20 @@ List<RoutineBlock> routineFor(
   int minutes, {
   required int day,
   List<String> sessionTunes = const [],
+  PlayerLevel level = PlayerLevel.intermediate,
 }) {
-  // At least five minutes each, less than that is not practice, and a
-  // quarter of the session left over for the tune on top of its own five.
-  final room = ((minutes * 3 / 4) ~/ 5 + 1).clamp(2, stage.blocks.length);
+  // The stage's balance, tilted for the level.
+  double weight(Block block) => block.weight * level.weightFor(block.area);
+  // How many blocks there is room for: the tune, and then a block for
+  // every five minutes of what is left in a short session, every eight in
+  // a long one. Nine blocks of five minutes is a session spent changing
+  // what you are doing; fewer, longer blocks are where the level shows,
+  // since it decides which of them stay.
+  final rest = minutes * (1 - (minutes < 30 ? 0.45 : level.tuneShare));
+  final int room = (1 + rest ~/ (minutes >= 60 ? 8 : 5)).clamp(
+    math.min(3, stage.blocks.length),
+    stage.blocks.length,
+  );
   final kept = <Block>[];
   final always = stage.blocks
       .where((b) => b.area == Area.sound || b == stage.blocks.last)
@@ -1268,7 +1385,7 @@ List<RoutineBlock> routineFor(
     // one each day.
     final order = [
       for (var k = 0; k < others.length; k++) others[(k + day) % others.length],
-    ]..sort((a, b) => b.weight.compareTo(a.weight));
+    ]..sort((a, b) => weight(b).compareTo(weight(a)));
     kept.addAll(order.take(spare));
   }
   kept.addAll(always);
@@ -1288,7 +1405,7 @@ List<RoutineBlock> routineFor(
   final pieces = List.filled(blocks.length, 1);
   pieces[blocks.length - 1] = math.max(
     1,
-    (minutes * (minutes < 30 ? 0.45 : 1 / 3) / step).round(),
+    (minutes * (minutes < 30 ? 0.45 : level.tuneShare) / step).round(),
   );
   for (
     var left = minutes ~/ step - pieces.fold(0, (sum, p) => sum + p);
@@ -1297,7 +1414,7 @@ List<RoutineBlock> routineFor(
   ) {
     var most = 0;
     for (var b = 1; b < blocks.length - 1; b++) {
-      if (blocks[b].weight / pieces[b] > blocks[most].weight / pieces[most]) {
+      if (weight(blocks[b]) / pieces[b] > weight(blocks[most]) / pieces[most]) {
         most = b;
       }
     }
@@ -1306,7 +1423,8 @@ List<RoutineBlock> routineFor(
   final given = [for (final p in pieces) p * step];
   given[given.length - 1] += minutes - given.fold(0, (sum, m) => sum + m);
 
-  final key = stage.keys[day % stage.keys.length];
+  final keys = level.keysFrom(stage.keys);
+  final key = keys[day % keys.length];
   final tuneTitle = sessionTunes.isNotEmpty && day % 3 != 2
       ? sessionTunes[(day - day ~/ 3) % sessionTunes.length]
       : stage.tunes[day % stage.tunes.length];
@@ -1317,9 +1435,15 @@ List<RoutineBlock> routineFor(
         minutes: given[b],
         how: blocks[b].how
             .replaceAll('{key}', key)
-            .replaceAll('{tune}', tuneTitle),
+            .replaceAll('{tune}', tuneTitle)
+            .replaceAll(
+              '{from}',
+              '${level.tempo(blocks[b].exercise?.from ?? 0)}',
+            )
+            .replaceAll('{to}', '${level.tempo(blocks[b].exercise?.to ?? 0)}'),
         key: key,
         tuneOfTheDay: tuneTitle,
+        level: level,
         tune: blocks[b] == stage.blocks.last ? tuneTitle : null,
       ),
   ];
