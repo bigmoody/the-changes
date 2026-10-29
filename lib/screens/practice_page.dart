@@ -48,6 +48,7 @@ import 'rhythm_changes_screen.dart';
 import 'scale_patterns_screen.dart';
 import 'playing_fast_screen.dart';
 import 'scale_of_the_day_screen.dart';
+import 'sound_exercise_screen.dart';
 import 'session_drills_screen.dart';
 import 'scales_reference_screen.dart';
 import 'setlists_screen.dart';
@@ -276,6 +277,30 @@ class PracticePage extends StatelessWidget {
         progress: progress,
         player: player,
         settings: settings,
+        onDone: onDone,
+      ),
+    ),
+  );
+
+  void _openSound(
+    BuildContext context,
+    RoutineBlock block, {
+    required int day,
+    required VoidCallback onDone,
+  }) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => SoundExerciseScreen(
+        title: block.block.title,
+        exercise: block.block.sound!,
+        keyName: block.key,
+        day: day,
+        player: player,
+        settings: settings,
+        library: library,
+        progressions: progressions,
+        takes: takes,
+        partStore: partStore,
+        recordingStore: recordingStore,
         onDone: onDone,
       ),
     ),
@@ -660,6 +685,14 @@ class _Roadmap extends StatelessWidget {
                 onDone: () =>
                     progress.markDone(day, b, routine[b].block.title, true),
               ),
+              // Held notes over a drone or a ballad's changes.
+              _ when routine[b].block.sound != null => () => page._openSound(
+                context,
+                routine[b],
+                day: day,
+                onDone: () =>
+                    progress.markDone(day, b, routine[b].block.title, true),
+              ),
               // A scale is played here, not read about elsewhere.
               _ when routine[b].block.exercise != null => () => page._openScale(
                 context,
@@ -829,7 +862,7 @@ class _RoutineRow extends StatelessWidget {
         children: [
           Text(
             '${block.block.area.labelFor(instrument)} · ${block.how}'
-            '${block.tune == null && block.block.exercise == null && block.block.line == null && tool != null ? ' (${tool.label})' : ''}',
+            '${block.tune == null && block.block.exercise == null && block.block.line == null && block.block.sound == null && tool != null ? ' (${tool.label})' : ''}',
           ),
           // Not on an arpeggio: its modes only say which chords to play.
           if (block.block.modes.isNotEmpty &&

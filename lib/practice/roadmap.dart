@@ -25,6 +25,7 @@ import 'dart:math' as math;
 
 import '../music/scale_run.dart';
 import 'line_exercise.dart';
+import 'sound_exercise.dart';
 
 /// Who the roadmap is for. Each plays the same music and has a different
 /// job in the band, so the stages are shared and the work differs.
@@ -229,6 +230,7 @@ class Block {
     this.line,
     this.licks,
     this.drills,
+    this.sound,
   });
 
   final Area area;
@@ -260,6 +262,10 @@ class Block {
 
   /// For a block of session drills, which set.
   final SessionDrillSet? drills;
+
+  /// For a block of held notes (long tones, vibrato, a ballad's sound),
+  /// the steps: the Practice tab opens it as an exercise.
+  final SoundExercise? sound;
 }
 
 /// The drills a session block opens.
@@ -1037,12 +1043,13 @@ Block _warmUp(RoadmapInstrument i, int stage) => switch (i) {
     area: Area.sound,
     title: 'Long Tones',
     how: stage < 3
-        ? 'Long tones from the middle of the horn outwards, against the '
-              'tuner. Then the chromatic scale over your range.'
-        : 'Long tones with crescendo and diminuendo, then overtones or lip '
-              'slurs. The sound comes first.',
+        ? 'Long tones from the middle of the horn outwards over a drone, '
+              'then swells: the same sound on every note.'
+        : 'Long tones over a drone, swells, then measured vibrato against '
+              'a click. The sound comes first.',
     weight: 2,
     tool: Tool.tuner,
+    sound: longTones(stage),
   ),
   _ => Block(
     area: Area.sound,
@@ -1270,6 +1277,13 @@ Block _roleBlock(int stage, RoadmapInstrument i) {
         ? ghosting
         : null,
     modes: horn && stage == 2 ? const ['Ionian'] : const [],
+    sound: !horn
+        ? null
+        : stage == 5
+        ? balladSound
+        : stage >= 6
+        ? extremes
+        : null,
     exercise: horn && stage == 2
         ? const ScaleExercise(ways: [straightRun], from: 70, to: 100)
         : null,
