@@ -48,6 +48,22 @@ class RoadmapProgress extends ChangeNotifier {
   int? _doneDay;
   final _done = <String>{};
   final _tempos = <String, int>{};
+  final _sessionTunes = <String>[];
+
+  /// The tunes somebody's own jam session calls, by their titles in the
+  /// library, in the order they were added.
+  List<String> get sessionTunes => List.unmodifiable(_sessionTunes);
+
+  void addSessionTune(String title) {
+    if (_sessionTunes.contains(title)) return;
+    _sessionTunes.add(title);
+    _changed();
+  }
+
+  void removeSessionTune(String title) {
+    if (!_sessionTunes.remove(title)) return;
+    _changed();
+  }
 
   /// The tempo [scale] was last played at, or [start] the first time. A
   /// scale is pushed a little faster week by week, so the next session
@@ -134,6 +150,7 @@ class RoadmapProgress extends ChangeNotifier {
     'doneDay': _doneDay,
     'done': _done.toList(),
     'tempos': _tempos,
+    'sessionTunes': _sessionTunes,
   };
 
   void _read(Map<String, Object?> json) {
@@ -154,6 +171,9 @@ class RoadmapProgress extends ChangeNotifier {
     }
     _doneDay = (json['doneDay'] as num?)?.toInt();
     _done.addAll((json['done'] as List?)?.whereType<String>() ?? []);
+    _sessionTunes.addAll(
+      (json['sessionTunes'] as List?)?.whereType<String>() ?? const [],
+    );
     if (json['tempos'] case final Map<String, Object?> tempos) {
       for (final MapEntry(:key, :value) in tempos.entries) {
         if (value is num) _tempos[key] = value.toInt();

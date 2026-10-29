@@ -6,6 +6,8 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../music/arrangement.dart';
+
 import '../audio/practice_player.dart';
 import '../audio/tuner_listener.dart';
 import '../library/find_tune.dart';
@@ -52,6 +54,8 @@ class PracticeScreen extends StatefulWidget {
     this.listener,
     this.startAt,
     this.semitones = 0,
+    this.startBar,
+    this.arrangement,
     this.hearTheBand = false,
     this.byMicrophone = false,
   });
@@ -86,6 +90,15 @@ class PracticeScreen extends StatefulWidget {
   /// tab moves a tune into today's key, to hear a mode where you are
   /// practising it.
   final int semitones;
+
+  /// Where the band comes in the first time through, counting from 0: the
+  /// last four bars as an intro, for a session drill.
+  final int? startBar;
+
+  /// How the band plays it this time (trading, laying out, a number of
+  /// choruses), for a session drill. It does not change the count of
+  /// choruses somebody keeps for every tune unless it sets one.
+  final Arrangement? arrangement;
 
   /// Set when [tune] is one of the player's own progressions: only those can
   /// be edited from here.
@@ -134,6 +147,10 @@ class _PracticeScreenState extends State<PracticeScreen> {
     super.initState();
     _controller.addListener(_showScore);
     if (widget.semitones % 12 != 0) _controller.transpose(widget.semitones);
+    if (widget.arrangement case final arrangement?) {
+      _controller.useArrangement(arrangement);
+    }
+    if (widget.startBar case final bar?) _controller.startFromBar(bar);
     if (widget.startAt case final tempo?) {
       _controller.setTempo(tempo);
       // After the first frame: the band reads the chart to render itself

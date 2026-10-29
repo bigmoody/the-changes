@@ -22,6 +22,7 @@ import '../practice/recording_store.dart';
 import '../practice/licks.dart';
 import '../practice/roadmap.dart';
 import '../practice/roadmap_progress.dart';
+import '../practice/session_drills.dart';
 import '../practice/take_store.dart';
 import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
@@ -46,6 +47,7 @@ import 'passing_chords_screen.dart';
 import 'rhythm_changes_screen.dart';
 import 'scale_patterns_screen.dart';
 import 'scale_of_the_day_screen.dart';
+import 'session_drills_screen.dart';
 import 'scales_reference_screen.dart';
 import 'setlists_screen.dart';
 import 'swing_screen.dart';
@@ -176,6 +178,55 @@ class PracticePage extends StatelessWidget {
         settings: settings,
         onDone: onDone,
       ),
+    ),
+  );
+
+  void _openDrills(
+    BuildContext context,
+    SessionDrillSet set,
+    String tune,
+    RoadmapInstrument instrument, {
+    VoidCallback? onDone,
+  }) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => switch (set) {
+        SessionDrillSet.skills => SessionDrillsScreen(
+          title: 'Session Skills',
+          intro:
+              'What a jam session asks for that practising alone does not. '
+              'Each one is played on today\'s tune, with the band set up for '
+              'it.',
+          drills: sessionSkills,
+          tune: tune,
+          instrument: instrument,
+          player: player,
+          settings: settings,
+          library: library,
+          progressions: progressions,
+          takes: takes,
+          partStore: partStore,
+          recordingStore: recordingStore,
+          onDone: onDone,
+        ),
+        SessionDrillSet.recover => SessionDrillsScreen(
+          title: 'Get Lost and Recover',
+          intro:
+              'Everybody gets lost at a session. What matters is getting '
+              'back: keep the time through the gap, hear where the changes '
+              'are, and be there when the band comes back.',
+          drills: recoverDrills,
+          tune: tune,
+          instrument: instrument,
+          player: player,
+          settings: settings,
+          library: library,
+          progressions: progressions,
+          takes: takes,
+          partStore: partStore,
+          recordingStore: recordingStore,
+          onDone: onDone,
+        ),
+      },
     ),
   );
 
@@ -323,7 +374,12 @@ class _Roadmap extends StatelessWidget {
     final stages = stagesFor(instrument);
     final stage = stages[progress.stageOf(instrument) - 1];
     final day = dayNumber(page.today ?? DateTime.now());
-    final routine = routineFor(stage, progress.minutes, day: day);
+    final routine = routineFor(
+      stage,
+      progress.minutes,
+      day: day,
+      sessionTunes: progress.sessionTunes,
+    );
     final done = [
       for (var b = 0; b < routine.length; b++)
         progress.isDone(day, b, routine[b].block.title),
@@ -381,6 +437,15 @@ class _Roadmap extends StatelessWidget {
                 progress.markDone(day, b, routine[b].block.title, on),
             onOpen: switch ((routine[b].tune, routine[b].block.tool)) {
               (final String tune, _) => () => page._openTune(context, tune),
+              // Session drills, on the tune of the day.
+              _ when routine[b].block.drills != null => () => page._openDrills(
+                context,
+                routine[b].block.drills!,
+                routine[b].tuneOfTheDay,
+                instrument,
+                onDone: () =>
+                    progress.markDone(day, b, routine[b].block.title, true),
+              ),
               // Licks over their changes, with the band.
               _ when routine[b].block.licks != null => () => page._openLicks(
                 context,
@@ -431,7 +496,7 @@ class _Roadmap extends StatelessWidget {
         ),
         // Always here, whatever today's routine has room for: every lick,
         // in today's key, to play over its changes.
-        SectionHeader('Vocabulary'),
+        SectionHeader('Session Tools'),
         ListTile(
           key: const ValueKey('practice-licks'),
           leading: const Icon(Icons.record_voice_over_outlined),
@@ -454,6 +519,43 @@ class _Roadmap extends StatelessWidget {
               ),
             ),
           ),
+        ),
+        ListTile(
+          key: const ValueKey('practice-session-skills'),
+          leading: const Icon(Icons.groups_outlined),
+          title: const Text('Session Skills'),
+          subtitle: Text(
+            'Intros, choruses, trading, endings and the signals, played on '
+            '${routine.first.tuneOfTheDay}',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => page._openDrills(
+            context,
+            SessionDrillSet.skills,
+            routine.first.tuneOfTheDay,
+            instrument,
+          ),
+        ),
+        ListTile(
+          key: const ValueKey('practice-recover'),
+          leading: const Icon(Icons.explore_outlined),
+          title: const Text('Get Lost and Recover'),
+          subtitle: Text(
+            'The band drops out and comes back; keep your place on '
+            '${routine.first.tuneOfTheDay}',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => page._openDrills(
+            context,
+            SessionDrillSet.recover,
+            routine.first.tuneOfTheDay,
+            instrument,
+          ),
+        ),
+        SectionHeader('My Session\'s Tunes'),
+        _SessionTunes(
+          progress: progress,
+          onTune: (title) => page._openTune(context, title),
         ),
         SectionHeader('Roadmap'),
         for (final s in stages)
@@ -637,6 +739,121 @@ class _HeardIn extends StatelessWidget {
       );
     },
   );
+}
+
+/// The tunes your own jam session calls: they come first as the tune of
+/// the day, because they are the ones that will be called.
+class _SessionTunes extends StatelessWidget {
+  const _SessionTunes({required this.progress, required this.onTune});
+
+  final RoadmapProgress progress;
+  final ValueChanged<String> onTune;
+
+  Future<void> _add(BuildContext context) async {
+    final title = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => const _TunePicker(),
+    );
+    if (title != null) progress.addSessionTune(title);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tunes = progress.sessionTunes;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tunes.isEmpty
+                ? 'Add the tunes your local session calls, and they become '
+                      'the tune of the day two days in three.'
+                : 'The tune of the day two days in three. Tap one to play it.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final title in tunes)
+                InputChip(
+                  key: ValueKey('session-tune-$title'),
+                  label: Text(title),
+                  onPressed: () => onTune(title),
+                  onDeleted: () => progress.removeSessionTune(title),
+                  deleteButtonTooltipMessage: 'Take $title off the list',
+                ),
+              ActionChip(
+                key: const ValueKey('add-session-tune'),
+                avatar: const Icon(Icons.add, size: 18),
+                label: const Text('Add a Tune'),
+                onPressed: () => _add(context),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Every tune in the library, to search and pick one from.
+class _TunePicker extends StatefulWidget {
+  const _TunePicker();
+
+  @override
+  State<_TunePicker> createState() => _TunePickerState();
+}
+
+class _TunePickerState extends State<_TunePicker> {
+  var _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final titles = [
+      for (final tune in standards)
+        if (tune.title.toLowerCase().contains(_query.toLowerCase())) tune.title,
+    ]..sort();
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.sizeOf(context).height * 0.75,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                key: const ValueKey('session-tune-search'),
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Search the tunes',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (value) => setState(() => _query = value),
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                children: [
+                  for (final title in titles)
+                    ListTile(
+                      title: Text(title),
+                      onTap: () => Navigator.of(context).pop(title),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _StageTile extends StatelessWidget {

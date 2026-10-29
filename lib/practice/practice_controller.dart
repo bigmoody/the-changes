@@ -327,6 +327,16 @@ class PracticeController extends ChangeNotifier {
       ? _arrangement
       : _arrangement.copyWith(keepGoing: true);
 
+  /// Plays [value] this time without keeping its count of choruses as the
+  /// one every tune opens with: a drill asking for four choruses is not
+  /// somebody deciding they want four from now on.
+  void useArrangement(Arrangement value) {
+    if (value == _arrangement) return;
+    _arrangement = value;
+    notifyListeners();
+    _restartIfPlaying(delay: const Duration(milliseconds: 250));
+  }
+
   void setArrangement(Arrangement value) {
     if (value == _arrangement) return;
     if (value.choruses != _arrangement.choruses) {

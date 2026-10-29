@@ -49,7 +49,11 @@ enum Area {
   language('Language'),
   role('In the Band'),
   ear('Ear'),
-  repertoire('Repertoire');
+  repertoire('Repertoire'),
+
+  /// What a jam session asks for that practising alone does not, and the
+  /// sessions themselves.
+  session('On the Stand');
 
   const Area(this.label);
 
@@ -121,6 +125,7 @@ class Block {
     this.exercise,
     this.line,
     this.licks,
+    this.drills,
   });
 
   final Area area;
@@ -149,6 +154,18 @@ class Block {
   /// For a block of licks to play over their changes, their names in
   /// `licks`, or every lick when the list is empty.
   final List<String>? licks;
+
+  /// For a block of session drills, which set.
+  final SessionDrillSet? drills;
+}
+
+/// The drills a session block opens.
+enum SessionDrillSet {
+  /// Intros, choruses, trading, endings, signals, doing your job.
+  skills,
+
+  /// The band drops out, and you come back in with it.
+  recover,
 }
 
 /// A scale to play, not read about: each of the block's modes in today's
@@ -205,6 +222,7 @@ class RoutineBlock {
     required this.minutes,
     required this.how,
     required this.key,
+    required this.tuneOfTheDay,
     this.tune,
   });
 
@@ -219,6 +237,9 @@ class RoutineBlock {
 
   /// The tune to play, for a repertoire block.
   final String? tune;
+
+  /// Today's tune, which session drills are played on.
+  final String tuneOfTheDay;
 }
 
 /// The session lengths on offer, in minutes.
@@ -352,6 +373,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         'Blue Bossa',
         'All of Me',
         'Satin Doll',
+        'Misty',
         'Major ii–V–I in three keys',
       ],
       goals: [
@@ -383,6 +405,18 @@ Stage _stage(int n, RoadmapInstrument i) {
           'Tell a Δ7, a 7 and an m7 apart by ear, nine times out of ten.',
         ),
         ..._roleGoals(2, i),
+        const Goal(
+          's2-listen',
+          Area.session,
+          'Go to a jam session and listen to the whole night. Write down '
+              'every tune called, and add them to My Session\'s Tunes.',
+        ),
+        const Goal(
+          's2-recover',
+          Area.session,
+          'Keep your place through four bars with the band gone, and come '
+              'back in with it, every time, on three tunes.',
+        ),
         const Goal(
           's2-tunes',
           Area.repertoire,
@@ -433,6 +467,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           tool: Tool.earTraining,
         ),
         _lickBlock(['The Lick', '1 2 3 5 Down the Changes', 'The Blue Third']),
+        _recoverBlock(),
         _tuneBlock(i),
       ],
     ),
@@ -449,6 +484,8 @@ Stage _stage(int n, RoadmapInstrument i) {
         'Mr. P.C.',
         'Song for My Father',
         'Softly, as in a Morning Sunrise',
+        'Black Orpheus',
+        'My Funny Valentine',
         'Minor ii–V–i',
       ],
       goals: [
@@ -485,6 +522,18 @@ Stage _stage(int n, RoadmapInstrument i) {
               'two keys.',
         ),
         ..._roleGoals(3, i),
+        const Goal(
+          's3-sit-in',
+          Area.session,
+          'Sit in on a blues at a jam: the head, a chorus or two, the head '
+              'out, and end with the band.',
+        ),
+        const Goal(
+          's3-intro',
+          Area.session,
+          'Come in on the last-four intro and play the head of three tunes '
+              'from memory, landing on bar 1 every time.',
+        ),
         const Goal(
           's3-tunes',
           Area.repertoire,
@@ -541,6 +590,8 @@ Stage _stage(int n, RoadmapInstrument i) {
           'Enclosure Into the Third',
           'ø Up, ♭9 Down',
         ]),
+        _recoverBlock(),
+        _sessionBlock(),
         _tuneBlock(i),
       ],
     ),
@@ -556,6 +607,8 @@ Stage _stage(int n, RoadmapInstrument i) {
         'Anthropology',
         'Just Friends',
         'Have You Met Miss Jones?',
+        'The Girl from Ipanema',
+        'In a Sentimental Mood',
         'Rhythm changes in B♭',
       ],
       goals: [
@@ -589,6 +642,24 @@ Stage _stage(int n, RoadmapInstrument i) {
               'transposing the chart.',
         ),
         ..._roleGoals(4, i),
+        const Goal(
+          's4-call',
+          Area.session,
+          'Call a standard at a jam and count it off: the head, a solo, '
+              'trade fours if asked, take it out and end together.',
+        ),
+        const Goal(
+          's4-signals',
+          Area.session,
+          'Follow the signals (take it out, trade fours, the ending) without '
+              'stopping, on the night.',
+        ),
+        const Goal(
+          's4-ballad',
+          Area.session,
+          'Play a ballad and a bossa from memory at a session, as well as '
+              'the swing tunes.',
+        ),
         const Goal(
           's4-tunes',
           Area.repertoire,
@@ -643,6 +714,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           'Enclosure Into the Third',
           'Up the ii, 3 to ♭9 on the V',
         ]),
+        _sessionBlock(),
         _tuneBlock(i),
       ],
     ),
@@ -660,6 +732,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         'So What',
         'Maiden Voyage',
         'Joy Spring',
+        'Wave',
       ],
       goals: [
         const Goal(
@@ -748,6 +821,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           'Up the ii, 3 to ♭9 on the V',
           'Bebop Scale Down the V',
         ]),
+        _sessionBlock(),
         _tuneBlock(i),
       ],
     ),
@@ -763,6 +837,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         'Cherokee',
         'Countdown',
         'Inner Urge',
+        'Corcovado',
       ],
       goals: [
         const Goal(
@@ -843,6 +918,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           weight: 2,
         ),
         _lickBlock(null),
+        _sessionBlock(),
         _tuneBlock(i),
       ],
     ),
@@ -885,6 +961,29 @@ Block _lickBlock(List<String>? names) => Block(
       'changes come round and you answer. Then change where it starts.',
   weight: 2,
   licks: names ?? const [],
+);
+
+/// Session skills on the tune of the day: intros, choruses, trading,
+/// endings, signals, doing your job when it is not your solo.
+Block _sessionBlock() => const Block(
+  area: Area.session,
+  title: 'Session Skills',
+  how:
+      'On today\'s tune: come in on a last-four intro, take two choruses '
+      'between the heads, trade fours, and end together with the band.',
+  weight: 2,
+  drills: SessionDrillSet.skills,
+);
+
+/// Losing your place and finding it: the band drops out and comes back.
+Block _recoverBlock() => const Block(
+  area: Area.session,
+  title: 'Get Lost and Recover',
+  how:
+      'On today\'s tune, the band drops out for two, four or eight bars at a '
+      'time. Keep your place and come back in with it.',
+  weight: 2,
+  drills: SessionDrillSet.recover,
 );
 
 Block _tuneBlock(RoadmapInstrument i) => Block(
@@ -1142,7 +1241,17 @@ List<Goal> _roleGoals(int stage, RoadmapInstrument i) {
 /// day to day so nothing is left out for good. Repertoire and the warm-up
 /// never drop: the tune is what all of it is for, and a cold start is how
 /// bad habits are practised in.
-List<RoutineBlock> routineFor(Stage stage, int minutes, {required int day}) {
+///
+/// [sessionTunes] are the tunes somebody's own jam session calls. Where
+/// there are any, they are the tune of the day two days in three: learning
+/// the tunes that will actually be called comes first. The third day is
+/// the stage's, so the roadmap still moves on.
+List<RoutineBlock> routineFor(
+  Stage stage,
+  int minutes, {
+  required int day,
+  List<String> sessionTunes = const [],
+}) {
   // At least five minutes each, less than that is not practice, and a
   // quarter of the session left over for the tune on top of its own five.
   final room = ((minutes * 3 / 4) ~/ 5 + 1).clamp(2, stage.blocks.length);
@@ -1198,7 +1307,9 @@ List<RoutineBlock> routineFor(Stage stage, int minutes, {required int day}) {
   given[given.length - 1] += minutes - given.fold(0, (sum, m) => sum + m);
 
   final key = stage.keys[day % stage.keys.length];
-  final tuneTitle = stage.tunes[day % stage.tunes.length];
+  final tuneTitle = sessionTunes.isNotEmpty && day % 3 != 2
+      ? sessionTunes[(day - day ~/ 3) % sessionTunes.length]
+      : stage.tunes[day % stage.tunes.length];
   return [
     for (var b = 0; b < blocks.length; b++)
       RoutineBlock(
@@ -1208,6 +1319,7 @@ List<RoutineBlock> routineFor(Stage stage, int minutes, {required int day}) {
             .replaceAll('{key}', key)
             .replaceAll('{tune}', tuneTitle),
         key: key,
+        tuneOfTheDay: tuneTitle,
         tune: blocks[b] == stage.blocks.last ? tuneTitle : null,
       ),
   ];
