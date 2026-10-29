@@ -119,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
             player: widget.player,
             settings: widget.settings,
             phrases: widget.phrases,
+            roadmap: _roadmap,
           ),
           SettingsPage(
             player: widget.player,

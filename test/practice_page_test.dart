@@ -203,6 +203,49 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('licks in context: the stage\'s licks, in today\'s key, '
+      'and it ticks itself off', (tester) async {
+    final progress =
+        RoadmapProgress.inMemory(instrument: RoadmapInstrument.horn)
+          ..setStage(RoadmapInstrument.horn, 2)
+          ..setMinutes(90);
+    await _open(tester, size: const Size(393, 3000), progress: progress);
+    final day = dayNumber(DateTime(2026, 10, 29));
+    final routine = routineFor(
+      stagesFor(RoadmapInstrument.horn)[1],
+      90,
+      day: day,
+    );
+    final index = routine.indexWhere(
+      (b) => b.block.title == 'Licks in Context',
+    );
+    expect(index, isNonNegative);
+    await tester.tap(find.text('Licks in Context'));
+    await tester.pumpAndSettle();
+    expect(find.text('The Lick'), findsOneWidget);
+    expect(find.text('Lick 1 of 3 · in ${routine[index].key}'), findsOneWidget);
+    expect(find.byKey(const ValueKey('lick-stave')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('lick-changes')),
+        matching: find.text('Dm7'),
+      ),
+      findsNothing,
+      reason: 'in today\'s key, not C, unless today is C',
+    );
+    expect(find.byKey(const ValueKey('lick-changes')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('lick-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('1 2 3 5 Down the Changes'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('lick-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('The Blue Third'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('lick-next')));
+    await tester.pumpAndSettle();
+    expect(progress.isDone(day, index, 'Licks in Context'), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a block opens the page it is done on', (tester) async {
     await _open(
       tester,

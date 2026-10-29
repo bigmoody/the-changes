@@ -19,6 +19,7 @@ import '../music/scale_run.dart';
 import '../music/tune_library.dart';
 import '../practice/part_store.dart';
 import '../practice/recording_store.dart';
+import '../practice/licks.dart';
 import '../practice/roadmap.dart';
 import '../practice/roadmap_progress.dart';
 import '../practice/take_store.dart';
@@ -33,6 +34,7 @@ import 'ear_training_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'guitar_chords_screen.dart';
+import 'lick_screen.dart';
 import 'line_exercise_screen.dart';
 import 'listening_screen.dart';
 import 'mode_example_row.dart';
@@ -176,6 +178,33 @@ class PracticePage extends StatelessWidget {
       ),
     ),
   );
+
+  void _openLicks(
+    BuildContext context,
+    RoutineBlock block,
+    RoadmapInstrument instrument, {
+    required VoidCallback onDone,
+  }) {
+    final names = block.block.licks!;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LickScreen(
+          licks: names.isEmpty
+              ? licks
+              : [
+                  for (final name in names)
+                    licks.firstWhere((l) => l.name == name),
+                ],
+          keyName: block.key,
+          instrument: instrument,
+          progress: progress,
+          player: player,
+          settings: settings,
+          onDone: onDone,
+        ),
+      ),
+    );
+  }
 
   void _openLine(
     BuildContext context,
@@ -352,6 +381,14 @@ class _Roadmap extends StatelessWidget {
                 progress.markDone(day, b, routine[b].block.title, on),
             onOpen: switch ((routine[b].tune, routine[b].block.tool)) {
               (final String tune, _) => () => page._openTune(context, tune),
+              // Licks over their changes, with the band.
+              _ when routine[b].block.licks != null => () => page._openLicks(
+                context,
+                routine[b],
+                instrument,
+                onDone: () =>
+                    progress.markDone(day, b, routine[b].block.title, true),
+              ),
               // Lines with marks on them, played here too.
               _ when routine[b].block.line != null => () => page._openLine(
                 context,

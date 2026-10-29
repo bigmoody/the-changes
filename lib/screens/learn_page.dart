@@ -22,7 +22,10 @@
 import 'package:flutter/material.dart';
 
 import '../audio/practice_player.dart';
+import '../practice/licks.dart';
 import '../practice/phrase_store.dart';
+import '../practice/roadmap.dart';
+import '../practice/roadmap_progress.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chord_identifier_screen.dart';
@@ -37,6 +40,7 @@ import 'phrases_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
+import 'lick_screen.dart';
 import 'listening_screen.dart';
 import 'metronome_screen.dart';
 import 'modal_screen.dart';
@@ -67,6 +71,7 @@ class LearnPage extends StatefulWidget {
     required this.player,
     required this.settings,
     this.phrases,
+    this.roadmap,
   });
 
   final PracticePlayer player;
@@ -75,6 +80,10 @@ class LearnPage extends StatefulWidget {
   /// Where somebody's own phrases are kept. Without it there is nowhere
   /// to put one, so the row is not offered.
   final PhraseStore? phrases;
+
+  /// Where tempos reached on the licks are kept, and what the player
+  /// plays, so the licks are written in their clef.
+  final RoadmapProgress? roadmap;
 
   @override
   State<LearnPage> createState() => _LearnPageState();
@@ -87,6 +96,7 @@ class _LearnPageState extends State<LearnPage> {
   PracticePlayer get player => widget.player;
   AppSettings get settings => widget.settings;
   PhraseStore? get phrases => widget.phrases;
+  RoadmapProgress? get roadmap => widget.roadmap;
 
   @override
   void dispose() {
@@ -163,6 +173,28 @@ class _LearnPageState extends State<LearnPage> {
             'Spell chords and find their tones against the clock, '
             'through ii–V–Is or any chord',
         onTap: () => open(ChordTonesScreen(player: player, settings: settings)),
+      ),
+      _LearnCard(
+        key: const ValueKey('learn-licks'),
+        icon: Icons.record_voice_over_outlined,
+        title: 'Licks in Context',
+        subtitle:
+            'The stock phrases of jazz over the changes they belong to, in '
+            'any key: the band plays one, then you answer it',
+        onTap: () {
+          final progress = roadmap ?? RoadmapProgress.inMemory();
+          open(
+            LickScreen(
+              licks: licks,
+              keyName: 'C',
+              instrument: progress.instrument ?? RoadmapInstrument.piano,
+              progress: progress,
+              player: player,
+              settings: settings,
+              chooseKey: true,
+            ),
+          );
+        },
       ),
       _LearnCard(
         key: const ValueKey('learn-metronome'),

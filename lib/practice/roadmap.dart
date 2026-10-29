@@ -120,6 +120,7 @@ class Block {
     this.modes = const [],
     this.exercise,
     this.line,
+    this.licks,
   });
 
   final Area area;
@@ -144,6 +145,10 @@ class Block {
   /// For a block that is lines to play with marks on them (articulation),
   /// the lines: the Practice tab opens it as an exercise.
   final LineExercise? line;
+
+  /// For a block of licks to play over their changes, their names in
+  /// `licks`, or every lick when the list is empty.
+  final List<String>? licks;
 }
 
 /// A scale to play, not read about: each of the block's modes in today's
@@ -426,6 +431,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           weight: 1,
           tool: Tool.earTraining,
         ),
+        _lickBlock(['The Lick', '1 2 3 5 Down the Changes', 'The Blue Third']),
         _tuneBlock(i),
       ],
     ),
@@ -529,6 +535,11 @@ Stage _stage(int n, RoadmapInstrument i) {
           weight: 2,
           tool: Tool.listening,
         ),
+        _lickBlock([
+          'Up the ii, 3 to ♭9 on the V',
+          'Enclosure Into the Third',
+          'ø Up, ♭9 Down',
+        ]),
         _tuneBlock(i),
       ],
     ),
@@ -626,6 +637,11 @@ Stage _stage(int n, RoadmapInstrument i) {
           weight: 1,
           tool: Tool.trading,
         ),
+        _lickBlock([
+          'Bebop Scale Down the V',
+          'Enclosure Into the Third',
+          'Up the ii, 3 to ♭9 on the V',
+        ]),
         _tuneBlock(i),
       ],
     ),
@@ -726,6 +742,11 @@ Stage _stage(int n, RoadmapInstrument i) {
           weight: 1,
           tool: Tool.modal,
         ),
+        _lickBlock([
+          'ø Up, ♭9 Down',
+          'Up the ii, 3 to ♭9 on the V',
+          'Bebop Scale Down the V',
+        ]),
         _tuneBlock(i),
       ],
     ),
@@ -820,6 +841,7 @@ Stage _stage(int n, RoadmapInstrument i) {
               : 'The tune of the day in {key}: melody and a chorus, by ear.',
           weight: 2,
         ),
+        _lickBlock(null),
         _tuneBlock(i),
       ],
     ),
@@ -850,6 +872,19 @@ Block _warmUp(RoadmapInstrument i, int stage) => switch (i) {
     tool: Tool.metronome,
   ),
 };
+
+/// Vocabulary: licks over the changes they belong to, in today's key,
+/// played by the band and then answered. [names] are the stage's licks;
+/// null is every one of them.
+Block _lickBlock(List<String>? names) => Block(
+  area: Area.language,
+  title: 'Licks in Context',
+  how:
+      'Each lick over its changes in {key}: the band plays it, then the '
+      'changes come round and you answer. Then change where it starts.',
+  weight: 2,
+  licks: names ?? const [],
+);
 
 Block _tuneBlock(RoadmapInstrument i) => Block(
   area: Area.repertoire,
