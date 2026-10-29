@@ -429,6 +429,32 @@ class _Roadmap extends StatelessWidget {
             ),
           ),
         ),
+        // Always here, whatever today's routine has room for: every lick,
+        // in today's key, to play over its changes.
+        SectionHeader('Vocabulary'),
+        ListTile(
+          key: const ValueKey('practice-licks'),
+          leading: const Icon(Icons.record_voice_over_outlined),
+          title: const Text('Licks in Context'),
+          subtitle: Text(
+            'All ${licks.length} licks over their changes, in '
+            '${routine.first.key}: the band plays one, then you answer it',
+          ),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => LickScreen(
+                licks: licks,
+                keyName: routine.first.key,
+                instrument: instrument,
+                progress: progress,
+                player: page.player,
+                settings: page.settings,
+                chooseKey: true,
+              ),
+            ),
+          ),
+        ),
         SectionHeader('Roadmap'),
         for (final s in stages)
           _StageTile(

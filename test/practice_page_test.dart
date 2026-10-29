@@ -220,7 +220,12 @@ void main() {
       (b) => b.block.title == 'Licks in Context',
     );
     expect(index, isNonNegative);
-    await tester.tap(find.text('Licks in Context'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(ValueKey('routine-$index')),
+        matching: find.text('Licks in Context'),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('The Lick'), findsOneWidget);
     expect(find.text('Lick 1 of 3 · in ${routine[index].key}'), findsOneWidget);
@@ -244,6 +249,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(progress.isDone(day, index, 'Licks in Context'), isTrue);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('licks are on the Practice tab from the first stage, and '
+      'always there', (tester) async {
+    await _open(
+      tester,
+      size: const Size(393, 3000),
+      progress: RoadmapProgress.inMemory(instrument: RoadmapInstrument.guitar),
+    );
+    expect(
+      stagesFor(RoadmapInstrument.guitar).first.blocks.map((b) => b.title),
+      contains('Licks in Context'),
+    );
+    await tester.tap(find.byKey(const ValueKey('practice-licks')));
+    await tester.pumpAndSettle();
+    expect(find.text('The Lick'), findsOneWidget);
+    expect(find.text('Lick 1 of 7 · in G'), findsOneWidget);
   });
 
   testWidgets('a block opens the page it is done on', (tester) async {

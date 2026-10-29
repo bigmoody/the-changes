@@ -336,6 +336,7 @@ Stage _stage(int n, RoadmapInstrument i) {
           weight: 1,
           tool: Tool.whereAmI,
         ),
+        _lickBlock(['The Blue Third', 'The Lick']),
         _tuneBlock(i),
       ],
     ),
