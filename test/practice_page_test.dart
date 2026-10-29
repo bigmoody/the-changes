@@ -284,7 +284,7 @@ void main() {
     final progress = RoadmapProgress.inMemory(
       instrument: RoadmapInstrument.guitar,
     );
-    await _open(tester, progress: progress);
+    await _open(tester, size: const Size(393, 3000), progress: progress);
     final day = dayNumber(DateTime(2026, 10, 29));
     await tester.tap(find.text('Scale of the Day'));
     await tester.pumpAndSettle();

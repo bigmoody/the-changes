@@ -416,29 +416,98 @@ class _LevelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final level = progress.level ?? PlayerLevel.intermediate;
-    // Always in view, a tab for each level, like the instruments above:
-    // a chip that only said the current one was easy to miss, and looked
-    // as if the levels had gone.
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final current = progress.level ?? PlayerLevel.intermediate;
+    final wide = MediaQuery.sizeOf(context).width > 600;
+    // The four levels as the sections they were when one was first
+    // chosen, each with what it means and the stage it starts on, the
+    // current one marked, and always on the page: a row of tabs that
+    // only named them was not the same thing.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      child: SegmentedButton<PlayerLevel>(
-        key: const ValueKey('roadmap-level'),
-        showSelectedIcon: false,
-        segments: [
-          for (final l in PlayerLevel.values)
-            ButtonSegment(
-              value: l,
-              // "Professional" does not fit a quarter of a phone.
-              label: Text(
-                l == PlayerLevel.professional ? 'Pro' : l.label,
-                key: ValueKey('level-tab-${l.name}'),
-              ),
-              tooltip: l.label,
-            ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Your Level', style: theme.textTheme.titleSmall),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = wide ? 4 : 2;
+              const gap = 8.0;
+              final width =
+                  (constraints.maxWidth - gap * (columns - 1)) / columns;
+              return Wrap(
+                key: const ValueKey('roadmap-level'),
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final level in PlayerLevel.values)
+                    SizedBox(
+                      width: width,
+                      child: Card(
+                        key: ValueKey('level-tab-${level.name}'),
+                        margin: EdgeInsets.zero,
+                        color: level == current
+                            ? scheme.primaryContainer
+                            : null,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: level == current
+                                ? scheme.primary
+                                : scheme.outlineVariant,
+                            width: level == current ? 2 : 1,
+                          ),
+                        ),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => _change(context, level),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        level.label,
+                                        style: theme.textTheme.titleMedium,
+                                      ),
+                                    ),
+                                    if (level == current)
+                                      Icon(
+                                        Icons.check_circle,
+                                        size: 18,
+                                        color: scheme.primary,
+                                        semanticLabel: 'Your level',
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  level.about,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Starts on stage ${level.startStage}',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ],
-        selected: {level},
-        onSelectionChanged: (chosen) => _change(context, chosen.single),
       ),
     );
   }
