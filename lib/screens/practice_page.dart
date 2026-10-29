@@ -409,7 +409,10 @@ class _HeardIn extends StatelessWidget {
             key: ValueKey('heard-in-${modes.join('-')}'),
             visualDensity: VisualDensity.compact,
             avatar: const Icon(Icons.hearing, size: 16),
-            label: const Text('Heard In'),
+            // Named for the sound, because the tunes beside it are in
+            // their own keys and not today's: the major sound is the
+            // major sound in C or in G.
+            label: Text('${modes.join(' and ')} Heard In'),
             tooltip:
                 'Where ${modes.join(' and ')} ${modes.length == 1 ? 'is' : 'are'} heard',
             onPressed: () => _showAll(context),
@@ -418,7 +421,10 @@ class _HeardIn extends StatelessWidget {
             ActionChip(
               visualDensity: VisualDensity.compact,
               avatar: const Icon(Icons.play_arrow, size: 16),
-              label: Text(tune),
+              label: Text(switch (keyOfTune(tune)) {
+                final key? => '$tune, in $key',
+                null => tune,
+              }),
               onPressed: () => onTune(tune),
             ),
         ],
@@ -438,6 +444,17 @@ class _HeardIn extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
             Text('Heard In', style: theme.textTheme.titleLarge),
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'A mode sounds the same in every key, so these are in their '
+                "own keys, not today's. Listen for the sound, then find it "
+                'in yours.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
             for (final mode in modes) ...[
               Padding(
                 padding: const EdgeInsets.only(top: 16, bottom: 4),

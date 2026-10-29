@@ -126,12 +126,15 @@ void main() {
     );
     final row = find.byKey(const ValueKey('routine-1'));
     expect(
-      find.descendant(of: row, matching: find.text('Take the "A" Train')),
+      find.descendant(of: row, matching: find.text('Take the "A" Train, in C')),
       findsOneWidget,
       reason: 'the Ionian tune, to play',
     );
+    // Named for the sound, since the tune is not in today's key.
+    expect(find.text('Ionian Heard In'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('heard-in-Ionian')));
     await tester.pumpAndSettle();
+    expect(find.textContaining('(in C)'), findsOneWidget);
     expect(find.textContaining('Joy to the World'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -25,7 +25,10 @@ class ModeExampleRow extends StatelessWidget {
         children: [
           if (tune != null)
             TextSpan(
-              text: '$tune: ',
+              text: switch (keyOfTune(tune)) {
+                final key? => '$tune (in $key): ',
+                null => '$tune: ',
+              },
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 color: theme.colorScheme.primary,

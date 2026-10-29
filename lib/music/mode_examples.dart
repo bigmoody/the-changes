@@ -6,6 +6,18 @@
 // bar named here is checked against the app's own chart of the tune (see
 // mode_examples_test.dart), so tapping one plays the place it describes.
 
+import 'tune_library.dart';
+
+/// The key [title] is written in, as the library has it ("C", "D
+/// Dorian"), or null if it is not in the library.
+///
+/// Shown beside every tune an example names, because a mode is a sound
+/// and not a key: today's scale may be G major and the tune that shows
+/// the major sound best may be in C. Without the key on it, that reads
+/// as a mistake.
+String? keyOfTune(String title) =>
+    standards.where((t) => t.title == title).firstOrNull?.key;
+
 /// One place a mode is heard.
 class ModeExample {
   const ModeExample(this.text, {this.tune});
