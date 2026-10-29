@@ -34,6 +34,20 @@ void main() {
     }
   });
 
+  test("a tune is moved to today's key the shortest way", () {
+    // Take the "A" Train is in C.
+    expect(semitonesToKey('Take the "A" Train', 'G'), -5);
+    expect(semitonesToKey('Take the "A" Train', 'D'), 2);
+    expect(semitonesToKey('Take the "A" Train', 'C'), 0);
+    expect(semitonesToKey('Take the "A" Train', 'F♯'), 6);
+    // So What is in D Dorian; B Dorian is three down.
+    expect(semitonesToKey('So What', 'B'), -3);
+    expect(movedKeyLabel('So What', 'B'), 'B Dorian');
+    expect(movedKeyLabel('Blue Bossa', 'G'), 'G minor');
+    expect(movedKeyLabel('Take the "A" Train', 'B♭'), 'B♭');
+    expect(semitonesToKey('Not a tune', 'G'), 0);
+  });
+
   test('no em dashes', () {
     for (final examples in modeExamples.values) {
       for (final example in examples) {

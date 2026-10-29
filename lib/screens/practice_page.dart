@@ -34,6 +34,7 @@ import 'guide_tones_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'listening_screen.dart';
 import 'mode_example_row.dart';
+import 'practice_screen.dart';
 import 'metronome_screen.dart';
 import 'modal_screen.dart';
 import 'number_patterns_screen.dart';
@@ -156,12 +157,31 @@ class PracticePage extends StatelessWidget {
       Navigator.of(context)
           .push(MaterialPageRoute<void>(builder: (_) => _screenFor(tool)));
 
-  void _openTune(BuildContext context, String title) {
+  void _openTune(BuildContext context, String title, {int semitones = 0}) {
     final tune = [
       ...standards,
       ...practiceProgressions,
     ].where((t) => t.title == title).firstOrNull;
     if (tune == null) return;
+    if (semitones != 0) {
+      library.justPlayed(TuneRef.of(tune));
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PracticeScreen(
+            tune: tune,
+            player: player,
+            settings: settings,
+            takes: takes,
+            partStore: partStore,
+            recordingStore: recordingStore,
+            library: library,
+            progressions: progressions,
+            semitones: semitones,
+          ),
+        ),
+      );
+      return;
+    }
     LibraryContext(
       player: player,
       settings: settings,
@@ -293,7 +313,13 @@ class _Roadmap extends StatelessWidget {
               (_, final Tool tool) => () => page._openTool(context, tool),
               _ => null,
             },
-            onTune: (tune) => page._openTune(context, tune),
+            // A tune a mode is heard in opens in today's key, so the
+            // sound is heard where it is being practised.
+            onTune: (tune) => page._openTune(
+              context,
+              tune,
+              semitones: semitonesToKey(tune, routine[b].key),
+            ),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -367,7 +393,11 @@ class _RoutineRow extends StatelessWidget {
             '${block.tune == null && tool != null ? ' (${tool.label})' : ''}',
           ),
           if (block.block.modes.isNotEmpty)
-            _HeardIn(modes: block.block.modes, onTune: onTune),
+            _HeardIn(
+              modes: block.block.modes,
+              todayKey: block.key,
+              onTune: onTune,
+            ),
         ],
       ),
       trailing: Text(
@@ -386,9 +416,16 @@ class _RoutineRow extends StatelessWidget {
 /// the band, and everything else a tap away. A scale practised with a
 /// sound in mind is a scale remembered.
 class _HeardIn extends StatelessWidget {
-  const _HeardIn({required this.modes, required this.onTune});
+  const _HeardIn({
+    required this.modes,
+    required this.todayKey,
+    required this.onTune,
+  });
 
   final List<String> modes;
+
+  /// The key the tunes open in.
+  final String todayKey;
   final ValueChanged<String> onTune;
 
   @override
@@ -409,9 +446,8 @@ class _HeardIn extends StatelessWidget {
             key: ValueKey('heard-in-${modes.join('-')}'),
             visualDensity: VisualDensity.compact,
             avatar: const Icon(Icons.hearing, size: 16),
-            // Named for the sound, because the tunes beside it are in
-            // their own keys and not today's: the major sound is the
-            // major sound in C or in G.
+            // Named for the sound: the major sound is the major sound in
+            // C or in G, and the tunes are only examples of it.
             label: Text('${modes.join(' and ')} Heard In'),
             tooltip:
                 'Where ${modes.join(' and ')} ${modes.length == 1 ? 'is' : 'are'} heard',
@@ -421,7 +457,7 @@ class _HeardIn extends StatelessWidget {
             ActionChip(
               visualDensity: VisualDensity.compact,
               avatar: const Icon(Icons.play_arrow, size: 16),
-              label: Text(switch (keyOfTune(tune)) {
+              label: Text(switch (movedKeyLabel(tune, todayKey)) {
                 final key? => '$tune, in $key',
                 null => tune,
               }),
@@ -447,9 +483,9 @@ class _HeardIn extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'A mode sounds the same in every key, so these are in their '
-                "own keys, not today's. Listen for the sound, then find it "
-                'in yours.',
+                'A mode sounds the same in every key. The tunes open in '
+                "$todayKey, today's key; the bars and chords named here are "
+                'in the key each tune is written in.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -463,6 +499,10 @@ class _HeardIn extends StatelessWidget {
               for (final example in modeExamples[mode] ?? const <ModeExample>[])
                 ModeExampleRow(
                   example: example,
+                  opensIn: switch (example.tune) {
+                    final tune? => movedKeyLabel(tune, todayKey),
+                    null => null,
+                  },
                   onTune: (tune) {
                     Navigator.of(sheet).pop();
                     onTune(tune);

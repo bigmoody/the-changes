@@ -51,6 +51,7 @@ class PracticeScreen extends StatefulWidget {
     this.library,
     this.listener,
     this.startAt,
+    this.semitones = 0,
     this.hearTheBand = false,
     this.byMicrophone = false,
   });
@@ -80,6 +81,11 @@ class PracticeScreen extends StatefulWidget {
   /// take the deciding away: arriving at a chart that is waiting to be
   /// started would hand one of the decisions straight back.
   final int? startAt;
+
+  /// Opens the tune this many semitones from its written key: the Practice
+  /// tab moves a tune into today's key, to hear a mode where you are
+  /// practising it.
+  final int semitones;
 
   /// Set when [tune] is one of the player's own progressions: only those can
   /// be edited from here.
@@ -127,6 +133,7 @@ class _PracticeScreenState extends State<PracticeScreen> {
   void initState() {
     super.initState();
     _controller.addListener(_showScore);
+    if (widget.semitones % 12 != 0) _controller.transpose(widget.semitones);
     if (widget.startAt case final tempo?) {
       _controller.setTempo(tempo);
       // After the first frame: the band reads the chart to render itself

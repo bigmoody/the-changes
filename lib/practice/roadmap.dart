@@ -165,10 +165,14 @@ class RoutineBlock {
     required this.block,
     required this.minutes,
     required this.how,
+    required this.key,
     this.tune,
   });
 
   final Block block;
+
+  /// Today's key, which a tune the block's modes are heard in is moved to.
+  final String key;
   final int minutes;
 
   /// The block's instructions with today's key (and tune) put in.
@@ -1082,6 +1086,7 @@ List<RoutineBlock> routineFor(Stage stage, int minutes, {required int day}) {
         how: blocks[b].how
             .replaceAll('{key}', key)
             .replaceAll('{tune}', tuneTitle),
+        key: key,
         tune: blocks[b] == stage.blocks.last ? tuneTitle : null,
       ),
   ];

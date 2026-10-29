@@ -157,7 +157,10 @@ void main() {
     final after = loudness(end + 22050, end + 44100);
     expect(after, greaterThan(lastBar / 4), reason: 'a chord to end on');
     // And it dies away rather than being cut off.
-    expect(loudness(samples.length - 4410, samples.length), lessThan(after / 4));
+    expect(
+      loudness(samples.length - 4410, samples.length),
+      lessThan(after / 4),
+    );
   });
 
   test('the whole band is in it, all the way through', () {

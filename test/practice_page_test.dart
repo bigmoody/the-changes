@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/audio/practice_player.dart';
 import 'package:play_along/library/library_store.dart';
+import 'package:play_along/music/mode_examples.dart';
 import 'package:play_along/practice/roadmap.dart';
 import 'package:play_along/practice/roadmap_progress.dart';
 import 'package:play_along/screens/practice_page.dart';
+import 'package:play_along/screens/practice_screen.dart';
 import 'package:play_along/settings/app_settings.dart';
 import 'package:play_along/settings/progression_store.dart';
 import 'package:play_along/theme.dart';
@@ -126,7 +128,10 @@ void main() {
     );
     final row = find.byKey(const ValueKey('routine-1'));
     expect(
-      find.descendant(of: row, matching: find.text('Take the "A" Train, in C')),
+      find.descendant(
+        of: row,
+        matching: find.textContaining('Take the "A" Train, in '),
+      ),
       findsOneWidget,
       reason: 'the Ionian tune, to play',
     );
@@ -134,9 +139,33 @@ void main() {
     expect(find.text('Ionian Heard In'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('heard-in-Ionian')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('(in C)'), findsOneWidget);
+    expect(find.textContaining('Take the "A" Train (in C'), findsOneWidget);
     expect(find.textContaining('Joy to the World'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("a tune the mode is heard in opens in today's key", (
+    tester,
+  ) async {
+    final progress = RoadmapProgress.inMemory(
+      instrument: RoadmapInstrument.horn,
+    );
+    await _open(tester, size: const Size(393, 3000), progress: progress);
+    final today = routineFor(
+      stagesFor(RoadmapInstrument.horn).first,
+      progress.minutes,
+      day: dayNumber(DateTime(2026, 10, 29)),
+    )[1];
+    expect(today.block.modes, contains('Ionian'));
+    await tester.tap(find.textContaining('Take the "A" Train, in '));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final screen = tester.widget<PracticeScreen>(find.byType(PracticeScreen));
+    expect(screen.semitones, semitonesToKey('Take the "A" Train', today.key));
+    expect(screen.tune.title, 'Take the "A" Train');
+    // And the chart is in it: the tune's opening C6 is today's key's 6.
+    await tester.pumpAndSettle();
+    expect(find.textContaining('${today.key}6'), findsWidgets);
   });
 
   testWidgets('a block opens the page it is done on', (tester) async {

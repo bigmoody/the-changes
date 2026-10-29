@@ -6,6 +6,7 @@
 // bar named here is checked against the app's own chart of the tune (see
 // mode_examples_test.dart), so tapping one plays the place it describes.
 
+import 'tune.dart';
 import 'tune_library.dart';
 
 /// The key [title] is written in, as the library has it ("C", "D
@@ -17,6 +18,22 @@ import 'tune_library.dart';
 /// as a mistake.
 String? keyOfTune(String title) =>
     standards.where((t) => t.title == title).firstOrNull?.key;
+
+/// How far to move [title] so its home key is [key]: up to six semitones
+/// either way, so it stays near where it was written. Zero if the tune is
+/// not in the library.
+int semitonesToKey(String title, String key) {
+  final written = keyOfTune(title);
+  if (written == null) return 0;
+  final up =
+      (readKeyLabel(key).pitchClass - readKeyLabel(written).pitchClass) % 12;
+  return up > 6 ? up - 12 : up;
+}
+
+/// What [title]'s key is called once moved to [key]: "D Dorian" moved to
+/// B is "B Dorian", and "C minor" moved to G is "G minor".
+String? movedKeyLabel(String title, String key) =>
+    keyOfTune(title)?.replaceFirst(RegExp(r'^[A-G][♭♯b#]?'), key);
 
 /// One place a mode is heard.
 class ModeExample {

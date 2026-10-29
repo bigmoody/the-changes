@@ -11,10 +11,14 @@ class ModeExampleRow extends StatelessWidget {
     super.key,
     required this.example,
     required this.onTune,
+    this.opensIn,
   });
 
   final ModeExample example;
   final ValueChanged<String> onTune;
+
+  /// The key a tune opens in, when that is not the key it is written in.
+  final String? opensIn;
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +29,11 @@ class ModeExampleRow extends StatelessWidget {
         children: [
           if (tune != null)
             TextSpan(
-              text: switch (keyOfTune(tune)) {
-                final key? => '$tune (in $key): ',
-                null => '$tune: ',
+              text: switch ((keyOfTune(tune), opensIn)) {
+                (final key?, final moved?) when moved != key =>
+                  '$tune (in $key, opens in $moved): ',
+                (final key?, _) => '$tune (in $key): ',
+                _ => '$tune: ',
               },
               style: TextStyle(
                 fontWeight: FontWeight.w600,
