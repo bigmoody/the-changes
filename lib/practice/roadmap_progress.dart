@@ -47,6 +47,18 @@ class RoadmapProgress extends ChangeNotifier {
   int _minutes = 30;
   int? _doneDay;
   final _done = <String>{};
+  final _tempos = <String, int>{};
+
+  /// The tempo [scale] was last played at, or [start] the first time. A
+  /// scale is pushed a little faster week by week, so the next session
+  /// starts where the last one got to rather than at the bottom again.
+  int scaleTempo(String scale, int start) => _tempos[scale] ?? start;
+
+  void setScaleTempo(String scale, int tempo) {
+    if (_tempos[scale] == tempo) return;
+    _tempos[scale] = tempo;
+    _changed();
+  }
 
   /// The stage being worked on with [instrument], from 1.
   int stageOf(RoadmapInstrument instrument) => _stage[instrument] ?? 1;
@@ -121,6 +133,7 @@ class RoadmapProgress extends ChangeNotifier {
     'minutes': _minutes,
     'doneDay': _doneDay,
     'done': _done.toList(),
+    'tempos': _tempos,
   };
 
   void _read(Map<String, Object?> json) {
@@ -141,5 +154,10 @@ class RoadmapProgress extends ChangeNotifier {
     }
     _doneDay = (json['doneDay'] as num?)?.toInt();
     _done.addAll((json['done'] as List?)?.whereType<String>() ?? []);
+    if (json['tempos'] case final Map<String, Object?> tempos) {
+      for (final MapEntry(:key, :value) in tempos.entries) {
+        if (value is num) _tempos[key] = value.toInt();
+      }
+    }
   }
 }

@@ -41,6 +41,7 @@ import 'number_patterns_screen.dart';
 import 'passing_chords_screen.dart';
 import 'rhythm_changes_screen.dart';
 import 'scale_patterns_screen.dart';
+import 'scale_of_the_day_screen.dart';
 import 'scales_reference_screen.dart';
 import 'setlists_screen.dart';
 import 'swing_screen.dart';
@@ -152,6 +153,27 @@ class PracticePage extends StatelessWidget {
     Tool.listening => const ListeningScreen(),
     Tool.tuner => TunerScreen(player: player, settings: settings),
   };
+
+  void _openScale(
+    BuildContext context,
+    RoutineBlock block,
+    RoadmapInstrument instrument, {
+    required VoidCallback onDone,
+  }) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => ScaleOfTheDayScreen(
+        title: block.block.title,
+        modes: block.block.modes,
+        keyName: block.key,
+        exercise: block.block.exercise!,
+        instrument: instrument,
+        progress: progress,
+        player: player,
+        settings: settings,
+        onDone: onDone,
+      ),
+    ),
+  );
 
   void _openTool(BuildContext context, Tool tool) =>
       Navigator.of(context)
@@ -310,6 +332,14 @@ class _Roadmap extends StatelessWidget {
                 progress.markDone(day, b, routine[b].block.title, on),
             onOpen: switch ((routine[b].tune, routine[b].block.tool)) {
               (final String tune, _) => () => page._openTune(context, tune),
+              // A scale is played here, not read about elsewhere.
+              _ when routine[b].block.exercise != null => () => page._openScale(
+                context,
+                routine[b],
+                instrument,
+                onDone: () =>
+                    progress.markDone(day, b, routine[b].block.title, true),
+              ),
               (_, final Tool tool) => () => page._openTool(context, tool),
               _ => null,
             },
@@ -390,7 +420,7 @@ class _RoutineRow extends StatelessWidget {
         children: [
           Text(
             '${block.block.area.labelFor(instrument)} · ${block.how}'
-            '${block.tune == null && tool != null ? ' (${tool.label})' : ''}',
+            '${block.tune == null && block.block.exercise == null && tool != null ? ' (${tool.label})' : ''}',
           ),
           if (block.block.modes.isNotEmpty)
             _HeardIn(

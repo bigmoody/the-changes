@@ -171,11 +171,47 @@ void main() {
   testWidgets('a block opens the page it is done on', (tester) async {
     await _open(
       tester,
+      size: const Size(393, 3000),
       progress: RoadmapProgress.inMemory(instrument: RoadmapInstrument.guitar),
     );
+    await tester.tap(find.text('Shell Voicings'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Guitar Chords'), findsOneWidget);
+  });
+
+  testWidgets('the scale of the day is played, step by step, and ticks '
+      'itself off', (tester) async {
+    final progress = RoadmapProgress.inMemory(
+      instrument: RoadmapInstrument.guitar,
+    );
+    await _open(tester, progress: progress);
+    final day = dayNumber(DateTime(2026, 10, 29));
     await tester.tap(find.text('Scale of the Day'));
     await tester.pumpAndSettle();
-    expect(find.widgetWithText(AppBar, 'Scales & Modes'), findsOneWidget);
+    // Not the reference page: today's scale, to play.
+    expect(find.widgetWithText(AppBar, 'Scales & Modes'), findsNothing);
+    expect(find.text('G Ionian'), findsOneWidget);
+    expect(find.text('Straight, Up and Down'), findsOneWidget);
+    expect(find.text('Step 1 of 2'), findsOneWidget);
+    expect(find.byKey(const ValueKey('scale-stave-0')), findsOneWidget);
+
+    // The tempo starts at the stage's, and is kept.
+    expect(find.text('70'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('scale-faster')));
+    await tester.pumpAndSettle();
+    expect(find.text('75'), findsOneWidget);
+    expect(progress.scaleTempo('Ionian Straight', 0), 75);
+
+    await tester.tap(find.byKey(const ValueKey('scale-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('In 3rds'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('scale-next')));
+    await tester.pumpAndSettle();
+    // Back on the routine, with the block ticked.
+    expect(find.byType(PracticePage), findsOneWidget);
+    expect(progress.isDone(day, 1, 'Scale of the Day'), isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   for (final instrument in RoadmapInstrument.values) {

@@ -23,6 +23,8 @@
 
 import 'dart:math' as math;
 
+import '../music/scale_run.dart';
+
 /// Who the roadmap is for. Each plays the same music and has a different
 /// job in the band, so the stages are shared and the work differs.
 enum RoadmapInstrument {
@@ -115,6 +117,7 @@ class Block {
     required this.weight,
     this.tool,
     this.modes = const [],
+    this.exercise,
   });
 
   final Area area;
@@ -131,6 +134,31 @@ class Block {
   /// The modes it works on, by their names in `modes`, so the routine can
   /// say where each is heard.
   final List<String> modes;
+
+  /// For a block that is a scale to play, how to play it: the Practice
+  /// tab opens it as an exercise rather than as a page to read.
+  final ScaleExercise? exercise;
+}
+
+/// A scale to play, not read about: each of the block's modes in today's
+/// key, run in each of [ways], at a tempo that climbs from [from] to [to].
+class ScaleExercise {
+  const ScaleExercise({
+    required this.ways,
+    required this.from,
+    required this.to,
+  });
+
+  /// The shapes to run the scale in, by their names in `scalePatterns`,
+  /// or [straight] for up and down.
+  final List<String> ways;
+
+  /// Where the tempo starts, and where the stage wants it to be, in beats
+  /// a minute with two notes to the beat.
+  final int from;
+  final int to;
+
+  static const straight = straightRun;
 }
 
 class Stage {
@@ -263,6 +291,11 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scale of the Day',
+          exercise: ScaleExercise(
+            ways: ['Straight', 'In 3rds'],
+            from: 70,
+            to: 90,
+          ),
           modes: ['Ionian'],
           how:
               '{key} major, $range, slowly and evenly at 70 to 90. Then in '
@@ -347,10 +380,15 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scale of the Day',
+          exercise: ScaleExercise(
+            ways: ['Straight', 'Sevenths'],
+            from: 90,
+            to: 110,
+          ),
           modes: ['Ionian'],
           how:
-              '{key} major, $range, at 90 to 110. Then the scale in '
-              'diatonic sevenths: 1–7, 2–1, 3–2.',
+              '{key} major, $range, at 90 to 110. Then the seventh chord '
+              'on every degree of it: the scale as the harmony it holds.',
           weight: 3,
           tool: Tool.scalePatterns,
         ),
@@ -443,6 +481,11 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Minor Scales',
+          exercise: ScaleExercise(
+            ways: ['Straight', 'In 3rds'],
+            from: 100,
+            to: 120,
+          ),
           modes: ['Dorian', 'Melodic minor'],
           how:
               '{key} Dorian, then {key} melodic minor, $range. Then the '
@@ -537,6 +580,11 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scales at Tempo',
+          exercise: ScaleExercise(
+            ways: ['Straight', 'In fours'],
+            from: 140,
+            to: 160,
+          ),
           modes: ['Ionian', 'Melodic minor'],
           how:
               '{key} major and {key} melodic minor, $range, starting from '
@@ -630,6 +678,11 @@ Stage _stage(int n, RoadmapInstrument i) {
         const Block(
           area: Area.scales,
           title: 'Altered and Diminished',
+          exercise: ScaleExercise(
+            ways: ['Straight', 'In 3rds'],
+            from: 100,
+            to: 140,
+          ),
           modes: ['Altered', 'Half-whole diminished'],
           how:
               'The altered scale on {key}7, then the half-whole diminished '
@@ -717,6 +770,11 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scales Without Thinking',
+          exercise: ScaleExercise(
+            ways: ['Straight', '1 2 3 5'],
+            from: 160,
+            to: 200,
+          ),
           modes: [
             'Melodic minor',
             'Altered',
