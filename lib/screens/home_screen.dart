@@ -1,7 +1,8 @@
-// The app's home: four tabs along the bottom, one job each.
+// The app's home: five tabs along the bottom, one job each.
 //
 //   Tunes       the standards and practice progressions (the tuner opens
 //               from the tuning fork at the top)
+//   Practice    a roadmap to playing jazz, and today's routine on it
 //   My Changes  progressions the player has written
 //   Learn       the chord quiz, and the pages to look things up in:
 //               chord symbols, chord tones, scales and modes
@@ -20,13 +21,15 @@ import '../practice/part_store.dart';
 import '../practice/phrase_store.dart';
 import '../practice/soundfont_store.dart';
 import '../practice/recording_store.dart';
+import '../practice/roadmap_progress.dart';
 import '../settings/progression_store.dart';
 import 'learn_page.dart';
 import 'my_progressions_page.dart';
+import 'practice_page.dart';
 import 'settings_page.dart';
 import 'tunes_page.dart';
 
-enum HomeTab { tunes, mine, learn, settings }
+enum HomeTab { tunes, practice, mine, learn, settings }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -40,9 +43,14 @@ class HomeScreen extends StatefulWidget {
     required this.recordingStore,
     required this.phrases,
     required this.soundFont,
+    this.roadmap,
     this.audioError,
     this.initialTab = HomeTab.tunes,
   });
+
+  /// Where somebody is on the Practice tab's roadmap. Tests that do not
+  /// look at it leave it out, and get one that is kept nowhere.
+  final RoadmapProgress? roadmap;
 
   final PracticePlayer player;
   final AppSettings settings;
@@ -68,6 +76,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late var _tab = widget.initialTab;
+  late final _roadmap = widget.roadmap ?? RoadmapProgress.inMemory();
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +95,16 @@ class _HomeScreenState extends State<HomeScreen> {
             partStore: widget.partStore,
             recordingStore: widget.recordingStore,
             audioError: widget.audioError,
+          ),
+          PracticePage(
+            progress: _roadmap,
+            player: widget.player,
+            settings: widget.settings,
+            library: widget.library,
+            progressions: widget.progressions,
+            takes: widget.takes,
+            partStore: widget.partStore,
+            recordingStore: widget.recordingStore,
           ),
           MyProgressionsPage(
             player: widget.player,
@@ -129,6 +148,11 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.library_music_outlined),
               selectedIcon: Icon(Icons.library_music),
               label: 'Tunes',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.trending_up),
+              selectedIcon: Icon(Icons.trending_up),
+              label: 'Practice',
             ),
             NavigationDestination(
               icon: Icon(Icons.edit_note_outlined),

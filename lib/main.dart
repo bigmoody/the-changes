@@ -27,6 +27,7 @@ import 'practice/phrase_store.dart';
 import 'practice/soundfont_store.dart';
 import 'practice/recording_store.dart';
 import 'settings/progression_store.dart';
+import 'practice/roadmap_progress.dart';
 import 'theme.dart';
 import 'library/shared_links.dart';
 import 'screens/import_screen.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
   final soundFont = await SoundFontStore.load(
     files: DeviceRecordingFiles('soundfont'),
   );
+  final roadmap = await RoadmapProgress.load();
   final player = PracticePlayer();
   String? audioError;
   try {
@@ -68,6 +70,7 @@ Future<void> main() async {
       recordingStore: recordingStore,
       phrases: phrases,
       soundFont: soundFont,
+      roadmap: roadmap,
       audioError: audioError,
     ),
   );
@@ -117,6 +120,7 @@ class TheChangesApp extends StatelessWidget {
     required this.recordingStore,
     required this.phrases,
     required this.soundFont,
+    this.roadmap,
     this.audioError,
   });
 
@@ -133,6 +137,9 @@ class TheChangesApp extends StatelessWidget {
 
   /// The SoundFont somebody imported, if any.
   final SoundFontStore soundFont;
+
+  /// Where somebody is on the Practice tab's roadmap.
+  final RoadmapProgress? roadmap;
   final String? audioError;
 
   @override
@@ -180,6 +187,7 @@ class TheChangesApp extends StatelessWidget {
           recordingStore: recordingStore,
           phrases: phrases,
           soundFont: soundFont,
+          roadmap: roadmap,
           audioError: audioError,
         ),
       ),
