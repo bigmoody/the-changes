@@ -5,13 +5,16 @@ import '../audio/drill_sounds.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
 import '../music/key_order.dart' show KeyOrder;
+import '../music/mode_examples.dart';
 import '../music/scales.dart';
+import '../music/tune_library.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'chart_instrument_button.dart';
 import 'chord_diagram.dart';
 import 'chord_tones_reference_screen.dart';
 import 'key_round.dart';
+import 'practice_screen.dart';
 import 'stave.dart';
 
 /// Every mode, in any key: its notes under their degrees, the chord it goes
@@ -94,6 +97,21 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
           ),
         )
         .rootName;
+  }
+
+  /// Opens [title] with the band, to hear the mode where it lives.
+  void _openTune(String title) {
+    final tune = standards.where((t) => t.title == title).firstOrNull;
+    if (tune == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PracticeScreen(
+          tune: tune,
+          player: widget.player,
+          settings: widget.settings,
+        ),
+      ),
+    );
   }
 
   Future<void> _play(Mode mode) async {
@@ -218,6 +236,7 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
                       ? null
                       : _concert(_root),
                   onPlay: () => _play(mode),
+                  onTune: _openTune,
                 );
               },
             ),
@@ -236,9 +255,13 @@ class _ModeCard extends StatelessWidget {
     required this.clef,
     required this.soundsAs,
     required this.onPlay,
+    required this.onTune,
   });
 
   final Mode mode;
+
+  /// Opens a tune the mode is heard in.
+  final ValueChanged<String> onTune;
 
   /// The root as written.
   final String root;
@@ -401,6 +424,88 @@ class _ModeCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(mode.description, style: theme.textTheme.bodyMedium),
+            // Where it is heard: a sound is what makes a mode stick, and a
+            // tune to play it in is a sound you can go and get.
+            if (modeExamples[mode.name] case final examples?) ...[
+              const SizedBox(height: 12),
+              Text('Heard In', style: theme.textTheme.titleSmall),
+              const SizedBox(height: 4),
+              for (final example in examples)
+                _Example(example: example, onTune: onTune),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One place the mode is heard. A tune in the library opens with the
+/// band; a song from outside it is only named.
+class _Example extends StatelessWidget {
+  const _Example({required this.example, required this.onTune});
+
+  final ModeExample example;
+  final ValueChanged<String> onTune;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tune = example.tune;
+    final text = Text.rich(
+      TextSpan(
+        children: [
+          if (tune != null)
+            TextSpan(
+              text: '$tune: ',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          TextSpan(text: example.text),
+        ],
+      ),
+      style: theme.textTheme.bodyMedium,
+    );
+    if (tune == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 8),
+              child: Icon(
+                Icons.music_note_outlined,
+                size: 18,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            Expanded(child: text),
+          ],
+        ),
+      );
+    }
+    return InkWell(
+      key: ValueKey('mode-example-$tune'),
+      onTap: () => onTune(tune),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 8),
+              child: Icon(
+                Icons.play_circle_outline,
+                size: 18,
+                color: theme.colorScheme.primary,
+                semanticLabel: 'Play $tune',
+              ),
+            ),
+            Expanded(child: text),
           ],
         ),
       ),
