@@ -14,6 +14,7 @@ import 'chart_instrument_button.dart';
 import 'chord_diagram.dart';
 import 'chord_tones_reference_screen.dart';
 import 'key_round.dart';
+import 'mode_example_row.dart';
 import 'practice_screen.dart';
 import 'stave.dart';
 
@@ -431,81 +432,8 @@ class _ModeCard extends StatelessWidget {
               Text('Heard In', style: theme.textTheme.titleSmall),
               const SizedBox(height: 4),
               for (final example in examples)
-                _Example(example: example, onTune: onTune),
+                ModeExampleRow(example: example, onTune: onTune),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One place the mode is heard. A tune in the library opens with the
-/// band; a song from outside it is only named.
-class _Example extends StatelessWidget {
-  const _Example({required this.example, required this.onTune});
-
-  final ModeExample example;
-  final ValueChanged<String> onTune;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final tune = example.tune;
-    final text = Text.rich(
-      TextSpan(
-        children: [
-          if (tune != null)
-            TextSpan(
-              text: '$tune: ',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          TextSpan(text: example.text),
-        ],
-      ),
-      style: theme.textTheme.bodyMedium,
-    );
-    if (tune == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2, right: 8),
-              child: Icon(
-                Icons.music_note_outlined,
-                size: 18,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            Expanded(child: text),
-          ],
-        ),
-      );
-    }
-    return InkWell(
-      key: ValueKey('mode-example-$tune'),
-      onTap: () => onTune(tune),
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 2, right: 8),
-              child: Icon(
-                Icons.play_circle_outline,
-                size: 18,
-                color: theme.colorScheme.primary,
-                semanticLabel: 'Play $tune',
-              ),
-            ),
-            Expanded(child: text),
           ],
         ),
       ),

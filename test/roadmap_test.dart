@@ -1,6 +1,7 @@
 // The roadmap's content and the routine cut from it.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/mode_examples.dart';
 import 'package:play_along/music/tune_library.dart';
 import 'package:play_along/practice/roadmap.dart';
 import 'package:play_along/practice/roadmap_progress.dart';
@@ -38,6 +39,19 @@ void main() {
             expect(titles, contains(title), reason: 'stage ${stage.number}');
           }
         }
+      });
+
+      test('the modes a block works on all have somewhere they are heard', () {
+        var any = false;
+        for (final stage in stages) {
+          for (final block in stage.blocks) {
+            for (final mode in block.modes) {
+              any = true;
+              expect(modeExamples, contains(mode), reason: block.title);
+            }
+          }
+        }
+        expect(any, isTrue);
       });
 
       test('goals are named once, so a tick means one thing', () {

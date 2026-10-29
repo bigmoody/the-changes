@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import '../audio/practice_player.dart';
 import '../library/find_tune.dart';
 import '../library/library_store.dart';
+import '../music/mode_examples.dart';
 import '../music/tune_library.dart';
 import '../practice/part_store.dart';
 import '../practice/recording_store.dart';
@@ -32,6 +33,7 @@ import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'guitar_chords_screen.dart';
 import 'listening_screen.dart';
+import 'mode_example_row.dart';
 import 'metronome_screen.dart';
 import 'modal_screen.dart';
 import 'number_patterns_screen.dart';
@@ -291,6 +293,7 @@ class _Roadmap extends StatelessWidget {
               (_, final Tool tool) => () => page._openTool(context, tool),
               _ => null,
             },
+            onTune: (tune) => page._openTune(context, tune),
           ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -329,6 +332,7 @@ class _RoutineRow extends StatelessWidget {
     required this.done,
     required this.onDone,
     required this.onOpen,
+    required this.onTune,
   });
 
   final RoutineBlock block;
@@ -336,6 +340,9 @@ class _RoutineRow extends StatelessWidget {
   final bool done;
   final ValueChanged<bool> onDone;
   final VoidCallback? onOpen;
+
+  /// Plays a tune the block's modes are heard in.
+  final ValueChanged<String> onTune;
 
   @override
   Widget build(BuildContext context) {
@@ -352,9 +359,16 @@ class _RoutineRow extends StatelessWidget {
               )
             : null,
       ),
-      subtitle: Text(
-        '${block.block.area.labelFor(instrument)} · ${block.how}'
-        '${block.tune == null && tool != null ? ' (${tool.label})' : ''}',
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${block.block.area.labelFor(instrument)} · ${block.how}'
+            '${block.tune == null && tool != null ? ' (${tool.label})' : ''}',
+          ),
+          if (block.block.modes.isNotEmpty)
+            _HeardIn(modes: block.block.modes, onTune: onTune),
+        ],
       ),
       trailing: Text(
         '${block.minutes} min',
@@ -366,6 +380,83 @@ class _RoutineRow extends StatelessWidget {
       onTap: onOpen,
     );
   }
+}
+
+/// Where the modes a block works on are heard: the tunes, to play with
+/// the band, and everything else a tap away. A scale practised with a
+/// sound in mind is a scale remembered.
+class _HeardIn extends StatelessWidget {
+  const _HeardIn({required this.modes, required this.onTune});
+
+  final List<String> modes;
+  final ValueChanged<String> onTune;
+
+  @override
+  Widget build(BuildContext context) {
+    final tunes = <String>{
+      for (final mode in modes)
+        for (final example in modeExamples[mode] ?? const <ModeExample>[])
+          ?example.tune,
+    };
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          ActionChip(
+            key: ValueKey('heard-in-${modes.join('-')}'),
+            visualDensity: VisualDensity.compact,
+            avatar: const Icon(Icons.hearing, size: 16),
+            label: const Text('Heard In'),
+            tooltip:
+                'Where ${modes.join(' and ')} ${modes.length == 1 ? 'is' : 'are'} heard',
+            onPressed: () => _showAll(context),
+          ),
+          for (final tune in tunes)
+            ActionChip(
+              visualDensity: VisualDensity.compact,
+              avatar: const Icon(Icons.play_arrow, size: 16),
+              label: Text(tune),
+              onPressed: () => onTune(tune),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showAll(BuildContext context) => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheet) {
+      final theme = Theme.of(sheet);
+      return SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: [
+            Text('Heard In', style: theme.textTheme.titleLarge),
+            for (final mode in modes) ...[
+              Padding(
+                padding: const EdgeInsets.only(top: 16, bottom: 4),
+                child: Text(mode, style: theme.textTheme.titleSmall),
+              ),
+              for (final example in modeExamples[mode] ?? const <ModeExample>[])
+                ModeExampleRow(
+                  example: example,
+                  onTune: (tune) {
+                    Navigator.of(sheet).pop();
+                    onTune(tune);
+                  },
+                ),
+            ],
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _StageTile extends StatelessWidget {

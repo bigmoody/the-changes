@@ -114,6 +114,7 @@ class Block {
     required this.how,
     required this.weight,
     this.tool,
+    this.modes = const [],
   });
 
   final Area area;
@@ -126,6 +127,10 @@ class Block {
   /// are for the tunes, not the other way round.
   final int weight;
   final Tool? tool;
+
+  /// The modes it works on, by their names in `modes`, so the routine can
+  /// say where each is heard.
+  final List<String> modes;
 }
 
 class Stage {
@@ -254,6 +259,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scale of the Day',
+          modes: ['Ionian'],
           how:
               '{key} major, $range, slowly and evenly at 70 to 90. Then in '
               'thirds. Say each note name as you go.',
@@ -273,6 +279,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         const Block(
           area: Area.ear,
           title: 'Hear the Form',
+          modes: ['Mixolydian', 'Blues scale'],
           how:
               'Put on a blues and call out each chord change as it comes. '
               'Then check yourself against the chart.',
@@ -336,6 +343,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scale of the Day',
+          modes: ['Ionian'],
           how:
               '{key} major, $range, at 90 to 110. Then the scale in '
               'diatonic sevenths: 1–7, 2–1, 3–2.',
@@ -431,6 +439,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Minor Scales',
+          modes: ['Dorian', 'Melodic minor'],
           how:
               '{key} Dorian, then {key} melodic minor, $range. Then the '
               'bebop dominant on {key}, chord tones on the beat.',
@@ -524,6 +533,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scales at Tempo',
+          modes: ['Ionian', 'Melodic minor'],
           how:
               '{key} major and {key} melodic minor, $range, starting from '
               'each degree in turn. Push the tempo up five a week.',
@@ -616,6 +626,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         const Block(
           area: Area.scales,
           title: 'Altered and Diminished',
+          modes: ['Altered', 'Half-whole diminished'],
           how:
               'The altered scale on {key}7, then the half-whole diminished '
               'on {key}7. Resolve each to the I.',
@@ -634,6 +645,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         const Block(
           area: Area.language,
           title: 'Substitutions',
+          modes: ['Lydian dominant'],
           how: 'Tritone subs and passing chords on the ii–V–I in {key}.',
           weight: 2,
           tool: Tool.tritoneSubs,
@@ -642,6 +654,7 @@ Stage _stage(int n, RoadmapInstrument i) {
         const Block(
           area: Area.ear,
           title: 'Modal Space',
+          modes: ['Dorian', 'Mixolydian'],
           how:
               'A chorus on a modal vamp with a motif you keep and develop. '
               'Leave as much space as you fill.',
@@ -700,6 +713,12 @@ Stage _stage(int n, RoadmapInstrument i) {
         Block(
           area: Area.scales,
           title: 'Scales Without Thinking',
+          modes: [
+            'Melodic minor',
+            'Altered',
+            'Whole tone',
+            'Half-whole diminished',
+          ],
           how:
               'Every scale on {key}: major, the minors, the bebop and the '
               'symmetric ones, $range, at the top of your tempo.',

@@ -118,6 +118,24 @@ void main() {
     expect(find.text('Stage 2: Chord Tones and the ii–V–I'), findsOneWidget);
   });
 
+  testWidgets('a scale block says where its mode is heard', (tester) async {
+    await _open(
+      tester,
+      size: const Size(393, 3000),
+      progress: RoadmapProgress.inMemory(instrument: RoadmapInstrument.horn),
+    );
+    final row = find.byKey(const ValueKey('routine-1'));
+    expect(
+      find.descendant(of: row, matching: find.text('Take the "A" Train')),
+      findsOneWidget,
+      reason: 'the Ionian tune, to play',
+    );
+    await tester.tap(find.byKey(const ValueKey('heard-in-Ionian')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Joy to the World'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a block opens the page it is done on', (tester) async {
     await _open(
       tester,
