@@ -24,6 +24,7 @@
 import 'dart:math' as math;
 
 import '../music/scale_run.dart';
+import 'line_exercise.dart';
 
 /// Who the roadmap is for. Each plays the same music and has a different
 /// job in the band, so the stages are shared and the work differs.
@@ -118,6 +119,7 @@ class Block {
     this.tool,
     this.modes = const [],
     this.exercise,
+    this.line,
   });
 
   final Area area;
@@ -138,6 +140,10 @@ class Block {
   /// For a block that is a scale to play, how to play it: the Practice
   /// tab opens it as an exercise rather than as a page to read.
   final ScaleExercise? exercise;
+
+  /// For a block that is lines to play with marks on them (articulation),
+  /// the lines: the Practice tab opens it as an exercise.
+  final LineExercise? line;
 }
 
 /// A scale to play, not read about: each of the block's modes in today's
@@ -306,6 +312,8 @@ Stage _stage(int n, RoadmapInstrument i) {
         const Block(
           area: Area.chordTones,
           title: 'Arpeggios',
+          modes: ['Ionian', 'Mixolydian', 'Dorian'],
+          exercise: ScaleExercise(ways: [arpeggioRun], from: 70, to: 90),
           how:
               'Δ7, 7 and m7 on {key}: root to seventh and back, then from the '
               'seventh down. Hear each one before you play it.',
@@ -1004,7 +1012,26 @@ Block _roleBlock(int stage, RoadmapInstrument i) {
       Tool.tuner,
     ),
   };
-  return Block(area: Area.role, title: title, how: how, weight: 3, tool: tool);
+  final horn = i == RoadmapInstrument.horn;
+  return Block(
+    area: Area.role,
+    title: title,
+    how: how,
+    weight: 3,
+    tool: tool,
+    // The horn's work is played, not read about: articulation and
+    // ghosting as lines with marks on them, and range as a scale that
+    // goes to the edges.
+    line: horn && stage == 1
+        ? articulation
+        : horn && stage == 3
+        ? ghosting
+        : null,
+    modes: horn && stage == 2 ? const ['Ionian'] : const [],
+    exercise: horn && stage == 2
+        ? const ScaleExercise(ways: [straightRun], from: 70, to: 100)
+        : null,
+  );
 }
 
 /// What the instrument's job asks for at [stage].

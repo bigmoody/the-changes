@@ -37,6 +37,18 @@ ScaleRun scaleRun(
       for (var s = top - 1; s >= 0; s--) s,
     ];
     turn = top + 1;
+  } else if (way == arpeggioRun) {
+    // The chord the mode's 1st, 3rd, 5th and 7th make, up through the
+    // octaves to the root at the top and back: only seven-note scales
+    // have those degrees where an arpeggio wants them.
+    final top = count * octaves;
+    final up = [
+      for (var octave = 0; octave < octaves; octave++)
+        for (final degree in const [0, 2, 4, 6]) octave * count + degree,
+      top,
+    ];
+    steps = [...up, ...up.reversed.skip(1)];
+    turn = up.length;
   } else {
     final pattern = scalePatterns.firstWhere((p) => p.name == way);
     final reach = octavesFor(count, pattern);
@@ -58,6 +70,12 @@ ScaleRun scaleRun(
 /// The name of running a scale straight up and down.
 const straightRun = 'Straight';
 
+/// The name of running the seventh chord a scale holds, up and down.
+const arpeggioRun = 'Arpeggio';
+
 /// What a way of running a scale is called on screen.
-String runLabel(String way) =>
-    way == straightRun ? 'Straight, Up and Down' : way;
+String runLabel(String way) => switch (way) {
+  straightRun => 'Straight, Up and Down',
+  arpeggioRun => 'Arpeggio, Up and Down',
+  _ => way,
+};

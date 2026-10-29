@@ -15,6 +15,7 @@ import '../audio/practice_player.dart';
 import '../library/find_tune.dart';
 import '../library/library_store.dart';
 import '../music/mode_examples.dart';
+import '../music/scale_run.dart';
 import '../music/tune_library.dart';
 import '../practice/part_store.dart';
 import '../practice/recording_store.dart';
@@ -32,6 +33,7 @@ import 'ear_training_screen.dart';
 import 'enclosures_screen.dart';
 import 'guide_tones_screen.dart';
 import 'guitar_chords_screen.dart';
+import 'line_exercise_screen.dart';
 import 'listening_screen.dart';
 import 'mode_example_row.dart';
 import 'practice_screen.dart';
@@ -167,6 +169,24 @@ class PracticePage extends StatelessWidget {
         keyName: block.key,
         exercise: block.block.exercise!,
         instrument: instrument,
+        progress: progress,
+        player: player,
+        settings: settings,
+        onDone: onDone,
+      ),
+    ),
+  );
+
+  void _openLine(
+    BuildContext context,
+    RoutineBlock block, {
+    required VoidCallback onDone,
+  }) => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => LineExerciseScreen(
+        title: block.block.title,
+        keyName: block.key,
+        exercise: block.block.line!,
         progress: progress,
         player: player,
         settings: settings,
@@ -332,6 +352,13 @@ class _Roadmap extends StatelessWidget {
                 progress.markDone(day, b, routine[b].block.title, on),
             onOpen: switch ((routine[b].tune, routine[b].block.tool)) {
               (final String tune, _) => () => page._openTune(context, tune),
+              // Lines with marks on them, played here too.
+              _ when routine[b].block.line != null => () => page._openLine(
+                context,
+                routine[b],
+                onDone: () =>
+                    progress.markDone(day, b, routine[b].block.title, true),
+              ),
               // A scale is played here, not read about elsewhere.
               _ when routine[b].block.exercise != null => () => page._openScale(
                 context,
@@ -420,9 +447,12 @@ class _RoutineRow extends StatelessWidget {
         children: [
           Text(
             '${block.block.area.labelFor(instrument)} · ${block.how}'
-            '${block.tune == null && block.block.exercise == null && tool != null ? ' (${tool.label})' : ''}',
+            '${block.tune == null && block.block.exercise == null && block.block.line == null && tool != null ? ' (${tool.label})' : ''}',
           ),
-          if (block.block.modes.isNotEmpty)
+          // Not on an arpeggio: its modes only say which chords to play.
+          if (block.block.modes.isNotEmpty &&
+              !(block.block.exercise?.ways.every((w) => w == arpeggioRun) ??
+                  false))
             _HeardIn(
               modes: block.block.modes,
               todayKey: block.key,

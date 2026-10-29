@@ -168,6 +168,41 @@ void main() {
     expect(find.textContaining('${today.key}6'), findsWidgets);
   });
 
+  testWidgets('articulation is lines to play, step by step', (tester) async {
+    final progress = RoadmapProgress.inMemory(
+      instrument: RoadmapInstrument.horn,
+    )..setMinutes(60);
+    await _open(tester, size: const Size(393, 3000), progress: progress);
+    final day = dayNumber(DateTime(2026, 10, 29));
+    final routine = routineFor(
+      stagesFor(RoadmapInstrument.horn).first,
+      60,
+      day: day,
+    );
+    final index = routine.indexWhere((b) => b.block.title == 'Articulation');
+    expect(index, isNonNegative);
+    await tester.tap(find.text('Articulation'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(AppBar, 'Swing'), findsNothing);
+    expect(find.text('One Note, Legato Tongue'), findsOneWidget);
+    expect(find.byKey(const ValueKey('line-stave')), findsOneWidget);
+    expect(find.byKey(const ValueKey('mark-15')), findsOneWidget);
+    for (final title in [
+      'Tongue the Off-Beats',
+      'Accent the Off-Beats',
+      'Accent the Top',
+    ]) {
+      await tester.tap(find.byKey(const ValueKey('line-next')));
+      await tester.pumpAndSettle();
+      expect(find.text(title), findsOneWidget);
+    }
+    expect(find.text('Done'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('line-next')));
+    await tester.pumpAndSettle();
+    expect(progress.isDone(day, index, 'Articulation'), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a block opens the page it is done on', (tester) async {
     await _open(
       tester,

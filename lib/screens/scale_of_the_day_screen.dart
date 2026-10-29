@@ -211,7 +211,11 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
     final run = _run;
     final step = _step;
     final pattern = scalePatterns.where((p) => p.name == step.way).firstOrNull;
-    final scale = '${step.mode.spelledRoot(widget.keyName)} ${step.mode.name}';
+    // An arpeggio is named for its chord, which is what is being learned;
+    // the scale it comes from is said underneath.
+    final scale = step.way == arpeggioRun
+        ? step.mode.chordOn(widget.keyName).display
+        : '${step.mode.spelledRoot(widget.keyName)} ${step.mode.name}';
     final last = _at == _steps.length - 1;
     final atGoal = _tempo >= widget.exercise.to;
 
@@ -237,7 +241,11 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
                     style: handLettered(theme.textTheme.headlineMedium),
                   ),
                   Text(
-                    runLabel(step.way),
+                    step.way == arpeggioRun
+                        ? '${runLabel(step.way)}, from '
+                              '${step.mode.spelledRoot(widget.keyName)} '
+                              '${step.mode.name}'
+                        : runLabel(step.way),
                     key: const ValueKey('scale-way'),
                     style: theme.textTheme.titleMedium,
                   ),

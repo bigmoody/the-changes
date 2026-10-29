@@ -44,6 +44,21 @@ void main() {
     }
   });
 
+  test('an arpeggio is the seventh chord, up the octaves and back', () {
+    final run = scaleRun(
+      _mode('Mixolydian'),
+      'G',
+      arpeggioRun,
+      octaves: 2,
+      floor: 55,
+    );
+    expect(run.names.take(9), ['G', 'B', 'D', 'F', 'G', 'B', 'D', 'F', 'G']);
+    expect(run.pitches[8], 79, reason: 'G two octaves up');
+    expect(run.turn, 9);
+    expect(run.names.last, 'G');
+    expect(run.pitches.last, 55);
+  });
+
   test('a shape goes up and comes back down mirrored', () {
     final run = scaleRun(
       _mode('Ionian'),
@@ -69,7 +84,11 @@ void main() {
   });
 
   test('every scale block plays shapes and scales that exist', () {
-    final names = {for (final p in scalePatterns) p.name, straightRun};
+    final names = {
+      for (final p in scalePatterns) p.name,
+      straightRun,
+      arpeggioRun,
+    };
     final scales = {for (final m in modes) m.name};
     var blocks = 0;
     for (final instrument in RoadmapInstrument.values) {
