@@ -82,10 +82,7 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
 
   /// When each eighth of a pass starts, in beats: the "and" late by as
   /// much as a player swings at this tempo.
-  List<double> _eighthBeats(int count) {
-    final swing = swingAt(_tempo);
-    return [for (var i = 0; i < count; i++) i ~/ 2 + (i.isOdd ? swing : 0.0)];
-  }
+  List<double> _eighthBeats(int count) => eighthBeats(count, _tempo);
 
   Future<void> _playAlong() async {
     if (_playing != null) return _stop();
@@ -97,32 +94,15 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
     final beats = line.length / 2;
     final bars = (beats / 4).ceil();
     final starts = _eighthBeats(line.length);
-    final down = widget.settings.instrument.semitones;
-    final notes = <SnippetNote>[
-      if (_guide)
-        for (var pass = 0; pass < _times; pass++)
-          for (final (i, event) in line.indexed)
-            if (event.pitch case final pitch?)
-              (
-                pitch: pitch - down,
-                start: lead + (pass * beats + starts[i]) * beat,
-                // Slurred and tongued notes run on to the next; a ghost is
-                // short as well as soft.
-                length:
-                    ((i + 1 < starts.length ? starts[i + 1] : beats) -
-                        starts[i]) *
-                    beat *
-                    (event.touch == Touch.ghost ? 0.5 : 0.95),
-                velocity: switch (event.touch) {
-                  Touch.ghost => 0.22,
-                  Touch.slur => 0.5,
-                  Touch.tongue => 0.6,
-                  Touch.accent => 0.95,
-                  Touch.rest => 0,
-                },
-                bass: false,
-              ),
-    ];
+    final notes = _guide
+        ? guideNotes(
+            line,
+            tempo: _tempo,
+            times: _times,
+            from: lead,
+            down: widget.settings.instrument.semitones,
+          )
+        : const <SnippetNote>[];
     final drums = <SnippetDrum>[
       // A bar to come in on.
       for (var b = 0; b < _countIn; b++)
@@ -146,7 +126,9 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
         ),
     ];
     setState(() => _playing = -1);
-    await widget.player.playSnippet(renderSnippet(bank, notes, drums: drums));
+    await widget.player.playSnippet(
+      renderSnippet(bank, notes, drums: drums, pianoRelease: guideRelease),
+    );
     final started = Stopwatch()..start();
     final passSeconds = beats * beat;
     _clock = Timer.periodic(const Duration(milliseconds: 15), (_) {

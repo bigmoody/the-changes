@@ -1834,6 +1834,7 @@ Uint8List renderSnippet(
   bool room = true,
   BassTone bassTone = BassTone.natural,
   List<SnippetDrum> drums = const [],
+  double pianoRelease = 0.35,
 }) {
   final brightBass = bassTone != BassTone.natural;
   final end = [
@@ -1841,7 +1842,10 @@ Uint8List renderSnippet(
     // A cymbal at the end still needs room to ring.
     for (final hit in drums) hit.at + 0.6,
   ].fold(0.0, (a, b) => math.max(a, b));
-  final release = 0.35;
+  // How long a piano note takes to die once let go. Damped right down for
+  // a line whose notes each have to be heard starting, where the ring of
+  // one note covering the start of the next is the thing in the way.
+  final release = pianoRelease;
   final mix = _Mix(
     sampleRate: sampleRate,
     loopStart: 0,

@@ -9,7 +9,9 @@
 // with a mark under every note, played with the band for as many times
 // round as somebody asks for.
 
+import '../audio/backing_synth.dart' show SnippetNote;
 import '../music/chord.dart';
+import '../music/swing.dart';
 import '../music/scales.dart';
 
 /// How one note of a line is played.
@@ -101,6 +103,66 @@ List<LineEvent> lineIn(LineStep step, String key, {required int floor}) {
             ),
   ];
 }
+
+/// When each of [count] eighths starts, in beats: the "and" late by as
+/// much as a player swings at [tempo].
+List<double> eighthBeats(int count, int tempo) {
+  final swing = swingAt(tempo);
+  return [for (var i = 0; i < count; i++) i ~/ 2 + (i.isOdd ? swing : 0.0)];
+}
+
+/// [line] as the band plays it to show how it goes, [times] through,
+/// starting [from] seconds in, [down] semitones below as written.
+///
+/// Each note stops a little before the next, so every one, the beat after
+/// an "and" included, is heard starting; a ghost is short as well as soft.
+/// A piano cannot slur, so the slurs are left to the player and the band
+/// shows the timing and the weight. Slurred and tongued notes are the same
+/// weight: a slurred beat made quieter than the "and" before it was a beat
+/// that disappeared, under a note still ringing. The difference is in the
+/// accents and the ghosts.
+List<SnippetNote> guideNotes(
+  List<LineEvent> line, {
+  required int tempo,
+  required int times,
+  double from = 0,
+  int down = 0,
+}) {
+  final beat = 60 / tempo;
+  final beats = line.length / 2;
+  final starts = eighthBeats(line.length, tempo);
+  return [
+    for (var pass = 0; pass < times; pass++)
+      for (final (i, event) in line.indexed)
+        if (event.pitch case final pitch?)
+          (
+            pitch: pitch - down,
+            start: from + (pass * beats + starts[i]) * beat,
+            length:
+                ((i + 1 < starts.length ? starts[i + 1] : beats) - starts[i]) *
+                beat *
+                switch ((event.touch, i.isOdd)) {
+                  (Touch.ghost, _) => 0.5,
+                  // The "and" is the short eighth, about a tenth of a
+                  // second before the next beat, so it has to stop well
+                  // short of it or the two run together.
+                  (_, true) => 0.5,
+                  _ => 0.85,
+                },
+            velocity: switch (event.touch) {
+              Touch.ghost => 0.22,
+              Touch.slur || Touch.tongue => 0.6,
+              Touch.accent => 0.95,
+              Touch.rest => 0.0,
+            },
+            bass: false,
+          ),
+  ];
+}
+
+/// How long a piano note of the guide rings once let go, in seconds:
+/// damped, so the ring of one note does not cover the start of the next.
+const guideRelease = 0.03;
 
 // ── The lines ────────────────────────────────────────────────────────────
 
