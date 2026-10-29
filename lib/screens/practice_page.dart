@@ -416,32 +416,29 @@ class _LevelRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final level = progress.level ?? PlayerLevel.intermediate;
+    // Always in view, a tab for each level, like the instruments above:
+    // a chip that only said the current one was easy to miss, and looked
+    // as if the levels had gone.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      // A Wrap rather than a Row: at a large text size "Level" and
-      // "Intermediate" with its arrow are wider than a phone.
-      child: Wrap(
-        spacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Text('Level', style: theme.textTheme.labelLarge),
-          PopupMenuButton<PlayerLevel>(
-            key: const ValueKey('roadmap-level'),
-            tooltip: 'Change your level',
-            initialValue: level,
-            onSelected: (chosen) => _change(context, chosen),
-            itemBuilder: (_) => [
-              for (final l in PlayerLevel.values)
-                PopupMenuItem(value: l, child: Text(l.label)),
-            ],
-            child: Chip(
-              label: Text(level.label),
-              avatar: const Icon(Icons.expand_more, size: 18),
+      child: SegmentedButton<PlayerLevel>(
+        key: const ValueKey('roadmap-level'),
+        showSelectedIcon: false,
+        segments: [
+          for (final l in PlayerLevel.values)
+            ButtonSegment(
+              value: l,
+              // "Professional" does not fit a quarter of a phone.
+              label: Text(
+                l == PlayerLevel.professional ? 'Pro' : l.label,
+                key: ValueKey('level-tab-${l.name}'),
+              ),
+              tooltip: l.label,
             ),
-          ),
         ],
+        selected: {level},
+        onSelectionChanged: (chosen) => _change(context, chosen.single),
       ),
     );
   }

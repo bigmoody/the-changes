@@ -122,7 +122,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(progress.level, PlayerLevel.professional);
     expect(find.text('Stage 5: Colour and Tension'), findsOneWidget);
+    // The levels stay in view as tabs once one is chosen.
     expect(find.byKey(const ValueKey('roadmap-level')), findsOneWidget);
+    for (final level in PlayerLevel.values) {
+      expect(find.byKey(ValueKey('level-tab-${level.name}')), findsOneWidget);
+    }
+    // Changing one asks first, then moves to its stage.
+    await tester.tap(find.byKey(const ValueKey('level-tab-beginner')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('level-confirm')));
+    await tester.pumpAndSettle();
+    expect(progress.level, PlayerLevel.beginner);
+    expect(find.text('Stage 1: Time, Sound and the Blues'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
