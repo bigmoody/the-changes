@@ -216,13 +216,13 @@ class _PlayingFastScreenState extends State<PlayingFastScreen> {
     await widget.player.playSnippet(
       renderSnippet(bank, band.notes, drums: band.drums, pianoRelease: 0.08),
     );
-    // The button goes back to Play once the line has been played.
-    _done = Timer(
-      Duration(milliseconds: (lick.beats * 2 * 60000 / tempo).round() + 800),
-      () {
-        if (mounted && _hearing == tempo) setState(() => _hearing = null);
-      },
-    );
+    // The button goes back to Play once the line has been played, or
+    // stopped from the Pause and Stop bar: held, it stays as it is.
+    _done = Timer.periodic(const Duration(milliseconds: 250), (timer) {
+      if (widget.player.snippetState.value != SnippetState.idle) return;
+      timer.cancel();
+      if (mounted && _hearing == tempo) setState(() => _hearing = null);
+    });
   }
 
   void _ladder() {

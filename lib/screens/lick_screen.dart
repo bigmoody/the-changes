@@ -159,11 +159,17 @@ class _LickScreenState extends State<LickScreen> {
     await widget.player.playSnippet(
       renderSnippet(bank, band.notes, drums: drums, pianoRelease: 0.08),
     );
-    final started = Stopwatch()..start();
     final starts = lickStarts(_lick, _tempo);
     final passSeconds = _lick.beats * beat;
     _clock = Timer.periodic(const Duration(milliseconds: 15), (_) {
-      final seconds = started.elapsedMilliseconds / 1000 - lead;
+      // The snippet's own position, not a clock of the screen's:
+      // paused, the lit note holds; stopped, the screen stops.
+      final heard = widget.player.snippetPosition();
+      if (heard == null) {
+        _stop();
+        return;
+      }
+      final seconds = heard.inMicroseconds / 1e6 - lead;
       if (seconds >= passSeconds * _times + beat) {
         _stop();
         return;

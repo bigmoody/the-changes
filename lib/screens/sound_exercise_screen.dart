@@ -122,9 +122,15 @@ class _SoundExerciseScreenState extends State<SoundExerciseScreen> {
     await widget.player.playSnippet(
       renderSnippet(bank, band.notes, drums: band.drums),
     );
-    final started = Stopwatch()..start();
     _clock = Timer.periodic(const Duration(milliseconds: 40), (_) {
-      final beats = (started.elapsedMilliseconds / 1000 - lead) / beat;
+      // The snippet's own position, not a clock of the screen's:
+      // paused, the lit note holds; stopped, the screen stops.
+      final heard = widget.player.snippetPosition();
+      if (heard == null) {
+        _stop();
+        return;
+      }
+      final beats = (heard.inMicroseconds / 1e6 - lead) / beat;
       if (beats >= totalBeats + 1) {
         _stop();
         return;

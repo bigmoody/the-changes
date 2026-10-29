@@ -174,9 +174,15 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
         guitar: widget.instrument == RoadmapInstrument.guitar,
       ),
     );
-    final started = Stopwatch()..start();
     _clock = Timer.periodic(const Duration(milliseconds: 20), (_) {
-      final seconds = started.elapsedMilliseconds / 1000 - lead;
+      // The snippet's own position, not a clock of the screen's:
+      // paused, the lit note holds; stopped, the screen stops.
+      final heard = widget.player.snippetPosition();
+      if (heard == null) {
+        _stop();
+        return;
+      }
+      final seconds = heard.inMicroseconds / 1e6 - lead;
       final index = seconds < 0 ? -1 : (seconds / _noteSeconds).floor();
       if (index >= run.pitches.length + 2) {
         _stop();

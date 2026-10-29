@@ -586,6 +586,23 @@ class PracticePlayer {
   /// scrubbed.
   SoundHandle? _snippetHandle;
 
+  /// Whether a snippet is sounding, held, or done: what the Pause and Stop
+  /// bar shows on every screen that plays one.
+  ///
+  /// It lives here, not on the screens, because thirty-odd screens play
+  /// snippets and every one of them needed the same two buttons. One
+  /// place knowing means one bar does for all of them.
+  final snippetState = ValueNotifier(SnippetState.idle);
+
+  /// Watches for the snippet coming to its end on its own.
+  Timer? _snippetWatch;
+
+  void _snippetEnded() {
+    _snippetWatch?.cancel();
+    _snippetWatch = null;
+    snippetState.value = SnippetState.idle;
+  }
+
   /// Plays a short WAV once: the drills' "hear it".
   /// Each new one replaces the last, so tapping twice doesn't pile them up,
   /// and the band stops: a drill played over the changes was two things
@@ -624,6 +641,19 @@ class PracticePlayer {
     if (moved) _applyShift(source, handle, shift);
     if (from > Duration.zero) _soloud.seek(handle, from);
     _soloud.setPause(handle, false);
+    snippetState.value = SnippetState.playing;
+    _snippetWatch?.cancel();
+    _snippetWatch = Timer.periodic(const Duration(milliseconds: 250), (_) {
+      try {
+        if (_snippetHandle != handle ||
+            !_soloud.getIsValidVoiceHandle(handle)) {
+          if (_snippetHandle == handle) _snippetHandle = null;
+          _snippetEnded();
+        }
+      } catch (_) {
+        _snippetEnded();
+      }
+    });
   }
 
   /// How far into the recording the snippet has got, or null when there
@@ -669,6 +699,9 @@ class PracticePlayer {
     try {
       if (_soloud.getIsValidVoiceHandle(handle)) {
         _soloud.setPause(handle, paused);
+        snippetState.value = paused
+            ? SnippetState.paused
+            : SnippetState.playing;
       }
     } catch (e) {
       debugPrint('Could not hold the snippet: $e');
@@ -679,6 +712,7 @@ class PracticePlayer {
   Future<void> stopSnippet() async {
     final handle = _snippetHandle;
     _snippetHandle = null;
+    _snippetEnded();
     if (handle == null) return;
     try {
       await _soloud.stop(handle);
@@ -793,6 +827,7 @@ class PracticePlayer {
     final snippetHandle = _snippetHandle;
     _snippet = null;
     _snippetHandle = null;
+    if (snippetHandle != null) _snippetEnded();
     final handles = [
       ?_countInHandle,
       ?_takeHandle,
@@ -991,3 +1026,6 @@ class _BandStream {
   /// For the debug log: played time should track this closely.
   final sinceStart = Stopwatch()..start();
 }
+
+/// Where the snippet is: what the Pause and Stop bar needs to know.
+enum SnippetState { idle, playing, paused }

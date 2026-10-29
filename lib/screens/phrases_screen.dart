@@ -355,6 +355,21 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
   void initState() {
     super.initState();
     unawaited(_draw());
+    widget.player.snippetState.addListener(_heldElsewhere);
+  }
+
+  /// The Pause and Stop bar over every screen can hold or end this too,
+  /// and this page's own buttons have to say so.
+  void _heldElsewhere() {
+    if (!mounted) return;
+    final state = widget.player.snippetState.value;
+    if (state == SnippetState.paused && _doing == _Doing.playing) {
+      _ticker?.cancel();
+      setState(() => _doing = _Doing.paused);
+    } else if (state == SnippetState.playing && _doing == _Doing.paused) {
+      setState(() => _doing = _Doing.playing);
+      _follow(from: widget.player.snippetPosition());
+    }
   }
 
   /// Reads the phrase and works out its shape.
@@ -374,6 +389,7 @@ class _PhraseKeysScreenState extends State<PhraseKeysScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
+    widget.player.snippetState.removeListener(_heldElsewhere);
     unawaited(widget.player.stopSnippet());
     super.dispose();
   }

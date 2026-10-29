@@ -137,10 +137,16 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
     await widget.player.playSnippet(
       renderSnippet(bank, notes, drums: drums, pianoRelease: guideRelease),
     );
-    final started = Stopwatch()..start();
     final passSeconds = beats * beat;
     _clock = Timer.periodic(const Duration(milliseconds: 15), (_) {
-      final seconds = started.elapsedMilliseconds / 1000 - lead;
+      // The snippet's own position, not a clock of the screen's:
+      // paused, the lit note holds; stopped, the screen stops.
+      final heard = widget.player.snippetPosition();
+      if (heard == null) {
+        _stop();
+        return;
+      }
+      final seconds = heard.inMicroseconds / 1e6 - lead;
       if (seconds >= passSeconds * _times + beat) {
         _stop();
         return;

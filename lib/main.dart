@@ -19,6 +19,7 @@ import 'library/library_store.dart';
 import 'screens/home_screen.dart';
 import 'screens/hush_snippets.dart';
 import 'screens/note_ink.dart';
+import 'screens/snippet_controls.dart';
 import 'screens/sound_shelf.dart' show SoundFonts;
 import 'settings/app_settings.dart';
 import 'practice/take_store.dart';
@@ -173,7 +174,20 @@ class TheChangesApp extends StatelessWidget {
             settings: settings,
             child: _Handover(
               progressions: progressions,
-              child: child ?? const SizedBox(),
+              // Pause and Stop for any example that is playing, over
+              // whichever screen played it, clear of the buttons that
+              // sit along the bottom of most of them.
+              child: Stack(
+                children: [
+                  child ?? const SizedBox(),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: MediaQuery.paddingOf(context).bottom + 84,
+                    child: Center(child: SnippetControls(player: player)),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
