@@ -22,10 +22,10 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../audio/backing_synth.dart';
-import '../audio/drum_patterns.dart';
 import '../audio/practice_player.dart';
 import '../music/chord.dart';
 import '../music/chord_tone_line.dart';
+import '../music/swing.dart';
 import '../music/tune.dart';
 import '../music/tune_library.dart';
 import '../settings/app_settings.dart';
@@ -33,6 +33,7 @@ import '../theme.dart';
 import 'chart_instrument_button.dart';
 import 'stave.dart';
 import 'stave_figure.dart';
+import 'swing_screen.dart' show ridePattern;
 
 /// A stretch of a form to run the exercise through.
 ///
@@ -209,8 +210,22 @@ class _ThroughTheChangesScreenState extends State<ThroughTheChangesScreen> {
       }
       at += length;
     }
-    for (var tick = 0.0; tick < at; tick += beat) {
-      drums.add((at: tick, drum: Drum.ride, velocity: 0.3, hard: false));
+    // The band's own ride figure, swung as hard as the tempo swings, with
+    // the hi-hat on 2 and 4: a ride on every beat and nothing between is
+    // a metronome, and the line is meant to be played against swing.
+    for (final hit in ridePattern(
+      tempo: _tempo,
+      at: swingAt(_tempo),
+      bars: (at / (beat * 4)).ceil(),
+    )) {
+      if (hit.at >= at) continue;
+      // Under the line rather than level with it.
+      drums.add((
+        at: hit.at,
+        drum: hit.drum,
+        velocity: hit.velocity * 0.55,
+        hard: hit.hard,
+      ));
     }
     await widget.player.playSnippet(
       renderSnippet(bank, notes, drums: drums, bassTone: BassTone.tight),
