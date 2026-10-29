@@ -133,7 +133,11 @@ class _ProgressionEditorScreenState extends State<ProgressionEditorScreen> {
       Navigator.of(context).pop(EditorOutcome.saved);
       return;
     }
-    await Navigator.of(context).pushReplacement(
+    // The editor lives in its tab; the chart opens full screen over the
+    // tabs, so the editor is closed and the chart opened on top of them.
+    final root = Navigator.of(context, rootNavigator: true);
+    Navigator.of(context).pop();
+    await root.push(
       MaterialPageRoute<void>(
         builder: (_) => PracticeScreen(
           tune: _draft.toTune(),

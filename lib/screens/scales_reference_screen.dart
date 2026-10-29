@@ -104,7 +104,7 @@ class _ScalesReferenceScreenState extends State<ScalesReferenceScreen> {
   void _openTune(String title) {
     final tune = standards.where((t) => t.title == title).firstOrNull;
     if (tune == null) return;
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => PracticeScreen(
           tune: tune,

@@ -293,7 +293,7 @@ class PracticePage extends StatelessWidget {
     if (tune == null) return;
     if (semitones != 0) {
       library.justPlayed(TuneRef.of(tune));
-      Navigator.of(context).push(
+      Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute<void>(
           builder: (_) => PracticeScreen(
             tune: tune,

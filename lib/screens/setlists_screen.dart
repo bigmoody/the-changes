@@ -54,7 +54,7 @@ class LibraryContext {
           ? TuneRef.of(found.tune)
           : TuneRef.mine(found.progression!.id),
     );
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => PracticeScreen(
           tune: found.tune,

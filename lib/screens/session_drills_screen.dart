@@ -62,7 +62,7 @@ class SessionDrillsScreen extends StatelessWidget {
     ].where((t) => t.title == tune).firstOrNull;
     final setup = drill.setup;
     if (found == null || setup == null) return;
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => PracticeScreen(
           tune: found,

@@ -362,7 +362,7 @@ class _MyProgressionsPageState extends State<MyProgressionsPage> {
       ]),
       onTap: () {
         widget.library.justPlayed(TuneRef.mine(progression.id));
-        Navigator.of(context).push(
+        Navigator.of(context, rootNavigator: true).push(
           MaterialPageRoute<void>(
             builder: (_) => PracticeScreen(
               takes: widget.takes,

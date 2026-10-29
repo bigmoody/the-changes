@@ -227,7 +227,7 @@ class _PlayingFastScreenState extends State<PlayingFastScreen> {
 
   void _ladder() {
     final cherokee = standards.firstWhere((t) => t.title == 'Cherokee');
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         builder: (_) => PracticeScreen(
           tune: cherokee,

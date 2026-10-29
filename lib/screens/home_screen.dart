@@ -8,8 +8,11 @@
 //               chord symbols, chord tones, scales and modes
 //   Settings    instrument, what shows while playing, sound, about
 //
-// Playing a tune opens full screen over the tabs, so the chart gets all the
-// room.
+// Each tab keeps its own pages: an exercise or a Learn page opens inside
+// its tab with the bar still at the bottom, tapping the tab you are on
+// goes back to its first page, and switching tabs comes back to wherever
+// you were. Playing a tune opens full screen over the tabs, so the chart
+// gets all the room.
 
 import 'package:flutter/material.dart';
 
@@ -78,6 +81,36 @@ class _HomeScreenState extends State<HomeScreen> {
   late var _tab = widget.initialTab;
   late final _roadmap = widget.roadmap ?? RoadmapProgress.inMemory();
 
+  /// Each tab's own pages.
+  final _navigators = {
+    for (final tab in HomeTab.values) tab: GlobalKey<NavigatorState>(),
+  };
+
+  /// [page] as the first page of [tab]'s own stack of pages.
+  Widget _tabOf(HomeTab tab, Widget page) {
+    final key = _navigators[tab]!;
+    // The system back gesture closes a page in the tab first, and only
+    // leaves the app when the tab is on its first page.
+    return NavigatorPopHandler(
+      onPopWithResult: (_) => key.currentState?.maybePop(),
+      child: Navigator(
+        key: key,
+        onGenerateRoute: (settings) =>
+            MaterialPageRoute<void>(settings: settings, builder: (_) => page),
+      ),
+    );
+  }
+
+  void _select(int index) {
+    final tab = HomeTab.values[index];
+    if (tab == _tab) {
+      // Tapping the tab you are on goes back to its first page.
+      _navigators[tab]!.currentState?.popUntil((route) => route.isFirst);
+      return;
+    }
+    setState(() => _tab = tab);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,48 +119,63 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _tab.index,
         children: [
-          TunesPage(
-            player: widget.player,
-            settings: widget.settings,
-            progressions: widget.progressions,
-            library: widget.library,
-            takes: widget.takes,
-            partStore: widget.partStore,
-            recordingStore: widget.recordingStore,
-            audioError: widget.audioError,
+          _tabOf(
+            HomeTab.tunes,
+            TunesPage(
+              player: widget.player,
+              settings: widget.settings,
+              progressions: widget.progressions,
+              library: widget.library,
+              takes: widget.takes,
+              partStore: widget.partStore,
+              recordingStore: widget.recordingStore,
+              audioError: widget.audioError,
+            ),
           ),
-          PracticePage(
-            progress: _roadmap,
-            player: widget.player,
-            settings: widget.settings,
-            library: widget.library,
-            progressions: widget.progressions,
-            takes: widget.takes,
-            partStore: widget.partStore,
-            recordingStore: widget.recordingStore,
+          _tabOf(
+            HomeTab.practice,
+            PracticePage(
+              progress: _roadmap,
+              player: widget.player,
+              settings: widget.settings,
+              library: widget.library,
+              progressions: widget.progressions,
+              takes: widget.takes,
+              partStore: widget.partStore,
+              recordingStore: widget.recordingStore,
+            ),
           ),
-          MyProgressionsPage(
-            player: widget.player,
-            settings: widget.settings,
-            progressions: widget.progressions,
-            library: widget.library,
-            takes: widget.takes,
-            partStore: widget.partStore,
-            recordingStore: widget.recordingStore,
+          _tabOf(
+            HomeTab.mine,
+            MyProgressionsPage(
+              player: widget.player,
+              settings: widget.settings,
+              progressions: widget.progressions,
+              library: widget.library,
+              takes: widget.takes,
+              partStore: widget.partStore,
+              recordingStore: widget.recordingStore,
+            ),
           ),
-          LearnPage(
-            player: widget.player,
-            settings: widget.settings,
-            phrases: widget.phrases,
-            roadmap: _roadmap,
+          _tabOf(
+            HomeTab.learn,
+            LearnPage(
+              player: widget.player,
+              settings: widget.settings,
+              phrases: widget.phrases,
+              roadmap: _roadmap,
+            ),
           ),
-          SettingsPage(
-            player: widget.player,
-            settings: widget.settings,
-            progressions: widget.progressions,
-            library: widget.library,
-            takes: widget.takes,
-            soundFont: widget.soundFont,
+          _tabOf(
+            HomeTab.settings,
+            SettingsPage(
+              player: widget.player,
+              settings: widget.settings,
+              progressions: widget.progressions,
+              library: widget.library,
+              takes: widget.takes,
+              soundFont: widget.soundFont,
+            ),
           ),
         ],
       ),
@@ -142,8 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         child: NavigationBar(
           selectedIndex: _tab.index,
-          onDestinationSelected: (index) =>
-              setState(() => _tab = HomeTab.values[index]),
+          onDestinationSelected: _select,
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.library_music_outlined),
