@@ -105,11 +105,7 @@ void main() {
     final share = right / counted;
     // ignore: avoid_print
     print('From the middle: ${(share * 100).toStringAsFixed(1)}%');
-    // 0.8, not 0.85: this listens to the synthetic band, one seed of it,
-    // and it passed at 85.9% until the piano stopped resting so often on
-    // held chords, when the same follower scored 82.0%. The bar is a check
-    // that it finds its place at all, not a score to defend to a decimal.
-    expect(share, greaterThan(0.8));
+    expect(share, greaterThan(0.85));
   });
 
   for (final (loudness, needs) in [(0.1, 0.85), (0.2, 0.0)]) {
