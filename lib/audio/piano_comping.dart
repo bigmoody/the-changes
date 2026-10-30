@@ -233,8 +233,11 @@ class Comper {
     }
 
     final notes = _pickVoicing(chord, next, reuse: !isNew);
-    // A chord that's still ringing is touched more gently than a fresh one.
-    final loud = (isNew ? 0.66 : 0.5) + random.nextDouble() * 0.26;
+    // A chord that's still ringing is struck as firmly as a fresh one: the
+    // figures a held chord gets are already the softer ones. Taking it down
+    // here too, from 0.66 to 0.5, put bar 2 of four bars of FΔ7 at under
+    // two thirds of bar 1, which is not a pianist backing off but leaving.
+    final loud = 0.66 + random.nextDouble() * 0.26;
     _started = true;
     return [
       for (final (beat, length, velocity) in pattern)
@@ -456,9 +459,12 @@ class Comper {
           ('slide', 9, _slide(and)),
           ('rest', 1, const []),
         ] else ...[
-          // Still the same chord: mostly leave it alone, and more so the
-          // longer it has been sounding.
-          ('rest', 5 + settled * 3, const []),
+          // Still the same chord: leave it alone more, the longer it has
+          // been sounding. Not mostly: at 5 plus 3 a bar, bar 2 of a
+          // four-bar chord rested one time in three and bar 4 nearly one
+          // in two, and an F major seven held for a line went quiet after
+          // its first bar.
+          ('rest', 3 + settled * 2, const []),
           // Five ways in rather than one. Every one of these used to begin
           // on the "and" of 2, so whichever was picked you heard a chord
           // in the same place, and a vamp ticked. The weighting that keeps

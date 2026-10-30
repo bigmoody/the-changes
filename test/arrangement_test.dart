@@ -193,11 +193,13 @@ void main() {
         ),
       );
       final head = _levelOfBars(backing, Instrument.chords, 0, 8);
-      final solo = _levelOfBars(backing, Instrument.chords, 8, 16);
+      // From the solo's second bar: its first can still be ringing with a
+      // chord struck on the "and" of 4 at the end of the head, which is
+      // the head's chord and is meant to be let go of, not cut off.
+      final solo = _levelOfBars(backing, Instrument.chords, 9, 16);
       final outHead = _levelOfBars(backing, Instrument.chords, 16, 24);
       expect(head, greaterThan(100));
       expect(outHead, greaterThan(100));
-      // Only what is left ringing from the head.
       expect(solo, lessThan(head / 10));
       // The bass carries on regardless.
       expect(_levelOfBars(backing, Instrument.bass, 8, 16), greaterThan(100));
