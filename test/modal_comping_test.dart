@@ -353,10 +353,30 @@ void main() {
       for (var seed = 0; seed < 20; seed++) {
         for (final bar in compedChorus('Impressions', seed: seed)) {
           if (bar.length < 2 || bar.first.notes == bar.last.notes) continue;
-          expect(bar.first.beat, 2, reason: 'seed $seed');
+          // A section's first bar also lands on one before it lifts.
+          expect(bar[bar.length - 2].beat, 2, reason: 'seed $seed');
           expect(bar.last.beat, closeTo(3.62, 0.001), reason: 'seed $seed');
         }
       }
+    });
+
+    test('up to E minor on the "and" of 4 of every odd-numbered bar', () {
+      final tune = standards.firstWhere((t) => t.title == 'Impressions');
+      final slots = LoopRange.wholeTune(tune).slotsIn(tune);
+      for (var seed = 0; seed < 20; seed++) {
+        final bars = compedChorus('Impressions', seed: seed);
+        for (var i = 0; i < bars.length; i += 2) {
+          final bar = bars[i];
+          expect(bar, isNotEmpty, reason: 'bar ${i + 1}, seed $seed');
+          expect(bar.last.beat, closeTo(3.62, 0.001), reason: 'bar ${i + 1}');
+          expect(bar.last.notes, slideFor(slots[i].chord)!.from);
+          expect(bar.first.notes, quartalHomeFor(slots[i].chord));
+        }
+      }
+      // On D minor that shape is E minor: the same stack a tone up.
+      final dm = slots.first.chord;
+      expect(dm.display, startsWith('D'));
+      expect(slideFor(dm)!.from.first, quartalHomeFor(dm)!.first + 2);
     });
 
     test('the bar after it plays nothing, so the shape above hangs', () {

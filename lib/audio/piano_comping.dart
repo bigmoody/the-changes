@@ -174,8 +174,17 @@ class Comper {
     // Never in the bar before a section, where the turn figure leads in
     // and where a resolution landing just after the downbeat would take
     // the top of the section's own arrival away from it.
+    //
+    // The lift goes in the other bar of the pair: Impressions goes up to
+    // the minor shape a tone above (E minor over D minor) on the "and" of
+    // 4 of every odd-numbered bar, 1, 3, 5, which count from nought here
+    // and so are even, and every time rather than most. The eighth bar of
+    // a section is then the bar after a lift, so it never meets the turn.
+    final lifts = slide == QuartalSlide.up;
     final pair =
-        quartal && slide != QuartalSlide.none && bar.isOdd && !intoSection
+        quartal &&
+            slide != QuartalSlide.none &&
+            (lifts ? bar.isEven : bar.isOdd && !intoSection)
         ? slideFor(chord)
         : null;
     // Up is the same two shapes in the other order: the chord first and
@@ -188,23 +197,33 @@ class Comper {
             // Ruled out above: a tune with no figure never reaches here.
             QuartalSlide.none => null,
           };
-    final pattern = held
-        ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
-        : pompe
-        ? _pompePattern(beats, beatInBar, beatsPerBar)
-        : calypso
-        ? _calypsoPattern(beats, beatInBar, beatsPerBar, swing)
-        : _pickPattern(
-            beats,
-            feel,
-            swing,
-            isNew: isNew,
-            figure: figure,
-            beatInBar: beatInBar,
-            beatsPerBar: beatsPerBar,
-            intoSection: intoSection,
-            canSlide: moving != null,
-          );
+    // Every lift bar lifts: not one figure weighed against a rest. A bar
+    // where the chord arrives, the top of a section, keeps its downbeat
+    // as well, so the section still lands before it opens.
+    final and = feel.swingsSixteenths ? 0.5 : swing;
+    final lift = lifts && moving != null && !held && beats >= beatsPerBar
+        ? <(double, double, double)>[if (isNew) (0, 1.5, 0.9), ..._slide(and)]
+        : null;
+    if (lift != null) _lastPattern = 'slide';
+    final pattern =
+        lift ??
+        (held
+            ? <(double, double, double)>[(0, beats - 0.05, isNew ? 0.9 : 0.6)]
+            : pompe
+            ? _pompePattern(beats, beatInBar, beatsPerBar)
+            : calypso
+            ? _calypsoPattern(beats, beatInBar, beatsPerBar, swing)
+            : _pickPattern(
+                beats,
+                feel,
+                swing,
+                isNew: isNew,
+                figure: figure,
+                beatInBar: beatInBar,
+                beatsPerBar: beatsPerBar,
+                intoSection: intoSection,
+                canSlide: moving != null,
+              ));
     if (pattern.isEmpty) return const [];
 
     // A slide is two chords and not one, so it is the one figure whose
@@ -227,7 +246,11 @@ class Comper {
             beat: beat,
             length: length,
             velocity: (loud * velocity).clamp(0.3, 1.0),
-            notes: index == 0 ? moving.from : moving.to,
+            // Down leans in from the shape above and falls; up sits on
+            // the chord and lifts with the last strike.
+            notes: (lifts ? index < pattern.length - 1 : index == 0)
+                ? moving.from
+                : moving.to,
           ),
       ];
     }
