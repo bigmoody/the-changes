@@ -216,6 +216,86 @@ const _minorTwoFiveOne = <LickChord>[
 ];
 
 /// The vocabulary, plainest first.
+/// Eight bars of running eighths for the Playing Fast page: the bebop
+/// scale down a ii–V, up the I and round through its own V of ii, then
+/// the ii–V again and home. Not in [licks]: it is a line to hear at two
+/// tempos, longer than a lick, so there is time to feel the half note
+/// at 260 before it is over.
+final fastLine = Lick(
+  name: 'Eight Bars in F',
+  about:
+      'Running eighths through two ii–Vs in F, with a turnaround between '
+      'them, landing on the 3rd.',
+  changes: const [
+    (degree: '2', quality: 'm7', beats: 4),
+    (degree: '5', quality: '7', beats: 4),
+    (degree: '1', quality: '^7', beats: 4),
+    (degree: '6', quality: '7', beats: 4),
+    (degree: '2', quality: 'm7', beats: 4),
+    (degree: '5', quality: '7', beats: 4),
+    (degree: '1', quality: '^7', beats: 8),
+  ],
+  notes: [
+    _n(0, '1'),
+    _n(0.5, '9'),
+    _n(1, 'b3'),
+    _n(1.5, '11'),
+    _n(2, '5'),
+    _n(2.5, 'b7'),
+    _n(3, '13'),
+    _n(3.5, '5'),
+    _n(4, '1'),
+    _n(4.5, '7', octave: -1),
+    _n(5, 'b7', octave: -1),
+    _n(5.5, '13', octave: -1),
+    _n(6, '5', octave: -1),
+    _n(6.5, '11', octave: -1),
+    _n(7, '3', octave: -1),
+    _n(7.5, '9', octave: -1),
+    _n(8, '5', octave: -1),
+    _n(8.5, '1'),
+    _n(9, '3'),
+    _n(9.5, '5'),
+    _n(10, '7'),
+    _n(10.5, '13'),
+    _n(11, '5'),
+    _n(11.5, '3'),
+    _n(12, '5', octave: -1),
+    _n(12.5, '3', octave: -1),
+    _n(13, '11', octave: -1),
+    _n(13.5, '5', octave: -1),
+    _n(14, 'b7', octave: -1),
+    _n(14.5, 'b9'),
+    _n(15, '1'),
+    _n(15.5, 'b7', octave: -1),
+    _n(16, 'b3'),
+    _n(16.5, '5'),
+    _n(17, 'b7'),
+    _n(17.5, '9', octave: 1),
+    _n(18, '1', octave: 1),
+    _n(18.5, 'b7'),
+    _n(19, '5'),
+    _n(19.5, 'b3'),
+    _n(20, '13', octave: -1),
+    _n(20.5, '1'),
+    _n(21, '3'),
+    _n(21.5, '5'),
+    _n(22, 'b7'),
+    _n(22.5, '13'),
+    _n(23, '5'),
+    _n(23.5, '3'),
+    _n(24, '1', octave: 1),
+    _n(24.5, '7'),
+    _n(25, '13'),
+    _n(25.5, '5'),
+    _n(26, '3'),
+    _n(26.5, '1'),
+    _n(27, '7', octave: -1),
+    _n(27.5, '9'),
+    _n(28, '3', length: 4),
+  ],
+);
+
 final licks = <Lick>[
   Lick(
     name: 'The Lick',

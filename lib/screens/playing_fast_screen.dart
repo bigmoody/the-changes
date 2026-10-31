@@ -192,7 +192,7 @@ class _PlayingFastScreenState extends State<PlayingFastScreen> {
     super.dispose();
   }
 
-  /// The same line over the same changes at [tempo], once, with the band.
+  /// The same eight bars over the same changes at [tempo], with the band.
   Future<void> _hear(int tempo) async {
     final bank = widget.player.samples;
     if (bank == null) return;
@@ -203,12 +203,11 @@ class _PlayingFastScreenState extends State<PlayingFastScreen> {
     }
     setState(() => _hearing = tempo);
     _done?.cancel();
-    final lick = licks.firstWhere((l) => l.name == 'Bebop Scale Down the V');
     final band = lickBand(
-      lick,
+      fastLine,
       'F',
       tempo: tempo,
-      times: 2,
+      times: 1,
       floor: 58,
       lickOn: (_) => true,
       ride: (bars) => ridePattern(tempo: tempo, at: swingAt(tempo), bars: bars),
@@ -312,7 +311,7 @@ class _PlayingFastScreenState extends State<PlayingFastScreen> {
               icon: _hearing == 120 ? Icons.stop : Icons.play_arrow,
               label: 'The Line at 120',
               about:
-                  'Down the bebop scale over a ii–V–I in F, twice, with the '
+                  'Eight bars of eighths through two ii–Vs in F, with the '
                   'band. Count four, and hear the swing in the eighths.',
               onPressed: () => _hear(120),
             ),
