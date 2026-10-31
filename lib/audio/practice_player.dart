@@ -15,6 +15,7 @@ import 'dart:math' as math;
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
 import '../music/loop_range.dart';
@@ -120,7 +121,29 @@ class PracticePlayer {
     if (Platform.isIOS || Platform.isAndroid) nowPlaying = NowPlayingCentre();
     await setMixWithOthers(mixWithOthers);
     if (Platform.isIOS) await _session!.setActive(true);
-    await _soloud.init();
+    // On a Mac, twice the buffer an iPad gets. The iPad app running there
+    // popped and crackled the way a DAW does with too many plugins: the
+    // Mac's audio missing its deadline with 2048 frames to fill, not the
+    // app running short of the band, which is queued 45 seconds ahead.
+    // The extra 46 ms of latency is nothing to a backing track, and an
+    // iPad or a phone keeps the smaller buffer and its tighter timing.
+    final onMac = await _onMac();
+    await _soloud.init(bufferSize: onMac ? 4096 : 2048, lowLatency: !onMac);
+  }
+
+  /// Whether this is the iPad app running on a Mac.
+  static Future<bool> _onMac() async {
+    if (!Platform.isIOS) return false;
+    try {
+      return await const MethodChannel(
+            'the_changes/device',
+          ).invokeMethod<bool>('onMac') ??
+          false;
+    } on PlatformException {
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
   }
 
   /// Puts the audio back as the band needs it, after something else (the

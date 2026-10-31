@@ -42,6 +42,20 @@ import UIKit
       broadcast = BroadcastBridge(messenger: registrar.messenger())
     }
     #endif
+    // Whether this is the iPad app running on a Mac, where the audio wants
+    // a bigger buffer than an iPad does: see PracticePlayer.init.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "Device") {
+      FlutterMethodChannel(
+        name: "the_changes/device",
+        binaryMessenger: registrar.messenger()
+      ).setMethodCallHandler { call, result in
+        if call.method == "onMac" {
+          result(ProcessInfo.processInfo.isiOSAppOnMac)
+        } else {
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SharedCharts") {
       let shared = FlutterMethodChannel(
         name: "the_changes/shared",
