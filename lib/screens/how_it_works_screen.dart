@@ -632,7 +632,12 @@ const _sections = <_Section>[
       (
         title: 'First Time',
         steps: [
-          'Pick your instrument: Guitar, Piano, Bass or Horns.',
+          'Pick your instrument: Guitar, Piano, Bass or Horns. Horns '
+              'covers saxophones, trumpet, trombone, clarinet and flute.',
+          'On a horn, also set Your Instrument in Settings: B♭ for trumpet, '
+              'tenor and soprano sax or clarinet, E♭ for alto and baritone '
+              'sax, F for French horn, C for flute and trombone. The '
+              'exercises are then written in your key.',
           'Pick your level: Beginner, Intermediate, Advanced or '
               'Professional. It sets the stage you start on, the tempos, the '
               'keys and how the time is shared out.',
@@ -661,8 +666,11 @@ const _sections = <_Section>[
         steps: [
           'Scale blocks open a stave of the scale. Set the tempo, the '
               'octaves and whether the band plays it too, then Play Along.',
-          'Horn blocks open long tones, ballad sound or articulation lines '
-              'to play over the band.',
+          'Horns get their own blocks: Long Tones as the warm-up, then '
+              'Articulation, Range, Ghosting and Phrasing, Bebop Heads at '
+              'Tempo, The Ballad Sound, and Altissimo and Extremes.',
+          'Guitar and piano get comping blocks, and bass gets walking '
+              'blocks, in their place.',
           'Next moves on a step. Done, on the last one, ticks the block.',
         ],
       ),
