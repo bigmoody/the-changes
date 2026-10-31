@@ -39,14 +39,22 @@ void main() {
     expect(find.byType(HowItWorksScreen), findsOneWidget);
 
     // Every section opens onto its steps.
-    for (var i = 0; i < 9; i++) {
+    for (var i = 0; i < 19; i++) {
       final section = find.byKey(ValueKey('how-$i'));
       await tester.scrollUntilVisible(section, 200);
-      await tester.tap(section);
+      final header = find.descendant(
+        of: section,
+        matching: find.byType(ListTile),
+      );
+      await tester.ensureVisible(header);
+      await tester.pumpAndSettle();
+      await tester.tap(header);
       await tester.pumpAndSettle();
       // Recording Yourself, opened onto its first step.
-      if (i == 3) expect(find.text('Record a Take'), findsOneWidget);
+      if (i == 9) expect(find.text('Record a Take'), findsOneWidget);
     }
+    // And that was all of them.
+    expect(find.byKey(const ValueKey('how-19')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

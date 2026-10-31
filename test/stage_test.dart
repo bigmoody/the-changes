@@ -207,7 +207,7 @@ void main() {
       expect(find.byTooltip('Play'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('stage-play')));
       await tester.pump();
-      expect(find.byTooltip('Stop'), findsOneWidget);
+      expect(find.byTooltip('Pause'), findsOneWidget);
     });
   });
 

@@ -1241,7 +1241,7 @@ class _StageBar extends StatelessWidget {
               iconSize: 32,
               style: filledIconButton(theme.colorScheme),
               icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-              tooltip: playing ? 'Stop' : 'Play',
+              tooltip: playing ? 'Pause' : 'Play',
               onPressed: onPlay,
             ),
             if (onTapping != null) ...[

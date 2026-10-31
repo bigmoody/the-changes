@@ -501,8 +501,8 @@ void showMixer(BuildContext context, PracticeController controller) {
             ),
             Text(
               'Mute your own part, or solo one to hear it alone. Reset '
-              'puts the band, the levels and the count-in back; the kit '
-              'and who plays the chords are yours and stay.',
+              'puts everything on this sheet back: the band, the sounds, '
+              'the levels, the count-in and the arpeggios.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
