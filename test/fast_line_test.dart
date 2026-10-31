@@ -1,6 +1,7 @@
 // The Playing Fast example: eight bars of running eighths in F.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:play_along/music/swing.dart';
 import 'package:play_along/practice/licks.dart';
 
 void main() {
@@ -26,5 +27,13 @@ void main() {
     // Over the D7, its ♭9.
     expect(names[29], 'E♭');
     expect(names.last, 'A');
+  });
+
+  test('swung as the arpeggios are, by less than the ride', () {
+    final starts = lickStarts(fastLine, 120, running: true);
+    expect(starts[1], closeTo(lineSwing(swingAt(120)), 1e-9));
+    expect(starts[1], lessThan(swingAt(120)));
+    // A lick on its own swings as it always did.
+    expect(lickStarts(fastLine, 120)[1], closeTo(swingAt(120), 1e-9));
   });
 }

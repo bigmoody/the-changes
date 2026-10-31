@@ -211,6 +211,9 @@ class _PlayingFastScreenState extends State<PlayingFastScreen> {
       floor: 58,
       lickOn: (_) => true,
       ride: (bars) => ridePattern(tempo: tempo, at: swingAt(tempo), bars: bars),
+      // Eight bars of eighths, swung as the arpeggios are: by less than
+      // the ride, or at 120 it lopes along in dotted rhythm.
+      running: true,
     );
     await widget.player.playSnippet(
       renderSnippet(bank, band.notes, drums: band.drums, pianoRelease: 0.08),

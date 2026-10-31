@@ -92,17 +92,19 @@ List<LickEvent> lickIn(Lick lick, String key, {required int floor}) {
 }
 
 /// Where a beat lands once swung: the "and" late by as much as a player
-/// swings at [tempo].
-double _swung(double beat, int tempo) {
+/// swings at [tempo]. A [running] line of eighths swings by less, as the
+/// arpeggios do (see [lineSwing]).
+double _swung(double beat, int tempo, {bool running = false}) {
   final whole = beat.floorToDouble();
   final part = beat - whole;
   if ((part - 0.5).abs() > 1e-6) return beat;
-  return whole + swingAt(tempo);
+  final at = swingAt(tempo);
+  return whole + (running ? lineSwing(at) : at);
 }
 
 /// When each note of [lick] starts, in swung beats from the top.
-List<double> lickStarts(Lick lick, int tempo) => [
-  for (final note in lick.notes) _swung(note.at, tempo),
+List<double> lickStarts(Lick lick, int tempo, {bool running = false}) => [
+  for (final note in lick.notes) _swung(note.at, tempo, running: running),
 ];
 
 /// The band under [lick] in [key], [times] round, from [from] seconds:
@@ -119,11 +121,12 @@ List<double> lickStarts(Lick lick, int tempo) => [
   int down = 0,
   int lickDown = 0,
   required List<SnippetDrum> Function(int bars) ride,
+  bool running = false,
 }) {
   final beat = 60 / tempo;
   final changes = changesIn(lick, key);
   final events = lickIn(lick, key, floor: floor);
-  final starts = lickStarts(lick, tempo);
+  final starts = lickStarts(lick, tempo, running: running);
   final comper = Comper(math.Random(7));
   final notes = <SnippetNote>[];
   final passBeats = lick.beats;
