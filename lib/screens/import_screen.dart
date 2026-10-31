@@ -25,6 +25,10 @@ import 'package:flutter/services.dart';
 import '../music/ireal_import.dart';
 import '../settings/progression_store.dart';
 
+/// iReal Pro's own page of playlists, where a computer will copy the
+/// irealb:// links that a phone will not.
+const irealPlaylistsUrl = 'https://www.irealpro.com/main-playlists';
+
 class ImportScreen extends StatefulWidget {
   const ImportScreen({super.key, required this.store, this.handed});
 
@@ -170,15 +174,86 @@ class _ImportScreenState extends State<ImportScreen> {
                 const SizedBox(height: 4),
                 Text(
                   'Share a song or a playlist to The Changes, or tap its '
-                  'link, and it opens here. That is the way on a phone or '
-                  'tablet, where iReal Pro will not let you copy a link out '
-                  'of a playlist. On a computer it will, so you can copy one '
-                  'there and paste it below. Every song in it comes in, '
-                  'sections, repeats and endings included.',
+                  'link, and it opens here. Or paste a link below. Every '
+                  'song in it comes in, sections, repeats and endings '
+                  'included.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
+                const SizedBox(height: 10),
+                // Set apart, because it is the thing people get stuck on:
+                // they look for Copy Link on a playlist in iReal Pro on
+                // their phone, and it is not there. Gone once there are
+                // songs to choose from, so it does not push them down.
+                if (_songs.isEmpty)
+                  Container(
+                    key: const ValueKey('import-desktop-note'),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: scheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.computer,
+                          size: 20,
+                          color: scheme.onSecondaryContainer,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'You can only copy an iReal Pro playlist link '
+                                'on a computer. On a phone or tablet, share '
+                                'the playlist to The Changes instead. iReal '
+                                'Pro\'s own playlists are here, to open on a '
+                                'computer:',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSecondaryContainer,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              SelectableText(
+                                irealPlaylistsUrl,
+                                key: const ValueKey('import-playlists-url'),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSecondaryContainer,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              TextButton.icon(
+                                key: const ValueKey('import-copy-url'),
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  foregroundColor: scheme.onSecondaryContainer,
+                                ),
+                                icon: const Icon(Icons.copy, size: 18),
+                                label: const Text('Copy Link'),
+                                onPressed: () async {
+                                  await Clipboard.setData(
+                                    const ClipboardData(
+                                      text: irealPlaylistsUrl,
+                                    ),
+                                  );
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Link copied'),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 TextField(
                   key: const ValueKey('import-text'),

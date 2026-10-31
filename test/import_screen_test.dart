@@ -2,6 +2,7 @@
 // and find the songs in My Changes.
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:play_along/library/library_store.dart';
 import 'package:play_along/audio/practice_player.dart';
@@ -46,9 +47,33 @@ void main() {
     expect(help, contains('computer'), reason: 'where a link can be copied');
     expect(
       help,
-      contains('will not let you copy'),
+      contains('only copy an iReal Pro playlist link on a computer'),
       reason: 'and where it cannot',
     );
+    // And where to find playlists to copy, with a button to copy it.
+    expect(find.byKey(const ValueKey('import-playlists-url')), findsOneWidget);
+    String? copied;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('import-copy-url')));
+    await tester.tap(find.byKey(const ValueKey('import-copy-url')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Link copied'), findsOneWidget);
+    expect(copied, 'https://www.irealpro.com/main-playlists');
   });
 
   testWidgets('paste a playlist, choose, and they are in My Changes', (
@@ -101,6 +126,8 @@ void main() {
     expect(find.text('Already in My Changes'), findsOneWidget);
     expect(find.textContaining('3/4'), findsOneWidget);
     expect(find.text('Import 1 Song'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const ValueKey('import-song-1')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('import-song-1')));
     await tester.pump();
     expect(find.text('Import 2 Songs'), findsOneWidget);
