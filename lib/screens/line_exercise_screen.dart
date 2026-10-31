@@ -9,6 +9,7 @@
 // of a ride on their own never were.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -22,6 +23,7 @@ import '../practice/roadmap_progress.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
 import 'stave.dart';
+import 'stave_figure.dart';
 import 'swing_screen.dart' show ridePattern;
 
 class LineExerciseScreen extends StatefulWidget {
@@ -198,13 +200,7 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
     final line = _line;
     final steps = widget.exercise.steps;
     final last = _at == steps.length - 1;
-    // The stave has no rests, so its notes are the pitched ones, and the
-    // one to light is found by counting them.
-    final pitched = [
-      for (final (i, e) in line.indexed)
-        if (e.pitch != null) i,
-    ];
-    final lit = _playing == null ? -1 : pitched.indexOf(_playing!);
+    final lit = _playing ?? -1;
     final atGoal = _tempo >= widget.level.tempo(widget.exercise.to);
 
     return Scaffold(
@@ -235,15 +231,10 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
-                    child: Stave(
+                    child: _LineStave(
                       key: const ValueKey('line-stave'),
-                      notes: lineOnStave(
-                        [
-                          for (final i in pitched)
-                            (pitch: line[i].pitch!, name: line[i].name),
-                        ],
-                        marked: {if (lit >= 0) lit},
-                      ),
+                      line: line,
+                      lit: lit,
                       space: MediaQuery.sizeOf(context).width > 600 ? 12 : 8,
                       semanticsLabel: step.title,
                     ),
@@ -252,9 +243,9 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
                   _Marks(line: line, playing: _playing),
                   const SizedBox(height: 8),
                   Text(
+                    // No key for a rest: it is written on the stave as one.
                     '${Touch.tongue.mark} tongued   ${Touch.slur.mark} slurred   '
-                    '${Touch.accent.mark} accented   ${Touch.ghost.mark} ghosted   '
-                    '${Touch.rest.mark} rest',
+                    '${Touch.accent.mark} accented   ${Touch.ghost.mark} ghosted',
                     key: const ValueKey('line-legend'),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: scheme.onSurfaceVariant,
@@ -457,6 +448,117 @@ class _Marks extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// The line as it is played: swung eighths, beamed a beat at a time, an
+/// eighth rest where nothing is played, and a bar line every eight.
+///
+/// It used to be a row of whole notes, the same drawing the scales use,
+/// which said which notes and nothing about when: sixteen semibreves for
+/// two bars of quavers, with no bar line between them.
+class _LineStave extends StatelessWidget {
+  const _LineStave({
+    super.key,
+    required this.line,
+    required this.lit,
+    required this.space,
+    this.semanticsLabel,
+  });
+
+  final List<LineEvent> line;
+
+  /// Which eighth is sounding, or -1.
+  final int lit;
+  final double space;
+  final String? semanticsLabel;
+
+  static const _accidentals = {
+    -2: Smufl.doubleFlat,
+    -1: Smufl.flat,
+    1: Smufl.sharp,
+    2: Smufl.doubleSharp,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final pitched = [
+      for (final (i, e) in line.indexed)
+        if (e.pitch != null) i,
+    ];
+    final placed = lineOnStave([
+      for (final i in pitched) (pitch: line[i].pitch!, name: line[i].name),
+    ]);
+    final heads = {for (final (n, i) in pitched.indexed) i: placed[n]};
+
+    final columns = <StaveColumn>[];
+    final beams = <Beam>[];
+    // The column each eighth landed in, since the bar lines take columns
+    // of their own.
+    final at = <int, int>{};
+    for (var i = 0; i < line.length; i++) {
+      if (i > 0 && i % 8 == 0) {
+        columns.add(
+          const StaveColumn.one(Smufl.barlineSingle, step: 0, gap: 1.4),
+        );
+      }
+      at[i] = columns.length;
+      final head = heads[i];
+      // The other half of this eighth's beat, which decides whether it is
+      // beamed or stands on its own with a flag.
+      final partner = i.isEven ? i + 1 : i - 1;
+      final beamed =
+          head != null && partner < line.length && heads[partner] != null;
+      final gap = i % 8 == 7 || i == line.length - 1
+          ? 1.4
+          : i.isOdd
+          ? 1.8
+          : 1.3;
+      if (head == null) {
+        columns.add(
+          StaveColumn.one(Smufl.rest8th, step: 4, marked: i == lit, gap: gap),
+        );
+        continue;
+      }
+      final step = head.step.toDouble();
+      // An accidental gets a column of its own, so it pushes the note
+      // along rather than landing on the one before.
+      if (_accidentals[head.accidental] case final glyph?) {
+        columns.add(
+          StaveColumn.one(glyph, step: step, marked: i == lit, gap: 0.2),
+        );
+      }
+      at[i] = columns.length;
+      columns.add(
+        StaveColumn(
+          [
+            sym(
+              beamed ? Smufl.noteheadBlack : Smufl.note8thUp,
+              step: step,
+              marked: i == lit,
+              ledgers: true,
+            ),
+          ],
+          stem: beamed,
+          gap: gap,
+        ),
+      );
+      if (beamed && i.isOdd) {
+        beams.add((from: at[i - 1]!, to: at[i]!, count: 1));
+      }
+    }
+
+    final steps = [for (final n in placed) n.step];
+    return StaveFigure(
+      clef: Clef.treble,
+      columns: columns,
+      beams: beams,
+      space: space,
+      // Room for a stem off the top line and anything below the stave.
+      above: math.max(6, (steps.fold(0, math.max) - 8) + 8).toDouble(),
+      below: math.max(3, 2 - steps.fold(8, math.min)).toDouble(),
+      semanticsLabel: semanticsLabel,
     );
   }
 }

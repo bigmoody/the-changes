@@ -566,9 +566,21 @@ class _FigurePainter extends CustomPainter {
       final from = stemTops[beam.from];
       final to = stemTops[beam.to];
       if (from == null || to == null) continue;
+      // Level with the highest stem it joins, and every stem under it
+      // carried up to meet it. Hung from the first stem alone, a beam over
+      // a step up left the second stem poking through it, and over a step
+      // down left it short of the beam.
+      final level = [
+        for (var i = beam.from; i <= beam.to; i++) ?stemTops[i]?.dy,
+      ].reduce(math.min);
+      for (var i = beam.from; i <= beam.to; i++) {
+        final stem = stemTops[i];
+        if (stem == null || stem.dy <= level) continue;
+        canvas.drawLine(stem, Offset(stem.dx, level), stemPaint);
+      }
       final thickness = space * 0.5;
       for (var line = 0; line < beam.count; line++) {
-        final top = from.dy + line * thickness * 1.6;
+        final top = level + line * thickness * 1.6;
         canvas.drawRect(
           Rect.fromLTRB(
             from.dx - stemPaint.strokeWidth / 2,
