@@ -1,3 +1,6 @@
+import 'package:play_along/music/ireal_import.dart';
+
+import 'dart:io';
 // Importing from iReal Pro, as a player would: paste a playlist, choose,
 // and find the songs in My Changes.
 
@@ -35,7 +38,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: appTheme(Brightness.light),
-        home: ImportScreen(store: ProgressionStore.inMemory()),
+        home: ImportScreen(
+          store: ProgressionStore.inMemory(),
+          jazz1460: () async => _playlist,
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -50,8 +56,7 @@ void main() {
       contains('only copy an iReal Pro playlist link on a computer'),
       reason: 'and where it cannot',
     );
-    // And where to find playlists to copy, with a button to copy it.
-    expect(find.byKey(const ValueKey('import-playlists-url')), findsOneWidget);
+    // And iReal Pro's own Jazz 1460, to copy or to bring straight in.
     String? copied;
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -72,8 +77,12 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('import-copy-url')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Link copied'), findsOneWidget);
-    expect(copied, 'https://www.irealpro.com/main-playlists');
+    expect(find.text('Jazz 1460 link copied'), findsOneWidget);
+    expect(copied, _playlist);
+
+    await tester.tap(find.byKey(const ValueKey('import-jazz-1460')));
+    await tester.pump();
+    expect(find.text('Found 2 Songs'), findsOneWidget);
   });
 
   testWidgets('paste a playlist, choose, and they are in My Changes', (
@@ -208,5 +217,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('import-empty')));
     await tester.pumpAndSettle();
     expect(find.byType(ImportScreen), findsOneWidget);
+  });
+
+  test('the bundled Jazz 1460 is the whole playlist', () {
+    final link = File('assets/ireal/jazz1460.txt').readAsStringSync();
+    expect(link, startsWith('irealb://'));
+    expect(parseIrealPro(link), hasLength(1460));
   });
 }

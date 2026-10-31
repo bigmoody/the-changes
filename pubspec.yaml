@@ -81,6 +81,8 @@ flutter:
     - assets/sounds/drums/
     - assets/sounds/drums_brushes/
     - assets/sounds/guitar/
+    # iReal Pro's own Jazz 1460 playlist link, offered on the Import screen.
+    - assets/ireal/
 
   # Petaluma Script, Steinberg's hand-lettered jazz font, for chord symbols
   # and tune titles: the look of a Real Book chart. SIL Open Font License

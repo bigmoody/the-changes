@@ -25,14 +25,24 @@ import 'package:flutter/services.dart';
 import '../music/ireal_import.dart';
 import '../settings/progression_store.dart';
 
-/// iReal Pro's own page of playlists, where a computer will copy the
-/// irealb:// links that a phone will not.
-const irealPlaylistsUrl = 'https://www.irealpro.com/main-playlists';
+/// iReal Pro's own Jazz 1460 playlist link, from its playlists page
+/// (irealpro.com/main-playlists), shipped with the app because a phone
+/// will not copy it out of iReal Pro.
+Future<String> loadJazz1460() =>
+    rootBundle.loadString('assets/ireal/jazz1460.txt');
 
 class ImportScreen extends StatefulWidget {
-  const ImportScreen({super.key, required this.store, this.handed});
+  const ImportScreen({
+    super.key,
+    required this.store,
+    this.handed,
+    this.jazz1460 = loadJazz1460,
+  });
 
   final ProgressionStore store;
+
+  /// Where the Jazz 1460 link comes from: the bundled asset, or a test's.
+  final Future<String> Function() jazz1460;
 
   /// A link handed to the app from somewhere else, rather than pasted.
   /// Read on the way in, so the songs are already there to choose from.
@@ -210,43 +220,54 @@ class _ImportScreenState extends State<ImportScreen> {
                               Text(
                                 'You can only copy an iReal Pro playlist link '
                                 'on a computer. On a phone or tablet, share '
-                                'the playlist to The Changes instead. iReal '
-                                'Pro\'s own playlists are here, to open on a '
-                                'computer:',
+                                'the playlist to The Changes instead, or '
+                                'bring in iReal Pro\'s own Jazz 1460 here.',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: scheme.onSecondaryContainer,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              SelectableText(
-                                irealPlaylistsUrl,
-                                key: const ValueKey('import-playlists-url'),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: scheme.onSecondaryContainer,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              TextButton.icon(
-                                key: const ValueKey('import-copy-url'),
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  foregroundColor: scheme.onSecondaryContainer,
-                                ),
-                                icon: const Icon(Icons.copy, size: 18),
-                                label: const Text('Copy Link'),
-                                onPressed: () async {
-                                  await Clipboard.setData(
-                                    const ClipboardData(
-                                      text: irealPlaylistsUrl,
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 16,
+                                children: [
+                                  TextButton.icon(
+                                    key: const ValueKey('import-jazz-1460'),
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      foregroundColor:
+                                          scheme.onSecondaryContainer,
                                     ),
-                                  );
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Link copied'),
+                                    icon: const Icon(Icons.download, size: 18),
+                                    label: const Text('Load All 1,460'),
+                                    onPressed: () async =>
+                                        _read(await widget.jazz1460()),
+                                  ),
+                                  TextButton.icon(
+                                    key: const ValueKey('import-copy-url'),
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      foregroundColor:
+                                          scheme.onSecondaryContainer,
                                     ),
-                                  );
-                                },
+                                    icon: const Icon(Icons.copy, size: 18),
+                                    label: const Text('Copy Link'),
+                                    onPressed: () async {
+                                      final link = await widget.jazz1460();
+                                      await Clipboard.setData(
+                                        ClipboardData(text: link),
+                                      );
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Jazz 1460 link copied',
+                                              ),
+                                            ),
+                                          );
+                                    },
+                                  ),
+                                ],
                               ),
                             ],
                           ),
