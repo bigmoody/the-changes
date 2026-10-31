@@ -415,9 +415,13 @@ void main() {
           );
           final bass = audible(backing.stems[Instrument.bass]!);
           final chords = audible(backing.stems[Instrument.chords]!);
+          // 0.84 from 0.89 when the piano went up 0.7 dB more for sounding
+          // quiet by default. The worst case here then measured 0.867, the
+          // bass about 1.2 dB under the chords in this band, and still
+          // 13 dB clear of them below 300 Hz.
           expect(
             bass / chords,
-            greaterThan(0.89),
+            greaterThan(0.84),
             reason: '$title with ${comping.label} (performance $seed)',
           );
         }

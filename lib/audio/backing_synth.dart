@@ -1672,7 +1672,10 @@ const _brushTrim = 0.78;
 /// harmonics. Any lift here comes out of that margin, so the number is
 /// chosen to leave the bass level with the chords in that band rather
 /// than above them, and no further.
-const _pianoLevel = 0.62;
+///
+/// A touch more since, 0.62 to 0.67, about 0.7 dB, because the piano still
+/// sounded quiet by default: as far as that margin goes, and no further.
+const _pianoLevel = 0.67;
 
 /// How much room is heard around the piano. It arrives with a hall
 /// already on it, so this is a little more of the same hall rather than
