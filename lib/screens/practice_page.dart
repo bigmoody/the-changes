@@ -28,6 +28,7 @@ import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import 'bebop_scales_screen.dart';
 import 'changes_in_keys_screen.dart';
+import 'chart_instrument_button.dart';
 import 'chord_tones_reference_screen.dart';
 import 'chord_tones_screen.dart';
 import 'comping_screen.dart';
@@ -625,6 +626,29 @@ class _Roadmap extends StatelessWidget {
                 progress.setInstrument(chosen.single),
           ),
         ),
+        // Which horn decides the key everything here is written in, so it
+        // is chosen here rather than sent off to Settings. The same
+        // setting as Settings' own, so the two always agree.
+        if (instrument == RoadmapInstrument.horn)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: ListenableBuilder(
+              listenable: page.settings,
+              builder: (context, _) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Your Horn', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  InstrumentKeyPicker(
+                    key: const ValueKey('roadmap-horn-key'),
+                    instrument: page.settings.instrument,
+                    onChanged: page.settings.setInstrument,
+                    showExamples: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
         _LevelRow(progress: progress, instrument: instrument),
         SectionHeader('Today'),
         Padding(

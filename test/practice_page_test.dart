@@ -17,6 +17,7 @@ import 'package:play_along/theme.dart';
 Future<RoadmapProgress> _open(
   WidgetTester tester, {
   RoadmapProgress? progress,
+  AppSettings? settings,
   Size size = const Size(393, 852),
 }) async {
   tester.view
@@ -30,7 +31,7 @@ Future<RoadmapProgress> _open(
       home: PracticePage(
         progress: shown,
         player: PracticePlayer(),
-        settings: AppSettings.inMemory(),
+        settings: settings ?? AppSettings.inMemory(),
         library: LibraryStore.inMemory(),
         progressions: ProgressionStore.inMemory(),
         today: DateTime(2026, 10, 29),
@@ -49,8 +50,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(progress.instrument, RoadmapInstrument.horn);
     expect(find.text('Stage 1: Time, Sound and the Blues'), findsOneWidget);
+    // Below the horn's key picker now, so further down the lazy list.
+    await tester.scrollUntilVisible(find.text('Long Tones'), 200);
     expect(find.text('Long Tones'), findsOneWidget, reason: 'a horn warm-up');
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a horn picks its key right there, not in Settings', (
+    tester,
+  ) async {
+    final settings = AppSettings.inMemory();
+    await _open(
+      tester,
+      settings: settings,
+      progress: RoadmapProgress.inMemory(instrument: RoadmapInstrument.horn),
+    );
+    expect(find.text('Your Horn'), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('roadmap-horn-key')),
+        matching: find.text('E♭'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(settings.instrument, ChartInstrument.eFlat);
+    expect(find.textContaining('Alto & baritone sax'), findsOneWidget);
+  });
+
+  testWidgets('only a horn is asked', (tester) async {
+    await _open(
+      tester,
+      progress: RoadmapProgress.inMemory(instrument: RoadmapInstrument.guitar),
+    );
+    expect(find.text('Your Horn'), findsNothing);
   });
 
   testWidgets('the routine is cut to the time chosen', (tester) async {

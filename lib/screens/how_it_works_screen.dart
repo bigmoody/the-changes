@@ -634,7 +634,7 @@ const _sections = <_Section>[
         steps: [
           'Pick your instrument: Guitar, Piano, Bass or Horns. Horns '
               'covers saxophones, trumpet, trombone, clarinet and flute.',
-          'On a horn, also set Your Instrument in Settings: B♭ for trumpet, '
+          'On Horns, pick your horn\'s key under Your Horn: B♭ for trumpet, '
               'tenor and soprano sax or clarinet, E♭ for alto and baritone '
               'sax, F for French horn, C for flute and trombone. The '
               'exercises are then written in your key.',
