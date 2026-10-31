@@ -91,6 +91,9 @@ class _LickScreenState extends State<LickScreen> {
   /// Which note of the lick is sounding (or would be, on your turn).
   int? _playing;
 
+  /// Which bar of the changes is sounding, or null before the band is in.
+  int? _bar;
+
   /// Whether this time round is the band's or yours.
   bool _bandsTurn = true;
   Timer? _clock;
@@ -176,18 +179,22 @@ class _LickScreenState extends State<LickScreen> {
       }
       var index = -1;
       var pass = 0;
+      int? bar;
       if (seconds >= 0) {
         pass = seconds ~/ passSeconds;
         final within = (seconds % passSeconds) / beat;
+        bar = within ~/ 4;
         for (var i = 0; i < starts.length; i++) {
           if (starts[i] <= within) index = i;
         }
       }
       final bands = _lickOn(pass);
-      if ((index != _playing || bands != _bandsTurn) && mounted) {
+      if ((index != _playing || bands != _bandsTurn || bar != _bar) &&
+          mounted) {
         setState(() {
           _playing = index;
           _bandsTurn = bands;
+          _bar = bar;
         });
       }
     });
@@ -196,7 +203,12 @@ class _LickScreenState extends State<LickScreen> {
   Future<void> _stop() async {
     _clock?.cancel();
     _clock = null;
-    if (mounted) setState(() => _playing = null);
+    if (mounted) {
+      setState(() {
+        _playing = null;
+        _bar = null;
+      });
+    }
     await widget.player.stopSnippet();
   }
 
@@ -289,18 +301,26 @@ class _LickScreenState extends State<LickScreen> {
                     child: Row(
                       key: const ValueKey('lick-changes'),
                       children: [
-                        for (final bar in _bars(changes))
+                        for (final (i, bar) in _bars(changes).indexed)
+                          // The bar the band is in, lit while it plays.
                           Container(
+                            key: ValueKey('lick-bar-$i'),
                             constraints: const BoxConstraints(minWidth: 84),
                             padding: const EdgeInsets.fromLTRB(8, 2, 12, 2),
                             decoration: BoxDecoration(
+                              color: i == _bar
+                                  ? scheme.primary.withValues(alpha: 0.22)
+                                  : null,
                               border: Border(
                                 left: BorderSide(color: scheme.onSurface),
                               ),
                             ),
                             child: Text(
                               bar,
-                              style: handLettered(theme.textTheme.titleLarge),
+                              style: handLettered(theme.textTheme.titleLarge)
+                                  .copyWith(
+                                    color: i == _bar ? scheme.primary : null,
+                                  ),
                             ),
                           ),
                         Container(
