@@ -15,6 +15,7 @@ import 'imported_sounds_screen.dart';
 import 'chart_instrument_button.dart';
 import 'chord_colours_screen.dart';
 import 'drum_levels_screen.dart';
+import 'how_it_works_screen.dart';
 import 'key_colours_screen.dart';
 import 'paper_screen.dart';
 import 'tunes_page.dart' show SectionHeader;
@@ -53,6 +54,18 @@ class SettingsPage extends StatelessWidget {
         builder: (context, _) => ListView(
           padding: const EdgeInsets.only(bottom: 24),
           children: [
+            ListTile(
+              key: const ValueKey('how-it-works'),
+              leading: const Icon(Icons.help_outline),
+              title: const Text('How It Works'),
+              subtitle: const Text('Every part of the app, in a few steps'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const HowItWorksScreen(),
+                ),
+              ),
+            ),
             const SectionHeader('Your Instrument'),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
