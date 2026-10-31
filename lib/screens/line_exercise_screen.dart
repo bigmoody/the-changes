@@ -22,6 +22,7 @@ import '../practice/roadmap.dart';
 import '../practice/roadmap_progress.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
+import 'key_menu.dart';
 import 'stave.dart';
 import 'stave_figure.dart';
 import 'swing_screen.dart' show ridePattern;
@@ -61,6 +62,9 @@ class LineExerciseScreen extends StatefulWidget {
 class _LineExerciseScreenState extends State<LineExerciseScreen> {
   var _at = 0;
 
+  /// Today's key to start with; any of the twelve after that.
+  late var _key = widget.keyName;
+
   /// How many times through the line each Play Along goes.
   var _times = 4;
   var _guide = true;
@@ -79,7 +83,7 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
   String get _tempoKey => 'Line ${_step.title}';
 
   /// Around middle C as written, where every horn has the notes.
-  List<LineEvent> get _line => lineIn(_step, widget.keyName, floor: 60);
+  List<LineEvent> get _line => lineIn(_step, _key, floor: 60);
 
   static const _countIn = 4;
 
@@ -204,7 +208,18 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
     final atGoal = _tempo >= widget.level.tempo(widget.exercise.to);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          KeyMenu(
+            keyName: _key,
+            onChanged: (key) {
+              unawaited(_stop());
+              setState(() => _key = key);
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -214,7 +229,7 @@ class _LineExerciseScreenState extends State<LineExerciseScreen> {
                 children: [
                   Text(
                     'Step ${_at + 1} of ${steps.length} · '
-                    '${widget.keyName} ${step.mode == 'Ionian' ? 'major' : step.mode}',
+                    '$_key ${step.mode == 'Ionian' ? 'major' : step.mode}',
                     key: const ValueKey('line-step'),
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: scheme.onSurfaceVariant,

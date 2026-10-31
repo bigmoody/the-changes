@@ -21,6 +21,7 @@ import '../practice/roadmap.dart';
 import '../practice/roadmap_progress.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
+import 'key_menu.dart';
 import 'stave.dart';
 import 'swing_screen.dart' show ridePattern;
 
@@ -46,7 +47,6 @@ class LickScreen extends StatefulWidget {
     required this.settings,
     this.title = 'Licks in Context',
     this.onDone,
-    this.chooseKey = false,
     this.level = PlayerLevel.intermediate,
   });
 
@@ -67,16 +67,9 @@ class LickScreen extends StatefulWidget {
   /// the screen was opened to browse, from Learn.
   final VoidCallback? onDone;
 
-  /// Whether the key can be changed here: from Learn there is no "today".
-  final bool chooseKey;
-
   @override
   State<LickScreen> createState() => _LickScreenState();
 }
-
-const _keys = [
-  'C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B', //
-];
 
 class _LickScreenState extends State<LickScreen> {
   var _at = 0;
@@ -250,24 +243,13 @@ class _LickScreenState extends State<LickScreen> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          if (widget.chooseKey)
-            PopupMenuButton<String>(
-              key: const ValueKey('lick-key'),
-              tooltip: 'Key',
-              initialValue: _key,
-              onSelected: (key) {
-                unawaited(_stop());
-                setState(() => _key = key);
-              },
-              itemBuilder: (_) => [
-                for (final key in _keys)
-                  PopupMenuItem(value: key, child: Text('In $key')),
-              ],
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Center(child: Text('In $_key')),
-              ),
-            ),
+          KeyMenu(
+            keyName: _key,
+            onChanged: (key) {
+              unawaited(_stop());
+              setState(() => _key = key);
+            },
+          ),
         ],
       ),
       body: SafeArea(

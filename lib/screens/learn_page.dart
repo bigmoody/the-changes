@@ -192,7 +192,6 @@ class _LearnPageState extends State<LearnPage> {
               progress: progress,
               player: player,
               settings: settings,
-              chooseKey: true,
             ),
           );
         },

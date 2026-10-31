@@ -21,6 +21,7 @@ import '../practice/roadmap.dart';
 import '../practice/roadmap_progress.dart';
 import '../settings/app_settings.dart';
 import '../theme.dart';
+import 'key_menu.dart';
 import 'stave.dart';
 
 /// One step of the exercise: a mode, run one way.
@@ -73,6 +74,9 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
   ];
   var _at = 0;
 
+  /// Today's key to start with; any of the twelve after that.
+  late var _key = widget.keyName;
+
   /// A horn's range is its player's, and one octave is the honest default
   /// for a scale on a horn the app cannot hear; the others have the room
   /// for two.
@@ -107,13 +111,8 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
     _ => _octaves == 1 ? 60 : 55,
   };
 
-  ScaleRun get _run => scaleRun(
-    _step.mode,
-    widget.keyName,
-    _step.way,
-    octaves: _octaves,
-    floor: _floor,
-  );
+  ScaleRun get _run =>
+      scaleRun(_step.mode, _key, _step.way, octaves: _octaves, floor: _floor);
 
   /// Two notes to the beat.
   double get _noteSeconds => 30 / _tempo;
@@ -230,13 +229,24 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
     // An arpeggio is named for its chord, which is what is being learned;
     // the scale it comes from is said underneath.
     final scale = step.way == arpeggioRun
-        ? step.mode.chordOn(widget.keyName).display
-        : '${step.mode.spelledRoot(widget.keyName)} ${step.mode.name}';
+        ? step.mode.chordOn(_key).display
+        : '${step.mode.spelledRoot(_key)} ${step.mode.name}';
     final last = _at == _steps.length - 1;
     final atGoal = _tempo >= widget.level.tempo(widget.exercise.to);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          KeyMenu(
+            keyName: _key,
+            onChanged: (key) {
+              unawaited(_stop());
+              setState(() => _key = key);
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -259,7 +269,7 @@ class _ScaleOfTheDayScreenState extends State<ScaleOfTheDayScreen> {
                   Text(
                     step.way == arpeggioRun
                         ? '${runLabel(step.way)}, from '
-                              '${step.mode.spelledRoot(widget.keyName)} '
+                              '${step.mode.spelledRoot(_key)} '
                               '${step.mode.name}'
                         : runLabel(step.way),
                     key: const ValueKey('scale-way'),

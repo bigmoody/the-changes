@@ -15,6 +15,7 @@ import '../audio/backing_synth.dart';
 import '../audio/practice_player.dart';
 import '../library/library_store.dart';
 import '../music/arrangement.dart';
+import '../music/tune.dart';
 import '../music/tune_library.dart';
 import '../practice/part_store.dart';
 import '../practice/recording_store.dart';
@@ -24,6 +25,7 @@ import '../settings/app_settings.dart';
 import '../settings/progression_store.dart';
 import '../theme.dart';
 import 'practice_screen.dart';
+import 'key_menu.dart';
 import 'stave.dart';
 
 class SoundExerciseScreen extends StatefulWidget {
@@ -69,6 +71,9 @@ class SoundExerciseScreen extends StatefulWidget {
 
 class _SoundExerciseScreenState extends State<SoundExerciseScreen> {
   var _at = 0;
+
+  /// Today's key to start with; any of the twelve after that.
+  late var _key = widget.keyName;
   var _tempo = 60;
 
   /// Whether the band plays your note too, or only what goes under it.
@@ -86,14 +91,17 @@ class _SoundExerciseScreenState extends State<SoundExerciseScreen> {
 
   late final String _balladTitle = balladFor(widget.day);
 
-  /// The ballad in the player's written key.
-  late final _ballad = standards
+  /// How far the key has been moved from today's. The ballad moves with
+  /// it, so a ballad step is in a new key too.
+  int get _moved => semitonesBetween(widget.keyName, _key);
+
+  /// The ballad in the player's written key, moved as far as the key is.
+  Tune? get _ballad => standards
       .where((t) => t.title == _balladTitle)
       .firstOrNull
-      ?.transposed(widget.settings.instrument.semitones);
+      ?.transposed(widget.settings.instrument.semitones + _moved);
 
-  List<HeldNote> get _notes =>
-      heldNotes(_step.way, widget.keyName, ballad: _ballad);
+  List<HeldNote> get _notes => heldNotes(_step.way, _key, ballad: _ballad);
 
   @override
   void dispose() {
@@ -176,6 +184,7 @@ class _SoundExerciseScreenState extends State<SoundExerciseScreen> {
           partStore: widget.partStore,
           recordingStore: widget.recordingStore,
           startAt: 60,
+          semitones: _moved,
           arrangement: const Arrangement(choruses: 1),
         ),
       ),
@@ -198,7 +207,18 @@ class _SoundExerciseScreenState extends State<SoundExerciseScreen> {
     };
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          KeyMenu(
+            keyName: _key,
+            onChanged: (key) {
+              unawaited(_stop());
+              setState(() => _key = key);
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [

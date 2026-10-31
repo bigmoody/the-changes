@@ -776,7 +776,6 @@ class _Roadmap extends StatelessWidget {
                 progress: progress,
                 player: page.player,
                 settings: page.settings,
-                chooseKey: true,
               ),
             ),
           ),

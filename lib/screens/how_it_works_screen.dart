@@ -671,6 +671,9 @@ const _sections = <_Section>[
               'Tempo, The Ballad Sound, and Altissimo and Extremes.',
           'Guitar and piano get comping blocks, and bass gets walking '
               'blocks, in their place.',
+          'Each starts in today\'s key. Tap In F (or whichever key) at the '
+              'top to choose any of the twelve, or the skip button to go on '
+              'to the next key round the cycle.',
           'Next moves on a step. Done, on the last one, ticks the block.',
         ],
       ),
