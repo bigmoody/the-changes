@@ -46,6 +46,11 @@ void main() {
     expect(movedKeyLabel('Blue Bossa', 'G'), 'G minor');
     expect(movedKeyLabel('Take the "A" Train', 'B♭'), 'B♭');
     expect(semitonesToKey('Not a tune', 'G'), 0);
+    // Read on a B♭ horn, C is concert B♭; on E♭, concert E♭; on F,
+    // concert F.
+    expect(semitonesToKey('Take the "A" Train', 'C', reading: 2), -2);
+    expect(semitonesToKey('Take the "A" Train', 'C', reading: 9), 3);
+    expect(semitonesToKey('Take the "A" Train', 'C', reading: 7), 5);
   });
 
   test('no em dashes', () {

@@ -200,6 +200,48 @@ void main() {
     expect(find.textContaining('${today.key}6'), findsWidgets);
   });
 
+  for (final reading in [
+    ChartInstrument.bFlat,
+    ChartInstrument.eFlat,
+    ChartInstrument.f,
+  ]) {
+    testWidgets('on ${reading.symbol}, that tune reads in today\'s key too', (
+      tester,
+    ) async {
+      final progress = RoadmapProgress.inMemory(
+        instrument: RoadmapInstrument.horn,
+      );
+      final settings = AppSettings.inMemory()..setInstrument(reading);
+      await _open(
+        tester,
+        size: const Size(393, 3000),
+        progress: progress,
+        settings: settings,
+      );
+      final today = routineFor(
+        stagesFor(RoadmapInstrument.horn).first,
+        progress.minutes,
+        day: dayNumber(DateTime(2026, 10, 29)),
+      )[1];
+      await tester.tap(find.textContaining('Take the "A" Train, in '));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      final screen = tester.widget<PracticeScreen>(find.byType(PracticeScreen));
+      expect(
+        screen.semitones,
+        semitonesToKey(
+          'Take the "A" Train',
+          today.key,
+          reading: reading.semitones,
+        ),
+      );
+      // The band is in concert pitch; the chart, as the horn reads it,
+      // is in today's key, the same key the scale was written in.
+      await tester.pumpAndSettle();
+      expect(find.textContaining('${today.key}6'), findsWidgets);
+    });
+  }
+
   testWidgets('articulation is lines to play, step by step', (tester) async {
     final progress = RoadmapProgress.inMemory(
       instrument: RoadmapInstrument.horn,

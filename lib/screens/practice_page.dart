@@ -733,7 +733,11 @@ class _Roadmap extends StatelessWidget {
             onTune: (tune) => page._openTune(
               context,
               tune,
-              semitones: semitonesToKey(tune, routine[b].key),
+              semitones: semitonesToKey(
+                tune,
+                routine[b].key,
+                reading: page.settings.instrument.semitones,
+              ),
             ),
           ),
         Padding(

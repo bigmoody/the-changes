@@ -22,11 +22,18 @@ String? keyOfTune(String title) =>
 /// How far to move [title] so its home key is [key]: up to six semitones
 /// either way, so it stays near where it was written. Zero if the tune is
 /// not in the library.
-int semitonesToKey(String title, String key) {
+///
+/// [key] is as the player reads it. [reading] is how far their
+/// instrument reads above concert (2 for a B♭ horn), so a trumpeter
+/// practising in F hears the tune in concert E♭, and reads it in F.
+int semitonesToKey(String title, String key, {int reading = 0}) {
   final written = keyOfTune(title);
   if (written == null) return 0;
   final up =
-      (readKeyLabel(key).pitchClass - readKeyLabel(written).pitchClass) % 12;
+      (readKeyLabel(key).pitchClass -
+          reading -
+          readKeyLabel(written).pitchClass) %
+      12;
   return up > 6 ? up - 12 : up;
 }
 
