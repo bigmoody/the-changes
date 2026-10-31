@@ -39,7 +39,7 @@ void main() {
     expect(find.byType(HowItWorksScreen), findsOneWidget);
 
     // Every section opens onto its steps.
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < 9; i++) {
       final section = find.byKey(ValueKey('how-$i'));
       await tester.scrollUntilVisible(section, 200);
       await tester.tap(section);

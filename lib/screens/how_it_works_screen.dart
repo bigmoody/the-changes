@@ -219,6 +219,57 @@ const _sections = <_Section>[
     ],
   ),
   (
+    title: 'Follow the Band by Ear',
+    icon: Icons.hearing,
+    topics: [
+      (
+        title: 'Start It',
+        steps: [
+          'Open a tune and tap the ear at the top. On iPhone and iPad.',
+          'The chart goes big, as on Stage View, and the app follows a band '
+              'that is not its own: a record, or real players.',
+        ],
+      ),
+      (
+        title: 'Choose Where the Music Is',
+        steps: [
+          'Broadcast hears another app on this device, such as Spotify or '
+              'YouTube: tap Start Broadcast, choose The Changes, then play.',
+          'Microphone hears the room: a record played out loud, or a band.',
+        ],
+      ),
+      (
+        title: 'Let It Listen',
+        steps: [
+          'It finds the beat, then which bar of the tune the band is in, '
+              'and marks it as they go.',
+          'Give it about half a minute. Until it knows the bar, none is '
+              'marked.',
+        ],
+      ),
+      (
+        title: 'Help It Along',
+        steps: [
+          'Counting twice as fast as the band? Tap Half Time. Half as fast? '
+              'Tap Double Time.',
+          'Tap the Beat three or four times in time with the band to set '
+              'the tempo.',
+          'Tap Top of the Chorus as the band starts a chorus to jump to '
+              'bar 1.',
+          'Or tap the bar on the chart the band is playing, on its first '
+              'beat.',
+        ],
+      ),
+      (
+        title: 'With a Foot Pedal',
+        steps: [
+          'A page-turner pedal works too: the right pedal taps the beat, '
+              'the left is Top of the Chorus.',
+        ],
+      ),
+    ],
+  ),
+  (
     title: 'Practice Tab',
     icon: Icons.route_outlined,
     topics: [
